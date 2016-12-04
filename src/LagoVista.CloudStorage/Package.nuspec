@@ -7,12 +7,12 @@
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <projectUrl>http://www.lagovista-iot.com/opensource</projectUrl>
+    <iconUrl>http://bytemaster.blob.core.windows.net/icons/LagoVistaIcon.png</iconUrl>
     <description>Provides an abstact mechanism to store object graphs to cloud storage.</description>
     <releaseNotes>Early Unstable Release</releaseNotes>
     <copyright>Copyright 2016</copyright>
     <tags>HomeAutomation IoT</tags>
     <dependencies>
-      <dependency id="LagoVista.Core" version="8.3.0" />
       <dependency id="Newtonsoft.Json" version="9.0.1" />
     </dependencies>
   </metadata>
