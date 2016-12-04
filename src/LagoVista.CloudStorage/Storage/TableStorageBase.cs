@@ -17,8 +17,9 @@ using System.Text;
 using System.Threading.Tasks;
 using LagoVista.Core.Validation;
 using LagoVista.Core.Exceptions;
+using LagoVista.Core;
 
-namespace LagoVista.Core.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage
 {
     public abstract class TableStorageBase<TEntity> : IDisposable where TEntity : TableStorageEntity
     {
@@ -59,7 +60,7 @@ namespace LagoVista.Core.CloudStorage.Storage
 
             await _table.CreateIfNotExistsAsync();
             Initialized = true;
-            _logger.Log(PlatformSupport.LogLevel.Warning, GetType().FullName, "Table Created If Need-by");
+            _logger.Log(Core.PlatformSupport.LogLevel.Warning, GetType().FullName, "Table Created If Need-by");
         }
 
         protected async Task<TableResult> Execute(TableOperation op)
@@ -68,12 +69,12 @@ namespace LagoVista.Core.CloudStorage.Storage
 
             if (result == null)
             {
-                _logger.Log(PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Null Response Code");
+                _logger.Log(Core.PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Null Response Code");
                 throw new Exception($"Null response code from table operation");
             }
             else if (result.HttpStatusCode < 200 || result.HttpStatusCode > 299)
             {
-                _logger.Log(PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Non-Success Status Code", new System.Collections.Generic.KeyValuePair<string, string>("StatusCode", result.HttpStatusCode.ToString()));
+                _logger.Log(Core.PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Non-Success Status Code", new System.Collections.Generic.KeyValuePair<string, string>("StatusCode", result.HttpStatusCode.ToString()));
                 throw new Exception($"Error response code from table operation");
             }
             else
