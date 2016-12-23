@@ -1,7 +1,7 @@
 {
   "version": "0.8.0-*",
   "dependencies": {
-    "LagoVista.Core": "1.0.1-alpha01121",
+    "LagoVista.Core": "0.8.9-alpha00674",
     "NETStandard.Library": "1.6.1",
     "Newtonsoft.Json": "9.0.1",
     "WindowsAzure.Storage": "8.0.0"
