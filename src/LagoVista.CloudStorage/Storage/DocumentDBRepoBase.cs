@@ -4,6 +4,7 @@ using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -133,12 +134,24 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<TEntity> GetDocumentAsync(string id)
         {
-            //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
-            var query = new SqlQuerySpec(@"SELECT * FROM root WHERE (root[""id""] = @id)", new SqlParameterCollection() { new SqlParameter("@id", id) });
-            var docQuery = Client.CreateDocumentQuery<TEntity>(await GetCollectionDocumentsLinkAsync(), query);
-            var enumList = docQuery.AsEnumerable<TEntity>();
-            var list = enumList.ToList();
-            return enumList.FirstOrDefault();
+            try
+            {
+                //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
+                var response = await Client.ReadDocumentAsync(UriFactory.CreateDocumentUri(_dbName, _collectionName, id));
+                var json = response.Resource.ToString();
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine(json);
+                Console.ResetColor();
+
+                var entity = JsonConvert.DeserializeObject<TEntity>(json);
+
+                return entity;
+            }
+            catch(Exception)
+            {
+                _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document: {id} {_dbName} {_collectionName}");
+                return null;
+            }
         }
 
         protected async Task<ResourceResponse<Document>> DeleteDocumentAsync(string id)
