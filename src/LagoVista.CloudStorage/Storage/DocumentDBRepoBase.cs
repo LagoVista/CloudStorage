@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
-    public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity
+    public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity, INoSQLEntity
     {
         private Uri _endpoint;
         private string _sharedKey;
@@ -58,6 +58,12 @@ namespace LagoVista.CloudStorage.DocumentDB
             return _documentClient;
         }
 
+
+        protected virtual bool ShouldConsolidateCollections
+        {
+            get { return false; }
+        }
+
         protected async Task<Database> GetDatabase(DocumentClient client)
         {
             var databases = client.CreateDatabaseQuery().Where(db => db.Id == _dbName).ToArray();
@@ -69,17 +75,22 @@ namespace LagoVista.CloudStorage.DocumentDB
             return await client.CreateDatabaseAsync(new Database() { Id = _dbName });
         }
 
+        private String GetCollectionName()
+        {
+            return ShouldConsolidateCollections? _dbName +"_Collections" : _collectionName;
+        }
+
         public async Task<DocumentCollection> GetCollectionAsync()
         {
             var client = GetDocumentClient();
 
-            var databases = client.CreateDocumentCollectionQuery((await GetDatabase(GetDocumentClient())).SelfLink).Where(db => db.Id == _collectionName).ToArray();
+            var databases = client.CreateDocumentCollectionQuery((await GetDatabase(GetDocumentClient())).SelfLink).Where(db => db.Id == GetCollectionName()).ToArray();
             if (databases.Any())
             {
                 return databases.First();
             }
 
-            return await client.CreateDocumentCollectionAsync((await GetDatabase(GetDocumentClient())).SelfLink, new DocumentCollection() { Id = _collectionName });
+            return await client.CreateDocumentCollectionAsync((await GetDatabase(GetDocumentClient())).SelfLink, new DocumentCollection() { Id = GetCollectionName() });
         }
 
         protected DocumentClient Client
@@ -109,6 +120,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }                    
             }
 
+            item.DatabaseName = _dbName;
+            item.EntityType = typeof(TEntity).Name;
+
             var response = await Client.CreateDocumentAsync(await GetCollectionDocumentsLinkAsync(), item);
             if(response.StatusCode != System.Net.HttpStatusCode.Created)
             {
@@ -137,7 +151,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             try
             {
                 //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
-                var response = await Client.ReadDocumentAsync(UriFactory.CreateDocumentUri(_dbName, _collectionName, id));
+                var response = await Client.ReadDocumentAsync(UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id));
                 var json = response.Resource.ToString();
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine(json);
@@ -149,14 +163,14 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             catch(Exception)
             {
-                _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document: {id} {_dbName} {_collectionName}");
+                _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document: {id} {_dbName} {GetCollectionName()}");
                 return null;
             }
         }
 
         protected async Task<ResourceResponse<Document>> DeleteDocumentAsync(string id)
         {
-            var docUri = UriFactory.CreateDocumentUri(_dbName, _collectionName, id);
+            var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
             return await Client.DeleteDocumentAsync(docUri);
         }
 
@@ -167,7 +181,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
         {
-            return (await GetQueryAsync()).Where(query);
+            return (await GetQueryAsync()).Where(query).Where(itm=>itm.EntityType == typeof(TEntity).Name);
         }
 
         public void Dispose()
