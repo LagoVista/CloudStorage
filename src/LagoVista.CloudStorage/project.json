@@ -1,19 +1,19 @@
 {
   "version": "0.8.0-*",
   "dependencies": {
-    "LagoVista.Core": "0.8.92-alpha00499",
+    "LagoVista.Core": "0.8.92-alpha00522",
     "NETStandard.Library": "1.6.1",
     "Newtonsoft.Json": "9.0.1",
-    "WindowsAzure.Storage":"7.2.1"
+    "WindowsAzure.Storage": "8.1.1"
   },
 
   "frameworks": {
     "netstandard1.6": {
-      "dependencies": { "Microsoft.Azure.DocumentDB.Core": "1.0.0" },
+      "dependencies": { "Microsoft.Azure.DocumentDB.Core": "1.1.0" },
       "imports": [ "dnxcore50", "portable-net45+win8" ]
     },
     "netcoreapp1.0": {
-      "dependencies": { "Microsoft.Azure.DocumentDB.Core": "1.0.0" },
+      "dependencies": { "Microsoft.Azure.DocumentDB.Core": "1.1.0" },
       "imports": ["dnxcore50", "portable-net45+win8" ]
     },
     "net461": {
