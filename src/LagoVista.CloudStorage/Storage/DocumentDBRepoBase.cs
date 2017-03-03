@@ -116,7 +116,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var result = Validator.Validate(item as IValidateable);
                 if(!result.IsValid)
                 {
-                    throw new ValidationException("Invalid Datea.", result.Errors);
+                    throw new ValidationException("Invalid Data.", result.Errors);
                 }                    
             }
 
@@ -139,7 +139,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var result = Validator.Validate(item as IValidateable);
                 if (!result.IsValid)
                 {
-                    throw new ValidationException("Invalid Datea.", result.Errors);
+                    throw new ValidationException("Invalid Data.", result.Errors);
                 }
             }
 
