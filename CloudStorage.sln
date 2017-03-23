@@ -1,10 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.26228.9
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "LagoVista.CloudStorage", "src\LagoVista.CloudStorage\LagoVista.CloudStorage.xproj", "{F455BE4A-2F7F-436C-989E-66920E27E541}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{1540DFBB-18D1-44F7-840F-D8F30E5B3CC5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{D84552C4-16AC-44EC-B822-7C55B8561B66}"
@@ -12,11 +10,12 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{67A65587-1818-4B09-82F6-8CA5AEA36DAA}"
 	ProjectSection(SolutionItems) = preProject
 		CreateLocalPackages.ps1 = CreateLocalPackages.ps1
-		global.json = global.json
 		nuget.config = nuget.config
 		README.md = README.md
 		UpdateNuspecVersion.ps1 = UpdateNuspecVersion.ps1
 	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LagoVista.CloudStorage", "src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj", "{F455BE4A-2F7F-436C-989E-66920E27E541}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
