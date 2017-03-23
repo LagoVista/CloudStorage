@@ -2,31 +2,23 @@
 
   <PropertyGroup>
     <VersionPrefix>0.8.0</VersionPrefix>
-    <TargetFrameworks>netstandard1.6;netcoreapp1.0</TargetFrameworks>
+    <TargetFrameworks>netstandard1.6;netcoreapp1.1</TargetFrameworks>
     <AssemblyName>LagoVista.CloudStorage</AssemblyName>
     <PackageId>LagoVista.CloudStorage</PackageId>
     <NetStandardImplicitPackageVersion>1.6.1</NetStandardImplicitPackageVersion>
     <PackageTargetFallback Condition=" '$(TargetFramework)' == 'netstandard1.6' ">$(PackageTargetFallback);dnxcore50;portable-net45+win8</PackageTargetFallback>
-    <PackageTargetFallback Condition=" '$(TargetFramework)' == 'netcoreapp1.0' ">$(PackageTargetFallback);dnxcore50;portable-net45+win8</PackageTargetFallback>
+    <PackageTargetFallback Condition=" '$(TargetFramework)' == 'netcoreapp1.1' ">$(PackageTargetFallback);dnxcore50;portable-net45+win8</PackageTargetFallback>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="LagoVista.Core" Version="0.8.92-alpha00522" />
+    <PackageReference Include="LagoVista.Core" Version="0.8.112-alpha00944" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.1" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.1" />
+    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.1.2" />
   </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' ">
-    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.1.0" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netcoreapp1.0' ">
-    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.1.0" />
-  </ItemGroup>
-
 
   <ItemGroup>
     <Folder Include="Properties\" />

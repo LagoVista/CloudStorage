@@ -18,7 +18,7 @@
   </metadata>
   <files>
     <file src="readme.txt" target="" />
-    <file src="bin\release\netcoreapp1.0\*.dll" target="lib\netcoreapp1.0" />
+    <file src="bin\release\netcoreapp1.1\*.dll" target="lib\netcoreapp1.0" />
     <file src="bin\release\netstandard1.6\*.dll" target="lib\netstandard1.6" />
   </files>
 </package>
