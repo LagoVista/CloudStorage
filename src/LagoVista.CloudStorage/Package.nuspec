@@ -10,18 +10,17 @@
     <iconUrl>http://bytemaster.blob.core.windows.net/icons/LagoVistaIcon.png</iconUrl>
     <description>Provides an abstact mechanism to store object graphs to cloud storage.</description>
     <releaseNotes>Early Unstable Release</releaseNotes>
-    <copyright>Copyright 2016</copyright>
-    <tags>HomeAutomation IoT</tags>
+    <copyright>Copyright 2017</copyright>
+    <tags>HomeAutomation IoT LagoVista</tags>
     <dependencies>
-      <dependency id="LagoVista.Core" version="0.8.112-alpha00944" />
+      <dependency id="LagoVista.Core" version="0.8.120-alpha01069" />
       <dependency id="Newtonsoft.Json" version="10.0.1" />
       <dependency id="WindowsAzure.Storage" version="8.1.1" />
-      <dependency id="Microsoft.Azure.DocumentDB.Core" version="1.1.2" />
+      <dependency id="Microsoft.Azure.DocumentDB.Core" version="1.2.1" />
     </dependencies>
   </metadata>
   <files>
     <file src="readme.txt" target="" />
-    <file src="bin\release\netcoreapp1.1\*.dll" target="lib\netcoreapp1.1" />
     <file src="bin\release\netstandard1.6\*.dll" target="lib\netstandard1.6" />
   </files>
 </package>
