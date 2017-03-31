@@ -1,0 +1,22 @@
+﻿Restoring packages for D:\LagoVista\cloudstorage\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj...
+  GET https://www.nuget.org/api/v2/FindPackagesById()?id='LagoVista.Core'
+  OK https://www.nuget.org/api/v2/FindPackagesById()?id='LagoVista.Core' 408ms
+  GET https://www.nuget.org/api/v2/FindPackagesById()?id='LagoVista.Core'&$skip=100
+  OK https://www.nuget.org/api/v2/FindPackagesById()?id='LagoVista.Core'&$skip=100 96ms
+  GET https://www.nuget.org/api/v2/package/LagoVista.Core/0.8.120-alpha01118
+  OK https://www.nuget.org/api/v2/package/LagoVista.Core/0.8.120-alpha01118 409ms
+Installing LagoVista.Core 0.8.120-alpha01118.
+Installing NuGet package LagoVista.Core 0.8.120-alpha01118.
+Committing restore...
+Writing lock file to disk. Path: D:\LagoVista\cloudstorage\src\LagoVista.CloudStorage\obj\project.assets.json
+Restore completed in 1.35 sec for D:\LagoVista\cloudstorage\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj.
+Successfully uninstalled 'LagoVista.Core 0.8.120-alpha01069' from LagoVista.CloudStorage
+Successfully installed 'LagoVista.Core 0.8.120-alpha01118' to LagoVista.CloudStorage
+Executing nuget actions took 348.45 ms
+Time Elapsed: 00:00:01.8023406
+========== Finished ==========
+
+Restoring NuGet packages...
+Time Elapsed: 00:00:00.3435602
+========== Finished ==========
+
