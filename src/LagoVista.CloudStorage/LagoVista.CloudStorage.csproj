@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <VersionPrefix>0.8.0</VersionPrefix>
-    <TargetFrameworks>netstandard1.6</TargetFrameworks>
+    <TargetFramework>netstandard1.6</TargetFramework>
     <AssemblyName>LagoVista.CloudStorage</AssemblyName>
     <PackageId>LagoVista.CloudStorage</PackageId>
     <NetStandardImplicitPackageVersion>1.6.1</NetStandardImplicitPackageVersion>
@@ -14,9 +14,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="LagoVista.Core" Version="0.8.120-alpha01118" />
+    <PackageReference Include="LagoVista.Core" Version="0.8.123-alpha01157" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.2.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.2" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.1" />
   </ItemGroup>
 
