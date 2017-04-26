@@ -206,7 +206,7 @@ namespace LagoVista.CloudStorage.Storage
             if (entity is IValidateable)
             {
                 var result = Validator.Validate(entity as IValidateable);
-                if (!result.IsValid)
+                if (!result.Successful)
                 {
                     throw new ValidationException("Invalid Datea.", result.Errors);
                 }
@@ -264,7 +264,7 @@ namespace LagoVista.CloudStorage.Storage
             if (entity is IValidateable)
             {
                 var result = Validator.Validate(entity as IValidateable);
-                if (!result.IsValid)
+                if (!result.Successful)
                 {
                     throw new ValidationException("Invalid Date.", result.Errors);
                 }
@@ -309,7 +309,7 @@ namespace LagoVista.CloudStorage.Storage
             if (entity is IValidateable)
             {
                 var result = Validator.Validate(entity as IValidateable);
-                if (!result.IsValid)
+                if (!result.Successful)
                 {
                     throw new ValidationException("Invalid Date.", result.Errors);
                 }
