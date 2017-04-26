@@ -13,9 +13,6 @@
     <copyright>Copyright 2017</copyright>
     <tags>HomeAutomation IoT LagoVista</tags>
     <dependencies>
-      <dependency id="Newtonsoft.Json" version="10.0.1" />
-      <dependency id="WindowsAzure.Storage" version="8.1.1" />
-      <dependency id="Microsoft.Azure.DocumentDB.Core" version="1.2.1" />
     </dependencies>
   </metadata>
   <files>
