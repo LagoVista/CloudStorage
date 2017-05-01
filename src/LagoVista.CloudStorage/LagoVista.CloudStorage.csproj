@@ -1,5 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <VersionPrefix>0.8.0</VersionPrefix>
     <TargetFramework>netstandard1.6</TargetFramework>
@@ -12,16 +11,13 @@
     <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="LagoVista.Core" Version="0.8.146-alpha01178" />
+    <PackageReference Include="LagoVista.Core" Version="0.8.151-alpha1547" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.2.2" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.2" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.1" />
   </ItemGroup>
-
   <ItemGroup>
     <Folder Include="Properties\" />
   </ItemGroup>
-
 </Project>
