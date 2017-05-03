@@ -58,7 +58,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             return _documentClient;
         }
 
-
         protected virtual bool ShouldConsolidateCollections
         {
             get { return false; }
@@ -148,24 +147,56 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<TEntity> GetDocumentAsync(string id)
         {
-            try
+            bool retry = false;
+            do
             {
-                //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
-                var response = await Client.ReadDocumentAsync(UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id));
-                var json = response.Resource.ToString();
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine(json);
-                Console.ResetColor();
+                try
+                {
+                    //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
+                    var response = await Client.ReadDocumentAsync(UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id));
+                    if (response == null)
+                    {
+                        _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response", new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                        throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                    }
 
-                var entity = JsonConvert.DeserializeObject<TEntity>(json);
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        var json = response.Resource.ToString();
 
-                return entity;
+                        if (String.IsNullOrEmpty(json))
+                        {
+                            _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response Content", new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                            throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                        }
+
+                        var entity = JsonConvert.DeserializeObject<TEntity>(json);
+                        if (entity.EntityType != typeof(TEntity).Name)
+                        {
+                            _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Type Mismatch", new KeyValuePair<string, string>("Expected Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("Id", id));
+                            throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                        }
+
+                        return entity;
+                    }
+                    else
+                    {
+                        _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("Invalid Status Code", response.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                        throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                    }
+                }
+                catch (DocumentClientException ex)
+                {                    
+                    _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("DocumentClientException", ex.Message), new KeyValuePair<string, string>("StatusCode", ex.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                    throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("Exception", ex.Message), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                    throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                }
             }
-            catch(Exception)
-            {
-                _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document: {id} {_dbName} {GetCollectionName()}");
-                return null;
-            }
+            while (retry);
         }
 
         protected async Task<ResourceResponse<Document>> DeleteDocumentAsync(string id)
