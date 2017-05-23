@@ -12,7 +12,7 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LagoVista.Core" Version="0.8.172-alpha1333" />
+    <PackageReference Include="LagoVista.Core" Version="0.8.173-alpha0737" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.2.2" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.2" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.1" />
