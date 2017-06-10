@@ -132,6 +132,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                     );
                 throw new Exception("Could not insert entity");
             }
+
+            _logger.AddCustomEvent(LogLevel.Verbose, "repo", "inserted", new KeyValuePair<string, string>("DocumentType", typeof(TEntity).Name), new KeyValuePair<string, string>("DocumentId", item.Id));
+
             return response;
         }
 
@@ -145,6 +148,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                     throw new ValidationException("Invalid Data.", result.Errors);
                 }
             }
+
+            _logger.AddCustomEvent(LogLevel.Verbose, "repo", "updated", new KeyValuePair<string, string>("DocumentType", typeof(TEntity).Name), new KeyValuePair<string, string>("DocumentId", item.Id));
 
             return await Client.UpsertDocumentAsync(await GetCollectionDocumentsLinkAsync(), item);
         }
@@ -206,6 +211,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<ResourceResponse<Document>> DeleteDocumentAsync(string id)
         {
             var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
+            _logger.AddCustomEvent(LogLevel.Verbose, "repo", "deleted", new KeyValuePair<string, string>("DocumentType", typeof(TEntity).Name), new KeyValuePair<string, string>("DocumentId", id));
             return await Client.DeleteDocumentAsync(docUri);
         }
 
