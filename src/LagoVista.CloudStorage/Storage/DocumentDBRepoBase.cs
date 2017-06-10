@@ -2,6 +2,7 @@
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
+using LagoVista.IoT.Logging.Loggers;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json;
@@ -19,9 +20,9 @@ namespace LagoVista.CloudStorage.DocumentDB
         private string _dbName;
         private string _collectionName;
         private DocumentClient _documentClient;
-        private ILogger _logger;
+        private IAdminLogger _logger;
 
-        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, ILogger logger)
+        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger)
         {
             _endpoint = endpoint;
             _sharedKey = sharedKey;
@@ -35,7 +36,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, ILogger logger) : this(new Uri(endpoint), sharedKey, dbName, logger)
+        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger) : this(new Uri(endpoint), sharedKey, dbName, logger)
         {
 
         }
@@ -125,7 +126,10 @@ namespace LagoVista.CloudStorage.DocumentDB
             var response = await Client.CreateDocumentAsync(await GetCollectionDocumentsLinkAsync(), item);
             if(response.StatusCode != System.Net.HttpStatusCode.Created)
             {
-                _logger.Log(LogLevel.Error, $"DocuementDbRepo<{_dbName}>_CreateDocumentAsync", "Error return code: " + response.StatusCode);
+                _logger.AddCustomEvent(LogLevel.Error, $"DocuementDbRepo<{_dbName}>_CreateDocumentAsync", "Error return code: " + response.StatusCode, 
+                    new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name),
+                    new KeyValuePair<string, string>("Id", item.Id)
+                    );
                 throw new Exception("Could not insert entity");
             }
             return response;
@@ -156,7 +160,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     var response = await Client.ReadDocumentAsync(UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id));
                     if (response == null)
                     {
-                        _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response", new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                        _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response", new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                         throw new RecordNotFoundException(typeof(TEntity).Name, id);
                     }
 
@@ -166,14 +170,14 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                         if (String.IsNullOrEmpty(json))
                         {
-                            _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response Content", new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                            _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response Content", new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                             throw new RecordNotFoundException(typeof(TEntity).Name, id);
                         }
 
                         var entity = JsonConvert.DeserializeObject<TEntity>(json);
                         if (entity.EntityType != typeof(TEntity).Name)
                         {
-                            _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Type Mismatch", new KeyValuePair<string, string>("Expected Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("Id", id));
+                            _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Type Mismatch", new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("Id", id));
                             throw new RecordNotFoundException(typeof(TEntity).Name, id);
                         }
 
@@ -181,18 +185,18 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                     else
                     {
-                        _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("Invalid Status Code", response.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                        _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("Invalid Status Code", response.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                         throw new RecordNotFoundException(typeof(TEntity).Name, id);
                     }
                 }
                 catch (DocumentClientException ex)
                 {                    
-                    _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("DocumentClientException", ex.Message), new KeyValuePair<string, string>("StatusCode", ex.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                    _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("DocumentClientException", ex.Message), new KeyValuePair<string, string>("StatusCode", ex.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
                 }
                 catch (Exception ex)
                 {
-                    _logger.Log(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("Exception", ex.Message), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                    _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("Exception", ex.Message), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
                 }
             }

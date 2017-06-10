@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using LagoVista.Core.Validation;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core;
+using LagoVista.IoT.Logging.Loggers;
 
 namespace LagoVista.CloudStorage.Storage
 {
@@ -26,12 +27,12 @@ namespace LagoVista.CloudStorage.Storage
         private static CloudTable _table;
         private static CloudTableClient _tableClient;
 
-        ILogger _logger;
+        IAdminLogger _logger;
         String _srvrPath;
         String _accountName;
         String _accountKey;
 
-        public TableStorageBase(String accountName, string accountKey, ILogger logger)
+        public TableStorageBase(String accountName, string accountKey, IAdminLogger logger)
         {
             _logger = logger;
             var credentials = new StorageCredentials(accountName, accountKey);
@@ -60,7 +61,7 @@ namespace LagoVista.CloudStorage.Storage
 
             await _table.CreateIfNotExistsAsync();
             Initialized = true;
-            _logger.Log(Core.PlatformSupport.LogLevel.Warning, GetType().FullName, "Table Created If Need-by");
+            _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Warning, GetType().FullName, "Table Created If Need-by");
         }
 
         protected async Task<TableResult> Execute(TableOperation op)
@@ -69,12 +70,12 @@ namespace LagoVista.CloudStorage.Storage
 
             if (result == null)
             {
-                _logger.Log(Core.PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Null Response Code");
+                _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Null Response Code");
                 throw new Exception($"Null response code from table operation");
             }
             else if (result.HttpStatusCode < 200 || result.HttpStatusCode > 299)
             {
-                _logger.Log(Core.PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Non-Success Status Code", new System.Collections.Generic.KeyValuePair<string, string>("StatusCode", result.HttpStatusCode.ToString()));
+                _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Non-Success Status Code", new System.Collections.Generic.KeyValuePair<string, string>("StatusCode", result.HttpStatusCode.ToString()));
                 throw new Exception($"Error response code from table operation");
             }
             else
