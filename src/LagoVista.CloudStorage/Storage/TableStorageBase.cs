@@ -22,10 +22,11 @@ using LagoVista.IoT.Logging.Loggers;
 
 namespace LagoVista.CloudStorage.Storage
 {
+
     public abstract class TableStorageBase<TEntity> : IDisposable where TEntity : TableStorageEntity
     {
-        private static CloudTable _table;
-        private static CloudTableClient _tableClient;
+        static CloudTable _table;
+        static CloudTableClient _tableClient;
 
         IAdminLogger _logger;
         String _srvrPath;
@@ -184,7 +185,6 @@ namespace LagoVista.CloudStorage.Storage
             var query = $"?$filter=PartitionKey eq '{partitionKey}'";
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
 
-
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
 
             return await Get(fullResourcePath);
@@ -234,6 +234,75 @@ namespace LagoVista.CloudStorage.Storage
             {
                 throw new Exception($"Non success response from server: {response.RequestMessage}");
             }
+        }
+
+        public async Task InsertAsync(string json)
+        {
+            var request = CreateRequest();
+            var jsonContent = new StringContent(json);
+            jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            jsonContent.Headers.ContentMD5 = GetContentMD5(json);
+
+            var authHeader = GetAuthHeader(request, "POST", "application/json", contentMd5: jsonContent.Headers.ContentMD5);
+            request.DefaultRequestHeaders.Authorization = authHeader;
+            var response = await request.PostAsync(_srvrPath, jsonContent);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"Non success response from server: {response.RequestMessage}");
+            }
+        }
+
+        public async Task UpdateAsync(string partitionKey, string rowKey, string json, string etag)
+        {
+            var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
+            var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
+
+
+            var request = CreateRequest(fullResourcePath);
+            var jsonContent = new StringContent(json);
+            jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            jsonContent.Headers.ContentMD5 = GetContentMD5(json);
+
+            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "PUT", "application/json", fullResourcePath: fullResourcePath, contentMd5: jsonContent.Headers.ContentMD5);
+            request.DefaultRequestHeaders.Add("If-Match", etag);
+
+            var response = await request.PutAsync(operationUri, jsonContent);
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                {
+                    throw new Exception("ContentModified.");
+                }
+                else
+                {
+                    throw new Exception(response.ReasonPhrase);
+                }
+            }
+        }
+
+        public async Task<String> GetRAWJSONAsync(String rowKey, string partitionKey)
+        {
+            var resource = $"()";
+            var query = $"?$filter=PartitionKey eq '{partitionKey}'";
+            var operationUri = new Uri($"{_srvrPath}{resource}{query}");
+
+            var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
+
+            var request = CreateRequest(fullResourcePath);
+            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: fullResourcePath);
+
+            var response = await request.GetAsync(operationUri);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadAsStringAsync();
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
+            throw new Exception($"Non success response from server: {response.RequestMessage}");
         }
 
         public async Task RemoveAsync(string partitionKey, string rowKey, string etag = "*")
