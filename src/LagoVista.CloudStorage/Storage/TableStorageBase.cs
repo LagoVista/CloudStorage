@@ -19,6 +19,7 @@ using LagoVista.Core.Validation;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core;
 using LagoVista.IoT.Logging.Loggers;
+using LagoVista.CloudStorage.Exceptions;
 
 namespace LagoVista.CloudStorage.Storage
 {
@@ -39,13 +40,17 @@ namespace LagoVista.CloudStorage.Storage
             var credentials = new StorageCredentials(accountName, accountKey);
             var storageAccount = new CloudStorageAccount(credentials, true);
             _tableClient = storageAccount.CreateCloudTableClient();
-            _table = _tableClient.GetTableReference(typeof(TEntity).Name);
+            _table = _tableClient.GetTableReference(GetTableName());
 
-            _srvrPath = $"https://{accountName}.table.core.windows.net/{typeof(TEntity).Name}";
+            _srvrPath = $"https://{accountName}.table.core.windows.net/{GetTableName()}";
 
             _accountKey = accountKey;
             _accountName = accountName;
+        }
 
+        protected virtual string GetTableName()
+        {
+            return typeof(TEntity).Name;
         }
 
         private bool Initialized { get; set; }
@@ -71,12 +76,12 @@ namespace LagoVista.CloudStorage.Storage
 
             if (result == null)
             {
-                _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Null Response Code");
+                _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Error, "TableStorageBase_Execute", "Null Response Code");
                 throw new Exception($"Null response code from table operation");
             }
             else if (result.HttpStatusCode < 200 || result.HttpStatusCode > 299)
             {
-                _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Error, "TokenRepo_Excute", "Non-Success Status Code", new System.Collections.Generic.KeyValuePair<string, string>("StatusCode", result.HttpStatusCode.ToString()));
+                _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Error, "TableStorageBase_Execute", "Non-Success Status Code", new System.Collections.Generic.KeyValuePair<string, string>("StatusCode", result.HttpStatusCode.ToString()));
                 throw new Exception($"Error response code from table operation");
             }
             else
@@ -130,7 +135,7 @@ namespace LagoVista.CloudStorage.Storage
 
         private AuthenticationHeaderValue GetAuthHeader(HttpClient request, string method, string contentType = "", byte[] contentMd5 = null, string fullResourcePath = "")
         {
-            var resource = $"/{_accountName}/{typeof(TEntity).Name}{fullResourcePath}";
+            var resource = $"/{_accountName}/{GetTableName()}{fullResourcePath}";
             var contentMd5Str = contentMd5 == null ? String.Empty : System.Convert.ToBase64String(contentMd5);
             var date = request.DefaultRequestHeaders.GetValues("x-ms-date").FirstOrDefault();
             // Verb
@@ -196,10 +201,18 @@ namespace LagoVista.CloudStorage.Storage
 
             if (String.IsNullOrEmpty(rowKey))
             {
+                _logger.AddError("TableStorageBase", "recordNotFound", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("rowKey", rowKey));
                 throw new Exception("Row Key Must be Present to get Record by Row.");
             }
 
-            return (await GetByFilterAsync(FilterOptions.Create("RowKey", FilterOptions.Operators.Equals, rowKey))).FirstOrDefault();
+            var record = (await GetByFilterAsync(FilterOptions.Create("RowKey", FilterOptions.Operators.Equals, rowKey))).FirstOrDefault();
+
+            if(record == null)
+            {
+                throw new RecordNotFoundException(GetTableName(), rowKey);
+            }
+
+            return record;
         }
 
         public async Task InsertAsync(TEntity entity)
@@ -215,8 +228,15 @@ namespace LagoVista.CloudStorage.Storage
 
             await InitAsync();
 
-            if (String.IsNullOrEmpty(entity.RowKey) || String.IsNullOrEmpty(entity.PartitionKey))
+            if (String.IsNullOrEmpty(entity.RowKey))
             {
+                _logger.AddError("TableStorageBase_InsertAsync(entity)", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+            }
+
+            if (String.IsNullOrEmpty(entity.PartitionKey))
+            {
+                _logger.AddError("TableStorageBase_InsertAsync(entity)", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
@@ -232,7 +252,8 @@ namespace LagoVista.CloudStorage.Storage
             var response = await request.PostAsync(_srvrPath, jsonContent);
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Non success response from server: {response.RequestMessage}");
+                _logger.AddError("TableStorageBase_InsertAsync(entity)", "failureResponseCode", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
+                throw new Exception($"Non success response from server: {response.ReasonPhrase}");
             }
         }
 
@@ -248,7 +269,8 @@ namespace LagoVista.CloudStorage.Storage
             var response = await request.PostAsync(_srvrPath, jsonContent);
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Non success response from server: {response.RequestMessage}");
+                _logger.AddError("TableStorageBase_InsertAsync(json)", "failureResponseCode", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
+                throw new Exception($"Non success response from server: {response.ReasonPhrase}");
             }
         }
 
@@ -271,10 +293,16 @@ namespace LagoVista.CloudStorage.Storage
             {
                 if (response.StatusCode == HttpStatusCode.PreconditionFailed)
                 {
-                    throw new Exception("ContentModified.");
+                    _logger.AddError("TableStorageBase_UpdateAsync(json)", "contentModified",
+                      new KeyValuePair<string, string>("tableName", GetTableName()),
+                      new KeyValuePair<string, string>("rowKey", rowKey),
+                      new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+                    throw new ContentModifiedException();
                 }
                 else
                 {
+                    _logger.AddError("TableStorageBase_UpdateAsync(json)", "failureResponseCode", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
                     throw new Exception(response.ReasonPhrase);
                 }
             }
@@ -299,8 +327,14 @@ namespace LagoVista.CloudStorage.Storage
 
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                return null;
+                throw new RecordNotFoundException(GetTableName(), rowKey);
             }
+
+            _logger.AddError("TableStorageBase_GetRawJSONAsync", "failureResponseCode",
+                new KeyValuePair<string, string>("tableName", GetTableName()),
+                new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
+                new KeyValuePair<string, string>("rowKey", rowKey),
+                new KeyValuePair<string, string>("partitionKey", partitionKey));
 
             throw new Exception($"Non success response from server: {response.RequestMessage}");
         }
@@ -309,9 +343,16 @@ namespace LagoVista.CloudStorage.Storage
         {
             await InitAsync();
 
-            if (String.IsNullOrEmpty(rowKey) || String.IsNullOrEmpty(partitionKey))
+            if (String.IsNullOrEmpty(rowKey))
             {
-                throw new InvalidOperationException("Row and Partition Keys must be present to insert or replace an entity.");
+                _logger.AddError("TableStorageBase_RemoveAsync", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+            }
+
+            if (String.IsNullOrEmpty(partitionKey))
+            {
+                _logger.AddError("TableStorageBase_RemoveAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
@@ -321,7 +362,20 @@ namespace LagoVista.CloudStorage.Storage
             request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "DELETE", fullResourcePath: fullResourcePath);
             request.DefaultRequestHeaders.Add("If-Match", etag);
 
-            await request.DeleteAsync(operationUri);
+            var response = await request.DeleteAsync(operationUri);
+            if (response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            _logger.AddError("TableStorageBase_RemoveAsync", "failureResponseCode",
+                new KeyValuePair<string, string>("tableName", GetTableName()),
+                new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
+                new KeyValuePair<string, string>("rowKey", rowKey),
+                new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+            throw new Exception($"Non success response from server: {response.RequestMessage}");
+
         }
 
         public Task RemoveAsync(TEntity entity)
@@ -342,10 +396,18 @@ namespace LagoVista.CloudStorage.Storage
 
             await InitAsync();
 
-            if (String.IsNullOrEmpty(entity.RowKey) || String.IsNullOrEmpty(entity.PartitionKey))
+            if (String.IsNullOrEmpty(entity.RowKey))
             {
+                _logger.AddError("TableStorageBase_UdpateAsync", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
+
+            if (String.IsNullOrEmpty(entity.PartitionKey))
+            {
+                _logger.AddError("TableStorageBase_UdpateAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+            }
+
 
             var fullResourcePath = $"(PartitionKey='{entity.PartitionKey}',RowKey='{entity.RowKey}')";
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
@@ -365,11 +427,23 @@ namespace LagoVista.CloudStorage.Storage
             {
                 if (response.StatusCode == HttpStatusCode.PreconditionFailed)
                 {
-                    throw new Exception("ContentModified.");
+                    _logger.AddError("TableStorageBase_UpdateAsync(entity)", "contentModified",
+                        new KeyValuePair<string, string>("tableName", GetTableName()),
+                        new KeyValuePair<string, string>("rowKey", entity.RowKey),
+                        new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
+
+                    throw new ContentModifiedException();
                 }
                 else
                 {
-                    throw new Exception(response.ReasonPhrase);
+                    _logger.AddError("TableStorageBase_UpdateAsync(entity)", "failureResponseCode",
+                        new KeyValuePair<string, string>("tableName", GetTableName()),
+                        new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
+                        new KeyValuePair<string, string>("rowKey", entity.RowKey),
+                        new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
+
+                    throw new Exception($"Non success response from server: {response.RequestMessage}");
+
                 }
             }
         }
@@ -409,22 +483,44 @@ namespace LagoVista.CloudStorage.Storage
             {
                 if (response.StatusCode == HttpStatusCode.PreconditionFailed)
                 {
-                    throw new Exception("ContentModified.");
+                    _logger.AddError("TableStorageBase_InsertOrReplaceAsync(entity)", "contentModified",
+                        new KeyValuePair<string, string>("tableName", GetTableName()),
+                        new KeyValuePair<string, string>("rowKey", entity.RowKey),
+                        new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
+
+                    throw new ContentModifiedException();
                 }
                 else
                 {
+                    _logger.AddError("TableStorageBase_InsertOrReplaceAsync(entity)", "failureResponseCode",
+                       new KeyValuePair<string, string>("tableName", GetTableName()),
+                       new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
+                       new KeyValuePair<string, string>("rowKey", entity.RowKey),
+                       new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
+
                     throw new Exception(response.ReasonPhrase);
                 }
             }
 
         }
 
-        public async Task<IEnumerable<TEntity>> GetByParitionIdAsync(String partitionKey)
+        public async Task<IEnumerable<TEntity>> GetByParitionIdAsync(String partitionKey, int? count = null, int? skip = null)
         {
             await InitAsync();
 
             var resource = $"()";
             var query = $"?$filter=PartitionKey eq '{partitionKey}'";
+            if (count.HasValue)
+            {
+                query += $"$top={count.Value}";
+            }
+
+            //HACK: Is not effective since the record count could change, need to pass in the last value from the previous mechanism
+            if (skip.HasValue)
+            {
+                query += $"$skip={skip.Value}";
+            }
+
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
 
             var request = CreateRequest(resource);
