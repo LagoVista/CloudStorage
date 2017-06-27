@@ -41,6 +41,45 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         }
 
+        public DocumentDBRepoBase(IAdminLogger logger)
+        {
+            _logger = logger;
+            
+        }
+
+        public void SetConnection(String endPoint, string sharedKey, string dbName)
+        {
+            var endpoint = endPoint;
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out _endpoint))
+            {
+                var ex = new InvalidOperationException($"Invalid or missing end point information on {GetType().Name}");
+                _logger.AddException($"{GetType().Name}_CTor", ex);
+                throw ex;
+            }
+
+            _sharedKey = sharedKey;
+            if (String.IsNullOrEmpty(_sharedKey))
+            {
+                var ex = new InvalidOperationException($"Invalid or missing shared key information on {GetType().Name}");
+                _logger.AddException($"{GetType().Name}_CTor", ex);
+                throw ex;
+            }
+
+            _dbName = dbName;
+            if (String.IsNullOrEmpty(_dbName))
+            {
+                var ex = new InvalidOperationException($"Invalid or missing database name information on {GetType().Name}");
+                _logger.AddException($"{GetType().Name}_CTor", ex);
+                throw ex;
+            }
+
+            _collectionName = typeof(TEntity).Name;
+            if (!_collectionName.ToLower().EndsWith("s"))
+            {
+                _collectionName += "s";
+            }
+        }
+
         public async Task DeleteCollectionAsync()
         {
             var client = GetDocumentClient();
@@ -51,6 +90,20 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected DocumentClient GetDocumentClient()
         {
+            if(_endpoint == null)
+            {
+                var ex = new InvalidOperationException($"Invalid or missing end point information on {GetType().Name}");
+                _logger.AddException($"{GetType().Name}_CTor", ex);
+                throw ex;
+            }
+
+            if(String.IsNullOrEmpty(_sharedKey))
+            {
+                var ex = new InvalidOperationException($"Invalid or missing shared key information on {GetType().Name}");
+                _logger.AddException($"{GetType().Name}_CTor", ex);
+                throw ex;
+            }
+
             if (_documentClient == null)
             {
                 _documentClient = new DocumentClient(_endpoint, _sharedKey);
@@ -66,6 +119,13 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<Database> GetDatabase(DocumentClient client)
         {
+            if(String.IsNullOrEmpty(_dbName))
+            {
+                var ex = new InvalidOperationException($"Invalid or missing database name information on {GetType().Name}");
+                _logger.AddException($"{GetType().Name}_CTor", ex);
+                throw ex;
+            }
+
             var databases = client.CreateDatabaseQuery().Where(db => db.Id == _dbName).ToArray();
             if (databases.Any())
             {
@@ -75,7 +135,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             return await client.CreateDatabaseAsync(new Database() { Id = _dbName });
         }
 
-        private String GetCollectionName()
+        protected virtual String GetCollectionName()
         {
             return ShouldConsolidateCollections? _dbName +"_Collections" : _collectionName;
         }

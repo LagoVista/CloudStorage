@@ -26,8 +26,8 @@ namespace LagoVista.CloudStorage.Storage
 
     public abstract class TableStorageBase<TEntity> : IDisposable where TEntity : TableStorageEntity
     {
-        static CloudTable _table;
-        static CloudTableClient _tableClient;
+        CloudTable _table;
+        CloudTableClient _tableClient;
 
         IAdminLogger _logger;
         String _srvrPath;
@@ -48,6 +48,38 @@ namespace LagoVista.CloudStorage.Storage
             _accountName = accountName;
         }
 
+        public TableStorageBase(IAdminLogger adminLogger)
+        {
+            _logger = adminLogger;
+        
+        }
+
+        public void SetConnection(String accountName, string accountKey)
+        {
+            _accountKey = accountName;
+            if (String.IsNullOrEmpty(_accountKey))
+            {
+                var ex = new InvalidOperationException($"Invalid or missing account key information on {GetType().Name}");
+                _logger.AddException($"{GetType().Name}_SetConnection", ex);
+                throw ex;
+            }
+
+            _accountName = _accountKey;
+            if (String.IsNullOrEmpty(_accountName))
+            {
+                var ex = new InvalidOperationException($"Invalid or missing account name information on {GetType().Name}");
+                _logger.AddException($"{GetType().Name}_SetConnection", ex);
+                throw ex;
+            }
+
+            var credentials = new StorageCredentials(_accountName, _accountKey);
+            var storageAccount = new CloudStorageAccount(credentials, true);
+            _tableClient = storageAccount.CreateCloudTableClient();
+            _table = _tableClient.GetTableReference(GetTableName());
+
+            _srvrPath = $"https://{_accountName}.table.core.windows.net/{GetTableName()}";
+        }
+
         protected virtual string GetTableName()
         {
             return typeof(TEntity).Name;
@@ -57,6 +89,20 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task InitAsync()
         {
+            if(_table == null)
+            {
+                var ex = new InvalidOperationException($"_table Instance not created on {GetType().Name}, either set connection parameters in constructor or with SetConnection");
+                _logger.AddException($"{GetType().Name}_InitAsync", ex);
+                throw ex;
+            }
+
+            if (_tableClient == null)
+            {
+                var ex = new InvalidOperationException($"_tableClient Instance not created on {GetType().Name}, either set connection parameters in constructor or with SetConnection");
+                _logger.AddException($"{GetType().Name}_InitAsync", ex);
+                throw ex;
+            }
+
             lock (this)
             {
                 if (Initialized)
@@ -67,7 +113,7 @@ namespace LagoVista.CloudStorage.Storage
 
             await _table.CreateIfNotExistsAsync();
             Initialized = true;
-            _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Warning, GetType().FullName, "Table Created If Need-by");
+            _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Warning, GetType().FullName, "Table Created If Needed");
         }
 
         protected async Task<TableResult> Execute(TableOperation op)
