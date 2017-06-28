@@ -12,8 +12,8 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LagoVista.Core" Version="1.2.41-alpha1417" />
-    <PackageReference Include="LagoVista.IoT.Logging" Version="1.2.41-alpha1417" />
+    <PackageReference Include="LagoVista.Core" Version="1.2.42-alpha1100" />
+    <PackageReference Include="LagoVista.IoT.Logging" Version="1.2.42-alpha1100" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.3.1" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.2" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.1.4" />
