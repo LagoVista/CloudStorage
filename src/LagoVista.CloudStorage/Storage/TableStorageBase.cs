@@ -56,7 +56,7 @@ namespace LagoVista.CloudStorage.Storage
 
         public void SetConnection(String accountName, string accountKey)
         {
-            _accountKey = accountName;
+            _accountKey = accountKey;
             if (String.IsNullOrEmpty(_accountKey))
             {
                 var ex = new InvalidOperationException($"Invalid or missing account key information on {GetType().Name}");
@@ -64,7 +64,7 @@ namespace LagoVista.CloudStorage.Storage
                 throw ex;
             }
 
-            _accountName = _accountKey;
+            _accountName = accountName;
             if (String.IsNullOrEmpty(_accountName))
             {
                 var ex = new InvalidOperationException($"Invalid or missing account name information on {GetType().Name}");
