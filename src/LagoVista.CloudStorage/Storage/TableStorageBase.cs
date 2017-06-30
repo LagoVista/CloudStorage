@@ -87,7 +87,7 @@ namespace LagoVista.CloudStorage.Storage
 
         private bool Initialized { get; set; }
 
-        public async Task InitAsync()
+        public virtual async Task InitAsync()
         {
             if(_table == null)
             {
@@ -116,7 +116,7 @@ namespace LagoVista.CloudStorage.Storage
             _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Warning, GetType().FullName, "Table Created If Needed");
         }
 
-        protected async Task<TableResult> Execute(TableOperation op)
+        protected virtual async Task<TableResult> Execute(TableOperation op)
         {
             var result = await _table.ExecuteAsync(op);
 
@@ -220,21 +220,68 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             throw new Exception($"Non success response from server: {response.RequestMessage}");
+      }
 
+
+        public async Task<String> GetRAWJSONAsync(String rowKey, string partitionKey)
+        {
+            await InitAsync();
+
+            if (String.IsNullOrEmpty(rowKey))
+            {
+                _logger.AddError("TableStorageBase_GetAsync", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+            }
+
+            if (String.IsNullOrEmpty(partitionKey))
+            {
+                _logger.AddError("TableStorageBase_GetAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+            }
+            
+        
+            var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
+            var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
+
+            var request = CreateRequest(fullResourcePath);
+            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: fullResourcePath);
+
+            var response = await request.GetAsync(operationUri);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadAsStringAsync();
+            }
+
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                throw new RecordNotFoundException(GetTableName(), rowKey);
+            }
+
+            _logger.AddError("TableStorageBase_GetRawJSONAsync", "failureResponseCode",
+                new KeyValuePair<string, string>("tableName", GetTableName()),
+                new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
+                new KeyValuePair<string, string>("rowKey", rowKey),
+                new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+            throw new Exception($"Non success response from server: {response.RequestMessage}");
         }
 
         public async Task<TEntity> GetAsync(string partitionKey, string rowKey)
         {
             await InitAsync();
-
-            if (String.IsNullOrEmpty(rowKey) || String.IsNullOrEmpty(partitionKey))
+            
+            if (String.IsNullOrEmpty(rowKey))
             {
+                _logger.AddError("TableStorageBase_GetAsync", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
-            var resource = $"()";
-            var query = $"?$filter=PartitionKey eq '{partitionKey}'";
-            var operationUri = new Uri($"{_srvrPath}{resource}{query}");
+            if (String.IsNullOrEmpty(partitionKey))
+            {
+                _logger.AddError("TableStorageBase_GetAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+            }
+
 
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
 
@@ -354,36 +401,6 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
-        public async Task<String> GetRAWJSONAsync(String rowKey, string partitionKey)
-        {
-            var resource = $"()";
-            var query = $"?$filter=PartitionKey eq '{partitionKey}'";
-            var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-
-            var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
-
-            var request = CreateRequest(fullResourcePath);
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: fullResourcePath);
-
-            var response = await request.GetAsync(operationUri);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadAsStringAsync();
-            }
-
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                throw new RecordNotFoundException(GetTableName(), rowKey);
-            }
-
-            _logger.AddError("TableStorageBase_GetRawJSONAsync", "failureResponseCode",
-                new KeyValuePair<string, string>("tableName", GetTableName()),
-                new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
-                new KeyValuePair<string, string>("rowKey", rowKey),
-                new KeyValuePair<string, string>("partitionKey", partitionKey));
-
-            throw new Exception($"Non success response from server: {response.RequestMessage}");
-        }
 
         public async Task RemoveAsync(string partitionKey, string rowKey, string etag = "*")
         {
