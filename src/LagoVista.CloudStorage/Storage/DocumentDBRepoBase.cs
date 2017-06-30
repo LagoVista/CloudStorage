@@ -44,7 +44,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         public DocumentDBRepoBase(IAdminLogger logger)
         {
             _logger = logger;
-            
+
         }
 
         public void SetConnection(String endPoint, string sharedKey, string dbName)
@@ -90,14 +90,14 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected DocumentClient GetDocumentClient()
         {
-            if(_endpoint == null)
+            if (_endpoint == null)
             {
                 var ex = new InvalidOperationException($"Invalid or missing end point information on {GetType().Name}");
                 _logger.AddException($"{GetType().Name}_CTor", ex);
                 throw ex;
             }
 
-            if(String.IsNullOrEmpty(_sharedKey))
+            if (String.IsNullOrEmpty(_sharedKey))
             {
                 var ex = new InvalidOperationException($"Invalid or missing shared key information on {GetType().Name}");
                 _logger.AddException($"{GetType().Name}_CTor", ex);
@@ -119,7 +119,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<Database> GetDatabase(DocumentClient client)
         {
-            if(String.IsNullOrEmpty(_dbName))
+            if (String.IsNullOrEmpty(_dbName))
             {
                 var ex = new InvalidOperationException($"Invalid or missing database name information on {GetType().Name}");
                 _logger.AddException($"{GetType().Name}_CTor", ex);
@@ -137,8 +137,23 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected virtual String GetCollectionName()
         {
-            return ShouldConsolidateCollections? _dbName +"_Collections" : _collectionName;
+            if(ShouldConsolidateCollections)
+            {
+                if (IsRuntimeData)
+                {
+                    return _dbName + "_CollectionsRunTime";
+                }
+                else
+                    return _dbName + "_Collections";
+            }
+            else
+            {
+                return _collectionName;
+            }
         }
+
+        protected virtual bool IsRuntimeData { get { return false; } }
+
 
         public async Task<DocumentCollection> GetCollectionAsync()
         {
@@ -171,22 +186,22 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<ResourceResponse<Document>> CreateDocumentAsync(TEntity item)
         {
-            if(item is IValidateable)
+            if (item is IValidateable)
             {
                 var result = Validator.Validate(item as IValidateable);
-                if(!result.Successful)
+                if (!result.Successful)
                 {
                     throw new ValidationException("Invalid Data.", result.Errors);
-                }                    
+                }
             }
 
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
 
             var response = await Client.CreateDocumentAsync(await GetCollectionDocumentsLinkAsync(), item);
-            if(response.StatusCode != System.Net.HttpStatusCode.Created)
+            if (response.StatusCode != System.Net.HttpStatusCode.Created)
             {
-                _logger.AddCustomEvent(LogLevel.Error, $"DocuementDbRepo<{_dbName}>_CreateDocumentAsync", "Error return code: " + response.StatusCode, 
+                _logger.AddCustomEvent(LogLevel.Error, $"DocuementDbRepo<{_dbName}>_CreateDocumentAsync", "Error return code: " + response.StatusCode,
                     new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name),
                     new KeyValuePair<string, string>("Id", item.Id)
                     );
@@ -255,7 +270,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                 }
                 catch (DocumentClientException ex)
-                {                    
+                {
                     _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("DocumentClientException", ex.Message), new KeyValuePair<string, string>("StatusCode", ex.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
                 }
@@ -282,7 +297,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
         {
-            return (await GetQueryAsync()).Where(query).Where(itm=>itm.EntityType == typeof(TEntity).Name);
+            return (await GetQueryAsync()).Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name);
         }
 
         public void Dispose()
