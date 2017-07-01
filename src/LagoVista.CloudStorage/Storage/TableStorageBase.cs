@@ -594,6 +594,33 @@ namespace LagoVista.CloudStorage.Storage
             return resultset.ResultSet;
         }
 
+        public async Task<string> GetRawJSONByParitionIdAsync(String partitionKey, int? count = null, int? skip = null)
+        {
+            await InitAsync();
+
+            var resource = $"()";
+            var query = $"?$filter=PartitionKey eq '{partitionKey}'";
+            if (count.HasValue)
+            {
+                query += $"$top={count.Value}";
+            }
+
+            //HACK: Is not effective since the record count could change, need to pass in the last value from the previous mechanism
+            if (skip.HasValue)
+            {
+                query += $"$skip={skip.Value}";
+            }
+
+            var operationUri = new Uri($"{_srvrPath}{resource}{query}");
+
+            var request = CreateRequest(resource);
+            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
+
+            var json = await request.GetStringAsync(operationUri);
+            var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+            return JsonConvert.SerializeObject(resultset.ResultSet);
+        }
+
         private String GetFilter(List<FilterOptions> filters)
         {
             //TODO Add support for multiple filters using a fluent interface builder
@@ -631,6 +658,20 @@ namespace LagoVista.CloudStorage.Storage
             var json = await request.GetStringAsync(operationUri);
             var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
             return resultset.ResultSet;
+        }
+
+        public async Task<String> GetEntitiesJSONByFilterAsync(params FilterOptions[] filters)
+        {
+            await InitAsync();
+
+            var resource = $"()";
+            var query = GetFilter(filters.ToList());
+            var operationUri = new Uri($"{_srvrPath}{resource}{query}");
+
+            var request = CreateRequest(resource);
+            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
+
+            return await request.GetStringAsync(operationUri);
         }
 
         public void Dispose()
