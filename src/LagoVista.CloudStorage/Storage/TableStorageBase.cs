@@ -266,7 +266,7 @@ namespace LagoVista.CloudStorage.Storage
             throw new Exception($"Non success response from server: {response.RequestMessage}");
         }
 
-        public async Task<TEntity> GetAsync(string partitionKey, string rowKey)
+        public async Task<TEntity> GetAsync(string partitionKey, string rowKey, bool throwOnNotFound = true)
         {
             await InitAsync();
             
@@ -285,10 +285,23 @@ namespace LagoVista.CloudStorage.Storage
 
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
 
-            return await Get(fullResourcePath);
+            var record = await Get(fullResourcePath);
+            if(record == null)
+            {
+                if (throwOnNotFound)
+                {
+                    throw new RecordNotFoundException(GetTableName(), rowKey);
+                }
+                else
+                {
+                    return null;
+                }
+            }
+
+            return record;
         }
 
-        public async Task<TEntity> GetAsync(string rowKey)
+        public async Task<TEntity> GetAsync(string rowKey, bool throwOnNotFound = true)
         {
             await InitAsync();
 
@@ -302,7 +315,14 @@ namespace LagoVista.CloudStorage.Storage
 
             if(record == null)
             {
-                throw new RecordNotFoundException(GetTableName(), rowKey);
+                if (throwOnNotFound)
+                {
+                    throw new RecordNotFoundException(GetTableName(), rowKey);
+                }
+                else
+                {
+                    return null;
+                }
             }
 
             return record;
