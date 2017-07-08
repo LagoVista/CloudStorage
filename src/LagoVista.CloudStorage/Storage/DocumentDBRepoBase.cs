@@ -286,13 +286,29 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             catch (DocumentClientException ex)
             {
+
                 _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("DocumentClientException", ex.Message), new KeyValuePair<string, string>("StatusCode", ex.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
-                throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                if (throwOnNotFound)
+                {
+                    throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                }
+                else
+                {
+                    return null;
+                }
+            
             }
             catch (Exception ex)
             {
                 _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("Exception", ex.Message), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
-                throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                if (throwOnNotFound)
+                {
+                    throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                }
+                else
+                {
+                    return null;
+                }
             }
         }
 
