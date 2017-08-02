@@ -113,7 +113,6 @@ namespace LagoVista.CloudStorage.Storage
 
             await _table.CreateIfNotExistsAsync();
             Initialized = true;
-            _logger.AddCustomEvent(Core.PlatformSupport.LogLevel.Warning, GetType().FullName, "Table Created If Needed");
         }
 
         protected virtual async Task<TableResult> Execute(TableOperation op)
@@ -451,13 +450,23 @@ namespace LagoVista.CloudStorage.Storage
                 return;
             }
 
+            if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+            {
+                _logger.AddError("TableStorageBase_RemoveAsync", "contentModified",
+                  new KeyValuePair<string, string>("tableName", GetTableName()),
+                  new KeyValuePair<string, string>("rowKey", rowKey),
+                  new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+                throw new ContentModifiedException();
+            }
+
             _logger.AddError("TableStorageBase_RemoveAsync", "failureResponseCode",
                 new KeyValuePair<string, string>("tableName", GetTableName()),
                 new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
                 new KeyValuePair<string, string>("rowKey", rowKey),
                 new KeyValuePair<string, string>("partitionKey", partitionKey));
 
-            throw new Exception($"Non success response from server: {response.RequestMessage}");
+            throw new Exception($"Non success response from server: {response.ReasonPhrase}");
 
         }
 
