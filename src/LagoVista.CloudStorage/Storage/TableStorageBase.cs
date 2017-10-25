@@ -53,7 +53,7 @@ namespace LagoVista.CloudStorage.Storage
         public TableStorageBase(IAdminLogger adminLogger)
         {
             _logger = adminLogger;
-        
+
         }
 
         public void SetConnection(String accountName, string accountKey)
@@ -91,7 +91,7 @@ namespace LagoVista.CloudStorage.Storage
 
         public virtual async Task InitAsync()
         {
-            if(_table == null)
+            if (_table == null)
             {
                 var ex = new InvalidOperationException($"_table Instance not created on {GetType().Name}, either set connection parameters in constructor or with SetConnection");
                 _logger.AddException($"{GetType().Name}_InitAsync", ex);
@@ -221,7 +221,7 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             throw new Exception($"Non success response from server: {response.RequestMessage}");
-      }
+        }
 
 
         public async Task<String> GetRAWJSONAsync(String rowKey, string partitionKey)
@@ -239,8 +239,8 @@ namespace LagoVista.CloudStorage.Storage
                 _logger.AddError("TableStorageBase_GetAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
-            
-        
+
+
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
 
@@ -270,7 +270,7 @@ namespace LagoVista.CloudStorage.Storage
         public async Task<TEntity> GetAsync(string partitionKey, string rowKey, bool throwOnNotFound = true)
         {
             await InitAsync();
-            
+
             if (String.IsNullOrEmpty(rowKey))
             {
                 _logger.AddError("TableStorageBase_GetAsync", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
@@ -287,7 +287,7 @@ namespace LagoVista.CloudStorage.Storage
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
 
             var record = await Get(fullResourcePath);
-            if(record == null)
+            if (record == null)
             {
                 if (throwOnNotFound)
                 {
@@ -314,7 +314,7 @@ namespace LagoVista.CloudStorage.Storage
 
             var record = (await GetByFilterAsync(FilterOptions.Create("RowKey", FilterOptions.Operators.Equals, rowKey))).FirstOrDefault();
 
-            if(record == null)
+            if (record == null)
             {
                 if (throwOnNotFound)
                 {
@@ -472,12 +472,12 @@ namespace LagoVista.CloudStorage.Storage
 
         }
 
-        public Task RemoveAsync(TEntity entity)
+        public Task RemoveAsync(TEntity entity, string etag = "*")
         {
-            return RemoveAsync(entity.PartitionKey, entity.RowKey, entity.ETag);
+            return RemoveAsync(entity.PartitionKey, entity.RowKey, String.IsNullOrEmpty(etag) ? entity.ETag : etag);
         }
 
-        public async Task UpdateAsync(TEntity entity)
+        public async Task UpdateAsync(TEntity entity, string etag = "*")
         {
             if (entity is IValidateable)
             {
@@ -514,7 +514,7 @@ namespace LagoVista.CloudStorage.Storage
             jsonContent.Headers.ContentMD5 = GetContentMD5(json);
 
             request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "PUT", "application/json", fullResourcePath: fullResourcePath, contentMd5: jsonContent.Headers.ContentMD5);
-            request.DefaultRequestHeaders.Add("If-Match", entity.ETag);
+            request.DefaultRequestHeaders.Add("If-Match",  string.IsNullOrEmpty(etag) ? entity.ETag : etag);
 
             var response = await request.PutAsync(operationUri, jsonContent);
             if (!response.IsSuccessStatusCode)
@@ -546,13 +546,13 @@ namespace LagoVista.CloudStorage.Storage
         {
             await InitAsync();
 
-            if(String.IsNullOrEmpty(partitionKey))
+            if (String.IsNullOrEmpty(partitionKey))
             {
                 _logger.AddError("TableStorageBase_GetPagedResults", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
-            var resource = $"()"; 
+            var resource = $"()";
 
             var query = $"?$filter=PartitionKey eq '{partitionKey}'";
 
@@ -575,7 +575,7 @@ namespace LagoVista.CloudStorage.Storage
                 query += $"&NextPartitionKey={listRequest.NextPartitionKey}";
             }
 
-            if(!String.IsNullOrEmpty(listRequest.NextRowKey))
+            if (!String.IsNullOrEmpty(listRequest.NextRowKey))
             {
                 query += $"&NextRowKey={listRequest.NextRowKey}";
             }
@@ -610,8 +610,8 @@ namespace LagoVista.CloudStorage.Storage
 
                 throw new Exception($"Non success response from server: {response.RequestMessage}");
             }
-        }   
-        
+        }
+
         public async Task InsertOrReplaceAsync(TEntity entity)
         {
             if (entity is IValidateable)
