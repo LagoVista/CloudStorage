@@ -752,7 +752,7 @@ namespace LagoVista.CloudStorage.Storage
             var resource = $"()";
             var query = GetFilter(filters.ToList());
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-
+            
             var request = CreateRequest(resource);
             request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
 
@@ -768,7 +768,7 @@ namespace LagoVista.CloudStorage.Storage
             var resource = $"()";
             var query = GetFilter(filters.ToList());
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-
+            
             var request = CreateRequest(resource);
             request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
 

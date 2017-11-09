@@ -25,6 +25,8 @@ namespace ThrowAway
 
     public class JunkLogger : IAdminLogger
     {
+        public bool DebugMode { get; set; }
+
         public void AddConfigurationError(string tag, string message, params KeyValuePair<string, string>[] args)
         {
             throw new NotImplementedException();
