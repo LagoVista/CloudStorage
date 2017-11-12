@@ -107,7 +107,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (_documentClient == null)
             {
                 var connectionPolicy = new ConnectionPolicy();
-                connectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 5;
+                connectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 0;
                 connectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 60;
 
                 _documentClient = new DocumentClient(_endpoint, _sharedKey, connectionPolicy);
@@ -234,8 +234,11 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             try
             {
+                var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
                 //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
-                var response = await Client.ReadDocumentAsync(UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id));
+                var response = await Client.ReadDocumentAsync(docUri);
+              
+
                 if (response == null)
                 {
                     _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response", new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
@@ -243,7 +246,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
 
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                {
+                {                    
                     var json = response.Resource.ToString();
 
                     if (String.IsNullOrEmpty(json))
@@ -283,7 +286,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             catch (DocumentClientException ex)
             {
-
                 _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("DocumentClientException", ex.Message), new KeyValuePair<string, string>("StatusCode", ex.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                 if (throwOnNotFound)
                 {
@@ -297,6 +299,11 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             catch (Exception ex)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.StackTrace);
+                Console.ResetColor();
+
                 _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Error requesting document", new KeyValuePair<string, string>("Exception", ex.Message), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                 if (throwOnNotFound)
                 {

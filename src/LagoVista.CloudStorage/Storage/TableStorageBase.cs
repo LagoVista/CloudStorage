@@ -355,7 +355,6 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             var json = JsonConvert.SerializeObject(entity);
-
             var request = CreateRequest();
             var jsonContent = new StringContent(json);
             jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
@@ -363,10 +362,17 @@ namespace LagoVista.CloudStorage.Storage
 
             var authHeader = GetAuthHeader(request, "POST", "application/json", contentMd5: jsonContent.Headers.ContentMD5);
             request.DefaultRequestHeaders.Authorization = authHeader;
+
             var response = await request.PostAsync(_srvrPath, jsonContent);
+
             if (!response.IsSuccessStatusCode)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(response.ReasonPhrase);
+                Console.ResetColor();
+
                 _logger.AddError("TableStorageBase_InsertAsync(entity)", "failureResponseCode", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
+
                 throw new Exception($"Non success response from server: {response.ReasonPhrase}");
             }
         }
