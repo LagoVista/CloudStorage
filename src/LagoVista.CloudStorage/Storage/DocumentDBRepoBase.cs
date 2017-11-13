@@ -322,14 +322,15 @@ namespace LagoVista.CloudStorage.DocumentDB
             return await Client.DeleteDocumentAsync(docUri);
         }
 
-        private async Task<IOrderedQueryable<TEntity>> GetQueryAsync()
-        {
-            return Client.CreateDocumentQuery<TEntity>(await GetCollectionDocumentsLinkAsync());
-        }
-
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
         {
-            return (await GetQueryAsync()).Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name);
+            var documentLink = await GetCollectionDocumentsLinkAsync();
+
+            var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink);
+
+            var result = (docQuery).Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name);
+
+            return result;
         }
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(string query, SqlParameterCollection sqlParams)
