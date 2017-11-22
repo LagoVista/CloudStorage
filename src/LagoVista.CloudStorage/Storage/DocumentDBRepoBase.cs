@@ -107,7 +107,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (_documentClient == null)
             {
                 var connectionPolicy = new ConnectionPolicy();
-                connectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 0;
+                connectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 10;
                 connectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 60;
 
                 _documentClient = new DocumentClient(_endpoint, _sharedKey, connectionPolicy);
