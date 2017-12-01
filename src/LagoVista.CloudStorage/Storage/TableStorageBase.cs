@@ -331,6 +331,12 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task InsertAsync(TEntity entity)
         {
+            if(entity == null)
+            {
+                _logger.AddError("TableStorageBase_InsertAsync(entity)", "NULL value provided.", GetTableName().ToKVP("tableName"));
+                throw new Exception("Null Value Provided for InsertAsync(entity).");
+            }
+
             if (entity is IValidateable)
             {
                 var result = Validator.Validate(entity as IValidateable);
@@ -344,13 +350,13 @@ namespace LagoVista.CloudStorage.Storage
 
             if (String.IsNullOrEmpty(entity.RowKey))
             {
-                _logger.AddError("TableStorageBase_InsertAsync(entity)", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                _logger.AddError("TableStorageBase_InsertAsync(entity)", "emptyRowKey", GetTableName().ToKVP("tableName"));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
             if (String.IsNullOrEmpty(entity.PartitionKey))
             {
-                _logger.AddError("TableStorageBase_InsertAsync(entity)", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                _logger.AddError("TableStorageBase_InsertAsync(entity)", "emptyPartitionKey", GetTableName().ToKVP("tableName"));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
@@ -371,7 +377,7 @@ namespace LagoVista.CloudStorage.Storage
                 Console.WriteLine(response.ReasonPhrase);
                 Console.ResetColor();
 
-                _logger.AddError("TableStorageBase_InsertAsync(entity)", "failureResponseCode", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
+                _logger.AddError("TableStorageBase_InsertAsync(entity)", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
 
                 throw new Exception($"Non success response from server: {response.ReasonPhrase}");
             }
@@ -389,7 +395,7 @@ namespace LagoVista.CloudStorage.Storage
             var response = await request.PostAsync(_srvrPath, jsonContent);
             if (!response.IsSuccessStatusCode)
             {
-                _logger.AddError("TableStorageBase_InsertAsync(json)", "failureResponseCode", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
+                _logger.AddError("TableStorageBase_InsertAsync(json)", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
                 throw new Exception($"Non success response from server: {response.ReasonPhrase}");
             }
         }
@@ -520,7 +526,7 @@ namespace LagoVista.CloudStorage.Storage
             jsonContent.Headers.ContentMD5 = GetContentMD5(json);
 
             request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "PUT", "application/json", fullResourcePath: fullResourcePath, contentMd5: jsonContent.Headers.ContentMD5);
-            request.DefaultRequestHeaders.Add("If-Match",  string.IsNullOrEmpty(etag) ? entity.ETag : etag);
+            request.DefaultRequestHeaders.Add("If-Match", string.IsNullOrEmpty(etag) ? entity.ETag : etag);
 
             var response = await request.PutAsync(operationUri, jsonContent);
             if (!response.IsSuccessStatusCode)
@@ -758,7 +764,7 @@ namespace LagoVista.CloudStorage.Storage
             var resource = $"()";
             var query = GetFilter(filters.ToList());
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-            
+
             var request = CreateRequest(resource);
             request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
 
@@ -774,7 +780,7 @@ namespace LagoVista.CloudStorage.Storage
             var resource = $"()";
             var query = GetFilter(filters.ToList());
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-            
+
             var request = CreateRequest(resource);
             request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
 
