@@ -15,7 +15,7 @@
     <PackageReference Include="LagoVista.Core" Version="1.2.184-alpha1030" />
     <PackageReference Include="LagoVista.IoT.Logging" Version="1.2.184-alpha1030" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="1.7.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.1-beta1" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.6.0" />
   </ItemGroup>
   <ItemGroup>
