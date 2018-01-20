@@ -205,22 +205,26 @@ namespace LagoVista.CloudStorage.Storage
         private async Task<TEntity> Get(String fullResourcePath)
         {
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
-            var request = CreateRequest(fullResourcePath);
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: fullResourcePath);
-
-            var response = await request.GetAsync(operationUri);
-            if (response.IsSuccessStatusCode)
+            using (var request = CreateRequest(fullResourcePath))
             {
-                var json = await response.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<TEntity>(json);
-            }
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: fullResourcePath);
 
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return null;
-            }
+                using (var response = await request.GetAsync(operationUri))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var json = await response.Content.ReadAsStringAsync();
+                        return JsonConvert.DeserializeObject<TEntity>(json);
+                    }
 
-            throw new Exception($"Non success response from server: {response.RequestMessage}");
+                    if (response.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        return null;
+                    }
+
+                    throw new Exception($"Non success response from server: {response.RequestMessage}");
+                }
+            }
         }
 
 
@@ -244,27 +248,31 @@ namespace LagoVista.CloudStorage.Storage
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
 
-            var request = CreateRequest(fullResourcePath);
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: fullResourcePath);
-
-            var response = await request.GetAsync(operationUri);
-            if (response.IsSuccessStatusCode)
+            using (var request = CreateRequest(fullResourcePath))
             {
-                return await response.Content.ReadAsStringAsync();
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: fullResourcePath);
+
+                using (var response = await request.GetAsync(operationUri))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return await response.Content.ReadAsStringAsync();
+                    }
+
+                    if (response.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        throw new RecordNotFoundException(GetTableName(), rowKey);
+                    }
+
+                    _logger.AddError("TableStorageBase_GetRawJSONAsync", "failureResponseCode",
+                        new KeyValuePair<string, string>("tableName", GetTableName()),
+                        new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
+                        new KeyValuePair<string, string>("rowKey", rowKey),
+                        new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+                    throw new Exception($"Non success response from server: {response.RequestMessage}");
+                }
             }
-
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                throw new RecordNotFoundException(GetTableName(), rowKey);
-            }
-
-            _logger.AddError("TableStorageBase_GetRawJSONAsync", "failureResponseCode",
-                new KeyValuePair<string, string>("tableName", GetTableName()),
-                new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
-                new KeyValuePair<string, string>("rowKey", rowKey),
-                new KeyValuePair<string, string>("partitionKey", partitionKey));
-
-            throw new Exception($"Non success response from server: {response.RequestMessage}");
         }
 
         public async Task<TEntity> GetAsync(string partitionKey, string rowKey, bool throwOnNotFound = true)
@@ -331,7 +339,7 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task InsertAsync(TEntity entity)
         {
-            if(entity == null)
+            if (entity == null)
             {
                 _logger.AddError("TableStorageBase_InsertAsync(entity)", "NULL value provided.", GetTableName().ToKVP("tableName"));
                 throw new Exception("Null Value Provided for InsertAsync(entity).");
@@ -361,42 +369,50 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             var json = JsonConvert.SerializeObject(entity);
-            var request = CreateRequest();
+
             var jsonContent = new StringContent(json);
             jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             jsonContent.Headers.ContentMD5 = GetContentMD5(json);
 
-            var authHeader = GetAuthHeader(request, "POST", "application/json", contentMd5: jsonContent.Headers.ContentMD5);
-            request.DefaultRequestHeaders.Authorization = authHeader;
-
-            var response = await request.PostAsync(_srvrPath, jsonContent);
-
-            if (!response.IsSuccessStatusCode)
+            using (var request = CreateRequest())
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(response.ReasonPhrase);
-                Console.ResetColor();
+                var authHeader = GetAuthHeader(request, "POST", "application/json", contentMd5: jsonContent.Headers.ContentMD5);
+                request.DefaultRequestHeaders.Authorization = authHeader;
 
-                _logger.AddError("TableStorageBase_InsertAsync(entity)", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
+                using (var response = await request.PostAsync(_srvrPath, jsonContent))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine(response.ReasonPhrase);
+                        Console.ResetColor();
 
-                throw new Exception($"Non success response from server: {response.ReasonPhrase}");
+                        _logger.AddError("TableStorageBase_InsertAsync(entity)", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
+
+                        throw new Exception($"Non success response from server: {response.ReasonPhrase}");
+                    }
+                }
             }
         }
 
         public async Task InsertAsync(string json)
         {
-            var request = CreateRequest();
-            var jsonContent = new StringContent(json);
-            jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            jsonContent.Headers.ContentMD5 = GetContentMD5(json);
-
-            var authHeader = GetAuthHeader(request, "POST", "application/json", contentMd5: jsonContent.Headers.ContentMD5);
-            request.DefaultRequestHeaders.Authorization = authHeader;
-            var response = await request.PostAsync(_srvrPath, jsonContent);
-            if (!response.IsSuccessStatusCode)
+            using (var request = CreateRequest())
             {
-                _logger.AddError("TableStorageBase_InsertAsync(json)", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
-                throw new Exception($"Non success response from server: {response.ReasonPhrase}");
+                var jsonContent = new StringContent(json);
+                jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                jsonContent.Headers.ContentMD5 = GetContentMD5(json);
+
+                var authHeader = GetAuthHeader(request, "POST", "application/json", contentMd5: jsonContent.Headers.ContentMD5);
+                request.DefaultRequestHeaders.Authorization = authHeader;
+                using (var response = await request.PostAsync(_srvrPath, jsonContent))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.AddError("TableStorageBase_InsertAsync(json)", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
+                        throw new Exception($"Non success response from server: {response.ReasonPhrase}");
+                    }
+                }
             }
         }
 
@@ -406,30 +422,34 @@ namespace LagoVista.CloudStorage.Storage
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
 
 
-            var request = CreateRequest(fullResourcePath);
-            var jsonContent = new StringContent(json);
-            jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            jsonContent.Headers.ContentMD5 = GetContentMD5(json);
-
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "PUT", "application/json", fullResourcePath: fullResourcePath, contentMd5: jsonContent.Headers.ContentMD5);
-            request.DefaultRequestHeaders.Add("If-Match", etag);
-
-            var response = await request.PutAsync(operationUri, jsonContent);
-            if (!response.IsSuccessStatusCode)
+            using (var request = CreateRequest(fullResourcePath))
             {
-                if (response.StatusCode == HttpStatusCode.PreconditionFailed)
-                {
-                    _logger.AddError("TableStorageBase_UpdateAsync(json)", "contentModified",
-                      new KeyValuePair<string, string>("tableName", GetTableName()),
-                      new KeyValuePair<string, string>("rowKey", rowKey),
-                      new KeyValuePair<string, string>("partitionKey", partitionKey));
+                var jsonContent = new StringContent(json);
+                jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                jsonContent.Headers.ContentMD5 = GetContentMD5(json);
 
-                    throw new ContentModifiedException();
-                }
-                else
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "PUT", "application/json", fullResourcePath: fullResourcePath, contentMd5: jsonContent.Headers.ContentMD5);
+                request.DefaultRequestHeaders.Add("If-Match", etag);
+
+                using (var response = await request.PutAsync(operationUri, jsonContent))
                 {
-                    _logger.AddError("TableStorageBase_UpdateAsync(json)", "failureResponseCode", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
-                    throw new Exception(response.ReasonPhrase);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                        {
+                            _logger.AddError("TableStorageBase_UpdateAsync(json)", "contentModified",
+                              new KeyValuePair<string, string>("tableName", GetTableName()),
+                              new KeyValuePair<string, string>("rowKey", rowKey),
+                              new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+                            throw new ContentModifiedException();
+                        }
+                        else
+                        {
+                            _logger.AddError("TableStorageBase_UpdateAsync(json)", "failureResponseCode", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
+                            throw new Exception(response.ReasonPhrase);
+                        }
+                    }
                 }
             }
         }
@@ -453,35 +473,39 @@ namespace LagoVista.CloudStorage.Storage
 
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
-            var request = CreateRequest(fullResourcePath);
-
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "DELETE", fullResourcePath: fullResourcePath);
-            request.DefaultRequestHeaders.Add("If-Match", etag);
-
-            var response = await request.DeleteAsync(operationUri);
-            if (response.IsSuccessStatusCode)
+            using (var request = CreateRequest(fullResourcePath))
             {
-                return;
+
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "DELETE", fullResourcePath: fullResourcePath);
+                request.DefaultRequestHeaders.Add("If-Match", etag);
+
+                using (var response = await request.DeleteAsync(operationUri))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return;
+                    }
+
+                    if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                    {
+                        _logger.AddError("TableStorageBase_RemoveAsync", "contentModified",
+                          new KeyValuePair<string, string>("tableName", GetTableName()),
+                          new KeyValuePair<string, string>("rowKey", rowKey),
+                          new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+                        throw new ContentModifiedException();
+                    }
+
+                    _logger.AddError("TableStorageBase_RemoveAsync", "failureResponseCode",
+                        new KeyValuePair<string, string>("tableName", GetTableName()),
+                        new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
+                        new KeyValuePair<string, string>("rowKey", rowKey),
+                        new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+
+                    throw new Exception($"Non success response from server: {response.ReasonPhrase}");
+                }
             }
-
-            if (response.StatusCode == HttpStatusCode.PreconditionFailed)
-            {
-                _logger.AddError("TableStorageBase_RemoveAsync", "contentModified",
-                  new KeyValuePair<string, string>("tableName", GetTableName()),
-                  new KeyValuePair<string, string>("rowKey", rowKey),
-                  new KeyValuePair<string, string>("partitionKey", partitionKey));
-
-                throw new ContentModifiedException();
-            }
-
-            _logger.AddError("TableStorageBase_RemoveAsync", "failureResponseCode",
-                new KeyValuePair<string, string>("tableName", GetTableName()),
-                new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
-                new KeyValuePair<string, string>("rowKey", rowKey),
-                new KeyValuePair<string, string>("partitionKey", partitionKey));
-
-            throw new Exception($"Non success response from server: {response.ReasonPhrase}");
-
         }
 
         public Task RemoveAsync(TEntity entity, string etag = "*")
@@ -520,36 +544,40 @@ namespace LagoVista.CloudStorage.Storage
 
             var json = JsonConvert.SerializeObject(entity);
 
-            var request = CreateRequest(fullResourcePath);
-            var jsonContent = new StringContent(json);
-            jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            jsonContent.Headers.ContentMD5 = GetContentMD5(json);
-
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "PUT", "application/json", fullResourcePath: fullResourcePath, contentMd5: jsonContent.Headers.ContentMD5);
-            request.DefaultRequestHeaders.Add("If-Match", string.IsNullOrEmpty(etag) ? entity.ETag : etag);
-
-            var response = await request.PutAsync(operationUri, jsonContent);
-            if (!response.IsSuccessStatusCode)
+            using (var request = CreateRequest(fullResourcePath))
             {
-                if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                var jsonContent = new StringContent(json);
+                jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                jsonContent.Headers.ContentMD5 = GetContentMD5(json);
+
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "PUT", "application/json", fullResourcePath: fullResourcePath, contentMd5: jsonContent.Headers.ContentMD5);
+                request.DefaultRequestHeaders.Add("If-Match", string.IsNullOrEmpty(etag) ? entity.ETag : etag);
+
+                using (var response = await request.PutAsync(operationUri, jsonContent))
                 {
-                    _logger.AddError("TableStorageBase_UpdateAsync(entity)", "contentModified",
-                        new KeyValuePair<string, string>("tableName", GetTableName()),
-                        new KeyValuePair<string, string>("rowKey", entity.RowKey),
-                        new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                        {
+                            _logger.AddError("TableStorageBase_UpdateAsync(entity)", "contentModified",
+                                new KeyValuePair<string, string>("tableName", GetTableName()),
+                                new KeyValuePair<string, string>("rowKey", entity.RowKey),
+                                new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
 
-                    throw new ContentModifiedException();
-                }
-                else
-                {
-                    _logger.AddError("TableStorageBase_UpdateAsync(entity)", "failureResponseCode",
-                        new KeyValuePair<string, string>("tableName", GetTableName()),
-                        new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
-                        new KeyValuePair<string, string>("rowKey", entity.RowKey),
-                        new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
+                            throw new ContentModifiedException();
+                        }
+                        else
+                        {
+                            _logger.AddError("TableStorageBase_UpdateAsync(entity)", "failureResponseCode",
+                                new KeyValuePair<string, string>("tableName", GetTableName()),
+                                new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
+                                new KeyValuePair<string, string>("rowKey", entity.RowKey),
+                                new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
 
-                    throw new Exception($"Non success response from server: {response.RequestMessage}");
+                            throw new Exception($"Non success response from server: {response.RequestMessage}");
 
+                        }
+                    }
                 }
             }
         }
@@ -593,34 +621,38 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-            var request = CreateRequest();
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
-
-            var response = await request.GetAsync(operationUri);
-            if (response.IsSuccessStatusCode)
+            using (var request = CreateRequest())
             {
-                var json = await response.Content.ReadAsStringAsync();
-                var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
 
-                var listResponse = ListResponse<TEntity>.Create(resultset.ResultSet);
-                foreach (var header in response.Headers)
+                using (var response = await request.GetAsync(operationUri))
                 {
-                    if (header.Key == "x-ms-continuation-NextPartitionKey") listResponse.NextPartitionKey = header.Value.First();
-                    if (header.Key == "x-ms-continuation-NextRowKey") listResponse.NextRowKey = header.Value.First();
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var json = await response.Content.ReadAsStringAsync();
+                        var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+
+                        var listResponse = ListResponse<TEntity>.Create(resultset.ResultSet);
+                        foreach (var header in response.Headers)
+                        {
+                            if (header.Key == "x-ms-continuation-NextPartitionKey") listResponse.NextPartitionKey = header.Value.First();
+                            if (header.Key == "x-ms-continuation-NextRowKey") listResponse.NextRowKey = header.Value.First();
+                        }
+
+                        listResponse.HasMoreRecords = !String.IsNullOrEmpty(listResponse.NextPartitionKey);
+                        listResponse.PageIndex = listRequest.PageIndex;
+
+                        return listResponse;
+                    }
+                    else
+                    {
+                        _logger.AddError("TableStorageBase_GetPagedResultsAsync(entity)", "failureResponseCode",
+                            new KeyValuePair<string, string>("tableName", GetTableName()),
+                            new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
+
+                        throw new Exception($"Non success response from server: {response.RequestMessage}");
+                    }
                 }
-
-                listResponse.HasMoreRecords = !String.IsNullOrEmpty(listResponse.NextPartitionKey);
-                listResponse.PageIndex = listRequest.PageIndex;
-
-                return listResponse;
-            }
-            else
-            {
-                _logger.AddError("TableStorageBase_GetPagedResultsAsync(entity)", "failureResponseCode",
-                    new KeyValuePair<string, string>("tableName", GetTableName()),
-                    new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
-
-                throw new Exception($"Non success response from server: {response.RequestMessage}");
             }
         }
 
@@ -647,34 +679,38 @@ namespace LagoVista.CloudStorage.Storage
 
             var json = JsonConvert.SerializeObject(entity);
 
-            var request = CreateRequest(fullResourcePath);
-            var jsonContent = new StringContent(json);
-            jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            jsonContent.Headers.ContentMD5 = GetContentMD5(json);
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "PUT", "application/json", fullResourcePath: fullResourcePath, contentMd5: jsonContent.Headers.ContentMD5);
-            request.DefaultRequestHeaders.Add("If-Match", entity.ETag);
-
-            var response = await request.PutAsync(operationUri, jsonContent);
-            if (!response.IsSuccessStatusCode)
+            using (var request = CreateRequest(fullResourcePath))
             {
-                if (response.StatusCode == HttpStatusCode.PreconditionFailed)
-                {
-                    _logger.AddError("TableStorageBase_InsertOrReplaceAsync(entity)", "contentModified",
-                        new KeyValuePair<string, string>("tableName", GetTableName()),
-                        new KeyValuePair<string, string>("rowKey", entity.RowKey),
-                        new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
+                var jsonContent = new StringContent(json);
+                jsonContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                jsonContent.Headers.ContentMD5 = GetContentMD5(json);
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "PUT", "application/json", fullResourcePath: fullResourcePath, contentMd5: jsonContent.Headers.ContentMD5);
+                request.DefaultRequestHeaders.Add("If-Match", entity.ETag);
 
-                    throw new ContentModifiedException();
-                }
-                else
+                using (var response = await request.PutAsync(operationUri, jsonContent))
                 {
-                    _logger.AddError("TableStorageBase_InsertOrReplaceAsync(entity)", "failureResponseCode",
-                       new KeyValuePair<string, string>("tableName", GetTableName()),
-                       new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
-                       new KeyValuePair<string, string>("rowKey", entity.RowKey),
-                       new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                        {
+                            _logger.AddError("TableStorageBase_InsertOrReplaceAsync(entity)", "contentModified",
+                                new KeyValuePair<string, string>("tableName", GetTableName()),
+                                new KeyValuePair<string, string>("rowKey", entity.RowKey),
+                                new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
 
-                    throw new Exception(response.ReasonPhrase);
+                            throw new ContentModifiedException();
+                        }
+                        else
+                        {
+                            _logger.AddError("TableStorageBase_InsertOrReplaceAsync(entity)", "failureResponseCode",
+                               new KeyValuePair<string, string>("tableName", GetTableName()),
+                               new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
+                               new KeyValuePair<string, string>("rowKey", entity.RowKey),
+                               new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
+
+                            throw new Exception(response.ReasonPhrase);
+                        }
+                    }
                 }
             }
 
@@ -699,12 +735,14 @@ namespace LagoVista.CloudStorage.Storage
 
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
 
-            var request = CreateRequest(resource);
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
+            using (var request = CreateRequest(resource))
+            {
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
 
-            var json = await request.GetStringAsync(operationUri);
-            var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
-            return resultset.ResultSet;
+                var json = await request.GetStringAsync(operationUri);
+                var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+                return resultset.ResultSet;
+            }
         }
 
         public async Task<string> GetRawJSONByParitionIdAsync(String partitionKey, int? count = null, int? skip = null)
@@ -726,12 +764,14 @@ namespace LagoVista.CloudStorage.Storage
 
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
 
-            var request = CreateRequest(resource);
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
+            using (var request = CreateRequest(resource))
+            {
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
 
-            var json = await request.GetStringAsync(operationUri);
-            var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
-            return JsonConvert.SerializeObject(resultset.ResultSet);
+                var json = await request.GetStringAsync(operationUri);
+                var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+                return JsonConvert.SerializeObject(resultset.ResultSet);
+            }
         }
 
         private String GetFilter(List<FilterOptions> filters)
@@ -765,12 +805,14 @@ namespace LagoVista.CloudStorage.Storage
             var query = GetFilter(filters.ToList());
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
 
-            var request = CreateRequest(resource);
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
+            using (var request = CreateRequest(resource))
+            {
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
 
-            var json = await request.GetStringAsync(operationUri);
-            var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
-            return resultset.ResultSet;
+                var json = await request.GetStringAsync(operationUri);
+                var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+                return resultset.ResultSet;
+            }
         }
 
         public async Task<String> GetEntitiesJSONByFilterAsync(params FilterOptions[] filters)
@@ -781,10 +823,12 @@ namespace LagoVista.CloudStorage.Storage
             var query = GetFilter(filters.ToList());
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
 
-            var request = CreateRequest(resource);
-            request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
+            using (var request = CreateRequest(resource))
+            {
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
 
-            return await request.GetStringAsync(operationUri);
+                return await request.GetStringAsync(operationUri);
+            }
         }
 
         public void Dispose()
