@@ -1,10 +1,12 @@
 ﻿using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
+using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Documents.Linq;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -225,7 +227,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     throw new ValidationException("Invalid Data.", result.Errors);
                 }
             }
-            
+
 
             return await Client.UpsertDocumentAsync(await GetCollectionDocumentsLinkAsync(), item);
         }
@@ -237,7 +239,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
                 //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
                 var response = await Client.ReadDocumentAsync(docUri);
-              
+
 
                 if (response == null)
                 {
@@ -246,7 +248,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
 
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                {                    
+                {
                     var json = response.Resource.ToString();
 
                     if (String.IsNullOrEmpty(json))
@@ -295,7 +297,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 {
                     return null;
                 }
-            
+
             }
             catch (Exception ex)
             {
@@ -331,6 +333,28 @@ namespace LagoVista.CloudStorage.DocumentDB
             var result = (docQuery).Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name);
 
             return result;
+        }
+
+
+        protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
+        {
+            var options = new FeedOptions()
+            {
+                MaxItemCount = listRequest.PageSize
+            };
+
+            var documentLink = await GetCollectionDocumentsLinkAsync();
+
+            var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink, options)
+                .Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name).AsDocumentQuery();
+
+            var result = await docQuery.ExecuteNextAsync<TEntity>();
+            
+            var listResponse = ListResponse<TEntity>.Create(result);
+            listResponse.NextRowKey = result.ResponseContinuation;
+            listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
+            
+            return listResponse;
         }
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(string query, SqlParameterCollection sqlParams)
