@@ -340,8 +340,13 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             var options = new FeedOptions()
             {
-                MaxItemCount = listRequest.PageSize
+                MaxItemCount = (listRequest.PageSize == 0) ? 50 : listRequest.PageSize
             };
+
+            if(!String.IsNullOrEmpty(listRequest.NextPartitionKey))
+            {
+                options.RequestContinuation = listRequest.NextPartitionKey;
+            }
 
             var documentLink = await GetCollectionDocumentsLinkAsync();
 
