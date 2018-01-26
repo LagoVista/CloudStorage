@@ -753,13 +753,13 @@ namespace LagoVista.CloudStorage.Storage
             var query = $"?$filter=PartitionKey eq '{partitionKey}'";
             if (count.HasValue)
             {
-                query += $"$top={count.Value}";
+                query += $"&$top={count.Value}";
             }
 
             //HACK: Is not effective since the record count could change, need to pass in the last value from the previous mechanism
             if (skip.HasValue)
             {
-                query += $"$skip={skip.Value}";
+                query += $"&$skip={skip.Value}";
             }
 
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
