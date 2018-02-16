@@ -357,7 +357,9 @@ namespace LagoVista.CloudStorage.DocumentDB
             
             var listResponse = ListResponse<TEntity>.Create(result);
             listResponse.NextRowKey = result.ResponseContinuation;
+            listResponse.PageSize = result.Count;
             listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
+            listResponse.PageIndex = listRequest.PageIndex;
             
             return listResponse;
         }

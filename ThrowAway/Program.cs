@@ -17,13 +17,13 @@ namespace ThrowAway
             var request = new ListRequest();
             request.PageSize = 50;
             request.PageIndex = 1;
-            request.StartDate = DateTime.UtcNow.AddHours(-1).ToJSONString();
+            //request.StartDate = DateTime.UtcNow.AddHours(-1).ToJSONString();
             //request.EndDate = DateTime.UtcNow.ToJSONString();
 
             ListResponse<UsageMetrics> response = null;
             do
             {
-                response = await repo.GetByPage("5E78188E767349D681898F0AD8CD1FFC", request);
+                response = await repo.GetByPage("06FE0E9A3E264D459DF6E1774D91368C", request);
 
                 foreach(var req in response.Model)
                 {
@@ -32,6 +32,7 @@ namespace ThrowAway
                 }
 
                 Console.WriteLine(response.PageSize);
+                Console.WriteLine(response.HasMoreRecords);
                 Console.WriteLine(response.PageIndex);
                 Console.WriteLine(response.NextPartitionKey);
                 Console.WriteLine(response.NextRowKey);
