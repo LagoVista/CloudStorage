@@ -9,6 +9,7 @@ using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents.Linq;
 using Newtonsoft.Json;
 using System;
+using LagoVista.Core;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -338,30 +339,40 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
-            var options = new FeedOptions()
+            try
             {
-                MaxItemCount = (listRequest.PageSize == 0) ? 50 : listRequest.PageSize
-            };
+                var options = new FeedOptions()
+                {
+                    MaxItemCount = (listRequest.PageSize == 0) ? 50 : listRequest.PageSize
+                };
 
-            if(!String.IsNullOrEmpty(listRequest.NextPartitionKey))
-            {
-                options.RequestContinuation = listRequest.NextPartitionKey;
+                if (!String.IsNullOrEmpty(listRequest.NextRowKey))
+                {
+                    options.RequestContinuation = listRequest.NextRowKey;
+                }
+
+                var documentLink = await GetCollectionDocumentsLinkAsync();
+
+                var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink, options)
+                    .Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name).AsDocumentQuery();
+
+                var result = await docQuery.ExecuteNextAsync<TEntity>();
+
+                var listResponse = ListResponse<TEntity>.Create(result);
+                listResponse.NextRowKey = result.ResponseContinuation;
+                listResponse.PageSize = result.Count;
+                listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
+                listResponse.PageIndex = listRequest.PageIndex;
+
+                return listResponse;
             }
-
-            var documentLink = await GetCollectionDocumentsLinkAsync();
-
-            var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink, options)
-                .Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name).AsDocumentQuery();
-
-            var result = await docQuery.ExecuteNextAsync<TEntity>();
-            
-            var listResponse = ListResponse<TEntity>.Create(result);
-            listResponse.NextRowKey = result.ResponseContinuation;
-            listResponse.PageSize = result.Count;
-            listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
-            listResponse.PageIndex = listRequest.PageIndex;
-            
-            return listResponse;
+            catch(Exception ex)
+            {
+                var listResponse = ListResponse<TEntity>.Create(null);
+                listResponse.Errors.Add(new ErrorMessage(ex.Message));
+                _logger.AddException("DocumentDBBase", ex, typeof(TEntity).Name.ToKVP("entityType"));
+                return listResponse;
+            }
         }
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(string query, SqlParameterCollection sqlParams)
