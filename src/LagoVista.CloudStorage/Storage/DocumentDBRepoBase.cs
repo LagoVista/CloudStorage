@@ -13,6 +13,7 @@ using LagoVista.Core;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using LagoVista.CloudStorage.Exceptions;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
@@ -229,8 +230,29 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
             }
 
+            var upsertResult =  await Client.UpsertDocumentAsync(await GetCollectionDocumentsLinkAsync(), item);
+            switch(upsertResult.StatusCode)
+            {
+                case System.Net.HttpStatusCode.BadRequest:
+                    _logger.AddError("DocumentDBRepoBase_UpsertDocumentAsync", "BadRequest", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    throw new Exception($"Bad Request on Upsert {typeof(TEntity).Name}");
+                case System.Net.HttpStatusCode.Forbidden:
+                    _logger.AddError("DocumentDBRepoBase_UpsertDocumentAsync", "Forbidden", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    throw new Exception($"Forbidden on Upsert {typeof(TEntity).Name}");
+                case System.Net.HttpStatusCode.Conflict:
+                    _logger.AddError("DocumentDBRepoBase_UpsertDocumentAsync", "Conflict", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    throw new ContentModifiedException()
+                    {
+                        EntityType = typeof(TEntity).Name,
+                        Id = item.Id
+                    };
 
-            return await Client.UpsertDocumentAsync(await GetCollectionDocumentsLinkAsync(), item);
+                case System.Net.HttpStatusCode.RequestEntityTooLarge:
+                    _logger.AddError("DocumentDBRepoBase_UpsertDocumentAsync", "RequestEntityTooLarge", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    throw new Exception($"RequestEntityTooLarge Upsert on type {typeof(TEntity).Name}");
+            }
+
+            return upsertResult;
         }
 
         protected async Task<TEntity> GetDocumentAsync(string id, bool throwOnNotFound = true)
@@ -244,7 +266,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 if (response == null)
                 {
-                    _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response", new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                    _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", id));
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
                 }
 
@@ -254,7 +276,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                     if (String.IsNullOrEmpty(json))
                     {
-                        _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response Content", new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                        _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response Content", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", id));
                         throw new RecordNotFoundException(typeof(TEntity).Name, id);
                     }
 
@@ -263,7 +285,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     {
                         if (throwOnNotFound)
                         {
-                            _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Type Mismatch", new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("Id", id));
+                            _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Type Mismatch", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("id", id));
                             throw new RecordNotFoundException(typeof(TEntity).Name, id);
                         }
                         else
