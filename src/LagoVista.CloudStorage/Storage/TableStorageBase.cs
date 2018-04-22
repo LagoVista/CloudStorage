@@ -36,6 +36,8 @@ namespace LagoVista.CloudStorage.Storage
         String _accountName;
         String _accountKey;
 
+        String _tableName = null;
+
         public TableStorageBase(String accountName, string accountKey, IAdminLogger logger)
         {
             _logger = logger;
@@ -82,9 +84,14 @@ namespace LagoVista.CloudStorage.Storage
             _srvrPath = $"https://{_accountName}.table.core.windows.net/{GetTableName()}";
         }
 
+        public void SetTableName(string tableName)
+        {
+            _tableName = tableName;
+        }
+
         protected virtual string GetTableName()
         {
-            return typeof(TEntity).Name;
+            return String.IsNullOrEmpty(_tableName) ? typeof(TEntity).Name : _tableName;
         }
 
         private bool Initialized { get; set; }
