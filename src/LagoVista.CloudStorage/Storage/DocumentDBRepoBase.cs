@@ -379,6 +379,10 @@ namespace LagoVista.CloudStorage.DocumentDB
                     .Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name).AsDocumentQuery();
 
                 var result = await docQuery.ExecuteNextAsync<TEntity>();
+                if(result == null)
+                {
+                    throw new Exception("Null Response from Query");
+                }
 
                 var listResponse = ListResponse<TEntity>.Create(result);
                 listResponse.NextRowKey = result.ResponseContinuation;
@@ -390,9 +394,10 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             catch(Exception ex)
             {
-                var listResponse = ListResponse<TEntity>.Create(null);
-                listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 _logger.AddException("DocumentDBBase", ex, typeof(TEntity).Name.ToKVP("entityType"));
+
+                var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
+                listResponse.Errors.Add(new ErrorMessage(ex.Message));                
                 return listResponse;
             }
         }
