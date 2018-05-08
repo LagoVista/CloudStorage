@@ -230,6 +230,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
             }
 
+            item.DatabaseName = _dbName;
+            item.EntityType = typeof(TEntity).Name;
+
             var upsertResult =  await Client.UpsertDocumentAsync(await GetCollectionDocumentsLinkAsync(), item);
             switch(upsertResult.StatusCode)
             {
