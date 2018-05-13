@@ -87,6 +87,7 @@ namespace LagoVista.CloudStorage.Storage
         public void SetTableName(string tableName)
         {
             _tableName = tableName;
+            _srvrPath = $"https://{_accountName}.table.core.windows.net/{GetTableName()}";
         }
 
         protected virtual string GetTableName()
@@ -657,7 +658,7 @@ namespace LagoVista.CloudStorage.Storage
                             new KeyValuePair<string, string>("tableName", GetTableName()),
                             new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
 
-                        throw new Exception($"Non success response from server: {response.RequestMessage}");
+                        throw new Exception($"Non success response from server: {response.ReasonPhrase}");
                     }
                 }
             }
