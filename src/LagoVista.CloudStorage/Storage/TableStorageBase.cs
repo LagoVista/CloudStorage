@@ -496,7 +496,7 @@ namespace LagoVista.CloudStorage.Storage
 
                     if (response.StatusCode == HttpStatusCode.PreconditionFailed)
                     {
-                        _logger.AddError("TableStorageBase_RemoveAsync", "contentModified",
+                        _logger.AddError("TableStorageBase_RemoveAsync(PartitionKey, RowKey)", "contentModified",
                           new KeyValuePair<string, string>("tableName", GetTableName()),
                           new KeyValuePair<string, string>("rowKey", rowKey),
                           new KeyValuePair<string, string>("partitionKey", partitionKey));
@@ -504,10 +504,56 @@ namespace LagoVista.CloudStorage.Storage
                         throw new ContentModifiedException();
                     }
 
-                    _logger.AddError("TableStorageBase_RemoveAsync", "failureResponseCode",
+                    _logger.AddError("TableStorageBase_RemoveAsync(PartitionKey, RowKey)", "failureResponseCode",
                         new KeyValuePair<string, string>("tableName", GetTableName()),
                         new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
                         new KeyValuePair<string, string>("rowKey", rowKey),
+                        new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+
+                    throw new Exception($"Non success response from server: {response.ReasonPhrase}");
+                }
+            }
+        }
+
+        public async Task RemoveAsync(string partitionKey, string etag = "*")
+        {
+            await InitAsync();
+            
+
+            if (String.IsNullOrEmpty(partitionKey))
+            {
+                _logger.AddError("TableStorageBase_RemoveAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+            }
+
+            var fullResourcePath = $"(PartitionKey='{partitionKey}')";
+            var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
+            using (var request = CreateRequest(fullResourcePath))
+            {
+
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "DELETE", fullResourcePath: fullResourcePath);
+                request.DefaultRequestHeaders.Add("If-Match", etag);
+
+                using (var response = await request.DeleteAsync(operationUri))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return;
+                    }
+
+                    if (response.StatusCode == HttpStatusCode.PreconditionFailed)
+                    {
+                        _logger.AddError("TableStorageBase_RemoveAsync(PartitionKey)", "contentModified",
+                          new KeyValuePair<string, string>("tableName", GetTableName()),
+                          new KeyValuePair<string, string>("partitionKey", partitionKey));
+
+                        throw new ContentModifiedException();
+                    }
+
+                    _logger.AddError("TableStorageBase_RemoveAsync(PartitionKey)", "failureResponseCode",
+                        new KeyValuePair<string, string>("tableName", GetTableName()),
+                        new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
                         new KeyValuePair<string, string>("partitionKey", partitionKey));
 
 
