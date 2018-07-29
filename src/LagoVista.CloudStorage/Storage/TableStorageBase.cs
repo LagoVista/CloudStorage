@@ -516,7 +516,7 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
-        public async Task RemoveAsync(string partitionKey, string etag = "*")
+        public async Task RemoveByPartitionKeyAsync(string partitionKey, string etag = "*")
         {
             await InitAsync();
             
