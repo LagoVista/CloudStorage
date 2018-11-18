@@ -258,13 +258,18 @@ namespace LagoVista.CloudStorage.DocumentDB
             return upsertResult;
         }
 
-        protected async Task<TEntity> GetDocumentAsync(string id, bool throwOnNotFound = true)
+        protected Task<TEntity> GetDocumentAsync(string id,  bool throwOnNotFound = true)
+        {
+            return GetDocumentAsync(id, null, throwOnNotFound);
+        }
+    
+        protected async Task<TEntity> GetDocumentAsync(string id, string partitionKey, bool throwOnNotFound = true)
         {
             try
             {
                 var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
                 //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
-                var response = await Client.ReadDocumentAsync(docUri);
+                var response = String.IsNullOrEmpty(partitionKey) ? await Client.ReadDocumentAsync(docUri) : await Client.ReadDocumentAsync(docUri, new RequestOptions() { PartitionKey = new PartitionKey(partitionKey) });
 
 
                 if (response == null)
@@ -348,6 +353,12 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
             return await Client.DeleteDocumentAsync(docUri);
+        }
+
+        protected async Task<ResourceResponse<Document>> DeleteDocumentAsync(string id, string partitionKey)
+        {
+            var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
+            return await Client.DeleteDocumentAsync(docUri, new RequestOptions() { PartitionKey = new PartitionKey(partitionKey) });
         }
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
