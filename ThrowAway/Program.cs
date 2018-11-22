@@ -12,7 +12,8 @@ namespace ThrowAway
 
         static async void GetRecords()
         {
-            var repo = new UsageMetricsRepo("nuviotdev", "Za6PpxUbXjXic8rhK3lbcWyUQyVY2NVsgXRRD1rVj2LAjXUnji5/ooJx7u0ob9cPKTkPu/woa74DBE6IVKsLQA==", new JunkLogger());
+            //TODOO Get from Environment Variable
+            var repo = new UsageMetricsRepo("nuviotdev", "[]", new JunkLogger());
 
             var request = new ListRequest();
             request.PageSize = 50;
