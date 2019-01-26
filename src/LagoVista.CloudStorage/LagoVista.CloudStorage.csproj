@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <VersionPrefix>0.8.0</VersionPrefix>
-    <TargetFramework>netstandard1.6</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>LagoVista.CloudStorage</AssemblyName>
     <PackageId>LagoVista.CloudStorage</PackageId>
     <NetStandardImplicitPackageVersion>2.0.3</NetStandardImplicitPackageVersion>
@@ -12,8 +12,8 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LagoVista.Core" Version="2.1.615-beta1617" />
-    <PackageReference Include="LagoVista.IoT.Logging" Version="2.1.615-beta1617" />
+    <PackageReference Include="LagoVista.Core" Version="2.1.619-beta0217" />
+    <PackageReference Include="LagoVista.IoT.Logging" Version="2.1.619-beta0217" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.2.1" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
     <PackageReference Include="WindowsAzure.Storage" Version="9.3.3" />
