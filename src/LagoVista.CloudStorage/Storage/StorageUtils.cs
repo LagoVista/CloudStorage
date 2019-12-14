@@ -1,10 +1,13 @@
 ﻿using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
+using LagoVista.Core.PlatformSupport;
 using LagoVista.IoT.Logging.Loggers;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents.Linq;
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -121,7 +124,7 @@ namespace LagoVista.CloudStorage.Storage
             return result.FirstOrDefault();
         }
 
-        public async Task DeleteIfExists<TEntity>(string key, IEntityHeader org) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
+        public async Task DeleteIfExistsAsync<TEntity>(string key, IEntityHeader org) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
             var entity = await FindWithKeyAsync<TEntity>(key, org, false);
             if(entity != null)
@@ -136,33 +139,28 @@ namespace LagoVista.CloudStorage.Storage
             var documentLink = await GetCollectionDocumentsLinkAsync();
             var docClient = GetDocumentClient();
 
-            var docQuery = docClient.CreateDocumentQuery<TEntity>(documentLink)
-                .Where(itm => itm.Id == id && itm.EntityType == typeof(TEntity).Name)
-                .AsDocumentQuery();
-
-            var result = await docQuery.ExecuteNextAsync<TEntity>();
-            if (result == null)
-            {
-                throw new Exception("Null Response from Query");
-            }
-
-            var entity = result.FirstOrDefault();
-
-            if (entity == null)
-            {
-                throw new RecordNotFoundException(typeof(TEntity).Name, id);
-            }
-
-            if (org.Id != entity.Id)
-            {
-                throw new NotAuthorizedException($"Attempt to delete record of type {typeof(TEntity).Name} owned by org {entity.OwnerOrganization.Text} by org {org.Text}");
-            }
-
             var collectionName = _dbName + "_Collections";
-
             var docUri = UriFactory.CreateDocumentUri(_dbName, collectionName, id);
+            var response =  await docClient.ReadDocumentAsync(docUri);
 
-            await docClient.DeleteDocumentAsync(docUri);
+            if (response.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+                var json = response.Resource.ToString();
+
+                if (String.IsNullOrEmpty(json))
+                {
+                    _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Empty Response Content", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", id));
+                    throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                }
+
+                var entity = JsonConvert.DeserializeObject<TEntity>(json);
+                if (org.Id != entity.OwnerOrganization.Id)
+                {
+                    throw new NotAuthorizedException($"Attempt to delete record of type {typeof(TEntity).Name} owned by org {entity.OwnerOrganization.Text} by org {org.Text}");
+                }
+
+                await docClient.DeleteDocumentAsync(docUri);
+            }
         }
     }
 }
