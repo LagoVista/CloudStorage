@@ -416,6 +416,49 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
+        protected async Task<ListResponse<TEntity>> DescOrderQueryAsync<TKey>(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy, ListRequest listRequest)
+        {
+            try
+            {
+                var options = new FeedOptions()
+                {
+                    MaxItemCount = (listRequest.PageSize == 0) ? 50 : listRequest.PageSize
+                };
+
+                if (!String.IsNullOrEmpty(listRequest.NextRowKey))
+                {
+                    options.RequestContinuation = listRequest.NextRowKey;
+                }
+
+                var documentLink = await GetCollectionDocumentsLinkAsync();
+
+                var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink, options)
+                    .Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name).OrderByDescending(orderBy).AsDocumentQuery();
+
+                var result = await docQuery.ExecuteNextAsync<TEntity>();
+                if (result == null)
+                {
+                    throw new Exception("Null Response from Query");
+                }
+
+                var listResponse = ListResponse<TEntity>.Create(result);
+                listResponse.NextRowKey = result.ResponseContinuation;
+                listResponse.PageSize = result.Count;
+                listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
+                listResponse.PageIndex = listRequest.PageIndex;
+
+                return listResponse;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException("DocumentDBBase", ex, typeof(TEntity).Name.ToKVP("entityType"));
+
+                var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
+                listResponse.Errors.Add(new ErrorMessage(ex.Message));
+                return listResponse;
+            }
+        }
+
         protected async Task<IEnumerable<TEntity>> QueryAsync(string query, SqlParameterCollection sqlParams)
         {
             var spec = new SqlQuerySpec(query, sqlParams);
