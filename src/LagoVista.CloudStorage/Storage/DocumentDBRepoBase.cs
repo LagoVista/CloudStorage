@@ -25,13 +25,15 @@ namespace LagoVista.CloudStorage.DocumentDB
         private string _collectionName;
         private DocumentClient _documentClient;
         private IAdminLogger _logger;
+        private readonly ICacheProvider _cacheProvider;
 
-        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger)
+        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null)
         {
             _endpoint = endpoint;
             _sharedKey = sharedKey;
             _dbName = dbName;
             _logger = logger;
+            _cacheProvider = cacheProvider;
 
             _collectionName = typeof(TEntity).Name;
             if (!_collectionName.ToLower().EndsWith("s"))
@@ -40,7 +42,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger) : this(new Uri(endpoint), sharedKey, dbName, logger)
+        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null) : this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider)
         {
 
         }
@@ -216,7 +218,17 @@ namespace LagoVista.CloudStorage.DocumentDB
                 throw new Exception("Could not insert entity");
             }
 
+            if(_cacheProvider != null)
+            {
+                await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item));
+            }
+
             return response;
+        }
+
+        private string GetCacheKey(string id)
+        {
+            return $"{_dbName}-{typeof(TEntity).Name}-{id}".ToLower();
         }
 
         protected async Task<ResourceResponse<Document>> UpsertDocumentAsync(TEntity item)
@@ -229,6 +241,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     throw new ValidationException("Invalid Data.", result.Errors);
                 }
             }
+
 
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
@@ -255,12 +268,46 @@ namespace LagoVista.CloudStorage.DocumentDB
                     throw new Exception($"RequestEntityTooLarge Upsert on type {typeof(TEntity).Name}");
             }
 
+            if(_cacheProvider != null)
+            {
+                await _cacheProvider.RemoveAsync(GetCacheKey(item.Id));
+            }
+
             return upsertResult;
         }
 
-        protected Task<TEntity> GetDocumentAsync(string id,  bool throwOnNotFound = true)
+        protected async Task<TEntity> GetDocumentAsync(string id,  bool throwOnNotFound = true)
         {
-            return GetDocumentAsync(id, null, throwOnNotFound);
+            if (_cacheProvider != null)
+            {
+                var json = await _cacheProvider.GetAsync(GetCacheKey(id));
+                if (!String.IsNullOrEmpty(json))
+                {
+                    var entity = JsonConvert.DeserializeObject<TEntity>(json);
+                    if (entity.EntityType != typeof(TEntity).Name)
+                    {
+                        if (throwOnNotFound)
+                        {
+                            _logger.AddCustomEvent(LogLevel.Error, "DocumentDBRepoBase_GetDocumentAsync", $"Type Mismatch", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("id", id));
+                            throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                        }
+                        else
+                        {
+                            return default(TEntity);
+                        }
+                    }
+                    else
+                        return entity;
+                }
+            }
+
+            var doc = await GetDocumentAsync(id, null, throwOnNotFound);
+            if(_cacheProvider != null)
+            {
+                await _cacheProvider.AddAsync(GetCacheKey(id), JsonConvert.SerializeObject(doc));
+            }
+
+            return doc;
         }
     
         protected async Task<TEntity> GetDocumentAsync(string id, string partitionKey, bool throwOnNotFound = true)
@@ -270,7 +317,6 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
                 //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
                 var response = String.IsNullOrEmpty(partitionKey) ? await Client.ReadDocumentAsync(docUri) : await Client.ReadDocumentAsync(docUri, new RequestOptions() { PartitionKey = new PartitionKey(partitionKey) });
-
 
                 if (response == null)
                 {
@@ -352,6 +398,11 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<ResourceResponse<Document>> DeleteDocumentAsync(string id)
         {
             var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
+            if(_cacheProvider != null)
+            {
+                await _cacheProvider.RemoveAsync(GetCacheKey(id));
+            }
+
             return await Client.DeleteDocumentAsync(docUri);
         }
 

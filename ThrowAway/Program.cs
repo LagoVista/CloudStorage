@@ -4,6 +4,8 @@ using LagoVista.Core.Models.UIMetaData;
 using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
+using LagoVista.CloudStorage.Storage;
+using System.Threading.Tasks;
 
 namespace ThrowAway
 {
@@ -47,9 +49,8 @@ namespace ThrowAway
 
         }
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-
             GetRecords();
 
             Console.ReadKey();
