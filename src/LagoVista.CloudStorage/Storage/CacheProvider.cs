@@ -6,36 +6,51 @@ namespace LagoVista.CloudStorage.Storage
 {
     public class CacheProvider : ICacheProvider
     {
-        private readonly ConnectionMultiplexer _multiplexer;
+        private readonly ConnectionMultiplexer _multiplexer = null;
 
 
         public CacheProvider(ICacheProviderSettings settings)
         {
-             _multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
+            if (settings.UseCache)
+            {
+                _multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
+            }
         }
 
         public Task AddAsync(string key, string value)
         {
-            Console.WriteLine($"Added cache item: {key}");
-            var db = _multiplexer.GetDatabase();
-            return db.StringSetAsync(key, value);
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                return db.StringSetAsync(key, value);
+            }
+
+            return Task.CompletedTask;
         }
 
         public async Task<string> GetAsync(string key)
         {
-            var db = _multiplexer.GetDatabase();
-            var result = await db.StringGetAsync(key);
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                var result = await db.StringGetAsync(key);
 
-            Console.WriteLine($"Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(result)}");
-            return (string)result;
+                Console.WriteLine($"Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(result)}");
+                return (string)result;
+            }
+            return null;
         }
 
         public Task RemoveAsync(string key)
         {
-            var db = _multiplexer.GetDatabase();
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
 
-            Console.WriteLine($"Removing item with key: {key}");
-            return db.KeyDeleteAsync(key);
+                Console.WriteLine($"Removing item with key: {key}");
+                return db.KeyDeleteAsync(key);
+            }
+            return null;
         }
     }
 }
