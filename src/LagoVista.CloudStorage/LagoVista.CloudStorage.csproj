@@ -12,11 +12,11 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LagoVista.Core" Version="2.1.1061-beta1313" />
-    <PackageReference Include="LagoVista.IoT.Logging" Version="2.1.1061-beta1313" />
+    <PackageReference Include="LagoVista.Core" Version="2.1.1121-beta1829" />
+    <PackageReference Include="LagoVista.IoT.Logging" Version="2.1.1121-beta1829" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.7.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="StackExchange.Redis" Version="2.0.601" />
+    <PackageReference Include="StackExchange.Redis" Version="2.1.30" />
     <PackageReference Include="WindowsAzure.Storage" Version="9.3.3" />
   </ItemGroup>
   <ItemGroup>
