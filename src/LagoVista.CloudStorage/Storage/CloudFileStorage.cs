@@ -134,6 +134,9 @@ namespace LagoVista.CloudStorage.Storage
                 throw new ArgumentNullException(nameof(fileName));
             }
 
+            if (fileName.StartsWith("/"))
+                fileName = fileName.TrimStart('/');
+
             var result = await GetStorageContainerAsync(_containerName);
             if (!result.Successful)
             {
@@ -161,12 +164,12 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     if (retryCount == numberRetries)
                     {
-                        _logger.AddException("ReportsLibraryRepo_GetFileAsync", ex, _containerName.ToKVP("containerName"));
-                        return InvokeResult<byte[]>.FromException("ReportsLibraryRepo_GetFileAsync", ex);
+                        _logger.AddException("CloudFileStorage_GetFileAsync", ex, _containerName.ToKVP("containerName"));
+                        return InvokeResult<byte[]>.FromException("CloudFileStorage_GetFileAsync", ex);
                     }
                     else
                     {
-                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, "ReportsLibraryRepo_GetFileAsync", "", fileName.ToKVP("fileName"),
+                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, "CloudFileStorage_GetFileAsync", "", fileName.ToKVP("fileName"),
                            _containerName.ToKVP("containerName"), ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
                     }
                     await Task.Delay(retryCount * 250);
