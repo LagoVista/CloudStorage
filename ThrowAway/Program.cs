@@ -49,7 +49,7 @@ namespace ThrowAway
 
         }
 
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             GetRecords();
 
