@@ -24,7 +24,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private string _dbName;
         private string _collectionName;
         private DocumentClient _documentClient;
-        private IAdminLogger _logger;
+        private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
 
         public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null)
@@ -293,7 +293,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                         }
                         else
                         {
-                            return default(TEntity);
+                            return default;
                         }
                     }
                     else
@@ -344,7 +344,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                         }
                         else
                         {
-                            return default(TEntity);
+                            return default;
                         }
                     }
 
@@ -359,7 +359,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                     else
                     {
-                        return default(TEntity);
+                        return default;
                     }
                 }
             }
@@ -422,7 +422,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             return result;
         }
-
 
         protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
