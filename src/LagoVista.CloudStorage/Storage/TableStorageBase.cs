@@ -636,7 +636,7 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
-        public async Task<ListResponse<TEntity>> GetPagedResultsAsync(string partitionKey, ListRequest listRequest)
+        public async Task<ListResponse<TEntity>> GetPagedResultsAsync(string partitionKey, ListRequest listRequest, params FilterOptions[] filters)
         {
             await InitAsync();
 
@@ -648,7 +648,7 @@ namespace LagoVista.CloudStorage.Storage
 
             var resource = $"()";
 
-            var query = $"?$filter=PartitionKey eq '{partitionKey}'";
+            var query = (filters.Length > 0) ? $"{GetFilter(filters.ToList())} and PartitionKey eq '{partitionKey}'" : $"?$filter=PartitionKey eq '{partitionKey}'";
 
             if (!String.IsNullOrEmpty(listRequest.StartDate))
             {
