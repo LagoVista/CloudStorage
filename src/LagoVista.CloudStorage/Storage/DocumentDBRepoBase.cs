@@ -423,6 +423,14 @@ namespace LagoVista.CloudStorage.DocumentDB
             return result;
         }
 
+        protected async Task<IEnumerable<TEntity>> QueryAsync(string sql, params SqlParameter[] sqlParams)
+        {
+            var query = new SqlQuerySpec(sql, new SqlParameterCollection(sqlParams ));
+
+            var documentLink = await GetCollectionDocumentsLinkAsync();
+            return Client.CreateDocumentQuery<TEntity>(documentLink, query);
+        }
+
         protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
             try
