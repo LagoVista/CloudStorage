@@ -456,6 +456,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                     throw new Exception("Null Response from Query");
                 }
 
+                Console.WriteLine("FULL RESULT SET OF ORG  " + result.Count + "  " + docQuery.ToString());
+
+
                 var listResponse = ListResponse<TEntity>.Create(result);
                 listResponse.NextRowKey = result.ResponseContinuation;
                 listResponse.PageSize = result.Count;
@@ -470,6 +473,57 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));                
+                return listResponse;
+            }
+        }
+
+        /// <summary>
+        /// Return all objects, independent of entity type
+        /// </summary>
+        /// <param name="query"></param>
+        /// <param name="listRequest"></param>
+        /// <returns></returns>
+        protected async Task<ListResponse<TEntity>> QueryAllAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
+        {
+            try
+            {
+                var options = new FeedOptions()
+                {
+                    MaxItemCount = (listRequest.PageSize == 0) ? 50 : listRequest.PageSize
+                };
+
+                if (!String.IsNullOrEmpty(listRequest.NextRowKey))
+                {
+                    options.RequestContinuation = listRequest.NextRowKey;
+                }
+
+                var documentLink = await GetCollectionDocumentsLinkAsync();
+
+                var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink, options)
+                    .Where(query).AsDocumentQuery();
+
+                var result = await docQuery.ExecuteNextAsync<TEntity>();
+                if (result == null)
+                {
+                    throw new Exception("Null Response from Query");
+                }
+
+                Console.WriteLine("FULL RESULT SET OF ORG  " + result.Count + "  " + docQuery.ToString());
+
+                var listResponse = ListResponse<TEntity>.Create(result);
+                listResponse.NextRowKey = result.ResponseContinuation;
+                listResponse.PageSize = result.Count;
+                listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
+                listResponse.PageIndex = listRequest.PageIndex;
+
+                return listResponse;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException("DocumentDBBase", ex, typeof(TEntity).Name.ToKVP("entityType"));
+
+                var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
+                listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
