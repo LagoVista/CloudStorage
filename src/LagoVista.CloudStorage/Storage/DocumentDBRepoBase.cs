@@ -456,9 +456,6 @@ namespace LagoVista.CloudStorage.DocumentDB
                     throw new Exception("Null Response from Query");
                 }
 
-                Console.WriteLine("FULL RESULT SET OF ORG  " + result.Count + "  " + docQuery.ToString());
-
-
                 var listResponse = ListResponse<TEntity>.Create(result);
                 listResponse.NextRowKey = result.ResponseContinuation;
                 listResponse.PageSize = result.Count;
@@ -507,8 +504,6 @@ namespace LagoVista.CloudStorage.DocumentDB
                 {
                     throw new Exception("Null Response from Query");
                 }
-
-                Console.WriteLine("FULL RESULT SET OF ORG  " + result.Count + "  " + docQuery.ToString());
 
                 var listResponse = ListResponse<TEntity>.Create(result);
                 listResponse.NextRowKey = result.ResponseContinuation;
