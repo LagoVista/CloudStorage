@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using LagoVista.CloudStorage.Exceptions;
+using System.Diagnostics;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
@@ -314,9 +315,14 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             try
             {
+
                 var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
+                var sw = Stopwatch.StartNew();
                 //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
-                var response = String.IsNullOrEmpty(partitionKey) ? await Client.ReadDocumentAsync(docUri) : await Client.ReadDocumentAsync(docUri, new RequestOptions() { PartitionKey = new PartitionKey(partitionKey) });
+                var response = String.IsNullOrEmpty(partitionKey) ? 
+                    await Client.ReadDocumentAsync(docUri) : 
+                    await Client.ReadDocumentAsync(docUri, new RequestOptions() { PartitionKey = new PartitionKey(partitionKey) });
+                Console.WriteLine($"sw=> Get document {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}");
 
                 if (response == null)
                 {
@@ -347,6 +353,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                             return default;
                         }
                     }
+
+
 
                     return entity;
                 }
@@ -415,20 +423,28 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
         {
             var documentLink = await GetCollectionDocumentsLinkAsync();
+            var sw = Stopwatch.StartNew();
+            var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink, new FeedOptions() { MaxItemCount = 9999 });
 
-            var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink);
+            var linqQuery = (docQuery).Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name).AsDocumentQuery();
 
-            var result = (docQuery).Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name);
+            var result = await linqQuery.ExecuteNextAsync<TEntity>();
 
+            Console.WriteLine($"=> SW => {sw.Elapsed.TotalMilliseconds}, Result: {result.RequestCharge}, {result.RequestDiagnosticsString} {result.ResponseContinuation}");
             return result;
         }
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(string sql, params SqlParameter[] sqlParams)
         {
             var query = new SqlQuerySpec(sql, new SqlParameterCollection(sqlParams ));
+            var sw = Stopwatch.StartNew();
 
             var documentLink = await GetCollectionDocumentsLinkAsync();
-            return Client.CreateDocumentQuery<TEntity>(documentLink, query);
+            var docQuery =  Client.CreateDocumentQuery<TEntity>(documentLink, query, new FeedOptions() { MaxItemCount = 9999 }).AsDocumentQuery();
+            var result = await docQuery.ExecuteNextAsync<TEntity>();
+            Console.WriteLine($"=> SW => {sw.Elapsed.TotalMilliseconds}, Result: {result.RequestCharge}, {result.RequestDiagnosticsString} {result.ResponseContinuation}");
+
+            return result;
         }
 
         protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
@@ -447,6 +463,8 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 var documentLink = await GetCollectionDocumentsLinkAsync();
 
+                var sw = Stopwatch.StartNew();
+
                 var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink, options)
                     .Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name).AsDocumentQuery();
 
@@ -461,6 +479,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.PageSize = result.Count;
                 listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
                 listResponse.PageIndex = listRequest.PageIndex;
+                Console.WriteLine($"sw=> Query execution in {sw.Elapsed.TotalMilliseconds}");
+
 
                 return listResponse;
             }
@@ -494,6 +514,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                     options.RequestContinuation = listRequest.NextRowKey;
                 }
 
+                var sw = Stopwatch.StartNew();
+
                 var documentLink = await GetCollectionDocumentsLinkAsync();
 
                 var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink, options)
@@ -505,11 +527,13 @@ namespace LagoVista.CloudStorage.DocumentDB
                     throw new Exception("Null Response from Query");
                 }
 
+
                 var listResponse = ListResponse<TEntity>.Create(result);
                 listResponse.NextRowKey = result.ResponseContinuation;
                 listResponse.PageSize = result.Count;
                 listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
                 listResponse.PageIndex = listRequest.PageIndex;
+                Console.WriteLine($"sw=> Query execution in {sw.Elapsed.TotalMilliseconds}");
 
                 return listResponse;
             }
@@ -537,6 +561,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     options.RequestContinuation = listRequest.NextRowKey;
                 }
 
+                var sw = Stopwatch.StartNew();
                 var documentLink = await GetCollectionDocumentsLinkAsync();
 
                 var docQuery = Client.CreateDocumentQuery<TEntity>(documentLink, options)
@@ -553,6 +578,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.PageSize = result.Count;
                 listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
                 listResponse.PageIndex = listRequest.PageIndex;
+                Console.WriteLine($"sw=> Query execution in {sw.Elapsed.TotalMilliseconds}");
 
                 return listResponse;
             }
