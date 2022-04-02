@@ -17,6 +17,10 @@ namespace LagoVista.CloudStorage.Storage
 			{
 				_multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
 			}
+			else
+            {
+				Console.WriteLine("Not using cache.");
+            }
 		}
 
 		public Task AddAsync(string key, string value)
@@ -51,6 +55,7 @@ namespace LagoVista.CloudStorage.Storage
 				Console.WriteLine($"Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(result)}");
 				return (string)result;
 			}
+
 			return null;
 		}
 
@@ -77,6 +82,7 @@ namespace LagoVista.CloudStorage.Storage
 				var result = await db.HashGetAsync(collectionKey, key);
 				return (string)result;
 			}
+
 			return null;
 		}
 
@@ -85,11 +91,16 @@ namespace LagoVista.CloudStorage.Storage
 			if (_multiplexer != null)
 			{
 				var db = _multiplexer.GetDatabase();
+				if(db == null)
+                {
+					throw new ArgumentNullException("Database for cache provider is null.");
+                }
 
 				Console.WriteLine($"Removing item with key: {key}");
 				return db.KeyDeleteAsync(key);
 			}
-			return null;
+
+			return Task.CompletedTask;
 		}
 
 		public Task RemoveFromCollectionAsync(string collectionKey, string key)
@@ -101,7 +112,8 @@ namespace LagoVista.CloudStorage.Storage
 				Console.WriteLine($"Removing item with key: {key} from collection: {collectionKey}");
 				return db.HashDeleteAsync(collectionKey, key);
 			}
-			return null;
+
+			return Task.CompletedTask;
 		}
 	}
 }

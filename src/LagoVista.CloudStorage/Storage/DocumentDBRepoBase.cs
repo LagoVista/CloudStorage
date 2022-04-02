@@ -281,9 +281,12 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             if (_cacheProvider != null)
             {
+                var sw = Stopwatch.StartNew();
                 var json = await _cacheProvider.GetAsync(GetCacheKey(id));
                 if (!String.IsNullOrEmpty(json))
                 {
+                    Console.WriteLine($"[DocStorage] Get document From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
+
                     var entity = JsonConvert.DeserializeObject<TEntity>(json);
                     if (entity.EntityType != typeof(TEntity).Name)
                     {
@@ -300,12 +303,18 @@ namespace LagoVista.CloudStorage.DocumentDB
                     else
                         return entity;
                 }
+                else
+                {
+                    Console.WriteLine($"[DocStorage] Cache Miss {GetCacheKey(id)}");
+                }
             }
 
             var doc = await GetDocumentAsync(id, null, throwOnNotFound);
             if(_cacheProvider != null)
             {
+                var sw = Stopwatch.StartNew();
                 await _cacheProvider.AddAsync(GetCacheKey(id), JsonConvert.SerializeObject(doc));
+                Console.WriteLine($"[DocStorage] Add To Cache {GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
             }
 
             return doc;
@@ -315,14 +324,13 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             try
             {
-
                 var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
                 var sw = Stopwatch.StartNew();
                 //We have the Id as Id (case sensitive) so we can work with C# naming conventions, if we use Linq it uses the in Id rather than the "id" that DocumentDB requires.
                 var response = String.IsNullOrEmpty(partitionKey) ? 
                     await Client.ReadDocumentAsync(docUri) : 
                     await Client.ReadDocumentAsync(docUri, new RequestOptions() { PartitionKey = new PartitionKey(partitionKey) });
-                Console.WriteLine($"sw=> Get document {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}");
+                Console.WriteLine($"[DocStorage] Get document From DocStore {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}");
 
                 if (response == null)
                 {
@@ -353,7 +361,6 @@ namespace LagoVista.CloudStorage.DocumentDB
                             return default;
                         }
                     }
-
 
 
                     return entity;
@@ -406,9 +413,11 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<ResourceResponse<Document>> DeleteDocumentAsync(string id)
         {
             var docUri = UriFactory.CreateDocumentUri(_dbName, GetCollectionName(), id);
-            if(_cacheProvider != null)
+
+            if (_cacheProvider != null)
             {
-                await _cacheProvider.RemoveAsync(GetCacheKey(id));
+                var cacheKey = GetCacheKey(id);
+                await _cacheProvider.RemoveAsync(cacheKey);
             }
 
             return await Client.DeleteDocumentAsync(docUri);
@@ -430,7 +439,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var result = await linqQuery.ExecuteNextAsync<TEntity>();
 
-            Console.WriteLine($"=> SW => {sw.Elapsed.TotalMilliseconds}, Result: {result.RequestCharge}, {result.RequestDiagnosticsString} {result.ResponseContinuation}");
+            Console.WriteLine($"[DocStorage] Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {result.RequestCharge}, {result.RequestDiagnosticsString} {result.ResponseContinuation}");
             return result;
         }
 
@@ -442,7 +451,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             var documentLink = await GetCollectionDocumentsLinkAsync();
             var docQuery =  Client.CreateDocumentQuery<TEntity>(documentLink, query, new FeedOptions() { MaxItemCount = 9999 }).AsDocumentQuery();
             var result = await docQuery.ExecuteNextAsync<TEntity>();
-            Console.WriteLine($"=> SW => {sw.Elapsed.TotalMilliseconds}, Result: {result.RequestCharge}, {result.RequestDiagnosticsString} {result.ResponseContinuation}");
+            Console.WriteLine($"[DocStorage] Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {result.RequestCharge}, {result.RequestDiagnosticsString} {result.ResponseContinuation}");
 
             return result;
         }
@@ -479,7 +488,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.PageSize = result.Count;
                 listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
                 listResponse.PageIndex = listRequest.PageIndex;
-                Console.WriteLine($"sw=> Query execution in {sw.Elapsed.TotalMilliseconds}");
+                Console.WriteLine($"[DocStorage] Query execution in {sw.Elapsed.TotalMilliseconds} ms {docQuery}, Request Charge: {result.RequestCharge}, {result.RequestDiagnosticsString} {result.ResponseContinuation}");
 
 
                 return listResponse;
@@ -533,7 +542,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.PageSize = result.Count;
                 listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
                 listResponse.PageIndex = listRequest.PageIndex;
-                Console.WriteLine($"sw=> Query execution in {sw.Elapsed.TotalMilliseconds}");
+                Console.WriteLine($"[DocStorage] Query execution in {sw.Elapsed.TotalMilliseconds}ms, {docQuery} Request Charge: {result.RequestCharge}, {result.RequestDiagnosticsString} {result.ResponseContinuation}");
 
                 return listResponse;
             }
@@ -578,7 +587,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.PageSize = result.Count;
                 listResponse.HasMoreRecords = result.Count == listRequest.PageSize;
                 listResponse.PageIndex = listRequest.PageIndex;
-                Console.WriteLine($"sw=> Query execution in {sw.Elapsed.TotalMilliseconds}");
+                Console.WriteLine($"[DocStorage] Query execution in {sw.Elapsed.TotalMilliseconds}, {docQuery} Request Charge: {result.RequestCharge}, {result.RequestDiagnosticsString} {result.ResponseContinuation}");
 
                 return listResponse;
             }
