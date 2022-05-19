@@ -91,5 +91,15 @@ namespace ThrowAway
         {
             throw new NotImplementedException();
         }
+
+        public void TrackMetric(string kind, string name, MetricType metricType, double count, params KeyValuePair<string, string>[] args)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void TrackMetric(string kind, string name, MetricType metricType, int count, params KeyValuePair<string, string>[] args)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
