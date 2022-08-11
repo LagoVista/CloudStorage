@@ -710,6 +710,74 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
+        public async Task<ListResponse<TEntity>> GetPagedResultsAsync(ListRequest listRequest, params FilterOptions[] filters)
+        {
+            await InitAsync();
+
+            var resource = $"()";
+
+            var query = "?$filter=1 eq 1"; //Just seed this with something so we can use 
+
+            if (!String.IsNullOrEmpty(listRequest.StartDate))
+            {
+                var startTime = listRequest.StartDate.ToDateTime();
+                query += $" and RowKey lt '{startTime.ToInverseTicksRowKey()}'";
+            }
+
+            if (!String.IsNullOrEmpty(listRequest.EndDate))
+            {
+                var endTime = listRequest.EndDate.ToDateTime();
+                query += $" and RowKey gt '{endTime.ToInverseTicksRowKey()}'";
+            }
+
+            query += $"&$top={listRequest.PageSize}";
+
+            if (!String.IsNullOrEmpty(listRequest.NextPartitionKey))
+            {
+                query += $"&NextPartitionKey={listRequest.NextPartitionKey}";
+            }
+
+            if (!String.IsNullOrEmpty(listRequest.NextRowKey))
+            {
+                query += $"&NextRowKey={listRequest.NextRowKey}";
+            }
+
+            var operationUri = new Uri($"{_srvrPath}{resource}{query}");
+            using (var request = CreateRequest())
+            {
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
+
+                using (var response = await request.GetAsync(operationUri))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var json = await response.Content.ReadAsStringAsync();
+                        var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+
+                        var listResponse = ListResponse<TEntity>.Create(resultset.ResultSet);
+                        foreach (var header in response.Headers)
+                        {
+                            if (header.Key == "x-ms-continuation-NextPartitionKey") listResponse.NextPartitionKey = header.Value.First();
+                            if (header.Key == "x-ms-continuation-NextRowKey") listResponse.NextRowKey = header.Value.First();
+                        }
+
+                        listResponse.HasMoreRecords = !String.IsNullOrEmpty(listResponse.NextPartitionKey);
+                        listResponse.PageIndex = listRequest.PageIndex;
+
+                        return listResponse;
+                    }
+                    else
+                    {
+                        _logger.AddError("TableStorageBase_GetPagedResultsAsync(entity)", "failureResponseCode",
+                            new KeyValuePair<string, string>("tableName", GetTableName()),
+                            new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase));
+
+                        throw new Exception($"Non success response from server: {response.ReasonPhrase}");
+                    }
+                }
+            }
+        }
+
         public async Task InsertOrReplaceAsync(TEntity entity)
         {
             if (entity is IValidateable)
