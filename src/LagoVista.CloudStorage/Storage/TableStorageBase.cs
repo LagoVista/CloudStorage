@@ -675,6 +675,8 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
+            Console.WriteLine(operationUri);
+
             using (var request = CreateRequest())
             {
                 request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
@@ -716,18 +718,27 @@ namespace LagoVista.CloudStorage.Storage
 
             var resource = $"()";
 
-            var query = "?$filter=1 eq 1"; //Just seed this with something so we can use 
+            var query = String.Empty; //Just seed this with something so we can use 
 
             if (!String.IsNullOrEmpty(listRequest.StartDate))
             {
                 var startTime = listRequest.StartDate.ToDateTime();
-                query += $" and RowKey lt '{startTime.ToInverseTicksRowKey()}'";
+                query += $"?$filter=RowKey lt '{startTime.ToInverseTicksRowKey()}'";
             }
 
             if (!String.IsNullOrEmpty(listRequest.EndDate))
             {
                 var endTime = listRequest.EndDate.ToDateTime();
-                query += $" and RowKey gt '{endTime.ToInverseTicksRowKey()}'";
+                if(query == String.Empty)
+                    query += $"?$filter=RowKey gt '{endTime.ToInverseTicksRowKey()}'";
+                else
+                    query += $" and RowKey gt '{endTime.ToInverseTicksRowKey()}'";
+            }
+
+            // We just need to provide something for the query.
+            if (query == String.Empty)
+            {
+                query += $"?$filter=RowKey gt '{DateTime.UtcNow.AddMinutes(30).ToInverseTicksRowKey()}'";
             }
 
             query += $"&$top={listRequest.PageSize}";
@@ -743,6 +754,7 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
+            Console.WriteLine(operationUri);
             using (var request = CreateRequest())
             {
                 request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
