@@ -1,9 +1,5 @@
 ﻿using LagoVista.CloudStorage.Models;
 using LagoVista.Core.Models;
-using LagoVista.Core.PlatformSupport;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Auth;
-using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using System;
 using System.Linq;
@@ -22,14 +18,15 @@ using LagoVista.IoT.Logging.Loggers;
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.Core.Models.UIMetaData;
 using System.Diagnostics;
+using Azure.Data.Tables;
 
 namespace LagoVista.CloudStorage.Storage
 {
 
     public abstract class TableStorageBase<TEntity> : IDisposable where TEntity : TableStorageEntity
     {
-        CloudTable _table;
-        CloudTableClient _tableClient;
+//        CloudTable _table;
+        TableClient _tableClient;
 
         IAdminLogger _logger;
         String _srvrPath;
@@ -40,16 +37,20 @@ namespace LagoVista.CloudStorage.Storage
 
         public TableStorageBase(String accountName, string accountKey, IAdminLogger logger)
         {
-            _logger = logger;
-            var credentials = new StorageCredentials(accountName, accountKey);
-            var storageAccount = new CloudStorageAccount(credentials, true);
-            _tableClient = storageAccount.CreateCloudTableClient();
-            _table = _tableClient.GetTableReference(GetTableName());
-
-            _srvrPath = $"https://{accountName}.table.core.windows.net/{GetTableName()}";
-
-            _accountKey = accountKey;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger)); 
+            
+            _accountKey = accountKey ;
             _accountName = accountName;
+            var tableName = GetTableName();
+
+            if (String.IsNullOrEmpty(accountName)) throw new ArgumentNullException(nameof(accountName));
+            if (String.IsNullOrEmpty(accountKey)) throw new ArgumentNullException(nameof(accountKey)); 
+            if (String.IsNullOrEmpty(tableName)) throw new ArgumentNullException(nameof(tableName));
+
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey}";
+            _tableClient = new TableClient(connectionString, tableName);
+            _srvrPath = $"https://{accountName}.table.core.windows.net/{tableName}";
+
         }
 
         public TableStorageBase(IAdminLogger adminLogger)
@@ -76,10 +77,11 @@ namespace LagoVista.CloudStorage.Storage
                 throw ex;
             }
 
-            var credentials = new StorageCredentials(_accountName, _accountKey);
-            var storageAccount = new CloudStorageAccount(credentials, true);
-            _tableClient = storageAccount.CreateCloudTableClient();
-            _table = _tableClient.GetTableReference(GetTableName());
+            var tableName = GetTableName();
+
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey}";
+            _tableClient = new TableClient(connectionString, tableName);
+            _srvrPath = $"https://{accountName}.table.core.windows.net/{tableName}";
 
             _srvrPath = $"https://{_accountName}.table.core.windows.net/{GetTableName()}";
         }
@@ -99,13 +101,6 @@ namespace LagoVista.CloudStorage.Storage
 
         public virtual async Task InitAsync()
         {
-            if (_table == null)
-            {
-                var ex = new InvalidOperationException($"_table Instance not created on {GetType().Name}, either set connection parameters in constructor or with SetConnection");
-                _logger.AddException($"{GetType().Name}_InitAsync", ex);
-                throw ex;
-            }
-
             if (_tableClient == null)
             {
                 var ex = new InvalidOperationException($"_tableClient Instance not created on {GetType().Name}, either set connection parameters in constructor or with SetConnection");
@@ -121,11 +116,11 @@ namespace LagoVista.CloudStorage.Storage
                 }
             }
 
-            await _table.CreateIfNotExistsAsync();
+            await _tableClient.CreateIfNotExistsAsync();
             Initialized = true;
         }
 
-        protected virtual async Task<TableResult> Execute(TableOperation op)
+        /*protected virtual async Task<TableResult> Execute(TableOperation op)
         {
             var result = await _table.ExecuteAsync(op);
 
@@ -143,7 +138,7 @@ namespace LagoVista.CloudStorage.Storage
             {
                 return result;
             }
-        }
+        }*/
 
         private System.Net.Http.HttpClient CreateRequest(String fullResourcePath = "")
         {
@@ -519,7 +514,7 @@ namespace LagoVista.CloudStorage.Storage
         public async Task RemoveByPartitionKeyAsync(string partitionKey, string etag = "*")
         {
             await InitAsync();
-            
+
 
             if (String.IsNullOrEmpty(partitionKey))
             {
@@ -729,7 +724,7 @@ namespace LagoVista.CloudStorage.Storage
             if (!String.IsNullOrEmpty(listRequest.EndDate))
             {
                 var endTime = listRequest.EndDate.ToDateTime();
-                if(query == String.Empty)
+                if (query == String.Empty)
                     query += $"?$filter=RowKey gt '{endTime.ToInverseTicksRowKey()}'";
                 else
                     query += $" and RowKey gt '{endTime.ToInverseTicksRowKey()}'";

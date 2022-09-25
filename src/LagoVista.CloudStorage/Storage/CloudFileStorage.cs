@@ -1,8 +1,8 @@
-﻿using LagoVista.Core;
+﻿using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using LagoVista.Core;
 using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -35,40 +35,27 @@ namespace LagoVista.CloudStorage.Storage
             _containerName = containerName;
         }
 
-        private CloudBlobClient CreateBlobClient()
+        private async Task<BlobContainerClient> CreateBlobContainerClient(String containerName = null)
         {
+            if (string.IsNullOrEmpty(containerName)) containerName = _containerName;
+
             var baseuri = $"https://{_accountId}.blob.core.windows.net";
 
-            var uri = new Uri(baseuri);
-            return new CloudBlobClient(uri, new Microsoft.WindowsAzure.Storage.Auth.StorageCredentials(_accountId, _accessKey));
-        }
-
-        private async Task<InvokeResult<CloudBlobContainer>> GetStorageContainerAsync(string containerName)
-        {
-            var client = CreateBlobClient();
-            var container = client.GetContainerReference(containerName);
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountId};AccountKey={_accessKey}";
+            var blobClient = new BlobServiceClient(connectionString);
             try
             {
-                var options = new BlobRequestOptions()
-                {
-                    MaximumExecutionTime = TimeSpan.FromSeconds(15)
-                };
+                var blobContainerClient = blobClient.GetBlobContainerClient(_containerName);
+                return blobContainerClient;
+            }
+            catch (Exception ex)
+            {
+                var container = await blobClient.CreateBlobContainerAsync(_containerName);
 
-                var opContext = new OperationContext();
-                await container.CreateIfNotExistsAsync(options, opContext);
-                return InvokeResult<CloudBlobContainer>.Create(container);
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.AddException("CloudFileStorage_GetStorageContainerAsync", ex, containerName.ToKVP(nameof(containerName)));
-                return InvokeResult<CloudBlobContainer>.FromException("CloudFileStorage_GetStorageContainerAsync_InitAsync", ex);
-            }
-            catch (StorageException ex)
-            {
-                _logger.AddException("ReportsLibraryRepo_GetStorageContainerAsync", ex, containerName.ToKVP(nameof(containerName)));
-                return InvokeResult<CloudBlobContainer>.FromException("CloudFileStorage_GetStorageContainerAsync", ex);
+                return container.Value;
             }
         }
+
 
         public async Task<InvokeResult<Uri>> AddFileAsync(string fileName, byte[] data, string contentType = "application/octet-stream")
         {
@@ -77,36 +64,35 @@ namespace LagoVista.CloudStorage.Storage
                 throw new ArgumentNullException(nameof(fileName));
             }
 
-            if(data == null)
+            if (data == null)
             {
                 throw new ArgumentNullException(nameof(data));
             }
 
-            var result = await GetStorageContainerAsync(_containerName);
-            if (!result.Successful)
-            {
-                return InvokeResult<Uri>.FromInvokeResult(result.ToInvokeResult());
-            }
+            var containerClient = await CreateBlobContainerClient(_containerName);
 
-            var container = result.Result;
+            var blobClient = containerClient.GetBlobClient(fileName);
+            var header = new BlobHttpHeaders { ContentType = contentType };
 
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
-
-            var blob = container.GetBlockBlobReference(fileName);
-            blob.Properties.ContentType = contentType;
 
             //TODO: Should really encapsulate the idea of retry of an action w/ error reporting
             var numberRetries = 5;
             var retryCount = 0;
             var completed = false;
-            var stream = new MemoryStream(data);
+
             while (retryCount++ < numberRetries && !completed)
             {
                 try
                 {
-                    stream.Seek(0, SeekOrigin.Begin);
-                    await blob.UploadFromStreamAsync(stream);
+                    var binaryData = new BinaryData(data);
+                    var blobResult = await blobClient.UploadAsync(binaryData, new BlobUploadOptions { HttpHeaders = header });
+                    var statusCode = blobResult.GetRawResponse().Status;
+                    if (statusCode < 200 || statusCode > 299)
+                        throw new InvalidOperationException($"Invalid response Code {statusCode}");
+
+                    return InvokeResult<Uri>.Create(blobClient.Uri);
                 }
                 catch (Exception ex)
                 {
@@ -124,7 +110,8 @@ namespace LagoVista.CloudStorage.Storage
                 }
             }
 
-            return InvokeResult<Uri>.Create(blob.Uri);
+            //really never get here....
+            return InvokeResult<Uri>.FromError("Could not upload file");
         }
 
         public async Task<InvokeResult<byte[]>> GetFileAsync(string fileName)
@@ -137,15 +124,9 @@ namespace LagoVista.CloudStorage.Storage
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
 
-            var result = await GetStorageContainerAsync(_containerName);
-            if (!result.Successful)
-            {
-                return InvokeResult<byte[]>.FromInvokeResult(result.ToInvokeResult());
-            }
+            var containerClient = await CreateBlobContainerClient(_containerName);
+            var blobClient = containerClient.GetBlobClient(fileName);
 
-            var container = result.Result;
-
-            var blob = container.GetBlockBlobReference(fileName);
             var numberRetries = 5;
             var retryCount = 0;
             var completed = false;
@@ -153,12 +134,8 @@ namespace LagoVista.CloudStorage.Storage
             {
                 try
                 {
-                    //TODO: We shouldn't likely return a byte array here probably return access to the response object and stream the bytes as they are downloaded, current architecture doesn't support...
-                    using (var ms = new MemoryStream())
-                    {
-                        await blob.DownloadToStreamAsync(ms);
-                        return InvokeResult<byte[]>.Create(ms.ToArray());
-                    }
+                    var content = await blobClient.DownloadContentAsync();
+                    return InvokeResult<byte[]>.Create(content.Value.Content.ToArray());
                 }
                 catch (Exception ex)
                 {
@@ -190,15 +167,8 @@ namespace LagoVista.CloudStorage.Storage
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
 
-            var result = await GetStorageContainerAsync(_containerName);
-            if (!result.Successful)
-            {
-                return result.ToInvokeResult();
-            }
-
-            var container = result.Result;
-
-            var blob = container.GetBlockBlobReference(fileName);
+            var containerClient = await CreateBlobContainerClient(_containerName);
+            var blobClient = containerClient.GetBlobClient(fileName);
             var numberRetries = 5;
             var retryCount = 0;
             var completed = false;
@@ -206,7 +176,7 @@ namespace LagoVista.CloudStorage.Storage
             {
                 try
                 {
-                    await blob.DeleteAsync();
+                    await blobClient.DeleteAsync();
                     return InvokeResult.Success;
                 }
                 catch (Exception ex)

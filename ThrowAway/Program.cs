@@ -14,8 +14,14 @@ namespace ThrowAway
 
         static async void GetRecords()
         {
+            var accountId = Environment.GetEnvironmentVariable("TEST_AZURESTORAGE_ACCOUNTID");
+            var accountKey = Environment.GetEnvironmentVariable("TEST_AZURESTORAGE_ACCESSKEY");
+
+            if (String.IsNullOrEmpty(accountId)) throw new ArgumentNullException("Please add TEST_AZURESTORAGE_ACCOUNTID as an environnment variable");
+            if (String.IsNullOrEmpty(accountKey)) throw new ArgumentNullException("Please add TEST_AZURESTORAGE_ACCESSKEY as an environnment variable");
+
             //TODOO Get from Environment Variable
-            var repo = new UsageMetricsRepo("nuviotdev", "[]", new JunkLogger());
+            var repo = new UsageMetricsRepo(accountId, accountKey, new JunkLogger());
 
             var request = new ListRequest();
             request.PageSize = 50;

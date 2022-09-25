@@ -2,49 +2,57 @@
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.IoT.Logging.Loggers;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Documents.Linq;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Linq;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Storage
 {
+    
     public class StorageUtils
     {
-        private readonly Uri _endpoint;
+        private readonly string _connectionString;
         private readonly string _sharedKey;
         private readonly string _dbName;
         private readonly IAdminLogger _logger;
+        private string _collectionName;
+        private CosmosClient _client;
+        private readonly ICacheProvider _cacheProvider;
 
-        private DocumentClient _documentClient;
 
-        public StorageUtils(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger)
+        public StorageUtils(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null)
         {
-            _endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
             _sharedKey = sharedKey ?? throw new ArgumentNullException(nameof(sharedKey));
             _dbName = dbName ?? throw new ArgumentNullException(nameof(dbName));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cacheProvider = cacheProvider;
+
+            _connectionString = "";
         }
 
-        protected DocumentClient GetDocumentClient()
+        protected CosmosClient GetDocumentClient()
         {
-            if (_documentClient == null)
+
+            if (_client == null)
             {
-                var connectionPolicy = new ConnectionPolicy();
-                connectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 10;
-                connectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 60;
-
-                _documentClient = new DocumentClient(_endpoint, _sharedKey, connectionPolicy);
+                var connectionPolicy = new CosmosClientOptions();
+                _client = new CosmosClient(_connectionString, _sharedKey, connectionPolicy);
             }
-
-            return _documentClient;
+            return _client;
         }
 
-        protected async Task<Database> GetDatabase(DocumentClient client)
+        protected CosmosClient Client
+        {
+            get { return GetDocumentClient(); }
+        }
+
+
+        protected async Task<Database> GetDatabase(CosmosClient client)
         {
             if (String.IsNullOrEmpty(_dbName))
             {
@@ -53,95 +61,57 @@ namespace LagoVista.CloudStorage.Storage
                 throw ex;
             }
 
-            var databases = client.CreateDatabaseQuery().Where(db => db.Id == _dbName).ToArray();
-            if (databases.Any())
-            {
-                return databases.First();
-            }
-
-            return await client.CreateDatabaseAsync(new Database() { Id = _dbName });
+            return _client.GetDatabase(_dbName);
         }
-
-        private async Task<DocumentCollection> GetCollectionAsync()
-        {
-            var client = GetDocumentClient();
-
-            var collectionName = _dbName + "_Collections";
-
-            var databases = client.CreateDocumentCollectionQuery((await GetDatabase(GetDocumentClient())).SelfLink).Where(db => db.Id == collectionName).ToArray();
-            if (databases.Any())
-            {
-                return databases.First();
-            }
-
-            return await client.CreateDocumentCollectionAsync((await GetDatabase(GetDocumentClient())).SelfLink, new DocumentCollection() { Id = collectionName });
-        }
-
-        private String _selfLink;
-        protected async Task<String> GetCollectionDocumentsLinkAsync()
-        {
-            if (String.IsNullOrEmpty(_selfLink))
-            {
-                _selfLink = (await GetCollectionAsync()).DocumentsLink;
-            }
-
-            return _selfLink;
-        }
-
         public async Task<TEntity> FindWithKeyAsync<TEntity>(string key, IEntityHeader org, bool throwOnNotFound = true) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
-            var documentLink = await GetCollectionDocumentsLinkAsync();
-            var docClient = GetDocumentClient();
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var linqQuery = container.GetItemLinqQueryable<TEntity>()
+                    .Where(doc => doc.Key == key && doc.Id == org.Id && doc.EntityType == typeof(TEntity).Name);
 
-            var docQuery = docClient.CreateDocumentQuery<TEntity>(documentLink)
-                .Where(itm => itm.Key == key && itm.OwnerOrganization.Id == org.Id && itm.EntityType == typeof(TEntity).Name)
-                .AsDocumentQuery();
-
-            var result = await docQuery.ExecuteNextAsync<TEntity>();
-            if (result == null && throwOnNotFound)
+            using (var iterator = linqQuery.ToFeedIterator<TEntity>())
             {
-                throw new Exception("Null Response from Query");
+                if(iterator.HasMoreResults)
+                {
+                    var response = await iterator.ReadNextAsync();
+                    return response.SingleOrDefault();
+                }
             }
 
-            return result.FirstOrDefault();
+            return null;
         }
 
         public async Task<TEntity> FindWithKeyAsync<TEntity>(string key) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
-            var documentLink = await GetCollectionDocumentsLinkAsync();
-            var docClient = GetDocumentClient();
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var linqQuery = container.GetItemLinqQueryable<TEntity>()
+                    .Where(doc => doc.Key == key && doc.IsPublic && doc.EntityType == typeof(TEntity).Name);
 
-            var docQuery = docClient.CreateDocumentQuery<TEntity>(documentLink)
-                .Where(itm => itm.Key == key && itm.IsPublic == true && itm.EntityType == typeof(TEntity).Name)
-                .AsDocumentQuery();
-
-            var result = await docQuery.ExecuteNextAsync<TEntity>();
-            if (result == null)
+            using (var iterator = linqQuery.ToFeedIterator<TEntity>())
             {
-                throw new Exception("Null Response from Query");
+                if (iterator.HasMoreResults)
+                {
+                    var response = await iterator.ReadNextAsync();
+                    return response.SingleOrDefault();
+                }
             }
 
-            return result.FirstOrDefault();
+            return null;
         }
 
-        public async Task DeleteIfExistsAsync<TEntity>(string key, IEntityHeader org) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
+        public async Task DeleteByKeyIfExistsAsync<TEntity>(string key, IEntityHeader org) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
-            var entity = await FindWithKeyAsync<TEntity>(key, org, false);
-            if(entity != null)
-            {
-                await DeleteAsync<TEntity>(entity.Id, org);
-            }
+            var item = await FindWithKeyAsync<TEntity>(key, org);
+            if(item == null)
+                await DeleteAsync<TEntity>(item.Id, org);
         }
 
 
         public async Task DeleteAsync<TEntity>(string id, IEntityHeader org) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
-            var documentLink = await GetCollectionDocumentsLinkAsync();
-            var docClient = GetDocumentClient();
+            var container = Client.GetContainer(_dbName, _collectionName);
 
-            var collectionName = _dbName + "_Collections";
-            var docUri = UriFactory.CreateDocumentUri(_dbName, collectionName, id);
-            var response =  await docClient.ReadDocumentAsync(docUri);
+            var response = await container.ReadItemAsync<TEntity>(id, PartitionKey.None); 
 
             if (response.StatusCode == System.Net.HttpStatusCode.OK)
             {
@@ -159,7 +129,7 @@ namespace LagoVista.CloudStorage.Storage
                     throw new NotAuthorizedException($"Attempt to delete record of type {typeof(TEntity).Name} owned by org {entity.OwnerOrganization.Text} by org {org.Text}");
                 }
 
-                await docClient.DeleteDocumentAsync(docUri);
+                await container.DeleteItemAsync<TEntity>(id, PartitionKey.None);
             }
         }
     }
