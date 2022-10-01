@@ -25,7 +25,6 @@ namespace LagoVista.CloudStorage.Storage
 
     public abstract class TableStorageBase<TEntity> : IDisposable where TEntity : TableStorageEntity
     {
-//        CloudTable _table;
         TableClient _tableClient;
 
         IAdminLogger _logger;

@@ -1,22 +1,33 @@
-<?xml version="1.0"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <package>
   <metadata>
     <id>LagoVista.CloudStorage</id>
-    <version>3.0.1956.1311</version>
+    <version>3.0.1963.1135</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <projectUrl>http://www.lagovista-iot.com/opensource</projectUrl>
+    <projectUrl>https://www.nuviot.com</projectUrl>
     <iconUrl>http://bytemaster.blob.core.windows.net/icons/LagoVistaIcon.png</iconUrl>
     <description>Provides an abstact mechanism to store object graphs to cloud storage.</description>
-    <releaseNotes>Early Unstable Release</releaseNotes>
-    <copyright>Copyright 2017</copyright>
+    <copyright>Copyright Software Logistics - 2022</copyright>
     <tags>HomeAutomation IoT LagoVista</tags>
+    <icon>LagoVistaIcon.png</icon>
+    <releaseNotes>Build Date: 10/1/2022 3:35:02 PM UTC</releaseNotes>
+    <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
+      <group targetFramework="netstandard2.1">
+        <dependency id="LagoVista.Core" version="3.0.1963.1135" />
+        <dependency id="LagoVista.IoT.Logging" version="3.0.1963.1135" />
+        <dependency id="Microsoft.Azure.Cosmos" version="3.30.1" />
+        <dependency id="StackExchange.Redis" version="2.6.66" />
+        <dependency id="Azure.Data.Tables" version="12.6.1" />
+        <dependency id="Azure.Storage.Blobs" version="12.13.1" />
+      </group>
     </dependencies>
   </metadata>
   <files>
-    <file src="readme.txt" target="" />
-    <file src="bin\release\netstandard2.1\LagoVista.CloudStorage.dll" target="lib\netstandard2.1" />
+    <file src="LagoVistaIcon.png" target="LagoVistaIcon.png" />
+    <file src="bin\release\netstandard2.1\LagoVista.CloudStorage.dll" target="lib\netstandard2.1\LagoVista.CloudStorage.dll" />
+    <file src="bin\release\netstandard2.1\LagoVista.CloudStorage.pdb" target="lib\netstandard2.1\LagoVista.CloudStorage.pdb" />
   </files>
 </package>
