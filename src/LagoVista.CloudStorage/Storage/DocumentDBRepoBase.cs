@@ -91,6 +91,11 @@ namespace LagoVista.CloudStorage.DocumentDB
             await database.DeleteAsync();
         }
 
+        public virtual string GetPartitionKey()
+        {
+            return "/_partitionKey";
+        }
+
         protected async Task<CosmosClient> GetDocumentClientAsync()
         {
             if (_endPointString == null)
@@ -141,7 +146,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
 
                     var db = _cosmosClient.GetDatabase(_dbName);
-                    var containerResponse = await db.CreateContainerIfNotExistsAsync(GetCollectionName(), "/_partitionKey");
+                    var containerResponse = await db.CreateContainerIfNotExistsAsync(GetCollectionName(), GetPartitionKey());
                     if (containerResponse == null)
                     {
                         var ex = new ArgumentNullException($"Could not crate container null response.");
