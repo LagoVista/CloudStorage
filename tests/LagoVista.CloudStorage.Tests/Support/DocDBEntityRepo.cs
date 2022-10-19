@@ -1,7 +1,9 @@
 ﻿using LagoVista.Core.Models.UIMetaData;
 using LagoVista.IoT.Logging.Loggers;
+using Microsoft.Azure.Cosmos;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -55,6 +57,36 @@ namespace LagoVista.CloudStorage.Tests.Support
         public Task<ListResponse<DocDBEntitty>> GetForOrgDescAsync(string orgid, ListRequest rqst)
         {
             return DescOrderQueryAsync(doc => doc.OwnerOrganization!.Id == orgid, doc=>doc.Index, rqst);
+        }
+
+        public async Task<List<TObj>> GetDocumentSummary<TObj>()
+        {
+            var sql = "SELECT root.id, root.TaskCode, root.Name, root.Status.Id StatusId, root.Status.Text Status from root where root.EntityType = 'WorkTask' and root.Project.Id = '69B0D6F5731D48B9AB0380092BF82339'";
+            var container = await GetContainerAsync();
+
+            var query = new QueryDefinition(sql);
+
+            //foreach (var param in sqlParams)
+            //{
+            //    query = query.WithParameter(param.Name, param.Value);
+            //}
+
+            var sw = Stopwatch.StartNew();
+
+            var items = new List<TObj>();
+
+            using (var resultSet = container.GetItemQueryIterator<TObj>(query))
+            {
+                var page = 1;
+                while (resultSet.HasMoreResults)
+                {
+                    var response = await resultSet.ReadNextAsync();
+                    Console.WriteLine($"[DocStorage] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                    items.AddRange(response);
+                }
+            }
+
+            return items;
         }
 
 
