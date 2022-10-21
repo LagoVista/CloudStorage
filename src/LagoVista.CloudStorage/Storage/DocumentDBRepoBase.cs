@@ -14,7 +14,7 @@ using LagoVista.CloudStorage.Exceptions;
 using System.Diagnostics;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
-using Prometheus.Client;
+using Prometheus;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
@@ -32,17 +32,24 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         private static bool _isDBCheckComplete = false;
 
-        protected static readonly IMetricFamily<IGauge> DocumentRequestCharge = Metrics.DefaultFactory.CreateGauge("nuviot_document_request_charge", "Elapsed time for document get.", true, "collection");
-        protected static readonly IMetricFamily<IGauge> DocumentGet = Metrics.DefaultFactory.CreateGauge("nuviot_document_get", "Elapsed time for document get.", true, "entity");
-        protected static readonly IMetricFamily<IGauge> DocumentInsert = Metrics.DefaultFactory.CreateGauge("nuviot_document_insert", "Elapsed time for document insert.", true, "entity");
-        protected static readonly IMetricFamily<IGauge> DocumentUpdate = Metrics.DefaultFactory.CreateGauge("nuviot_document_update", "Elapsed time for document update.", true, "entity");
-        protected static readonly IMetricFamily<IGauge> DocumentDelete = Metrics.DefaultFactory.CreateGauge("nuviot_document_delete", "Elapsed time for document delete.", true, "entity");
-        protected static readonly IMetricFamily<IGauge> DocumentQuery = Metrics.DefaultFactory.CreateGauge("nuviot_document_query", "Elapsed time for document query.", true, "entity");
-        protected static readonly IMetricFamily<ICounter> DocumentErrors = Metrics.DefaultFactory.CreateCounter("nuviot_document_errors", "Error count in document store.", true, "entity");
-        protected static readonly IMetricFamily<ICounter> DocumentNotFound = Metrics.DefaultFactory.CreateCounter("nuviot_document_record_not_found", "Record not found count.", true, "entity");
-        protected static readonly IMetricFamily<ICounter> DocumentCacheHit = Metrics.DefaultFactory.CreateCounter("nuviot_document_cache_hit", "Document Cache Hit.", true, "entity");
-        protected static readonly IMetricFamily<ICounter> DocumentCacheMiss = Metrics.DefaultFactory.CreateCounter("nuviot_document_cache_miss", "Document Cache Miss.", true, "entity");
-        protected static readonly IMetricFamily<ICounter> DocumentNotCached = Metrics.DefaultFactory.CreateCounter("nuviot_document_not_cached", "Document Not Cached.", true, "entity");
+        private static readonly Gauge SQLInsertMetric = Metrics.CreateGauge("sql_insert", "Elapsed tie for SQL insert.",
+           new GaugeConfiguration
+           {
+                // Here you specify only the names of the labels.
+                LabelNames = new[] { "action" }
+           });
+
+        protected static readonly Gauge DocumentRequestCharge = Metrics.CreateGauge("nuviot_document_request_charge", "Elapsed time for document get.","collection");
+        protected static readonly Histogram DocumentGet = Metrics.CreateHistogram("nuviot_document_get", "Elapsed time for document get.","entity");
+        protected static readonly Histogram DocumentInsert = Metrics.CreateHistogram("nuviot_document_insert", "Elapsed time for document insert.", "entity");
+        protected static readonly Histogram DocumentUpdate = Metrics.CreateHistogram("nuviot_document_update", "Elapsed time for document update.", "entity");
+        protected static readonly Histogram DocumentDelete = Metrics.CreateHistogram("nuviot_document_delete", "Elapsed time for document delete.", "entity");
+        protected static readonly Histogram DocumentQuery = Metrics.CreateHistogram("nuviot_document_query", "Elapsed time for document query.", "entity");
+        protected static readonly Counter DocumentErrors = Metrics.CreateCounter("nuviot_document_errors", "Error count in document store.", "entity");
+        protected static readonly Counter DocumentNotFound = Metrics.CreateCounter("nuviot_document_record_not_found", "Record not found count.", "entity");
+        protected static readonly Counter DocumentCacheHit = Metrics.CreateCounter("nuviot_document_cache_hit", "Document Cache Hit.","entity");
+        protected static readonly Counter DocumentCacheMiss = Metrics.CreateCounter("nuviot_document_cache_miss", "Document Cache Miss.", "entity");
+        protected static readonly Counter DocumentNotCached = Metrics.CreateCounter("nuviot_document_not_cached", "Document Not Cached.", "entity");
 
         public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null)
         {
@@ -264,7 +271,8 @@ namespace LagoVista.CloudStorage.DocumentDB
             else
             {
                 Console.WriteLine($"{GetType().Name}__{nameof(CreateDocumentAsync)} - Request Cost - {response.RequestCharge} - Elapsed {sw.Elapsed.TotalMilliseconds}ms");
-               DocumentInsert.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalSeconds);
+
+                DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
                 DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
             }
 
@@ -298,6 +306,8 @@ namespace LagoVista.CloudStorage.DocumentDB
             var container = await GetContainerAsync();
 
             var sw = Stopwatch.StartNew();
+            var timer = DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
+
             var upsertResult = await container.UpsertItemAsync(item);
             switch (upsertResult.StatusCode)
             {
@@ -330,7 +340,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     break;
             }
 
-            DocumentGet.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalSeconds);
+            timer.Dispose();
             DocumentRequestCharge.WithLabels(GetCollectionName()).Set(upsertResult.RequestCharge);
 
             if (_cacheProvider != null)
@@ -400,6 +410,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
 
                 var sw = Stopwatch.StartNew();
+                var timer = DocumentGet.WithLabels(typeof(TEntity).Name).NewTimer();
 
                 var response = await container.ReadItemAsync<TEntity>(id, String.IsNullOrEmpty(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey));
 
@@ -426,7 +437,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                         }
                         else
                         {
-                            DocumentGet.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalMilliseconds);
+                            timer.Dispose();
                             DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
                             return default;
                         }
@@ -493,20 +504,19 @@ namespace LagoVista.CloudStorage.DocumentDB
                 await _cacheProvider.RemoveAsync(cacheKey);
             }
 
-            var sw = Stopwatch.StartNew();
+            var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
 
             var container = await GetContainerAsync();
 
             var result = await container.DeleteItemAsync<TEntity>(id, PartitionKey.None);
-            DocumentDelete.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalSeconds);
+            timer.Dispose();
 
             return result;
         }
 
         protected async Task<ItemResponse<TEntity>> DeleteDocumentAsync(string id, string partitionKey)
         {
-            var sw = Stopwatch.StartNew();
-
+            var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
             if (_cacheProvider != null)
             {
                 var cacheKey = GetCacheKey(id);
@@ -516,13 +526,14 @@ namespace LagoVista.CloudStorage.DocumentDB
             var container = await GetContainerAsync();
             var partitionKeyValue = new PartitionKey(partitionKey);
             var response = await container.DeleteItemAsync<TEntity>(id, partitionKeyValue);
-            DocumentDelete.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalSeconds);
+            timer.Dispose();
             return response;
         }
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
         {
             var sw = Stopwatch.StartNew();
+            var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
             var items = new List<TEntity>();
 
@@ -549,7 +560,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
             }
 
-            DocumentQuery.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalSeconds);
+            timer.Dispose();
             DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
             return items;
@@ -565,6 +576,8 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
 
             var sw = Stopwatch.StartNew();
+            var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+
             var requestCharge = 0.0;
 
             var items = new List<TEntity>();
@@ -582,7 +595,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
             }
 
-            DocumentQuery.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalSeconds);
+            timer.Dispose();
             DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
             return items;
@@ -593,6 +606,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             try
             {
                 var sw = Stopwatch.StartNew();
+                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
                 var items = new List<TEntity>();
                 var requestCharge = 0.0;
@@ -625,7 +639,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.HasMoreRecords = items.Count == listRequest.PageSize;
                 listResponse.PageIndex = listRequest.PageIndex;
 
-                DocumentQuery.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalSeconds);
+                timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
                 return listResponse;
@@ -653,6 +667,8 @@ namespace LagoVista.CloudStorage.DocumentDB
             try
             {
                 var sw = Stopwatch.StartNew();
+                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+
                 var items = new List<TEntity>();
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
@@ -678,7 +694,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                 }
 
-                DocumentQuery.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalSeconds);
+                timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
                 var listResponse = ListResponse<TEntity>.Create(items);
@@ -708,6 +724,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             try
             {
                 var sw = Stopwatch.StartNew();
+                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
                 var items = new List<TEntity>();
 
@@ -735,7 +752,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                 }
 
-                DocumentQuery.WithLabels(typeof(TEntity).Name).Set(sw.Elapsed.TotalSeconds);
+                timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
                 var listResponse = ListResponse<TEntity>.Create(items);
