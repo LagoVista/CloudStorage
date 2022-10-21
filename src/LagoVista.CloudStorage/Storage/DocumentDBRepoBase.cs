@@ -40,11 +40,47 @@ namespace LagoVista.CloudStorage.DocumentDB
            });
 
         protected static readonly Gauge DocumentRequestCharge = Metrics.CreateGauge("nuviot_document_request_charge", "Elapsed time for document get.","collection");
-        protected static readonly Histogram DocumentGet = Metrics.CreateHistogram("nuviot_document_get", "Elapsed time for document get.","entity");
-        protected static readonly Histogram DocumentInsert = Metrics.CreateHistogram("nuviot_document_insert", "Elapsed time for document insert.", "entity");
-        protected static readonly Histogram DocumentUpdate = Metrics.CreateHistogram("nuviot_document_update", "Elapsed time for document update.", "entity");
-        protected static readonly Histogram DocumentDelete = Metrics.CreateHistogram("nuviot_document_delete", "Elapsed time for document delete.", "entity");
-        protected static readonly Histogram DocumentQuery = Metrics.CreateHistogram("nuviot_document_query", "Elapsed time for document query.", "entity");
+        protected static readonly Histogram DocumentGet = Metrics.CreateHistogram("nuviot_document_get", "Elapsed time for document get.",
+          new HistogramConfiguration
+          {
+              // Here you specify only the names of the labels.
+              LabelNames = new[] { "entity" },
+              Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
+          });
+
+        protected static readonly Histogram DocumentInsert = Metrics.CreateHistogram("nuviot_document_insert", "Elapsed time for document insert.",
+          new HistogramConfiguration
+          {
+              // Here you specify only the names of the labels.
+              LabelNames = new[] { "entity" },
+              Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
+          });
+        
+        protected static readonly Histogram DocumentUpdate = Metrics.CreateHistogram("nuviot_document_update", "Elapsed time for document update.",
+          new HistogramConfiguration
+          {
+              // Here you specify only the names of the labels.
+              LabelNames = new[] { "entity" },
+              Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
+          });
+        
+        protected static readonly Histogram DocumentDelete = Metrics.CreateHistogram("nuviot_document_delete", "Elapsed time for document delete.",
+          new HistogramConfiguration
+          {
+              // Here you specify only the names of the labels.
+              LabelNames = new[] { "entity" },
+              Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
+          });
+
+        protected static readonly Histogram DocumentQuery = Metrics.CreateHistogram("nuviot_document_query", "Elapsed time for document query.",
+          new HistogramConfiguration
+          {
+              // Here you specify only the names of the labels.
+              LabelNames = new[] { "entity" },
+              Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
+          });
+
+
         protected static readonly Counter DocumentErrors = Metrics.CreateCounter("nuviot_document_errors", "Error count in document store.", "entity");
         protected static readonly Counter DocumentNotFound = Metrics.CreateCounter("nuviot_document_record_not_found", "Record not found count.", "entity");
         protected static readonly Counter DocumentCacheHit = Metrics.CreateCounter("nuviot_document_cache_hit", "Document Cache Hit.","entity");
