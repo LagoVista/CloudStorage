@@ -6,114 +6,139 @@ using System.Collections.Generic;
 
 namespace LagoVista.CloudStorage.Storage
 {
-	public class CacheProvider : ICacheProvider
-	{
-		private readonly ConnectionMultiplexer _multiplexer = null;
+    public class CacheProvider : ICacheProvider
+    {
+        private readonly ConnectionMultiplexer _multiplexer = null;
 
+        private static Dictionary<string, string> _inMemoryCache = null;
 
-		public CacheProvider(ICacheProviderSettings settings)
-		{
-			if (settings.UseCache)
-			{
-				_multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
-			}
-			else
+        public CacheProvider(ICacheProviderSettings settings)
+        {
+            if (settings.UseCache)
             {
-				Console.WriteLine("Not using cache.");
+                _multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
             }
-		}
+        }
 
-		public Task AddAsync(string key, string value)
-		{
-			if (_multiplexer != null)
-			{
-				var db = _multiplexer.GetDatabase();
-				return db.StringSetAsync(key, value);
-			}
+        public Task AddAsync(string key, string value)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                Console.WriteLine($"[RemoteCache__AddAsync] Key: {key}");
 
-			return Task.CompletedTask;
-		}
+                return db.StringSetAsync(key, value);
+            }
+            else if (_inMemoryCache != null)
+            {
+                if (_inMemoryCache.ContainsKey(key))
+                    _inMemoryCache.Remove(key);
 
-		public Task AddToCollectionAsync(string collectionKey, string key, string value)
-		{
-			if (_multiplexer != null)
-			{
-				var db = _multiplexer.GetDatabase();
-				return db.HashSetAsync(collectionKey, key, value);
-			}
+                _inMemoryCache.Add(key, value);
+            }
 
-			return Task.CompletedTask;
-		}
+            return Task.CompletedTask;
+        }
 
-		public async Task<string> GetAsync(string key)
-		{
-			if (_multiplexer != null)
-			{
-				var db = _multiplexer.GetDatabase();
-				var result = await db.StringGetAsync(key);
+        public Task AddToCollectionAsync(string collectionKey, string key, string value)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                return db.HashSetAsync(collectionKey, key, value);
+            }
 
-				Console.WriteLine($"Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(result)}");
-				return (string)result;
-			}
+            return Task.CompletedTask;
+        }
 
-			return null;
-		}
+        public async Task<string> GetAsync(string key)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                var result = await db.StringGetAsync(key);
 
-		public async Task<IEnumerable<object>> GetCollection(string collectionKey)
-		{
-			if (_multiplexer != null)
-			{
-				var db = _multiplexer.GetDatabase();
-				Console.WriteLine($"Getting cache collection: {collectionKey} found in cache: {await db.KeyExistsAsync(collectionKey) && await db.KeyTypeAsync(collectionKey) == RedisType.Hash}");
-
-				var result = await db.HashGetAllAsync(collectionKey);
-				return result.Cast<object>();
-			}
-			return null;
-		}
-
-		public async Task<string> GetFromCollection(string collectionKey, string key)
-		{
-			if (_multiplexer != null)
-			{
-				var db = _multiplexer.GetDatabase();
-				Console.WriteLine($"Getting cache collection item: {collectionKey} found in cache: {await db.HashExistsAsync(collectionKey, key)}");
-
-				var result = await db.HashGetAsync(collectionKey, key);
-				return (string)result;
-			}
-
-			return null;
-		}
-
-		public Task RemoveAsync(string key)
-		{
-			if (_multiplexer != null)
-			{
-				var db = _multiplexer.GetDatabase();
-				if(db == null)
+                Console.WriteLine($"[RemoteCache__GetAsync] Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(result)}");
+                return (string)result;
+            }
+            else
+            {
+                if (_inMemoryCache != null)
                 {
-					throw new ArgumentNullException("Database for cache provider is null.");
+                    if (_inMemoryCache.ContainsKey(key))
+                    {
+                        Console.WriteLine($"[InMemoryCache__GetAsync (in memory)] - Cache Hit - {key}.");
+                        return _inMemoryCache[key];
+                    }
+                    else
+                    {
+                        Console.WriteLine("[InMemoryCache__GetAsync (in memory)] - Cache Miss.");
+                    }
                 }
 
-				Console.WriteLine($"Removing item with key: {key}");
-				return db.KeyDeleteAsync(key);
-			}
+            }
+            return null;
+        }
 
-			return Task.CompletedTask;
-		}
+        public async Task<IEnumerable<object>> GetCollection(string collectionKey)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                Console.WriteLine($"Getting cache collection: {collectionKey} found in cache: {await db.KeyExistsAsync(collectionKey) && await db.KeyTypeAsync(collectionKey) == RedisType.Hash}");
 
-		public Task RemoveFromCollectionAsync(string collectionKey, string key)
-		{
-			if (_multiplexer != null)
-			{
-				var db = _multiplexer.GetDatabase();
+                var result = await db.HashGetAllAsync(collectionKey);
+                return result.Cast<object>();
+            }
+            return null;
+        }
 
-				Console.WriteLine($"Removing item with key: {key} from collection: {collectionKey}");
-				return db.HashDeleteAsync(collectionKey, key);
-			}
+        public async Task<string> GetFromCollection(string collectionKey, string key)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                Console.WriteLine($"Getting cache collection item: {collectionKey} found in cache: {await db.HashExistsAsync(collectionKey, key)}");
 
-			return Task.CompletedTask;
-		}
-	}
+                var result = await db.HashGetAsync(collectionKey, key);
+                return (string)result;
+            }
+
+            return null;
+        }
+
+        public Task RemoveAsync(string key)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                if (db == null)
+                {
+                    throw new ArgumentNullException("Database for cache provider is null.");
+                }
+
+                Console.WriteLine($"Removing item with key: {key}");
+                return db.KeyDeleteAsync(key);
+            }
+            else if (_inMemoryCache != null)
+            {
+                _inMemoryCache.Remove(key);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveFromCollectionAsync(string collectionKey, string key)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+
+                Console.WriteLine($"Removing item with key: {key} from collection: {collectionKey}");
+                return db.HashDeleteAsync(collectionKey, key);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
 }
