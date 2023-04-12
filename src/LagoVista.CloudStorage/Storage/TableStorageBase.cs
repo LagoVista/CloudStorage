@@ -559,51 +559,10 @@ namespace LagoVista.CloudStorage.Storage
         {
             await InitAsync();
 
-
-            if (String.IsNullOrEmpty(partitionKey))
+            var records = await GetByParitionIdAsync(partitionKey);
+            foreach(var record in records)
             {
-                _logger.AddError("TableStorageBase_RemoveAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
-                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
-            }
-
-            var fullResourcePath = $"(PartitionKey='{partitionKey}')";
-            var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
-            Console.WriteLine($"[TableStorageBase__RemoveByPartitionKeyAsync] {operationUri}");
-
-            using (var removeTimer = DeleteMetric.WithLabels(typeof(TEntity).Name))
-            using (var request = CreateRequest(fullResourcePath))
-            {
-
-                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "DELETE", fullResourcePath: fullResourcePath);
-                request.DefaultRequestHeaders.Add("If-Match", etag);
-
-                using (var response = await request.DeleteAsync(operationUri))
-                {
-                    if (response.IsSuccessStatusCode)
-                    {
-                        return;
-                    }
-
-                    if (response.StatusCode == HttpStatusCode.PreconditionFailed)
-                    {
-                        _logger.AddError("TableStorageBase_RemoveAsync(PartitionKey)", "contentModified",
-                          new KeyValuePair<string, string>("tableName", GetTableName()),
-                          new KeyValuePair<string, string>("partitionKey", partitionKey));
-                        ErrorMetric.WithLabels(typeof(TEntity).Name, "RemoveAsync", "Precodition__ContentModified");
-
-                        throw new ContentModifiedException();
-
-                    }
-
-                    _logger.AddError("TableStorageBase_RemoveAsync(PartitionKey)", "failureResponseCode",
-                        new KeyValuePair<string, string>("tableName", GetTableName()),
-                        new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
-                        new KeyValuePair<string, string>("partitionKey", partitionKey));
-                    ErrorMetric.WithLabels(typeof(TEntity).Name, "RemoveAsync", response.StatusCode.ToString());
-
-
-                    throw new Exception($"Non success response from server: {response.ReasonPhrase}");
-                }
+                await RemoveAsync(record.PartitionKey, record.RowKey);
             }
         }
 

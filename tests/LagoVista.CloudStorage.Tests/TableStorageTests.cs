@@ -67,6 +67,28 @@ namespace LagoVista.CloudStorage.IntegrationTests
         }
 
         [Test]
+        public async Task Should_Remove_All_By_PartitionKey()
+        {
+            await InsertManyItems(50);
+            await _entityRepo!.RemoveByPartitionKeyAsync(PARITION_KEY);
+        }
+
+        [Test]
+        public async Task Should_Delete_Entity()
+        {
+            var entity = new TSEntity()
+            {
+                RowKey = DateTime.UtcNow.ToInverseTicksRowKey(),
+                PartitionKey = PARITION_KEY,
+                Value1 = "NAME_VAL_1",
+                Value2 = "NAME_VAL_2",
+            };
+
+            await _entityRepo!.AddTSEtnityAsync(entity);
+            await _entityRepo!.RemoveAsync(entity.PartitionKey, entity.RowKey);
+        }
+
+        [Test]
         public async Task Should_Insert_And_Read_TSEntity()
         {
             var rowKey = DateTime.UtcNow.ToInverseTicksRowKey();
