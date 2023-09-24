@@ -1,8 +1,5 @@
 ﻿using LagoVista.CloudStorage.Storage;
 using LagoVista.Core.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LagoVista.CloudStorage
 {
@@ -11,6 +8,7 @@ namespace LagoVista.CloudStorage
         public static void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<ICacheProvider, CacheProvider>();
+            services.AddSingleton<IStorageUtils, StorageUtils>();
         }
     }
 }
