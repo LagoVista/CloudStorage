@@ -7,6 +7,7 @@ using Microsoft.Azure.Cosmos.Linq;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -79,6 +80,7 @@ namespace LagoVista.CloudStorage.Storage
         }
         public async Task<TEntity> FindWithKeyAsync<TEntity>(string key, IEntityHeader org, bool throwOnNotFound = true) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
+            var sw = Stopwatch.StartNew();
             var container = Client.GetContainer(_dbName, _collectionName);
             var linqQuery = container.GetItemLinqQueryable<TEntity>()
                     .Where(doc => doc.Key == key && doc.OwnerOrganization.Id == org.Id && doc.EntityType == typeof(TEntity).Name);
@@ -88,12 +90,12 @@ namespace LagoVista.CloudStorage.Storage
                 if (iterator.HasMoreResults)
                 {
                     var response = await iterator.ReadNextAsync();
-                    Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Success found {key} of type {typeof(TEntity).Name} for organization {org.Text}");
+                    Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Success found {key} of type {typeof(TEntity).Name} for organization {org.Text} in {sw.Elapsed.TotalMilliseconds}ms");
                     return response.SingleOrDefault();
                 }
             }
 
-            Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Faile did not find {key} of type {typeof(TEntity).Name} for organization {org.Text}");
+            Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Faile did not find {key} of type {typeof(TEntity).Name} for organization {org.Text} in {sw.Elapsed.TotalMilliseconds}ms");
 
             return null;
         }
