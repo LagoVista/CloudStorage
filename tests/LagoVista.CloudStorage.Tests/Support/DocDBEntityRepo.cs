@@ -54,6 +54,11 @@ namespace LagoVista.CloudStorage.Tests.Support
             return QueryAllAsync(doc => doc.OwnerOrganization!.Id == orgid, rqst);
         }
 
+        public Task<ListResponse<DocDBEntitty>> GetOrderedQuery(ListRequest rqst)
+        {
+            return QueryAsync(doc => true, doc =>  doc.Name, rqst);
+        }
+
         public Task<ListResponse<DocDBEntitty>> GetForOrgDescAsync(string orgid, ListRequest rqst)
         {
             return DescOrderQueryAsync(doc => doc.OwnerOrganization!.Id == orgid, doc=>doc.Index, rqst);

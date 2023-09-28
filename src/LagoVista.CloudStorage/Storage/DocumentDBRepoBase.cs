@@ -159,14 +159,14 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (_endPointString == null)
             {
                 var ex = new ArgumentNullException($"Invalid or missing end point information on {GetType().Name}");
-                _logger.AddException($"{GetType().Name}_GetDocumentClientAsync", ex);
+                _logger.AddException($"[{GetType().Name}_GetDocumentClientAsync[", ex);
                 throw ex;
             }
 
             if (String.IsNullOrEmpty(_sharedKey))
             {
                 var ex = new ArgumentNullException($"Invalid or missing shared key information on {GetType().Name}");
-                _logger.AddException($"{GetType().Name}_GetDocumentClientAsync", ex);
+                _logger.AddException($"[{GetType().Name}_GetDocumentClientAsync]", ex);
                 throw ex;
             }
 
@@ -190,7 +190,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     if (dbCreateResponse == null)
                     {
                         var ex = new ArgumentNullException($"Could not crate database null response.");
-                        _logger.AddException($"{GetType().Name}_GetDocumentClientAsync", ex);
+                        _logger.AddException($"[{GetType().Name}_GetDocumentClientAsync]", ex);
                         throw ex;
                     }
 
@@ -198,7 +198,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                        dbCreateResponse.StatusCode != System.Net.HttpStatusCode.Created)
                     {
                         var ex = new ArgumentNullException($"Invalid status code from create database - {dbCreateResponse.StatusCode}.");
-                        _logger.AddException($"{GetType().Name}_CGetDocumentClientAsync", ex);
+                        _logger.AddException($"[{GetType().Name}_CGetDocumentClientAsync]", ex);
                         throw ex;
                     }
 
@@ -208,7 +208,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     if (containerResponse == null)
                     {
                         var ex = new ArgumentNullException($"Could not crate container null response.");
-                        _logger.AddException($"{GetType().Name}_GetDocumentClientAsync", ex);
+                        _logger.AddException($"[{GetType().Name}_GetDocumentClientAsync]", ex);
                         throw ex;
                     }
 
@@ -216,17 +216,17 @@ namespace LagoVista.CloudStorage.DocumentDB
                        containerResponse.StatusCode != System.Net.HttpStatusCode.Created)
                     {
                         var ex = new ArgumentNullException($"Invalid status code from create container - {containerResponse.StatusCode}.");
-                        _logger.AddException($"{GetType().Name}_GetDocumentClientAsync", ex);
+                        _logger.AddException($"[{GetType().Name}_GetDocumentClientAsync]", ex);
                         throw ex;
                     }
 
-                    Console.WriteLine($"[{GetType().Name}__GetDocumentClientAsync - Execution Time {sw.Elapsed.TotalMilliseconds}ms");
+                    Console.WriteLine($"[{GetType().Name}__GetDocumentClientAsync] - Execution Time {sw.Elapsed.TotalMilliseconds}ms");
                     _isDBCheckComplete = true;
                 }
             }
             else
             {
-                Console.WriteLine($"[{GetType().Name}__GetDocumentClientAsync - reuse existing cosmos db connection");
+                Console.WriteLine($"[{GetType().Name}__GetDocumentClientAsync] - reuse existing cosmos db connection");
             }            
 
 
@@ -658,6 +658,9 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
+                    if (!iterator.HasMoreResults)
+                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
+
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
@@ -682,7 +685,72 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             catch (Exception ex)
             {
-                _logger.AddException("DocumentDBBase", ex, typeof(TEntity).Name.ToKVP("entityType"));
+                _logger.AddException("[DocumentDBBase_QueryAsync] (query, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
+
+                DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
+
+                var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
+                listResponse.Errors.Add(new ErrorMessage(ex.Message));
+                return listResponse;
+            }
+        }
+
+
+        protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, 
+                            System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
+        {
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+
+                var items = new List<TEntity>();
+                var requestCharge = 0.0;
+
+                var container = await GetContainerAsync();
+                var linqQuery = container.GetItemLinqQueryable<TEntity>()
+                        .Where(query)
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name)
+                        .OrderBy(sort)
+                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                        .Take(listRequest.PageSize);
+
+                var page = 1;
+
+                Console.WriteLine($"[DocStorage] Query {page++} Query Document {linqQuery}");
+
+
+                using (var iterator = linqQuery.ToFeedIterator<TEntity>())
+                {
+
+                    if(!iterator.HasMoreResults)
+                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
+
+                    while (iterator.HasMoreResults)
+                    {
+                        var response = await iterator.ReadNextAsync();
+                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        requestCharge += response.RequestCharge;
+                        foreach (var item in response)
+                        {
+                            items.Add(item);
+                        }
+                    }
+                }
+
+                var listResponse = ListResponse<TEntity>.Create(items);
+                listResponse.PageSize = items.Count;
+                listResponse.HasMoreRecords = items.Count == listRequest.PageSize;
+                listResponse.PageIndex = listRequest.PageIndex;
+
+                timer.Dispose();
+                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
+
+                return listResponse;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException("[DocumentDBBase__QueryAsync] (query, sort, listRquest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
 
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
 
@@ -742,7 +810,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             catch (Exception ex)
             {
-                _logger.AddException("DocumentDBBase", ex, typeof(TEntity).Name.ToKVP("entityType"));
+                _logger.AddException("[DocumentDBBase_QueryAll] (query, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
 
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
 

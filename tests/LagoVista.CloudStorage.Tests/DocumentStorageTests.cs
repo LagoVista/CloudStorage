@@ -26,8 +26,6 @@ namespace LagoVista.CloudStorage.Tests
         public void Setup()
         {
             _accountId = Environment.GetEnvironmentVariable("TEST_DOCDB_ACCOUNTID");
-
-
             _accountKey = Environment.GetEnvironmentVariable("TEST_DOCDB_ACCOUTKEY");
 
             if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Please add TEST_AZURESTORAGE_ACCOUNTID as an environnment variable");
@@ -237,6 +235,19 @@ namespace LagoVista.CloudStorage.Tests
         _docDBEntityRepo = new Support.DocDBEntityRepo(new Uri(_uri!), _accountKey!, DBNAME, new AdminLogger());
         await _docDBEntityRepo!.CreateDBDocment(CreateDoc());
     }
+
+        [Test]
+        public async Task Get_Document_Query_OrderBy()
+        {
+            var rqst = new ListRequest()
+            {
+                PageSize = 50,
+                PageIndex = 1,
+            };
+
+            var result = await _docDBEntityRepo!.GetOrderedQuery(rqst);
+            Assert.IsTrue(result.Successful, result.Errors.FirstOrDefault()?.Message);
+        }
 
     private Support.DocDBEntitty CreateDoc(string? orgId = null)
     {
