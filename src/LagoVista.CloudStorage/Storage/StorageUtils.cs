@@ -95,7 +95,29 @@ namespace LagoVista.CloudStorage.Storage
                 }
             }
 
-            Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Faile did not find {key} of type {typeof(TEntity).Name} for organization {org.Text} in {sw.Elapsed.TotalMilliseconds}ms");
+            Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Failed did not find {key} of type {typeof(TEntity).Name} for organization {org.Text} in {sw.Elapsed.TotalMilliseconds}ms");
+
+            return null;
+        }
+
+        public async Task<IStandardModel> FindWithKeyAsync(string objectType, string key, IEntityHeader org, bool throwOnNotFound = true) 
+        {
+            var sw = Stopwatch.StartNew();
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var linqQuery = container.GetItemLinqQueryable<IStandardModel>()
+                    .Where(doc => doc.Key == key && doc.OwnerOrganization.Id == org.Id && doc.EntityType ==  objectType);
+
+            using (var iterator = linqQuery.ToFeedIterator<IStandardModel>())
+            {
+                if (iterator.HasMoreResults)
+                {
+                    var response = await iterator.ReadNextAsync();
+                    Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Success found {key} of type {objectType} for organization {org.Text} in {sw.Elapsed.TotalMilliseconds}ms");
+                    return response.SingleOrDefault();
+                }
+            }
+
+            Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Failed did not find {key} of type {objectType} for organization {org.Text} in {sw.Elapsed.TotalMilliseconds}ms");
 
             return null;
         }
