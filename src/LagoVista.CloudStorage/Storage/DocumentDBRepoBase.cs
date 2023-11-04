@@ -397,24 +397,32 @@ namespace LagoVista.CloudStorage.DocumentDB
                 {
                     Console.WriteLine($"[DocStorage] Get document From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
 
-                    var entity = JsonConvert.DeserializeObject<TEntity>(json);
-                    if (entity.EntityType != typeof(TEntity).Name)
+                    try
                     {
-                        if (throwOnNotFound)
+                        var entity = JsonConvert.DeserializeObject<TEntity>(json);
+                        if (entity.EntityType != typeof(TEntity).Name)
                         {
-                            _logger.AddCustomEvent(LogLevel.Error, "[DocumentDBRepoBase_GetDocumentAsync]", $"Type Mismatch", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("id", id));
-                            DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
-                            throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                            if (throwOnNotFound)
+                            {
+                                _logger.AddCustomEvent(LogLevel.Error, "[DocumentDBRepoBase_GetDocumentAsync]", $"Type Mismatch", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("id", id));
+                                DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
+                                throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                            }
+                            else
+                            {
+                                return default;
+                            }
                         }
                         else
                         {
-                            return default;
+                            DocumentCacheHit.WithLabels(typeof(TEntity).Name).Inc();
+                            return entity;
                         }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        DocumentCacheHit.WithLabels(typeof(TEntity).Name).Inc();
-                        return entity;
+                        Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Exception Deserializing Object: {GetCacheKey(id)} - {ex.Message}");
+                        await _cacheProvider.RemoveAsync(GetCacheKey(id));
                     }
                 }
                 else
