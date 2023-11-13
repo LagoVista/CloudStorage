@@ -768,6 +768,70 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
+        protected async Task<ListResponse<TEntity>> QueryDescendingAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
+                          System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
+        {
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+
+                var items = new List<TEntity>();
+                var requestCharge = 0.0;
+
+                var container = await GetContainerAsync();
+                var linqQuery = container.GetItemLinqQueryable<TEntity>()
+                        .Where(query)
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name)
+                        .OrderByDescending(sort)
+                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                        .Take(listRequest.PageSize);
+
+                var page = 1;
+
+                Console.WriteLine($"[DocStorage] Query {page++} Query Document {linqQuery}");
+
+
+                using (var iterator = linqQuery.ToFeedIterator<TEntity>())
+                {
+
+                    if (!iterator.HasMoreResults)
+                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
+
+                    while (iterator.HasMoreResults)
+                    {
+                        var response = await iterator.ReadNextAsync();
+                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        requestCharge += response.RequestCharge;
+                        foreach (var item in response)
+                        {
+                            items.Add(item);
+                        }
+                    }
+                }
+
+                var listResponse = ListResponse<TEntity>.Create(items);
+                listResponse.PageSize = items.Count;
+                listResponse.HasMoreRecords = items.Count == listRequest.PageSize;
+                listResponse.PageIndex = listRequest.PageIndex;
+
+                timer.Dispose();
+                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
+
+                return listResponse;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException("[DocumentDBBase__QueryAsync] (query, sort, listRquest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
+
+                DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
+
+                var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
+                listResponse.Errors.Add(new ErrorMessage(ex.Message));
+                return listResponse;
+            }
+        }
+
         /// <summary>
         /// Return all objects, independent of entity type
         /// </summary>

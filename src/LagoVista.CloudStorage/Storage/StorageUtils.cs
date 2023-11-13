@@ -67,7 +67,7 @@ namespace LagoVista.CloudStorage.Storage
         }
 
 
-        protected async Task<Database> GetDatabase(CosmosClient client)
+        protected Task<Database> GetDatabase(CosmosClient client)
         {
             if (String.IsNullOrEmpty(_dbName))
             {
@@ -76,7 +76,7 @@ namespace LagoVista.CloudStorage.Storage
                 throw ex;
             }
 
-            return _client.GetDatabase(_dbName);
+            return Task.FromResult( _client.GetDatabase(_dbName));
         }
         public async Task<TEntity> FindWithKeyAsync<TEntity>(string key, IEntityHeader org, bool throwOnNotFound = true) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
