@@ -6,7 +6,7 @@ using System;
 
 namespace LagoVista.CloudStorage.Tests.Support
 {
-    public class DocDBEntitty : IIDEntity, IKeyedEntity, IOwnedEntity, INoSQLEntity
+    public class DocDBEntitty : IIDEntity, INamedEntity, IKeyedEntity, IOwnedEntity, INoSQLEntity
     {
         [JsonProperty("id")]
         public string? Id { get; set; } = Guid.NewGuid().ToId();

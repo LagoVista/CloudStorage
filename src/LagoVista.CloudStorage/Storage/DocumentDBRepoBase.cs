@@ -20,7 +20,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
 
 
-    public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity, INoSQLEntity
+    public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity, INamedEntity, INoSQLEntity
     {
         private string _endPointString;
         private string _sharedKey;
