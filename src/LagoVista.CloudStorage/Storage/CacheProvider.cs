@@ -3,6 +3,7 @@ using StackExchange.Redis;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
+using LagoVista.Core.Interfaces;
 
 namespace LagoVista.CloudStorage.Storage
 {

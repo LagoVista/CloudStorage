@@ -11,9 +11,9 @@ namespace LagoVista.CloudStorage.IntegrationTests
 {
     public class StorageUtilsTest
     {
-        private string? _accountId;
-        private string? _accountKey;
-        private string? _uri;
+        private string _accountId;
+        private string _accountKey;
+        private string _uri;
 
         const string ORGID = "DDF92E1566C54AA3A8011EE0879D49E3";
         IStorageUtils _storageUtils;

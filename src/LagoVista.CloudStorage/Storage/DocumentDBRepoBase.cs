@@ -20,7 +20,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
 
 
-    public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity, INamedEntity, INoSQLEntity
+    public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
     {
         private string _endPointString;
         private string _sharedKey;
@@ -29,6 +29,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private CosmosClient _cosmosClient;
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
+        private readonly IDependencyManager _dependencyManager;
 
         private static bool _isDBCheckComplete = false;
 
@@ -87,7 +88,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected static readonly Counter DocumentCacheMiss = Metrics.CreateCounter("nuviot_document_cache_miss", "Document Cache Miss.", "entity");
         protected static readonly Counter DocumentNotCached = Metrics.CreateCounter("nuviot_document_not_cached", "Document Not Cached.", "entity");
 
-        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null)
+        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null)
         {
             _endPointString = endpoint.ToString();
 
@@ -95,6 +96,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             _dbName = dbName;
             _logger = logger;
             _cacheProvider = cacheProvider;
+            _dependencyManager = dependencyManager;
 
             _defaultCollectionName = typeof(TEntity).Name;
             if (!_defaultCollectionName.ToLower().EndsWith("s"))
@@ -104,7 +106,8 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
 
-        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null) : this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider)
+        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null) :
+            this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager)
         {
 
         }
@@ -336,6 +339,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
             }
 
+
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
 
@@ -343,6 +347,30 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var sw = Stopwatch.StartNew();
             var timer = DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
+
+            if (_dependencyManager != null)
+            {
+                var exisitng = await GetDocumentAsync(item.Id);
+                if (exisitng.Name != item.Name)
+                {
+                    var dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item);
+                    if(dependencyResult.IsInUse)
+                    {
+                        Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] - Object {item.Name} in use");
+                        foreach (var obj in dependencyResult.DependentObjects)
+                            await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, obj.Id, obj.RecordType, item.Name);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] - Object {item.Name} name not changed");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] - Dependency Manager is null");
+            }
+
 
             var upsertResult = await container.UpsertItemAsync(item);
             switch (upsertResult.StatusCode)
@@ -372,7 +400,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 case System.Net.HttpStatusCode.OK:
                 case System.Net.HttpStatusCode.Created:
-                    Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] Get document From DocStore {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {upsertResult.RequestCharge}");
+                    Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] Document Update {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {upsertResult.RequestCharge}");
                     break;
             }
 
@@ -542,13 +570,24 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<ItemResponse<TEntity>> DeleteDocumentAsync(string id)
         {
+            var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
+            var doc = await GetDocumentAsync(id);
+
+            if(_dependencyManager != null)
+            {
+                var dependencyies = await _dependencyManager.CheckForDependenciesAsync(doc);
+                if(dependencyies.IsInUse)
+                {
+                    timer.Dispose();
+                    throw new InUseException(dependencyies);
+                }
+            }
+
             if (_cacheProvider != null)
             {
                 var cacheKey = GetCacheKey(id);
                 await _cacheProvider.RemoveAsync(cacheKey);
             }
-
-            var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
 
             var container = await GetContainerAsync();
 
@@ -561,6 +600,18 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<ItemResponse<TEntity>> DeleteDocumentAsync(string id, string partitionKey)
         {
             var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
+            var doc = await GetDocumentAsync(id, partitionKey);
+
+            if (_dependencyManager != null)
+            {
+                var dependencyies = await _dependencyManager.CheckForDependenciesAsync(doc);
+                if (dependencyies.IsInUse)
+                {
+                    timer.Dispose();
+                    throw new InUseException(dependencyies);
+                }
+            }
+
             if (_cacheProvider != null)
             {
                 var cacheKey = GetCacheKey(id);

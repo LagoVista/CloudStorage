@@ -10,10 +10,10 @@ namespace LagoVista.CloudStorage.IntegrationTests
 {
     public class TableStorageTests
     {
-        private string? _accountId;
-        private string? _accountKey;
+        private string _accountId;
+        private string _accountKey;
 
-        TSEntityRepo? _entityRepo;
+        TSEntityRepo _entityRepo;
 
         const string PARITION_KEY = "01763EBDE58E41C1B69D395AD1A03A21";
 
