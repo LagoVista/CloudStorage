@@ -31,6 +31,8 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
 
+        private bool _verboseLogging = false;
+
         private static bool _isDBCheckComplete = false;
 
         private static readonly Gauge SQLInsertMetric = Metrics.CreateGauge("sql_insert", "Elapsed tie for SQL insert.",
@@ -229,7 +231,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             else
             {
-                Console.WriteLine($"[{GetType().Name}__GetDocumentClientAsync] - reuse existing cosmos db connection");
+              if(_verboseLogging) Console.WriteLine($"[{GetType().Name}__GetDocumentClientAsync] - reuse existing cosmos db connection");
             }            
 
 
@@ -363,7 +365,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
                 else
                 {
-                    Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] - Object {item.Name} name not changed");
+                    if (_verboseLogging) Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] - Object {item.Name} name not changed");
                 }
             }
             else
@@ -423,7 +425,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var json = await _cacheProvider.GetAsync(GetCacheKey(id));
                 if (!String.IsNullOrEmpty(json))
                 {
-                    Console.WriteLine($"[DocStorage] Get document From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
+                    if (_verboseLogging) Console.WriteLine($"[DocStorage] Get document From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
 
                     try
                     {
@@ -456,7 +458,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 else
                 {
                     DocumentCacheMiss.WithLabels(typeof(TEntity).Name).Inc();
-                    Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Cache Miss {GetCacheKey(id)}");
+                    if (_verboseLogging) Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Cache Miss {GetCacheKey(id)}");
                 }
             }
             else
@@ -469,7 +471,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             {
                 var sw = Stopwatch.StartNew();
                 await _cacheProvider.AddAsync(GetCacheKey(id), JsonConvert.SerializeObject(doc));
-                Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Add To Cache {GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
+                if (_verboseLogging) Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Add To Cache {GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
             }
 
             return doc;
@@ -486,7 +488,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 var response = await container.ReadItemAsync<TEntity>(id, String.IsNullOrEmpty(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey));
 
-                Console.WriteLine($"[DocumentDBRepoBase__GetDocumentAsync] Get document From DocStore {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}");
+                if (_verboseLogging) Console.WriteLine($"[DocumentDBRepoBase__GetDocumentAsync] Get document From DocStore {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}");
 
                 if (response == null)
                 {
@@ -646,7 +648,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 while (iterator.HasMoreResults)
                 {
                     var response = await iterator.ReadNextAsync();
-                    Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                    if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                     requestCharge += response.RequestCharge;
                     foreach (var item in response)
                     {
@@ -684,7 +686,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 while (resultSet.HasMoreResults)
                 {
                     var response = await resultSet.ReadNextAsync();
-                    Console.WriteLine($"[DocStorage] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                    if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                     requestCharge += response.RequestCharge;
                     items.AddRange(response);
                 }
@@ -717,13 +719,13 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
-                    if (!iterator.HasMoreResults)
+                    if (_verboseLogging && !iterator.HasMoreResults)
                         Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
 
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                         requestCharge += response.RequestCharge; 
                         foreach (var item in response)
                         {
@@ -778,17 +780,16 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 Console.WriteLine($"[DocStorage] Query {page++} Query Document {linqQuery}");
 
-
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
 
-                    if(!iterator.HasMoreResults)
+                    if(_verboseLogging && !iterator.HasMoreResults)
                         Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
 
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                         requestCharge += response.RequestCharge;
                         foreach (var item in response)
                         {
@@ -846,13 +847,13 @@ namespace LagoVista.CloudStorage.DocumentDB
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
 
-                    if (!iterator.HasMoreResults)
+                    if (_verboseLogging && !iterator.HasMoreResults)
                         Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
 
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                         requestCharge += response.RequestCharge;
                         foreach (var item in response)
                         {
