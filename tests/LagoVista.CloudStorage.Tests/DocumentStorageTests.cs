@@ -32,7 +32,7 @@ namespace LagoVista.CloudStorage.Tests
             if (String.IsNullOrEmpty(_accountKey)) throw new ArgumentNullException("Please add TEST_AZURESTORAGE_ACCESSKEY as an environnment variable");
 
             _uri = $"https://{_accountId}.documents.azure.com:443";
-            var dbName = "nuviot";
+            var dbName = DBNAME;
 
             _docDBEntityRepo = new Support.DocDBEntityRepo(new Uri(_uri), _accountKey, dbName, new AdminLogger());
         }
@@ -194,7 +194,7 @@ namespace LagoVista.CloudStorage.Tests
 
             for (var idx = 0; idx < 100; idx++)
             {
-                var doc = CreateDoc();
+                var doc = CreateDoc(idx: idx);
                 doc.Index = idx;
                 await _docDBEntityRepo!.CreateDBDocment(doc);
             }
@@ -203,7 +203,7 @@ namespace LagoVista.CloudStorage.Tests
 
             for (var idx = 200; idx < 300; idx++)
             {
-                var doc = CreateDoc(ORGID2);
+                var doc = CreateDoc(ORGID2, idx: idx);
                 doc.Index = idx;
                 await _docDBEntityRepo!.CreateDBDocment(doc);
             }
@@ -249,26 +249,40 @@ namespace LagoVista.CloudStorage.Tests
             Assert.IsTrue(result.Successful, result.Errors.FirstOrDefault()?.Message);
         }
 
-        private Support.DocDBEntitty CreateDoc(string orgId = null)
+
+        [Test]
+        public async Task Get_Document_Query_Summary_OrderBy()
+        {
+            await Create200DocsAsync();
+            var rqst = new ListRequest()
+            {
+                PageSize = 50,
+                PageIndex = 1,
+            };
+
+            var result = await _docDBEntityRepo!.GetOrderedSummaryQuery(rqst);
+            Assert.IsTrue(result.Successful, result.Errors.FirstOrDefault()?.Message);
+        }
+
+        private Support.DocDBEntitty CreateDoc(string orgId = null, int? idx = null)
         {
             return new Support.DocDBEntitty()
             {
                 Id = Guid.NewGuid().ToId(),
-                Name = Guid.NewGuid().ToString(),
+                Name = idx.HasValue ? $"Index {idx.Value}" : Guid.NewGuid().ToString(),
+                Key = Guid.NewGuid().ToId().ToLower().Substring(0, 20),
                 OwnerOrganization = EntityHeader.Create(orgId ?? ORGID, "TEST ORDER")
             };
         }
 
         [TearDown]
-        public Task CleanUp()
+        public async Task CleanUp()
         {
             var uri = $"https://{_accountId}.documents.azure.com:443";
             var client = new CosmosClient(uri, _accountKey);
 
-            // var db = client.GetDatabase(DBNAME);
-            //await db.DeleteAsync();
-
-            return Task.CompletedTask;
+            var db = client.GetDatabase(DBNAME);
+            await db.DeleteAsync();
         }
     }
 }

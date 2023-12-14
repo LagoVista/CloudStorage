@@ -734,11 +734,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                 }
 
-                var listResponse = ListResponse<TEntity>.Create(items);
-                listResponse.PageSize = items.Count;
-                listResponse.HasMoreRecords = items.Count == listRequest.PageSize;
-                listResponse.PageIndex = listRequest.PageIndex;
-
+                var listResponse = ListResponse<TEntity>.Create(listRequest, items);
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
@@ -798,13 +794,12 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                 }
 
-                var listResponse = ListResponse<TEntity>.Create(items);
-                listResponse.PageSize = items.Count;
-                listResponse.HasMoreRecords = items.Count == listRequest.PageSize;
-                listResponse.PageIndex = listRequest.PageIndex;
-
+                var listResponse = ListResponse<TEntity>.Create(listRequest, items);
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
+
+                Console.WriteLine(listRequest);
+                Console.WriteLine(listResponse);
 
                 return listResponse;
             }
@@ -815,6 +810,68 @@ namespace LagoVista.CloudStorage.DocumentDB
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
 
                 var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
+                listResponse.Errors.Add(new ErrorMessage(ex.Message));
+                return listResponse;
+            }
+        }
+
+        protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
+                           System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity
+        {
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+
+                var items = new List<TEntityFactory>();
+                var requestCharge = 0.0;
+
+                var container = await GetContainerAsync();
+                var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
+                        .Where(query)
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name)
+                        .OrderBy(sort)
+                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                        .Take(listRequest.PageSize);
+
+                var page = 1;
+
+                Console.WriteLine($"[DocStorage] Query {page++} Query Document {linqQuery}");
+
+                using (var iterator = linqQuery.ToFeedIterator<TEntityFactory>())
+                {
+
+                    if (_verboseLogging && !iterator.HasMoreResults)
+                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
+
+                    while (iterator.HasMoreResults)
+                    {
+                        var response = await iterator.ReadNextAsync();
+                        if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        requestCharge += response.RequestCharge;
+                        foreach (var item in response)
+                        {
+                            items.Add(item);
+                        }
+                    }
+                }
+
+                var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm=>itm.CreateSummary() as TEntitySummary));
+                timer.Dispose();
+                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
+
+                Console.WriteLine(listRequest);
+                Console.WriteLine(listResponse);
+
+                return listResponse;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException("[DocumentDBBase__QueryAsync] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
+
+                DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
+
+                var listResponse = ListResponse<TEntitySummary>.Create(new List<TEntitySummary>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
@@ -862,14 +919,13 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                 }
 
-                var listResponse = ListResponse<TEntity>.Create(items);
-                listResponse.PageSize = items.Count;
-                listResponse.HasMoreRecords = items.Count == listRequest.PageSize;
-                listResponse.PageIndex = listRequest.PageIndex;
 
+                var listResponse = ListResponse<TEntity>.Create(listRequest, items);
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
+                Console.WriteLine(listRequest);
+                Console.WriteLine(listResponse);
                 return listResponse;
             }
             catch (Exception ex)
@@ -925,12 +981,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
-                var listResponse = ListResponse<TEntity>.Create(items);
-                listResponse.PageSize = items.Count;
-                listResponse.HasMoreRecords = items.Count == listRequest.PageSize;
-                listResponse.PageIndex = listRequest.PageIndex;
-
-                return listResponse;
+                return ListResponse<TEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
             {
@@ -983,12 +1034,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
-                var listResponse = ListResponse<TEntity>.Create(items);
-                listResponse.PageSize = listRequest.PageSize;
-                listResponse.HasMoreRecords = items.Count == listRequest.PageSize;
-                listResponse.PageIndex = listRequest.PageIndex;
-
-                return listResponse;
+                return ListResponse<TEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
             {

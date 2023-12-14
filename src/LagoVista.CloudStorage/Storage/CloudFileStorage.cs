@@ -48,7 +48,7 @@ namespace LagoVista.CloudStorage.Storage
                 var blobContainerClient = blobClient.GetBlobContainerClient(_containerName);
                 return blobContainerClient;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 var container = await blobClient.CreateBlobContainerAsync(_containerName);
 
