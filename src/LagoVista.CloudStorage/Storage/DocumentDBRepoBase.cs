@@ -859,10 +859,62 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm=>itm.CreateSummary() as TEntitySummary));
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
+                return listResponse;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException("[DocumentDBBase__QueryAsync] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
 
-                Console.WriteLine(listRequest);
-                Console.WriteLine(listResponse);
+                DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
 
+                var listResponse = ListResponse<TEntitySummary>.Create(new List<TEntitySummary>());
+                listResponse.Errors.Add(new ErrorMessage(ex.Message));
+                return listResponse;
+            }
+        }
+
+        protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TEntitySummary : class
+        {
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+
+                var items = new List<TEntitySummary>();
+                var requestCharge = 0.0;
+
+                var query = new QueryDefinition(sql);
+                
+                foreach (var param in sqlParams)
+                {
+                    query = query.WithParameter(param.Name, param.Value);
+                }
+
+                var page = 1;
+
+                Console.WriteLine($"[DocStorage] Query {page++} Query Document {sql}");
+                var container = await GetContainerAsync();
+
+                using (var iterator = container.GetItemQueryIterator<TEntitySummary>(query))
+                {
+                    if (_verboseLogging && !iterator.HasMoreResults)
+                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms");
+
+                    while (iterator.HasMoreResults)
+                    {
+                        var response = await iterator.ReadNextAsync();
+                        if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        requestCharge += response.RequestCharge;
+                        foreach (var item in response)
+                        {
+                            items.Add(item);
+                        }
+                    }
+                }
+
+                var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items);
+                timer.Dispose();
+                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
                 return listResponse;
             }
             catch (Exception ex)
