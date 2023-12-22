@@ -12,6 +12,18 @@ namespace LagoVista.CloudStorage.Tests.Support
 
         public int Index { get; set; }
 
+        public string FieldOne { get; set; }
+
+        public string FieldTwo { get; set; }
+
+        public string FieldThree { get; set; }
+
+        public string FieldFour { get; set; }
+
+        public string FieldFive { get; set; }
+
+        public string FieldSix { get; set; }
+
         public DocDbSummary CreateSummary()
         {
             return new DocDbSummary()
@@ -30,6 +42,7 @@ namespace LagoVista.CloudStorage.Tests.Support
 
     public class DocDbSummary : SummaryData
     {
-
+        public string FieldTwo { get; set; }
+        public string FieldThree { get; set; }
     }
 }
