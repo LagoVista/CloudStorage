@@ -669,9 +669,12 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             var query = new QueryDefinition(sql);
 
+            Console.WriteLine(sql);
+
             foreach (var param in sqlParams)
             {
                 query = query.WithParameter(param.Name, param.Value);
+                Console.WriteLine($"\t{param.Name} - {param.Value}");
             }
 
             var sw = Stopwatch.StartNew();
