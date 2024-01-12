@@ -35,7 +35,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         private static bool _isDBCheckComplete = false;
 
-        private static readonly Gauge SQLInsertMetric = Metrics.CreateGauge("sql_insert", "Elapsed tie for SQL insert.",
+        private static readonly Gauge SQLInsertMetric = Metrics.CreateGauge("sql_insert", "Elapsed time for SQL insert.",
            new GaugeConfiguration
            {
                 // Here you specify only the names of the labels.
@@ -50,6 +50,8 @@ namespace LagoVista.CloudStorage.DocumentDB
               LabelNames = new[] { "entity" },
               Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
           });
+
+
 
         protected static readonly Histogram DocumentInsert = Metrics.CreateHistogram("nuviot_document_insert", "Elapsed time for document insert.",
           new HistogramConfiguration
@@ -485,8 +487,8 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 var sw = Stopwatch.StartNew();
                 var timer = DocumentGet.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var response = await container.ReadItemAsync<TEntity>(id, String.IsNullOrEmpty(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey));
+                timer.Dispose();
 
                 if (_verboseLogging) Console.WriteLine($"[DocumentDBRepoBase__GetDocumentAsync] Get document From DocStore {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}");
 
@@ -496,6 +498,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                     DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
                 }
+
+                DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
 
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
@@ -511,13 +515,11 @@ namespace LagoVista.CloudStorage.DocumentDB
                         }
                         else
                         {
-                            timer.Dispose();
-                            DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
                             return default;
                         }
                     }
 
-
+                   
                     return entity;
                 }
                 else
