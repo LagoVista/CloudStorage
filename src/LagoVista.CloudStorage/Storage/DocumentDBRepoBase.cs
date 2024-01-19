@@ -372,7 +372,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             else
             {
-                Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] - Dependency Manager is null");
+                if (_verboseLogging) Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] - Dependency Manager is null");
             }
 
 
@@ -421,13 +421,14 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<TEntity> GetDocumentAsync(string id, bool throwOnNotFound = true)
         {
+            var sw = Stopwatch.StartNew();
+
             if (_cacheProvider != null)
             {
-                var sw = Stopwatch.StartNew();
                 var json = await _cacheProvider.GetAsync(GetCacheKey(id));
                 if (!String.IsNullOrEmpty(json))
                 {
-                    if (_verboseLogging) Console.WriteLine($"[DocStorage] Get document From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
+                    Console.WriteLine($"[DocStorage] Get document From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
 
                     try
                     {
@@ -453,14 +454,15 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Exception Deserializing Object: {GetCacheKey(id)} - {ex.Message}");
+                        DocumentErrors.Inc();
+                        Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Exception Deserializing Object: {typeof(TEntity).Name} {GetCacheKey(id)} - {ex.Message}");
                         await _cacheProvider.RemoveAsync(GetCacheKey(id));
                     }
                 }
                 else
                 {
                     DocumentCacheMiss.WithLabels(typeof(TEntity).Name).Inc();
-                    if (_verboseLogging) Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Cache Miss {GetCacheKey(id)}");
+                    Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Cache Miss {typeof(TEntity).Name} {GetCacheKey(id)}");
                 }
             }
             else
@@ -468,12 +470,14 @@ namespace LagoVista.CloudStorage.DocumentDB
                 DocumentNotCached.WithLabels(typeof(TEntity).Name).Inc();
             }
 
+            sw = Stopwatch.StartNew();
             var doc = await GetDocumentAsync(id, null, throwOnNotFound);
+            Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Load Document {typeof(TEntity).Name} - {sw.ElapsedMilliseconds}ms");
             if (_cacheProvider != null)
             {
-                var sw = Stopwatch.StartNew();
+                sw = Stopwatch.StartNew();
                 await _cacheProvider.AddAsync(GetCacheKey(id), JsonConvert.SerializeObject(doc));
-                if (_verboseLogging) Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Add To Cache {GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
+                Console.WriteLine($"[DocumentDBRepoBase_GetDocumentAsync] Add To Cache {typeof(TEntity).Name}{GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
             }
 
             return doc;
@@ -490,7 +494,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var response = await container.ReadItemAsync<TEntity>(id, String.IsNullOrEmpty(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey));
                 timer.Dispose();
 
-                if (_verboseLogging) Console.WriteLine($"[DocumentDBRepoBase__GetDocumentAsync] Get document From DocStore {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}");
+                Console.WriteLine($"[DocumentDBRepoBase__GetDocumentAsync] Get document From DocStore {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}");
 
                 if (response == null)
                 {
