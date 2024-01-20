@@ -366,8 +366,8 @@ namespace LagoVista.CloudStorage.Storage
         {
             if (entity == null)
             {
-                _logger.AddError("TableStorageBase_InsertAsync(entity)", "NULL value provided.", GetTableName().ToKVP("tableName"));
-                throw new Exception("Null Value Provided for InsertAsync(entity).");
+                _logger.AddError($"TableStorageBase_InsertAsync({typeof(TEntity).Name})", "NULL value provided.", GetTableName().ToKVP("tableName"));
+                throw new Exception($"Null Value Provided for InsertAsync({typeof(TEntity).Name}).");
             }
 
             if (entity is IValidateable)
@@ -384,13 +384,13 @@ namespace LagoVista.CloudStorage.Storage
 
             if (String.IsNullOrEmpty(entity.RowKey))
             {
-                _logger.AddError("TableStorageBase_InsertAsync(entity)", "emptyRowKey", GetTableName().ToKVP("tableName"));
+                _logger.AddError($"TableStorageBase_InsertAsync({typeof(TEntity).Name})", "emptyRowKey", GetTableName().ToKVP("tableName"));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
             if (String.IsNullOrEmpty(entity.PartitionKey))
             {
-                _logger.AddError("TableStorageBase_InsertAsync(entity)", "emptyPartitionKey", GetTableName().ToKVP("tableName"));
+                _logger.AddError($"TableStorageBase_InsertAsync({typeof(TEntity).Name})", "emptyPartitionKey", GetTableName().ToKVP("tableName"));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
@@ -417,7 +417,7 @@ namespace LagoVista.CloudStorage.Storage
 
                         ErrorMetric.WithLabels(typeof(TEntity).Name, "InsertAsync", response.StatusCode.ToString());
 
-                        _logger.AddError("TableStorageBase_InsertAsync(entity)", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
+                        _logger.AddError($"TableStorageBase_InsertAsync({typeof(TEntity).Name})", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
 
                         throw new Exception($"Non success response from server: {response.ReasonPhrase}");
                     }
