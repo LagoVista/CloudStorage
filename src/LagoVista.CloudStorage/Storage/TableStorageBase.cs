@@ -656,7 +656,7 @@ namespace LagoVista.CloudStorage.Storage
 
             var resource = $"()";
 
-            var query = (filters.Length > 0) ? $"{GetFilter(filters.ToList())} and PartitionKey eq '{partitionKey}'" : $"?$filter=PartitionKey eq '{partitionKey}'";
+            var query = (filters.Length > 0) ? $"{GetFilter(filters.ToList())} and PartitionKey eq '{partitionKey}'" : $"?$filter=(PartitionKey eq '{partitionKey}')";
 
             if (!String.IsNullOrEmpty(listRequest.StartDate))
             {
@@ -669,8 +669,6 @@ namespace LagoVista.CloudStorage.Storage
                 var endTime = listRequest.EndDate.ToDateTime();
                 query += $" and RowKey gt '{endTime.ToInverseTicksRowKey()}'";
             }
-
-            query += $"&$top={listRequest.PageSize}";
 
             if (!String.IsNullOrEmpty(listRequest.NextPartitionKey))
             {
