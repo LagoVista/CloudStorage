@@ -410,9 +410,12 @@ namespace LagoVista.CloudStorage.Storage
                     if (!response.IsSuccessStatusCode)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"[TableStorageBase__InsertAsync(entity)__{typeof(TEntity).Name}");
+                        Console.WriteLine($"[TableStorageBase__InsertAsync(entity)__{typeof(TEntity).Name}]");
                         Console.WriteLine("Error Inserting");
+                        Console.WriteLine(_srvrPath);
+                        Console.WriteLine(json);
                         Console.WriteLine(response.ReasonPhrase);
+                        Console.WriteLine($"[TableStorageBase__InsertAsync(entity)__{typeof(TEntity).Name}]");
                         Console.ResetColor();
 
                         ErrorMetric.WithLabels(typeof(TEntity).Name, "InsertAsync", response.StatusCode.ToString());
