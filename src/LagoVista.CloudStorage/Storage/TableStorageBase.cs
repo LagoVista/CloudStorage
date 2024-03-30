@@ -170,7 +170,10 @@ namespace LagoVista.CloudStorage.Storage
                 }
             }
 
+            var sw = Stopwatch.StartNew();
             await _tableClient.CreateIfNotExistsAsync();
+
+            Console.WriteLine($"[TableStorageBase__InitAsync__{typeof(TEntity).Name}] Create If not Exists {sw.ElapsedMilliseconds}ms");
             Initialized = true;
         }
 
@@ -224,8 +227,8 @@ namespace LagoVista.CloudStorage.Storage
 
         private async Task<TEntity> Get(String fullResourcePath)
         {
+            var sw = Stopwatch.StartNew();
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
-            Console.WriteLine($"[TableStorageBase__Get] {operationUri}");
 
             using (var metric = GetMetric.WithLabels(typeof(TEntity).Name).NewTimer())
             using (var request = CreateRequest(fullResourcePath))
@@ -237,6 +240,7 @@ namespace LagoVista.CloudStorage.Storage
                     if (response.IsSuccessStatusCode)
                     {
                         var json = await response.Content.ReadAsStringAsync();
+                        Console.WriteLine($"[TableStorageBase__Get__${typeof(TEntity).Name}] {operationUri} {sw.ElapsedMilliseconds}ms");
                         return JsonConvert.DeserializeObject<TEntity>(json);
                     }
 
@@ -364,9 +368,11 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task InsertAsync(TEntity entity)
         {
+            var sw = Stopwatch.StartNew();
+
             if (entity == null)
             {
-                _logger.AddError($"TableStorageBase_InsertAsync({typeof(TEntity).Name})", "NULL value provided.", GetTableName().ToKVP("tableName"));
+                _logger.AddError($"TableStorageBase_InsertAsync__{typeof(TEntity).Name})", "NULL value provided.", GetTableName().ToKVP("tableName"));
                 throw new Exception($"Null Value Provided for InsertAsync({typeof(TEntity).Name}).");
             }
 
@@ -384,13 +390,13 @@ namespace LagoVista.CloudStorage.Storage
 
             if (String.IsNullOrEmpty(entity.RowKey))
             {
-                _logger.AddError($"TableStorageBase_InsertAsync({typeof(TEntity).Name})", "emptyRowKey", GetTableName().ToKVP("tableName"));
+                _logger.AddError($"TableStorageBase_InsertAsync__({typeof(TEntity).Name})", "emptyRowKey", GetTableName().ToKVP("tableName"));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
             if (String.IsNullOrEmpty(entity.PartitionKey))
             {
-                _logger.AddError($"TableStorageBase_InsertAsync({typeof(TEntity).Name})", "emptyPartitionKey", GetTableName().ToKVP("tableName"));
+                _logger.AddError($"TableStorageBase_InsertAsync(__{typeof(TEntity).Name})", "emptyPartitionKey", GetTableName().ToKVP("tableName"));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
 
@@ -424,12 +430,15 @@ namespace LagoVista.CloudStorage.Storage
 
                         throw new Exception($"Non success response from server: {response.ReasonPhrase}");
                     }
+                    else
+                        Console.WriteLine($"[TableStorageBase__InsertAsync__${typeof(TEntity).Name}] {sw.ElapsedMilliseconds}ms");
                 }
             }
         }
 
         public async Task InsertAsync(string json)
         {
+            var sw = Stopwatch.StartNew();
             using (var insertMetric = CreateMetric.WithLabels(typeof(TEntity).Name))
             using (var request = CreateRequest())
             {
@@ -453,12 +462,15 @@ namespace LagoVista.CloudStorage.Storage
                         _logger.AddError("TableStorageBase_InsertAsync(json)", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
                         throw new Exception($"Non success response from server: {response.ReasonPhrase}");
                     }
+                    else
+                        Console.WriteLine($"[TableStorageBase__InsertAsync__${typeof(TEntity).Name}] {sw.ElapsedMilliseconds}ms");
                 }
             }
         }
 
         public async Task UpdateAsync(string partitionKey, string rowKey, string json, string etag)
         {
+            var sw = Stopwatch.StartNew();
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
 
@@ -495,6 +507,9 @@ namespace LagoVista.CloudStorage.Storage
                             throw new Exception(response.ReasonPhrase);
                         }
                     }
+                    else
+                        Console.WriteLine($"[TableStorageBase__UpdateAsync__${typeof(TEntity).Name}] {operationUri} {sw.ElapsedMilliseconds}ms");
+
                 }
             }
         }
@@ -502,6 +517,8 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task RemoveAsync(string partitionKey, string rowKey, string etag = "*")
         {
+            var sw = Stopwatch.StartNew();
+           
             await InitAsync();
 
             if (String.IsNullOrEmpty(rowKey))
@@ -518,7 +535,7 @@ namespace LagoVista.CloudStorage.Storage
 
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
-            Console.WriteLine($"[TableStorageBase__RemoveAsync] {operationUri}");
+            
 
             using(var removeTimer = DeleteMetric.WithLabels(typeof(TEntity).Name))
             using (var request = CreateRequest(fullResourcePath))
@@ -530,6 +547,7 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     if (response.IsSuccessStatusCode)
                     {
+                        Console.WriteLine($"[TableStorageBase__RemoveAsync__${typeof(TEntity).Name}] {operationUri} {sw.ElapsedMilliseconds}ms");
                         return;
                     }
 
@@ -576,6 +594,8 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task UpdateAsync(TEntity entity, string etag = "*")
         {
+            var sw = Stopwatch.StartNew();
+
             if (entity is IValidateable)
             {
                 var result = Validator.Validate(entity as IValidateable);
@@ -601,7 +621,7 @@ namespace LagoVista.CloudStorage.Storage
 
             var fullResourcePath = $"(PartitionKey='{entity.PartitionKey}',RowKey='{entity.RowKey}')";
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
-            Console.WriteLine($"[TableStorageBase__UpdateAsync] {operationUri}");
+            
 
             var json = JsonConvert.SerializeObject(entity);
 
@@ -643,12 +663,15 @@ namespace LagoVista.CloudStorage.Storage
 
                         }
                     }
+                    else
+                        Console.WriteLine($"[TableStorageBase__UpdateAsync__{typeof(TEntity).Name}] {operationUri} {sw.ElapsedMilliseconds} ms");
                 }
             }
         }
 
         public async Task<ListResponse<TEntity>> GetPagedResultsAsync(string partitionKey, ListRequest listRequest, params FilterOptions[] filters)
         {
+            var sw = Stopwatch.StartNew();
             await InitAsync();
 
             if (String.IsNullOrEmpty(partitionKey))
@@ -684,8 +707,7 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-            Console.WriteLine($"[TableStorageBase__GetPagedResultsAsync] {operationUri}");
-
+            
             using(var queryTimer = QueryMetric.WithLabels(typeof(TEntity).Name))
             using (var request = CreateRequest())
             {
@@ -708,6 +730,8 @@ namespace LagoVista.CloudStorage.Storage
                         listResponse.HasMoreRecords = !String.IsNullOrEmpty(listResponse.NextPartitionKey);
                         listResponse.PageIndex = listRequest.PageIndex;
 
+                        Console.WriteLine($"[TableStorageBase__GetPagedResultsAsync__{typeof(TEntity).Name} {sw.ElapsedMilliseconds} ms] {operationUri}");
+
                         return listResponse;
                     }
                     else
@@ -726,6 +750,7 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<ListResponse<TEntity>> GetPagedResultsAsync(ListRequest listRequest, params FilterOptions[] filters)
         {
+            var sw = Stopwatch.StartNew();
             await InitAsync();
 
             var resource = $"()";
@@ -790,6 +815,8 @@ namespace LagoVista.CloudStorage.Storage
                         listResponse.HasMoreRecords = !String.IsNullOrEmpty(listResponse.NextPartitionKey);
                         listResponse.PageIndex = listRequest.PageIndex;
 
+                        Console.WriteLine($"[TableStorageBase__GetPagedResultsAsync__{typeof(TEntity).Name} {sw.ElapsedMilliseconds} ms] {operationUri}");
+
                         return listResponse;
                     }
                     else
@@ -808,6 +835,8 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task InsertOrReplaceAsync(TEntity entity)
         {
+            var sw = Stopwatch.StartNew();
+
             if (entity is IValidateable)
             {
                 var result = Validator.Validate(entity as IValidateable);
@@ -828,7 +857,7 @@ namespace LagoVista.CloudStorage.Storage
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
 
             var json = JsonConvert.SerializeObject(entity);
-            Console.WriteLine($"[TableStorageBase__GetPagedResultsAsync] {operationUri}");
+            
 
             using (var queryTimer = QueryMetric.WithLabels(typeof(TEntity).Name))
             using (var request = CreateRequest(fullResourcePath))
@@ -867,6 +896,8 @@ namespace LagoVista.CloudStorage.Storage
                             throw new Exception(response.ReasonPhrase);
                         }
                     }
+                    else
+                        Console.WriteLine($"[TableStorageBase__GetPagedResultsAsync__{typeof(TEntity).Name}] {operationUri} {sw.ElapsedMilliseconds}ms");
                 }
             }
 
@@ -874,6 +905,8 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<IEnumerable<TEntity>> GetByParitionIdAsync(String partitionKey, int? count = null, int? skip = null)
         {
+            var sw = Stopwatch.StartNew();
+
             await InitAsync();
 
             var resource = $"()";
@@ -890,7 +923,7 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-            Console.WriteLine($"[TableStorageBase__GetByParitionIdAsync] {operationUri}");
+            
 
             using (var getTimer = GetMetric.WithLabels(typeof(TEntity).Name))
             using (var request = CreateRequest(resource))
@@ -899,6 +932,7 @@ namespace LagoVista.CloudStorage.Storage
 
                 var json = await request.GetStringAsync(operationUri);
                 var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+                Console.WriteLine($"[TableStorageBase__GetByParitionIdAsync] {operationUri} {sw.ElapsedMilliseconds}ms");
                 return resultset.ResultSet;
             }
         }
@@ -963,12 +997,13 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<IEnumerable<TEntity>> GetByFilterAsync(params FilterOptions[] filters)
         {
+            var sw = Stopwatch.StartNew();
             await InitAsync();
 
             var resource = $"()";
             var query = GetFilter(filters.ToList());
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-            Console.WriteLine($"[TableStorageBase__GetByFilterAsync] {operationUri}");
+           
 
             using (var request = CreateRequest(resource))
             {
@@ -976,23 +1011,27 @@ namespace LagoVista.CloudStorage.Storage
 
                 var json = await request.GetStringAsync(operationUri);
                 var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+
+                Console.WriteLine($"[TableStorageBase__GetByFilterAsync__{typeof(TEntity).Name}] {operationUri} {sw.ElapsedMilliseconds}ms");
                 return resultset.ResultSet;
             }
         }
 
         public async Task<String> GetEntitiesJSONByFilterAsync(params FilterOptions[] filters)
         {
+            var sw = Stopwatch.StartNew();
             await InitAsync();
-
+         
             var resource = $"()";
             var query = GetFilter(filters.ToList());
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
-            Console.WriteLine($"[TableStorageBase__GetByFilterAsync] {operationUri}");
 
             using (var getTimer = GetMetric.WithLabels(typeof(TEntity).Name))
             using (var request = CreateRequest(resource))
             {
                 request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
+
+                Console.WriteLine($"[TableStorageBase__GetByFilterAsync__{typeof(TEntity)}] {operationUri} {sw.ElapsedMilliseconds}ms");
 
                 return await request.GetStringAsync(operationUri);
             }
