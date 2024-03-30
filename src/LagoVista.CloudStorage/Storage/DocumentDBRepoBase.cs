@@ -38,11 +38,11 @@ namespace LagoVista.CloudStorage.DocumentDB
         private static readonly Gauge SQLInsertMetric = Metrics.CreateGauge("sql_insert", "Elapsed time for SQL insert.",
            new GaugeConfiguration
            {
-                // Here you specify only the names of the labels.
-                LabelNames = new[] { "action" }
+               // Here you specify only the names of the labels.
+               LabelNames = new[] { "action" }
            });
 
-        protected static readonly Gauge DocumentRequestCharge = Metrics.CreateGauge("nuviot_document_request_charge", "Elapsed time for document get.","collection");
+        protected static readonly Gauge DocumentRequestCharge = Metrics.CreateGauge("nuviot_document_request_charge", "Elapsed time for document get.", "collection");
         protected static readonly Histogram DocumentGet = Metrics.CreateHistogram("nuviot_document_get", "Elapsed time for document get.",
           new HistogramConfiguration
           {
@@ -60,7 +60,7 @@ namespace LagoVista.CloudStorage.DocumentDB
               LabelNames = new[] { "entity" },
               Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
           });
-        
+
         protected static readonly Histogram DocumentUpdate = Metrics.CreateHistogram("nuviot_document_update", "Elapsed time for document update.",
           new HistogramConfiguration
           {
@@ -68,7 +68,7 @@ namespace LagoVista.CloudStorage.DocumentDB
               LabelNames = new[] { "entity" },
               Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
           });
-        
+
         protected static readonly Histogram DocumentDelete = Metrics.CreateHistogram("nuviot_document_delete", "Elapsed time for document delete.",
           new HistogramConfiguration
           {
@@ -88,7 +88,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected static readonly Counter DocumentErrors = Metrics.CreateCounter("nuviot_document_errors", "Error count in document store.", "entity");
         protected static readonly Counter DocumentNotFound = Metrics.CreateCounter("nuviot_document_record_not_found", "Record not found count.", "entity");
-        protected static readonly Counter DocumentCacheHit = Metrics.CreateCounter("nuviot_document_cache_hit", "Document Cache Hit.","entity");
+        protected static readonly Counter DocumentCacheHit = Metrics.CreateCounter("nuviot_document_cache_hit", "Document Cache Hit.", "entity");
         protected static readonly Counter DocumentCacheMiss = Metrics.CreateCounter("nuviot_document_cache_miss", "Document Cache Miss.", "entity");
         protected static readonly Counter DocumentNotCached = Metrics.CreateCounter("nuviot_document_not_cached", "Document Not Cached.", "entity");
 
@@ -233,8 +233,8 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             else
             {
-              if(_verboseLogging) Console.WriteLine($"[{GetType().Name}__GetDocumentClientAsync] - reuse existing cosmos db connection");
-            }            
+                if (_verboseLogging) Console.WriteLine($"[{GetType().Name}__GetDocumentClientAsync] - reuse existing cosmos db connection");
+            }
 
 
             return _cosmosClient;
@@ -242,8 +242,8 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<Container> GetContainerAsync()
         {
-            var docClient = await GetDocumentClientAsync();            
-            return docClient.GetContainer(_dbName, GetCollectionName());      
+            var docClient = await GetDocumentClientAsync();
+            return docClient.GetContainer(_dbName, GetCollectionName());
         }
 
         protected virtual bool ShouldConsolidateCollections
@@ -358,7 +358,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 if (exisitng.Name != item.Name)
                 {
                     var dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item);
-                    if(dependencyResult.IsInUse)
+                    if (dependencyResult.IsInUse)
                     {
                         Console.WriteLine($"[DocumentDBRepoBase_UpsertDocumentAsync] - Object {item.Name} in use");
                         foreach (var obj in dependencyResult.DependentObjects)
@@ -523,7 +523,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                         }
                     }
 
-                   
+
                     return entity;
                 }
                 else
@@ -581,10 +581,10 @@ namespace LagoVista.CloudStorage.DocumentDB
             var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
             var doc = await GetDocumentAsync(id);
 
-            if(_dependencyManager != null)
+            if (_dependencyManager != null)
             {
                 var dependencyies = await _dependencyManager.CheckForDependenciesAsync(doc);
-                if(dependencyies.IsInUse)
+                if (dependencyies.IsInUse)
                 {
                     timer.Dispose();
                     throw new InUseException(dependencyies);
@@ -735,7 +735,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     {
                         var response = await iterator.ReadNextAsync();
                         if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge; 
+                        requestCharge += response.RequestCharge;
                         foreach (var item in response)
                         {
                             items.Add(item);
@@ -762,7 +762,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
 
-        protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, 
+        protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
                             System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
         {
             try
@@ -788,7 +788,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
 
-                    if(_verboseLogging && !iterator.HasMoreResults)
+                    if (_verboseLogging && !iterator.HasMoreResults)
                         Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
 
                     while (iterator.HasMoreResults)
@@ -865,7 +865,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                 }
 
-                var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm=>itm.CreateSummary() as TEntitySummary));
+                var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm => itm.CreateSummary() as TEntitySummary));
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
                 return listResponse;
@@ -951,7 +951,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var requestCharge = 0.0;
 
                 var query = new QueryDefinition(sql);
-                
+
                 foreach (var param in sqlParams)
                 {
                     query = query.WithParameter(param.Name, param.Value);
@@ -1115,8 +1115,8 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        protected async Task<ListResponse<TEntity>> DescOrderQueryAsync<TKey>(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, 
-                                                    System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy, 
+        protected async Task<ListResponse<TEntity>> DescOrderQueryAsync<TKey>(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
+                                                    System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy,
                                                     ListRequest listRequest)
         {
             try
@@ -1167,7 +1167,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public void Dispose()
         {
-            if(_cosmosClient != null)
+            if (_cosmosClient != null)
             {
                 _cosmosClient.Dispose();
                 _cosmosClient = null;
