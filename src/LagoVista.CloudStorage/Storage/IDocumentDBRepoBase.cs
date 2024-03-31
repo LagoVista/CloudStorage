@@ -14,12 +14,12 @@ namespace LagoVista.CloudStorage.DocumentDB
         string GetPartitionKey();
         void SetConnection(string connectionString, string sharedKey, string dbName);
        
-        Task<ItemResponse<TEntity>> CreateDocumentAsync(TEntity item);
-        Task<ItemResponse<TEntity>> UpsertDocumentAsync(TEntity item);
+        Task<OperationResponse<TEntity>> CreateDocumentAsync(TEntity item);
+        Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item);
         Task<TEntity> GetDocumentAsync(string id, bool throwOnNotFound = true);
         Task<TEntity> GetDocumentAsync(string id, string partitionKey, bool throwOnNotFound = true);
-        Task<ItemResponse<TEntity>> DeleteDocumentAsync(string id);
-        Task<ItemResponse<TEntity>> DeleteDocumentAsync(string id, string partitionKey);
+        Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id);
+        Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id, string partitionKey);
         Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query);
         Task<IEnumerable<TEntity>> QueryAsync(string sql, params QueryParameter[] sqlParams);
         Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest);
