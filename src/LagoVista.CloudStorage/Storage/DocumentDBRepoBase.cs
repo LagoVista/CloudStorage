@@ -22,6 +22,13 @@ namespace LagoVista.CloudStorage.DocumentDB
 
     public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
     {
+        enum StorageProviderTypes
+        {
+            Original,
+            CosmosDB,
+            Mongo,
+        }
+
         private string _endPointString;
         private string _sharedKey;
         private string _dbName;
@@ -30,6 +37,10 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
+
+        private readonly IDocumentDBRepoBase<TEntity> _storage;
+
+        private StorageProviderTypes _stoargeProvider = StorageProviderTypes.Original;
 
         private bool _verboseLogging = false;
 
@@ -102,6 +113,8 @@ namespace LagoVista.CloudStorage.DocumentDB
             _cacheProvider = cacheProvider;
             _dependencyManager = dependencyManager;
 
+            _storage = new StorageProviders.CosmosDBStorage<TEntity>(endpoint, sharedKey, dbName, logger, cacheProvider, dependencyManager);
+
             _defaultCollectionName = typeof(TEntity).Name;
             if (!_defaultCollectionName.ToLower().EndsWith("s"))
             {
@@ -147,13 +160,25 @@ namespace LagoVista.CloudStorage.DocumentDB
             {
                 _defaultCollectionName += "s";
             }
+
+            if(_stoargeProvider == StorageProviderTypes.CosmosDB)
+            {
+                _storage.SetConnection(connectionString, sharedKey, dbName); 
+            }
         }
 
         public async Task DeleteCollectionAsync()
         {
-            var client = await GetDocumentClientAsync();
-            var database = await GetDatabase(client);
-            await database.DeleteAsync();
+            if (_stoargeProvider == StorageProviderTypes.Original)
+            {
+                var client = await GetDocumentClientAsync();
+                var database = await GetDatabase(client);
+                await database.DeleteAsync();
+            }
+            else
+            {
+                await _storage.DeleteCollectionAsync();
+            }
         }
 
         public virtual string GetPartitionKey()
@@ -1067,6 +1092,9 @@ namespace LagoVista.CloudStorage.DocumentDB
         /// <returns></returns>
         protected async Task<ListResponse<TEntity>> QueryAllAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
+            if(_stoargeProvider == StorageProviderTypes.CosmosDB)
+                return await _storage.QueryAllAsync(query, listRequest);
+
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1119,6 +1147,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                                                     System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy,
                                                     ListRequest listRequest)
         {
+            if (_stoargeProvider == StorageProviderTypes.CosmosDB)
+                return await _storage.DescOrderQueryAsync(query, orderBy, listRequest);
+
             try
             {
                 var sw = Stopwatch.StartNew();
