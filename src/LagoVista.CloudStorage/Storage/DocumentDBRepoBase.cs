@@ -808,13 +808,13 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 var page = 1;
 
-                Console.WriteLine($"[DocStorage] Query {page++} Query Document {linqQuery}");
+                Console.WriteLine($"[DocStorage__QUeryAsync] Query {page++} Query Document {linqQuery}");
 
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
 
                     if (_verboseLogging && !iterator.HasMoreResults)
-                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
+                        Console.WriteLine($"[DocStorage__QUeryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
 
                     while (iterator.HasMoreResults)
                     {
@@ -870,18 +870,18 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 var page = 1;
 
-                Console.WriteLine($"[DocStorage] Query {page++} Query Document {linqQuery}");
+                Console.WriteLine($"[DocStorage__QuerySummaryAsync] Query {page++} Query Document {linqQuery}");
 
                 using (var iterator = linqQuery.ToFeedIterator<TEntityFactory>())
                 {
 
                     if (_verboseLogging && !iterator.HasMoreResults)
-                        Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
+                        Console.WriteLine($"[DocStorage__QuerySummaryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
 
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        if (_verboseLogging) Console.WriteLine($"[DocStorage__QuerySummaryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                         requestCharge += response.RequestCharge;
                         foreach (var item in response)
                         {
@@ -897,7 +897,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             catch (Exception ex)
             {
-                _logger.AddException("[DocumentDBBase__QueryAsync] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
+                _logger.AddException("[DocumentDBBase__QuerySummaryAsync] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
 
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
 
