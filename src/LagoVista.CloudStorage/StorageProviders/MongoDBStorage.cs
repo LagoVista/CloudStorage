@@ -87,6 +87,11 @@ namespace LagoVista.CloudStorage.StorageProviders
             throw new NotImplementedException();
         }
 
+        public Task<ListResponse<TMiscEntity>> QueryAsync<TMiscEntity>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TMiscEntity : class
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<ListResponse<TEntity>> QueryDescendingAsync(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest)
         {
             throw new NotImplementedException();

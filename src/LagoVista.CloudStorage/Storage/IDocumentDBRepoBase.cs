@@ -38,5 +38,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         Task<ListResponse<TEntity>> DescOrderQueryAsync<TKey>(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
                                                     System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy,
                                                     ListRequest listRequest);
+
+        Task<ListResponse<TMiscEntity>> QueryAsync<TMiscEntity>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TMiscEntity : class;
     }
 }

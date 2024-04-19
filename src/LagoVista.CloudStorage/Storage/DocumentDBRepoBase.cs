@@ -15,6 +15,7 @@ using System.Diagnostics;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
 using Prometheus;
+using System.Collections;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
@@ -1079,6 +1080,74 @@ namespace LagoVista.CloudStorage.DocumentDB
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
 
                 var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
+                listResponse.Errors.Add(new ErrorMessage(ex.Message));
+                return listResponse;
+            }
+        }
+
+        public async Task<ListResponse<TMiscEntity>> QueryAsync<TMiscEntity>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TMiscEntity : class
+        {
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+
+                var items = new List<TMiscEntity>();
+                var requestCharge = 0.0;
+
+                var query = new QueryDefinition(sql);
+
+                foreach (var param in sqlParams)
+                {
+                    query = query.WithParameter(param.Name, param.Value);
+                }
+
+                var page = 1;
+
+                Console.WriteLine($"[DocStorage__QueryAsync<TMiscEntity>]");
+                foreach (var param in sqlParams)
+                {
+                    Console.WriteLine($"\t\t[DocStorage__QueryAsync<TMiscEntity>] {sql}");
+                    Console.WriteLine($"\t\t[DocStorage__QueryAsync<TMiscEntity>] {param}");
+                }
+               
+                var container = await GetContainerAsync();
+
+
+                using (var iterator = container.GetItemQueryIterator<TMiscEntity>(query))
+                {
+                    if (_verboseLogging && !iterator.HasMoreResults)
+                        Console.WriteLine($"[DocStorage__QueryAsync<TMiscEntity>] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms");
+
+                    while (iterator.HasMoreResults)
+                    {
+                        var response = await iterator.ReadNextAsync();
+                        if (_verboseLogging) Console.WriteLine($"[DocStorage__QueryAsync<TMiscEntity>] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        requestCharge += response.RequestCharge;
+                        foreach (var item in response)
+                        {
+                            items.Add(item);
+                        }
+                    }
+                }
+
+                var listResponse = ListResponse<TMiscEntity>.Create(listRequest, items);
+                timer.Dispose();
+                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
+
+                Console.WriteLine($"\t\t[DocStorage__QueryAsync<TMiscEntity>] Record Count: {items.Count} in {sw.Elapsed.TotalMilliseconds}ms");
+                Console.WriteLine("--");
+
+
+                return listResponse;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException("[DocumentDBBase__QueryAsync<MiscEntity>] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
+
+                DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
+
+                var listResponse = ListResponse<TMiscEntity>.Create(new List<TMiscEntity>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }

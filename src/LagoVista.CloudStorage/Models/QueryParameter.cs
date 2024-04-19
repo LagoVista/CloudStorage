@@ -14,5 +14,10 @@ namespace LagoVista.CloudStorage
 
         public string Name { get;}    
         public Object Value { get;}
+
+        public override string ToString()
+        {
+            return $"{Name} = {Value}"; 
+        }
     }
 }
