@@ -1,0 +1,196 @@
+﻿using LagoVista.Core.Interfaces;
+using LagoVista.Core.Models;
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace LagoVista.CloudStorage.Utils
+{
+    public class TestConnections
+    {
+        public const string ProdSLOrgId = "AA2C78499D0140A5A9CE4B7581EF9691";
+        public const string DevSLOrgId = "C8AD4589F26842E7A1AEFBAEFC979C9B";
+
+        public static ConnectionSettings ProductionDocDB
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    Uri = Environment.GetEnvironmentVariable("PROD_DOCDB_ACCOUNT_URL"),
+                    AccountId = Environment.GetEnvironmentVariable("PROD_DOCDB_ACCOUNTID"),
+                    AccessKey = Environment.GetEnvironmentVariable("PROD_DOCDB_ACCESSKEY"),
+                    ResourceName = Environment.GetEnvironmentVariable("PROD_DOCDB_DATABASE"),
+                };
+
+                if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing PROD_DOCDB_ACCOUNT_URL as environment variable");
+                if (String.IsNullOrEmpty(cs.AccountId)) Console.WriteLine("[ERROR] - Missing PROD_DOCDB_ACCOUNTID as environment variable");
+                if (String.IsNullOrEmpty(cs.AccessKey)) Console.WriteLine("[ERROR] - Missing PROD_DOCDB_ACCESSKEY as environment variable");
+                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing PROD_DOCDB_DATABASE as environment variable");
+
+                return cs;
+            }
+        }
+
+        public static ConnectionSettings DevDocDB
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    Uri = Environment.GetEnvironmentVariable("DEV_DOCDB_ACCOUNT_URL"),
+                    AccountId = Environment.GetEnvironmentVariable("DEV_DOCDB_ACCOUNT_ID"),
+                    AccessKey = Environment.GetEnvironmentVariable("DEV_DOCDB_ACCESSKEY"),
+                    ResourceName = Environment.GetEnvironmentVariable("PROD_DOCDB_ACCESS_KEY"),
+                };
+
+                if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing DEV_DOCDB_ACCOUNT_URL as environment variable");
+                if (String.IsNullOrEmpty(cs.AccountId)) Console.WriteLine("[ERROR] - Missing DEV_DOCDB_ACCOUNT_ID as environment variable");
+                if (String.IsNullOrEmpty(cs.AccessKey)) Console.WriteLine("[ERROR] - Missing PROD_DOCDB_ACCESS_KEY as environment variable");
+                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing DEV_DOCDB_ACCESSKEY as environment variable");
+
+                return cs;
+            }
+        }
+
+        public static ConnectionSettings ProductionTableStorageDB
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    AccountId = Environment.GetEnvironmentVariable("PROD_TS_STORAGE_ACCOUNT_ID"),
+                    AccessKey = Environment.GetEnvironmentVariable("PROD_TS_STORAGE_ACCOUNT_ACCESS_KEY")
+                };
+
+                if (String.IsNullOrEmpty(cs.AccountId)) Console.WriteLine("[ERROR] - Missing PROD_TS_STORAGE_ACCOUNT_ID as environment variable");
+                if (String.IsNullOrEmpty(cs.AccessKey)) Console.WriteLine("[ERROR] - Missing PROD_TS_STORAGE_ACCOUNT_ACCESS_KEY as environment variable");
+
+                return cs;
+            }
+        }
+
+        public static ConnectionSettings DevTableStorageDB
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    AccountId = Environment.GetEnvironmentVariable("DEV_TS_STORAGE_ACCOUNT_ID"),
+                    AccessKey = Environment.GetEnvironmentVariable("DEV_TS_STORAGE_ACCOUNT_ACCESS_KEY")
+                };
+
+                if (String.IsNullOrEmpty(cs.AccountId)) Console.WriteLine("[ERROR] - Missing DEV_TS_STORAGE_ACCOUNT_ID as environment variable");
+                if (String.IsNullOrEmpty(cs.AccessKey)) Console.WriteLine("[ERROR] - Missing DEV_TS_STORAGE_ACCOUNT_ACCESS_KEY as environment variable");
+
+                return cs;
+            }
+        }
+
+        public static ConnectionSettings ProdMetricsStorage
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    Uri = Environment.GetEnvironmentVariable("PROD_METRICS_PSSQL_URL"),
+                    UserName = Environment.GetEnvironmentVariable("PROD_METRICS_PSSQL_USER"),
+                    ResourceName = Environment.GetEnvironmentVariable("PROD_METRICS_PSSQL_DB"),
+                    Password = Environment.GetEnvironmentVariable("PROD_METRICS_PSSQL_PASSWORD")
+                };
+
+                if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing PROD_METRICS_PSSQL_URL as environment variable");
+                if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine("[ERROR] - Missing PROD_METRICS_PSSQL_USER as environment variable");
+                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing PROD_METRICS_PSSQL_DB as environment variable");
+                if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine("[ERROR] - Missing PROD_METRICS_PSSQL_PASSWORD as environment variable");
+
+                return cs;
+            }
+        }
+
+        public static ConnectionSettings DevMetricsStorage
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    Uri = Environment.GetEnvironmentVariable("DEV_METRICS_PSSQL_URL"),
+                    UserName = Environment.GetEnvironmentVariable("DEV_METRICS_PSSQL_USER"),
+                    ResourceName = Environment.GetEnvironmentVariable("DEV_METRICS_PSSQL_DB"),
+                    Password = Environment.GetEnvironmentVariable("DEV_METRICS_PSSQL_PASSWORD")
+                };
+
+                if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing DEV_METRICS_PSSQL_URL as environment variable");
+                if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine("[ERROR] - Missing DEV_METRICS_PSSQL_USER as environment variable");
+                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing DEV_METRICS_PSSQL_DB as environment variable");
+                if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine("[ERROR] - Missing DEV_METRICS_PSSQL_PASSWORD as environment variable");
+
+                return cs;
+            }
+        }
+
+        public static ConnectionSettings TestMetricsStorage
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    Uri = Environment.GetEnvironmentVariable("DEV_METRICS_PSSQL_URL"),
+                    UserName = Environment.GetEnvironmentVariable("DEV_METRICS_PSSQL_USER"),
+                    ResourceName = Environment.GetEnvironmentVariable("TEST_METRICS_PSSQL_DB"),
+                    Password = Environment.GetEnvironmentVariable("DEV_METRICS_PSSQL_PASSWORD")
+                };
+
+                if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing DEV_METRICS_PSSQL_URL as environment variable");
+                if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine("[ERROR] - Missing DEV_METRICS_PSSQL_USER as environment variable");
+                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing TEST_METRICS_PSSQL_DB as environment variable");
+                if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine("[ERROR] - Missing DEV_METRICS_PSSQL_PASSWORD as environment variable");
+
+                return cs;
+            }
+        }
+
+        public static ConnectionSettings ProdSQLServer
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    Uri = Environment.GetEnvironmentVariable("PROD_SQLSRVR_URL"),
+                    UserName = Environment.GetEnvironmentVariable("PROD_SQLSRVR_USER"),
+                    ResourceName = Environment.GetEnvironmentVariable("PROD_SQLSRVR_DB"),
+                    Password = Environment.GetEnvironmentVariable("PROD_SQLSRVR_PASSWORD")
+                };
+
+                if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing PROD_SQLSRVR_URL as environment variable");
+                if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine("[ERROR] - Missing PROD_SQLSRVR_USER as environment variable");
+                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing PROD_SQLSRVR_DB as environment variable");
+                if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine("[ERROR] - Missing PROD_SQLSRVR_PASSWORD as environment variable");
+
+                return cs;
+            }
+        }
+
+        public static ConnectionSettings DevSQLServer
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    Uri = Environment.GetEnvironmentVariable("DEV_SQLSRVR_URL"),
+                    UserName = Environment.GetEnvironmentVariable("DEV_SQLSRVR_USER"),
+                    ResourceName = Environment.GetEnvironmentVariable("DEV_SQLSRVR_DB"),
+                    Password = Environment.GetEnvironmentVariable("DEV_SQLSRVR_PASSWORD")
+                };
+
+                if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_URL as environment variable");
+                if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_USER as environment variable");
+                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_DB as environment variable");
+                if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_PASSWORD as environment variable");
+
+
+                return cs;
+            }
+        }
+    }
+}
