@@ -2,6 +2,8 @@
 using LagoVista.CloudStorage.Tests;
 using LagoVista.CloudStorage.Tests.Support;
 using LagoVista.Core;
+using LagoVista.IoT.Logging.Loggers;
+using LagoVista.IoT.Logging.Utils;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -26,7 +28,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
             if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Please add TEST_AZURESTORAGE_ACCOUNTID as an environnment variable");
             if (String.IsNullOrEmpty(_accountKey)) throw new ArgumentNullException("Please add TEST_AZURESTORAGE_ACCESSKEY as an environnment variable");
 
-            _entityRepo = new TSEntityRepo(_accountId, _accountKey, new AdminLogger());
+            _entityRepo = new TSEntityRepo(_accountId, _accountKey, new AdminLogger(new ConsoleLogWriter()));
         }
 
         private async Task InsertManyItems(int count)

@@ -2,6 +2,8 @@ using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
+using LagoVista.IoT.Logging.Loggers;
+using LagoVista.IoT.Logging.Utils;
 using Microsoft.Azure.Cosmos;
 using NUnit.Framework;
 using System;
@@ -34,7 +36,7 @@ namespace LagoVista.CloudStorage.Tests
             _uri = $"https://{_accountId}.documents.azure.com:443";
             var dbName = DBNAME;
 
-            _docDBEntityRepo = new Support.DocDBEntityRepo(new Uri(_uri), _accountKey, dbName, new AdminLogger());
+            _docDBEntityRepo = new Support.DocDBEntityRepo(new Uri(_uri), _accountKey, dbName, new AdminLogger(new ConsoleLogWriter()));
         }
 
         [Test]
@@ -232,7 +234,7 @@ namespace LagoVista.CloudStorage.Tests
             await _docDBEntityRepo!.CreateDBDocment(new Support.DocDBEntitty() { Id = Guid.NewGuid().ToId() });
 
             // we create a new instance but we don't need the overhead of checking to see if the DB or collection were created.
-            _docDBEntityRepo = new Support.DocDBEntityRepo(new Uri(_uri!), _accountKey!, DBNAME, new AdminLogger());
+            _docDBEntityRepo = new Support.DocDBEntityRepo(new Uri(_uri!), _accountKey!, DBNAME, new AdminLogger(new ConsoleLogWriter()));
             await _docDBEntityRepo!.CreateDBDocment(CreateDoc());
         }
 

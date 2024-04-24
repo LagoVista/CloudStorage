@@ -6,6 +6,8 @@ using System;
 using System.Diagnostics;
 using LagoVista.CloudStorage.Storage;
 using System.Threading.Tasks;
+using LagoVista.IoT.Logging.Loggers;
+using LagoVista.IoT.Logging.Utils;
 
 namespace ThrowAway
 {
@@ -21,7 +23,7 @@ namespace ThrowAway
             if (String.IsNullOrEmpty(accountKey)) throw new ArgumentNullException("Please add TEST_AZURESTORAGE_ACCESSKEY as an environnment variable");
 
             //TODOO Get from Environment Variable
-            var repo = new UsageMetricsRepo(accountId, accountKey, new JunkLogger());
+            var repo = new UsageMetricsRepo(accountId, accountKey, new AdminLogger(new ConsoleLogWriter()));
 
             var request = new ListRequest();
             request.PageSize = 50;
