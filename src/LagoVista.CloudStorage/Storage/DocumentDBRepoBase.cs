@@ -17,6 +17,7 @@ using Microsoft.Azure.Cosmos.Linq;
 using Prometheus;
 using System.Collections;
 using Amazon.Runtime.Internal.Util;
+using System.Text;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
@@ -703,13 +704,18 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             var query = new QueryDefinition(sql);
 
-            _logger.Trace(sql);
+
+            var bldr = new StringBuilder();
+            bldr.AppendLine(sql);
+                        
 
             foreach (var param in sqlParams)
             {
                 query = query.WithParameter(param.Name, param.Value);
-                _logger.Trace($"\t{param.Name} - {param.Value}");
+                bldr.Append($"{param.Name}={param.Value};");
             }
+
+            _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] {bldr}");
 
             var sw = Stopwatch.StartNew();
             var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
