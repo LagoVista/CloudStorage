@@ -755,7 +755,8 @@ namespace LagoVista.CloudStorage.Storage
 
             var resource = $"()";
 
-            var query = String.Empty; //Just seed this with something so we can use 
+
+            var query = GetFilter(filters.ToList()) ; //Just seed this with something so we can use 
 
             if (!String.IsNullOrEmpty(listRequest.StartDate))
             {
