@@ -1348,5 +1348,11 @@ namespace LagoVista.CloudStorage.DocumentDB
                 _cosmosClient = null;
             }
         }
+
+        protected bool Verbose
+        {
+            get => _verboseLogging;
+            set => _verboseLogging = value;
+        }
     }
 }
