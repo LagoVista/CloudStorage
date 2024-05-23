@@ -524,7 +524,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var response = await container.ReadItemAsync<TEntity>(id, String.IsNullOrEmpty(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey));
                 timer.Dispose();
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Get document From DocStore {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}",
+                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Got document in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}",
                     sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), response.RequestCharge.ToString().ToKVP("requestCharge"));
 
                 if (response == null)
