@@ -32,6 +32,30 @@ namespace LagoVista.CloudStorage.Utils
             }
         }
 
+        public static ConnectionSettings JobSchedulerDBSettings
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    Uri = Environment.GetEnvironmentVariable("JobScheduler__Database__Url"),
+                    UserName = Environment.GetEnvironmentVariable("JobScheduler__Database__UserName"),
+                    Password = Environment.GetEnvironmentVariable("JobScheduler__Database__Password"),
+                    ResourceName = Environment.GetEnvironmentVariable("JobScheduler__Database__Database"),
+                    Port = Environment.GetEnvironmentVariable("JobScheduler__Database__Port"),
+                };
+
+                if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing JobScheduler__Database__Url as environment variable");
+                if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine("[ERROR] - Missing JobScheduler__Database__UserName as environment variable");
+                if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine("[ERROR] - Missing JobScheduler__Database__Password as environment variable");
+                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing JobScheduler__Database__Database as environment variable");
+                if (String.IsNullOrEmpty(cs.Port)) Console.WriteLine("[ERROR] - Missing JobScheduler__Database__Port as environment variable");
+
+                return cs;
+            }
+
+        }
+
         public static ConnectionSettings DevDocDB
         {
             get
