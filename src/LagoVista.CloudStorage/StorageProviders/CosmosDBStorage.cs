@@ -1052,6 +1052,8 @@ namespace LagoVista.CloudStorage.StorageProviders
                         foreach (var obj in dependencyResult.DependentObjects)
                             await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, obj.Id, obj.RecordType, item.Name);
                     }
+
+                    _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, item.Name);
                 }
                 else
                 {
