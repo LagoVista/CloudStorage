@@ -1,4 +1,5 @@
-﻿using LagoVista.Core.Exceptions;
+﻿using Amazon.SecurityToken.Internal;
+using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.IoT.Logging.Loggers;
@@ -185,5 +186,30 @@ namespace LagoVista.CloudStorage.Storage
                 await container.DeleteItemAsync<TEntity>(id, PartitionKey.None);
             }
         }
+
+
+        public async Task<List<TEntity>> FindByTypeAsync<TEntity>(string entityType, IEntityHeader org) where TEntity : class, IIDEntity, INamedEntity, IOwnedEntity, INoSQLEntity, IKeyedEntity
+        {
+            var sw = Stopwatch.StartNew();
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var linqQuery = container.GetItemLinqQueryable<TEntity>()
+                    .Where(doc => doc.EntityType == entityType && doc.OwnerOrganization.Id == org.Id && doc.EntityType == typeof(TEntity).Name);
+
+            var entities = new List<TEntity>();
+
+            using (var iterator = linqQuery.ToFeedIterator<TEntity>())
+            {
+                if (iterator.HasMoreResults)
+                {
+                    return (await iterator.ReadNextAsync()).ToList();
+                }
+            }
+
+            Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Failed did not find {entityType} of type {typeof(TEntity).Name} for organization {org.Text} in {sw.Elapsed.TotalMilliseconds}ms");
+
+            return null;
+
+        }
+
     }
 }
