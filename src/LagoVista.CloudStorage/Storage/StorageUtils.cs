@@ -193,7 +193,9 @@ namespace LagoVista.CloudStorage.Storage
             var sw = Stopwatch.StartNew();
             var container = Client.GetContainer(_dbName, _collectionName);
             var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                    .Where(doc => doc.EntityType == entityType && doc.OwnerOrganization.Id == org.Id && doc.EntityType == typeof(TEntity).Name);
+                    .Where(doc => doc.EntityType == entityType && doc.OwnerOrganization.Id == org.Id);
+
+            Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Query {linqQuery}");
 
             var entities = new List<TEntity>();
 
