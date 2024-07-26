@@ -23,7 +23,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
 
 
-    public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+    public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity, IRevisionedEntity
     {
         enum StorageProviderTypes
         {
@@ -371,6 +371,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
             }
 
+            item.Revision++;
+            item.RevisionTimeStamp = DateTime.UtcNow.ToJSONString();
 
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
@@ -393,7 +395,22 @@ namespace LagoVista.CloudStorage.DocumentDB
                             await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, obj.Id, obj.RecordType, item.Name);
                     }
 
-                    _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, item.Name);
+                    item.AuditHistory.Add(new Core.Models.EntityChangeSet()
+                    {
+                        ChangeDate = DateTime.UtcNow.ToJSONString(),
+                        ChangedBy = item.LastUpdatedBy,
+                        Changes = new List<Core.Models.EntityChange>()
+                    {
+                        new Core.Models.EntityChange()
+                        {
+                            OldValue = exisitng.Name,
+                            NewValue = item.Name,
+                            Field = nameof(item.Name),                             
+                        }
+                    }
+                    });
+
+                    await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, item.Name);
                 }
                 else
                 {
