@@ -1,4 +1,5 @@
 ﻿using Amazon.SecurityToken.Internal;
+using Azure;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.PlatformSupport;
@@ -139,6 +140,32 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             return null;
+        }
+
+        public async Task<TEntity> FindWithIdAsync<TEntity>(string id, string ownerId) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
+        {
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var response = await container.ReadItemAsync<TEntity>(id, PartitionKey.None);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+                var entity = response.Resource;
+
+                if (entity.EntityType != typeof(TEntity).Name)
+                {
+
+                    return default;
+                }
+
+                if (entity.OwnerOrganization.Id != ownerId)
+                    throw new NotAuthorizedException($"Invalid object access by incorrect organization, object org: {entity.OwnerOrganization.Id} - request org: {ownerId}");
+
+                return entity;
+            }
+            else
+            {
+                return default;
+            }               
         }
 
         public async Task DeleteByKeyIfExistsAsync<TEntity>(string key, IEntityHeader org) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
