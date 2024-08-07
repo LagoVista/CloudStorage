@@ -78,7 +78,7 @@ namespace LagoVista.CloudStorage.Storage
                 throw ex;
             }
 
-            return Task.FromResult( _client.GetDatabase(_dbName));
+            return Task.FromResult(_client.GetDatabase(_dbName));
         }
         public async Task<TEntity> FindWithKeyAsync<TEntity>(string key, IEntityHeader org, bool throwOnNotFound = true) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
@@ -102,12 +102,12 @@ namespace LagoVista.CloudStorage.Storage
             return null;
         }
 
-        public async Task<IStandardModel> FindWithKeyAsync(string objectType, string key, IEntityHeader org, bool throwOnNotFound = true) 
+        public async Task<IStandardModel> FindWithKeyAsync(string objectType, string key, IEntityHeader org, bool throwOnNotFound = true)
         {
             var sw = Stopwatch.StartNew();
             var container = Client.GetContainer(_dbName, _collectionName);
             var linqQuery = container.GetItemLinqQueryable<IStandardModel>()
-                    .Where(doc => doc.Key == key && doc.OwnerOrganization.Id == org.Id && doc.EntityType ==  objectType);
+                    .Where(doc => doc.Key == key && doc.OwnerOrganization.Id == org.Id && doc.EntityType == objectType);
 
             using (var iterator = linqQuery.ToFeedIterator<IStandardModel>())
             {
@@ -144,28 +144,42 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<TEntity> FindWithIdAsync<TEntity>(string id, string ownerId) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
-            var container = Client.GetContainer(_dbName, _collectionName);
-            var response = await container.ReadItemAsync<TEntity>(id, PartitionKey.None);
-
-            if (response.StatusCode == System.Net.HttpStatusCode.OK)
+            try
             {
-                var entity = response.Resource;
+                var container = Client.GetContainer(_dbName, _collectionName);
+                var response = await container.ReadItemAsync<TEntity>(id, PartitionKey.None);
 
-                if (entity.EntityType != typeof(TEntity).Name)
+                if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
+                    var entity = response.Resource;
 
+                    if(entity == null)
+                    {
+                        Console.WriteLine($"[StorageUtils__FindWithIdAsync] Could not load record of type {typeof(TEntity).Name} with id: {id}");
+                        return default;
+                    }
+
+                    if (entity.EntityType != typeof(TEntity).Name)
+                    {
+                        return default;
+                    }
+
+                    if (typeof(TEntity).Name != "Organization" && entity.OwnerOrganization.Id != ownerId)
+                        throw new NotAuthorizedException($"Invalid object access by incorrect organization, object org: {entity.OwnerOrganization.Id} - request org: {ownerId}");
+
+                    return entity;
+                }
+                else
+                {
                     return default;
                 }
-
-                if (entity.OwnerOrganization.Id != ownerId)
-                    throw new NotAuthorizedException($"Invalid object access by incorrect organization, object org: {entity.OwnerOrganization.Id} - request org: {ownerId}");
-
-                return entity;
             }
-            else
+            catch (Exception ex)
             {
-                return default;
-            }               
+                Console.WriteLine(ex.StackTrace);
+                throw;
+            }
+
         }
 
         public async Task DeleteByKeyIfExistsAsync<TEntity>(string key, IEntityHeader org) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
@@ -183,7 +197,7 @@ namespace LagoVista.CloudStorage.Storage
             obj.DatabaseName = _dbName;
 
             var response = await container.UpsertItemAsync(obj);
-            if (response.StatusCode != System.Net.HttpStatusCode.Created) 
+            if (response.StatusCode != System.Net.HttpStatusCode.Created)
             {
                 throw new Exception("Could not upsert document.");
             }
@@ -237,7 +251,6 @@ namespace LagoVista.CloudStorage.Storage
             Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Failed did not find {entityType} of type {typeof(TEntity).Name} for organization {org.Text} in {sw.Elapsed.TotalMilliseconds}ms");
 
             return null;
-
         }
 
     }

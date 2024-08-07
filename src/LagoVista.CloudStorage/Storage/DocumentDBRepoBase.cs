@@ -462,7 +462,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             if (_cacheProvider != null)
             {
-                await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item));
+                await _cacheProvider.RemoveAsync(GetCacheKey(item.Id));
             }
 
             return new OperationResponse<TEntity>(upsertResult);
