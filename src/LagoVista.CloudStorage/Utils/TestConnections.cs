@@ -1,5 +1,6 @@
 ﻿using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
+using NLog.Layouts;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -28,6 +29,24 @@ namespace LagoVista.CloudStorage.Utils
                 if (String.IsNullOrEmpty(cs.AccessKey)) Console.WriteLine("[ERROR] - Missing PROD_DOCDB_ACCESSKEY as environment variable");
                 if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing PROD_DOCDB_DATABASE as environment variable");
 
+                return cs;
+            }
+        }
+
+        public static ConnectionSettings DefaultDeviceAccountDb
+        {
+            get
+            {
+                var cs = new ConnectionSettings()
+                {
+                    Uri = Environment.GetEnvironmentVariable("PROD_DVC_ACCT_URL", EnvironmentVariableTarget.User),
+                    Password = Environment.GetEnvironmentVariable("PROD_DVC_ACCT_SYS_PASSWORD", EnvironmentVariableTarget.User),
+                    UserName = Environment.GetEnvironmentVariable("PROD_DVC_ACCT_SYS_USER_ID", EnvironmentVariableTarget.User),
+                };
+
+                if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing JobScheduler__Database__Url as environment variable");
+                if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine("[ERROR] - Missing JobScheduler__Database__UserName as environment variable");
+                if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine("[ERROR] - Missing JobScheduler__Database__Password as environment variable");
                 return cs;
             }
         }
