@@ -255,7 +255,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             {
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
 
-                _logger.AddCustomEvent(LogLevel.Error, $"DocuementDbRepo<{_dbName}>_CreateDocumentAsync", "Error return code: " + response.StatusCode,
+                _logger.AddCustomEvent(LogLevel.Error, $"DocumentDbRepo<{_dbName}>_CreateDocumentAsync", "Error return code: " + response.StatusCode,
                     new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name),
                     new KeyValuePair<string, string>("Id", item.Id)
                     );
