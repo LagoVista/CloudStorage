@@ -1022,6 +1022,45 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
+        public async Task<ListResponse<TEntity>> QueryAsync(string sql, ListRequest listRequest, params QueryParameter[] sqlParams)
+        {
+            var query = new QueryDefinition(sql);
+
+            Console.WriteLine(sql);
+
+            foreach (var param in sqlParams)
+            {
+                query = query.WithParameter(param.Name, param.Value);
+                Console.WriteLine($"\t{param.Name} - {param.Value}");
+            }
+
+            var sw = Stopwatch.StartNew();
+            var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+
+            var requestCharge = 0.0;
+
+            var items = new List<TEntity>();
+
+            var listResponse = ListResponse<TEntity>.Create(listRequest, items);
+
+            var container = await GetContainerAsync();
+            using (var resultSet = container.GetItemQueryIterator<TEntity>(query))
+            {
+                var page = 1;
+                while (resultSet.HasMoreResults)
+                {
+                    var response = await resultSet.ReadNextAsync();
+                    if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                    requestCharge += response.RequestCharge;
+                    items.AddRange(response);
+                }
+            }
+
+            timer.Dispose();
+            DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
+            return listResponse;
+        }
+
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TEntitySummary : class
         {
             try
