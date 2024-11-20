@@ -22,7 +22,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
 
 
-    public class DocumentDBRepoBase<TEntity> : IDisposable where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity, IRevisionedEntity
+    public class DocumentDBRepoBase<TEntity> where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity, IRevisionedEntity
     {
         enum StorageProviderTypes
         {
@@ -35,7 +35,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private string _sharedKey;
         private string _dbName;
         private string _defaultCollectionName;
-        private CosmosClient _cosmosClient;
+        private static CosmosClient _cosmosClient;
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
@@ -1423,14 +1423,14 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        public void Dispose()
-        {
-            if (_cosmosClient != null)
-            {
-                _cosmosClient.Dispose();
-                _cosmosClient = null;
-            }
-        }
+        //public void Dispose()
+        //{
+        //    if (_cosmosClient != null)
+        //    {
+        //        _cosmosClient.Dispose();
+        //        _cosmosClient = null;
+        //    }
+        //}
 
         protected bool Verbose
         {
