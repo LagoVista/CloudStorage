@@ -379,7 +379,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             var container = await GetContainerAsync();
 
             var sw = Stopwatch.StartNew();
-            var timer = DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
+            var timer = DocumentUpdate.WithLabels(typeof(TEntity).Name).NewTimer();
 
             if (_dependencyManager != null)
             {
