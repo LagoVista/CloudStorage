@@ -39,7 +39,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
-
+       
         private readonly IDocumentDBRepoBase<TEntity> _storage;
 
         private StorageProviderTypes _stoargeProvider = StorageProviderTypes.Original;
@@ -476,8 +476,6 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var json = await _cacheProvider.GetAsync(GetCacheKey(id));
                 if (!String.IsNullOrEmpty(json))
                 {
-                    _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Get document From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
-
                     try
                     {
                         var entity = JsonConvert.DeserializeObject<TEntity>(json);
@@ -497,6 +495,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                         else
                         {
                             DocumentCacheHit.WithLabels(typeof(TEntity).Name).Inc();
+                            _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Get document From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms entityName={entity.Name}");
                             return entity;
                         }
                     }
@@ -541,8 +540,6 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var response = await container.ReadItemAsync<TEntity>(id, String.IsNullOrEmpty(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey));
                 timer.Dispose();
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Load document from storage in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}",
-                    sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), response.RequestCharge.ToString().ToKVP("requestCharge"), id.ToKVP("recordId"));
 
                 if (response == null)
                 {
@@ -571,6 +568,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                         }
                     }
 
+                    _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Load document {entity.Name} from storage in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}",
+                        sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), response.RequestCharge.ToString().ToKVP("requestCharge"), id.ToKVP("recordId"), entity.Name.ToKVP("entityName"));
 
                     return entity;
                 }
