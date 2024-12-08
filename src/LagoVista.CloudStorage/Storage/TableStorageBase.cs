@@ -89,6 +89,8 @@ namespace LagoVista.CloudStorage.Storage
               LabelNames = new[] { "entity", "operation", "error_type" },
           });
 
+        private static Dictionary<string, TableClient> _tableClients = new Dictionary<string, TableClient>();
+
 
         public TableStorageBase(String accountName, string accountKey, IAdminLogger logger)
         {
