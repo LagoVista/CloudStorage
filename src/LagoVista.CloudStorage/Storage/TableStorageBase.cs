@@ -242,7 +242,7 @@ namespace LagoVista.CloudStorage.Storage
                     if (response.IsSuccessStatusCode)
                     {
                         var json = await response.Content.ReadAsStringAsync();
-                        _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__Get__{typeof(TEntity).Name}] {operationUri} {sw.ElapsedMilliseconds}ms");
+                        _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>_Get_Full ResourcePath] {operationUri} {sw.ElapsedMilliseconds}ms");
                         return JsonConvert.DeserializeObject<TEntity>(json);
                     }
 
@@ -263,14 +263,14 @@ namespace LagoVista.CloudStorage.Storage
 
             if (String.IsNullOrEmpty(rowKey))
             {
-                _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_GetAsync", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
-                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+                _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>_GetRAWJSONAsync]", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row key must be present get an entity.");
             }
 
             if (String.IsNullOrEmpty(partitionKey))
             {
-                _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_GetAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
-                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+                _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>_GetRAWJSONAsync]", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception($"Partition key must be present to get an entity, row key {rowKey} was provided.");
             }
 
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
@@ -311,14 +311,14 @@ namespace LagoVista.CloudStorage.Storage
 
             if (String.IsNullOrEmpty(rowKey))
             {
-                _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_GetAsync", "emptyRowKey", new KeyValuePair<string, string>("tableName", GetTableName()));
-                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+                _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>_GetAsync]", "Request was made to get table storage entity without a row key.", new KeyValuePair<string, string>("tableName", GetTableName()));
+                throw new Exception("Row is required to load a table storage entity.");
             }
 
             if (String.IsNullOrEmpty(partitionKey))
             {
                 _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_GetAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
-                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+                throw new Exception("Partition key is required to load a table storage entity.");
             }
 
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
@@ -328,7 +328,7 @@ namespace LagoVista.CloudStorage.Storage
             {
                 if (throwOnNotFound)
                 {
-                    throw new RecordNotFoundException(GetTableName(), rowKey);
+                    throw new RecordNotFoundException(GetTableName(), $"Row Key = {rowKey}, Parition Key = {partitionKey}");
                 }
                 else
                 {
@@ -345,7 +345,7 @@ namespace LagoVista.CloudStorage.Storage
 
             if (String.IsNullOrEmpty(rowKey))
             {
-                _logger.AddError("TableStorageBase", "recordNotFound", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("rowKey", rowKey));
+                _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>_GetAsync]", "recordNotFound", new KeyValuePair<string, string>("tableName", GetTableName()), new KeyValuePair<string, string>("rowKey", rowKey));
                 throw new Exception("Row Key Must be Present to get Record by Row.");
             }
 
@@ -357,7 +357,7 @@ namespace LagoVista.CloudStorage.Storage
                 if (throwOnNotFound)
                 {
                     ErrorMetric.WithLabels(typeof(TEntity).Name, "GetAsync", "RecordNotFound");
-                    throw new RecordNotFoundException(GetTableName(), rowKey);
+                    throw new RecordNotFoundException(GetTableName(), $"RowKey = {rowKey}, Parition Key = -not supplied-");
                 }
                 else
                 {
@@ -374,7 +374,7 @@ namespace LagoVista.CloudStorage.Storage
 
             if (entity == null)
             {
-                _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_InsertAsync]", "NULL value provided.", GetTableName().ToKVP("tableName"));
+                _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>_InsertAsync]", "NULL value provided.", GetTableName().ToKVP("tableName"));
                 throw new Exception($"Null Value Provided for InsertAsync({typeof(TEntity).Name}).");
             }
 
@@ -393,13 +393,13 @@ namespace LagoVista.CloudStorage.Storage
             if (String.IsNullOrEmpty(entity.RowKey))
             {
                 _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_InsertAsync]", "emptyRowKey", GetTableName().ToKVP("tableName"));
-                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+                throw new Exception("Row key must be present to insert or replace an entity.");
             }
 
             if (String.IsNullOrEmpty(entity.PartitionKey))
             {
                 _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_InsertAsync]", "emptyPartitionKey", GetTableName().ToKVP("tableName"));
-                throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
+                throw new Exception($"Partition Keys must be present to insert or replace an entity, Row Key = {entity.RowKey}.");
             }
 
             var json = JsonConvert.SerializeObject(entity);
