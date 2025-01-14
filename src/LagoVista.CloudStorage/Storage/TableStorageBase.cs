@@ -24,6 +24,14 @@ using Prometheus;
 namespace LagoVista.CloudStorage.Storage
 {
 
+    public enum StoragePeriod
+    {
+        All,
+        Month,
+        Quarter,
+        Year
+    }
+
     public abstract class TableStorageBase<TEntity> : IDisposable where TEntity : TableStorageEntity
     {
         TableClient _tableClient;
@@ -97,16 +105,11 @@ namespace LagoVista.CloudStorage.Storage
             _logger = logger ?? throw new ArgumentNullException(nameof(logger)); 
             
             _accountKey = accountKey ;
-            _accountName = accountName;
-            var tableName = GetTableName();
+            _accountName = accountName; 
 
             if (String.IsNullOrEmpty(accountName)) throw new ArgumentNullException(nameof(accountName));
             if (String.IsNullOrEmpty(accountKey)) throw new ArgumentNullException(nameof(accountKey)); 
-            if (String.IsNullOrEmpty(tableName)) throw new ArgumentNullException(nameof(tableName));
-
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey}";
-            _tableClient = new TableClient(connectionString, tableName);
-            _srvrPath = $"https://{accountName}.table.core.windows.net/{tableName}";
+         
         }
 
         public TableStorageBase(IAdminLogger adminLogger)
@@ -137,8 +140,7 @@ namespace LagoVista.CloudStorage.Storage
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey}";
             _tableClient = new TableClient(connectionString, tableName);
-            _srvrPath = $"https://{accountName}.table.core.windows.net/{tableName}";
-
+          
             _srvrPath = $"https://{_accountName}.table.core.windows.net/{GetTableName()}";
         }
 
@@ -148,35 +150,67 @@ namespace LagoVista.CloudStorage.Storage
             _srvrPath = $"https://{_accountName}.table.core.windows.net/{GetTableName()}";
         }
 
+        public virtual StoragePeriod GetStoragePeriod()
+        {
+            return StoragePeriod.All;
+        }
+
         protected virtual string GetTableName()
         {
-            return String.IsNullOrEmpty(_tableName) ? typeof(TEntity).Name : _tableName;
+            if(!String.IsNullOrEmpty(_tableName))
+            {
+                return _tableName;
+            }
+
+            var name = typeof(TEntity).Name;
+            switch(GetStoragePeriod())
+            {
+                case StoragePeriod.Month:
+                    return $"m{DateTime.UtcNow.ToString("yyyyMM")}{name}";
+                case StoragePeriod.Quarter:
+                    var quarter = (DateTime.UtcNow.Month - 1) / 3 + 1;
+                    return $"q{DateTime.UtcNow.ToString("yyyy")}{quarter}{name}";
+                case StoragePeriod.Year:
+                    return $"y{DateTime.UtcNow.ToString("yyyy")}{name}";
+            }
+
+            return name;
         }
 
         private bool Initialized { get; set; }
 
+        DateTime? _initDate;
+
         public virtual async Task InitAsync()
         {
-            if (_tableClient == null)
-            {
-                var ex = new InvalidOperationException($"_tableClient Instance not created on {GetType().Name}, either set connection parameters in constructor or with SetConnection");
-                _logger.AddException($"{GetType().Name}_InitAsync", ex);
-                throw ex;
-            }
-
             lock (this)
             {
-                if (Initialized)
+                if (Initialized && _initDate.HasValue && _initDate == DateTime.UtcNow.Date)
                 {
                     return;
                 }
             }
 
-            var sw = Stopwatch.StartNew();
-            await _tableClient.CreateIfNotExistsAsync();
+            try
+            {
 
-            _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__InitAsync__{typeof(TEntity).Name}] Create If not Exists {sw.ElapsedMilliseconds}ms");
-            Initialized = true;
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountName};AccountKey={_accountKey}";
+                _tableClient = new TableClient(connectionString, GetTableName());
+                _srvrPath = $"https://{_accountName}.table.core.windows.net/{GetTableName()}";
+
+                var sw = Stopwatch.StartNew();
+                await _tableClient.CreateIfNotExistsAsync();
+
+                _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__InitAsync__{typeof(TEntity).Name}] Create If not Exists {sw.ElapsedMilliseconds}ms");
+
+                _initDate = DateTime.UtcNow.Date;
+                Initialized = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException($"[TableStorageBase<{typeof(TEntity).Name}>__InitAsync__{typeof(TEntity).Name}]", ex, GetTableName().ToKVP("tableName"));
+            }
+
         }
 
         private System.Net.Http.HttpClient CreateRequest(String fullResourcePath = "")
