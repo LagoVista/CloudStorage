@@ -633,6 +633,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
             var doc = await GetDocumentAsync(id);
 
+
             if (_dependencyManager != null)
             {
                 var dependencyies = await _dependencyManager.CheckForDependenciesAsync(doc);
@@ -651,7 +652,9 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var container = await GetContainerAsync();
 
-            var result = await container.DeleteItemAsync<TEntity>(id, PartitionKey.None);
+            doc.IsDeleted = true;
+            doc.DeletionDate = DateTime.UtcNow.ToJSONString();
+            var result =await container.UpsertItemAsync(doc);
             timer.Dispose();
 
             _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id} in {sw.Elapsed.TotalMilliseconds} ms",
@@ -685,13 +688,17 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var container = await GetContainerAsync();
             var partitionKeyValue = new PartitionKey(partitionKey);
-            var response = await container.DeleteItemAsync<TEntity>(id, partitionKeyValue);
+
+
+            doc.IsDeleted = true;
+            doc.DeletionDate = DateTime.UtcNow.ToJSONString();
+            var result = await container.UpsertItemAsync(doc, partitionKeyValue);
             timer.Dispose();
 
             _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id}, partition key {partitionKey} in {sw.Elapsed.TotalMilliseconds} ms",
                 new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("recordId", id));
 
-            return new OperationResponse<TEntity>(response);
+            return new OperationResponse<TEntity>(result);
         }
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
@@ -793,7 +800,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name)
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted) )
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
 
@@ -852,7 +859,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name)
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted))
                         .OrderBy(sort)
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
@@ -902,7 +909,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
-                           System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity
+                           System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ISoftDeletable
         {
             try
             {
@@ -915,7 +922,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name)
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted))
                         .OrderBy(sort)
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
@@ -962,7 +969,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
-                   System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity
+                   System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ISoftDeletable
         {
             try
             {
@@ -975,7 +982,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name)
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted))
                         .OrderByDescending(sort)
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
@@ -1135,7 +1142,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name)
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted))
                         .OrderByDescending(sort)
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
