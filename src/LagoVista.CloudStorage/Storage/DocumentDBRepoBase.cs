@@ -633,7 +633,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
             var doc = await GetDocumentAsync(id);
 
-
             if (_dependencyManager != null)
             {
                 var dependencyies = await _dependencyManager.CheckForDependenciesAsync(doc);
@@ -800,7 +799,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted) )
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) )
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
 
@@ -859,7 +858,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted))
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted))
                         .OrderBy(sort)
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
@@ -922,7 +921,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted))
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted))
                         .OrderBy(sort)
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
@@ -982,7 +981,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted))
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted))
                         .OrderByDescending(sort)
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
@@ -1142,7 +1141,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted || listRequest.ShowDeleted))
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted))
                         .OrderByDescending(sort)
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
