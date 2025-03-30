@@ -951,6 +951,12 @@ namespace LagoVista.CloudStorage.DocumentDB
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
+                listResponse.Categories = listResponse.Model.Where(itm=>!String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryKey, itm.CategoryId, itm.Category)).Distinct().ToList();
+                if (listResponse.Categories.Any())
+                {
+                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect());
+                }
+
                 _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] in {sw.Elapsed.TotalMilliseconds} ms",
                         new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
 
@@ -1013,6 +1019,11 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm => itm.CreateSummary() as TEntitySummary));
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
+                listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryKey, itm.CategoryId, itm.Category)).Distinct().ToList();
+                if (listResponse.Categories.Any())
+                {
+                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect());
+                }
 
                 _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] in {sw.Elapsed.TotalMilliseconds} ms",
                     new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
@@ -1071,7 +1082,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             return listResponse;
         }
 
-        protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TEntitySummary : class
+        protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TEntitySummary : class, ISummaryData
         {
             try
             {
@@ -1115,6 +1126,13 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items);
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
+
+                listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryKey, itm.CategoryId, itm.Category)).Distinct().ToList();
+                if (listResponse.Categories.Any())
+                {
+                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect());
+                }
+
                 return listResponse;
             }
             catch (Exception ex)
