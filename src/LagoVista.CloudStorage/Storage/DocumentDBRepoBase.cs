@@ -17,6 +17,7 @@ using Microsoft.Azure.Cosmos.Linq;
 using Prometheus;
 using System.Text;
 using MongoDB.Driver;
+using MongoDB.Bson.Serialization.IdGenerators;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
@@ -951,11 +952,13 @@ namespace LagoVista.CloudStorage.DocumentDB
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
-                listResponse.Categories = listResponse.Model.Where(itm=>!String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryKey, itm.CategoryId, itm.Category)).Distinct().ToList();
+                Console.WriteLine("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
+                listResponse.Categories = listResponse.Model.Where(itm=>!String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).Distinct(new CategoryComparer()).ToList();
                 if (listResponse.Categories.Any())
                 {
                     listResponse.Categories.Insert(0, EnumDescription.CreateSelect());
                 }
+                Console.WriteLine("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 
                 _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] in {sw.Elapsed.TotalMilliseconds} ms",
                         new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
@@ -973,6 +976,23 @@ namespace LagoVista.CloudStorage.DocumentDB
                 return listResponse;
             }
         }
+
+        private class CategoryComparer : IEqualityComparer<EnumDescription> 
+        {
+            public bool Equals(EnumDescription x, EnumDescription y)
+            {
+                var result = x.Key == y.Key;
+                Console.WriteLine($"COMPARE {result} {x.Key} {y.Key}");
+                return result;
+            }
+
+            public int GetHashCode(EnumDescription obj)
+            {
+                return obj.GetHashCode();
+            }
+        }
+
+
 
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
                    System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ISoftDeletable, ICategorized
@@ -1019,7 +1039,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm => itm.CreateSummary() as TEntitySummary));
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-                listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryKey, itm.CategoryId, itm.Category)).Distinct().ToList();
+                listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).Distinct(new CategoryComparer()).ToList();
                 if (listResponse.Categories.Any())
                 {
                     listResponse.Categories.Insert(0, EnumDescription.CreateSelect());
@@ -1127,7 +1147,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
-                listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryKey, itm.CategoryId, itm.Category)).Distinct().ToList();
+                listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).Distinct(new CategoryComparer()).ToList();
                 if (listResponse.Categories.Any())
                 {
                     listResponse.Categories.Insert(0, EnumDescription.CreateSelect());
@@ -1191,6 +1211,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
 
                 var listResponse = ListResponse<TEntity>.Create(listRequest, items);
+               
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
