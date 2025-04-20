@@ -955,7 +955,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 Console.WriteLine("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
                 listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id).Select(itm => itm.First()).ToList();
                 {
-                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect());
+                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
                 }
                 Console.WriteLine("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 
@@ -1025,7 +1025,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id).Select(itm => itm.First()).ToList();
                 if (listResponse.Categories.Any())
                 {
-                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect());
+                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
                 }
 
                 _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] in {sw.Elapsed.TotalMilliseconds} ms",
@@ -1133,7 +1133,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id).Select(itm => itm.First()).ToList();
                 if (listResponse.Categories.Any())
                 {
-                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect());
+                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
                 }
 
                 return listResponse;
