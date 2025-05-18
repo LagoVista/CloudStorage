@@ -402,7 +402,7 @@ namespace LagoVista.CloudStorage.Storage
             return record;
         }
 
-        public async Task InsertAsync(TEntity entity)
+        public async Task InsertAsync(TEntity entity, bool logException = true)
         {
             var sw = Stopwatch.StartNew();
 
@@ -451,10 +451,12 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     if (!response.IsSuccessStatusCode)
                     {
-                  
-                        ErrorMetric.WithLabels(typeof(TEntity).Name, "InsertAsync", response.StatusCode.ToString());
+                        if (logException)
+                        {
+                            ErrorMetric.WithLabels(typeof(TEntity).Name, "InsertAsync", response.StatusCode.ToString());
 
-                        _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_InsertAsync", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
+                            _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_InsertAsync", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
+                        }
 
                         throw new Exception($"Non success response from server: {response.ReasonPhrase}");
                     }
