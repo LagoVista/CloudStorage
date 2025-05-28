@@ -49,6 +49,12 @@ namespace LagoVista.CloudStorage.IntegrationTests
         }
 
         [Test]
+        public async Task ManyQuery()
+        {
+            await _entityRepo!.ReadMany("NAME_VAL_1");
+        }
+
+        [Test]
         public async Task Insert200Items()
         {
             await InsertManyItems(200);
@@ -119,8 +125,8 @@ namespace LagoVista.CloudStorage.IntegrationTests
         {
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountId};AccountKey={_accountKey}";
 
-            var tableClient = new TableClient(connectionString, nameof(TSEntity));
-            await tableClient.DeleteAsync();
+           // var tableClient = new TableClient(connectionString, nameof(TSEntity));
+           // await tableClient.DeleteAsync();
         }
 
     }

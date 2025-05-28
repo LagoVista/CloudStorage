@@ -1,6 +1,9 @@
 ﻿using LagoVista.CloudStorage.Storage;
+using LagoVista.Core.Models.UIMetaData;
+using LagoVista.Core.Models;
 using LagoVista.IoT.Logging.Loggers;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace LagoVista.CloudStorage.Tests.Support
 {
@@ -14,6 +17,13 @@ namespace LagoVista.CloudStorage.Tests.Support
         {
             return InsertAsync(entity);
         }
-    
+
+        public async Task<IEnumerable<TSEntity>> ReadMany(string id)
+        {
+            var results = await GetPagedResultsAsync(ListRequest.CreateForAll(), FilterOptions.Create(nameof(TSEntity.Value1), FilterOptions.Operators.Equals, "ONE"));
+            return results.Model;
+
+        }
+
     }
 }

@@ -730,6 +730,8 @@ namespace LagoVista.CloudStorage.Storage
                 query += $"&NextRowKey={listRequest.NextRowKey}";
             }
 
+            query += $"&$top={Math.Min(1000, listRequest.PageSize)}";
+
             var operationUri = new Uri($"{_srvrPath}{resource}{query}");
             
             using(var queryTimer = QueryMetric.WithLabels(typeof(TEntity).Name))
@@ -803,7 +805,7 @@ namespace LagoVista.CloudStorage.Storage
                 query += $"?$filter=RowKey gt '{DateTime.UtcNow.AddMinutes(30).ToInverseTicksRowKey()}'";
             }
 
-            query += $"&$top={listRequest.PageSize}";
+            query += $"&$top={Math.Min(1000,listRequest.PageSize)}";
 
             if (!String.IsNullOrEmpty(listRequest.NextPartitionKey))
             {
