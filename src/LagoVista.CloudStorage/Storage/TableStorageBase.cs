@@ -774,6 +774,31 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
+        public async Task<TEntity> FindAsync(string partitionKey, params FilterOptions[] filters)
+        {
+            var sw = Stopwatch.StartNew();
+            await InitAsync();
+
+            var resource = $"()";
+
+            var query = (filters.Length > 0) ? $"{GetFilter(filters.ToList())} and PartitionKey eq '{partitionKey}'" : $"?$filter=(PartitionKey eq '{partitionKey}')";
+
+            var operationUri = new Uri($"{_srvrPath}{resource}{query}");
+
+            using (var request = CreateRequest(resource))
+            {
+                request.DefaultRequestHeaders.Authorization = GetAuthHeader(request, "GET", fullResourcePath: resource);
+
+                var json = await request.GetStringAsync(operationUri);
+                var resultset = JsonConvert.DeserializeObject<TableStorageResultSet<TEntity>>(json);
+
+                _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__GetByFilterAsync] {sw.ElapsedMilliseconds} ms {operationUri}");
+                var record = resultset.ResultSet.FirstOrDefault();
+                return record;
+            }
+        }
+
+
         public async Task<ListResponse<TEntity>> GetPagedResultsAsync(ListRequest listRequest, params FilterOptions[] filters)
         {
             var sw = Stopwatch.StartNew();
@@ -1022,6 +1047,8 @@ namespace LagoVista.CloudStorage.Storage
 
             return bldr.ToString();
         }
+
+
 
 
         public async Task<IEnumerable<TEntity>> GetByFilterAsync(params FilterOptions[] filters)
