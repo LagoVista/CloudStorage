@@ -164,7 +164,7 @@ namespace LagoVista.CloudStorage.Storage
                         return default;
                     }
 
-                    if (typeof(TEntity).Name != "Organization" && entity.OwnerOrganization.Id != ownerId)
+                    if (typeof(TEntity).Name != "Organization" && (entity.OwnerOrganization.Id != ownerId || entity.IsPublic))
                         throw new NotAuthorizedException($"Invalid object access by incorrect organization, object org: {entity.OwnerOrganization.Id} - request org: {ownerId}");
 
                     return entity;
@@ -234,7 +234,7 @@ namespace LagoVista.CloudStorage.Storage
             var sw = Stopwatch.StartNew();
             var container = Client.GetContainer(_dbName, _collectionName);
             var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                    .Where(doc => doc.EntityType == entityType && doc.OwnerOrganization.Id == org.Id);
+                    .Where(doc => doc.EntityType == entityType && (doc.OwnerOrganization.Id == org.Id || doc.IsPublic));
 
             Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Query {linqQuery}");
 
