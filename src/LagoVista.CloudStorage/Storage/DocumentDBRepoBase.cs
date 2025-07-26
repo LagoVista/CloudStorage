@@ -17,12 +17,9 @@ using Microsoft.Azure.Cosmos.Linq;
 using Prometheus;
 using System.Text;
 using MongoDB.Driver;
-using MongoDB.Bson.Serialization.IdGenerators;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
-
-
     public class DocumentDBRepoBase<TEntity> where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity, IRevisionedEntity
     {
         enum StorageProviderTypes
@@ -64,8 +61,6 @@ namespace LagoVista.CloudStorage.DocumentDB
               LabelNames = new[] { "entity" },
               Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
           });
-
-
 
         protected static readonly Histogram DocumentInsert = Metrics.CreateHistogram("nuviot_document_insert", "Elapsed time for document insert.",
           new HistogramConfiguration
