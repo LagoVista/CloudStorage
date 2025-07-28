@@ -17,6 +17,10 @@ using Microsoft.Azure.Cosmos.Linq;
 using Prometheus;
 using System.Text;
 using MongoDB.Driver;
+using System.Text.RegularExpressions;
+using Azure;
+using System.Reflection;
+using LagoVista.Core.Attributes;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
@@ -37,7 +41,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
-       
+
         private readonly IDocumentDBRepoBase<TEntity> _storage;
 
         private StorageProviderTypes _stoargeProvider = StorageProviderTypes.Original;
@@ -159,9 +163,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                 _defaultCollectionName += "s";
             }
 
-            if(_stoargeProvider == StorageProviderTypes.CosmosDB)
+            if (_stoargeProvider == StorageProviderTypes.CosmosDB)
             {
-                _storage.SetConnection(connectionString, sharedKey, dbName); 
+                _storage.SetConnection(connectionString, sharedKey, dbName);
             }
         }
 
@@ -350,6 +354,37 @@ namespace LagoVista.CloudStorage.DocumentDB
             return new OperationResponse<TEntity>(response);
         }
 
+        private async Task PostDiscussionUpdates(IDiscussableEntity entity)
+        {
+            await BackgroundServiceTaskQueueProvider.Instance.QueueBackgroundWorkItemAsync((token) =>
+            {
+                var discussable = entity as IDiscussableEntity;
+
+
+                var mentionRegEx = new Regex(@"data-mention-id=""(?<mentionId>[A-F0-9]+)""");
+                var forMAttr = typeof(TEntity).GetCustomAttribute<EntityDescriptionAttribute>();
+                using (System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create())
+
+                foreach (var discussion in discussable.Discussions)
+                {
+                    foreach (Match match in mentionRegEx.Matches(discussion.Note))
+                    {
+                        var inputBytes = System.Text.Encoding.ASCII.GetBytes(discussion.Note);
+                        var hashBytes = md5.ComputeHash(inputBytes);
+                        var hash = System.Convert.ToBase64String(hashBytes);
+                        if (!discussion.Handled || discussion.NoteHash != hash)
+                        {
+                            UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(match.Groups["mentionId"].Value, entity, discussion);
+                            discussion.Handled = true;
+                            discussion.NoteHash = hash;
+                        }
+                    }                        
+                }
+
+                return Task.CompletedTask;
+            });
+        }
+
         private string GetCacheKey(string id)
         {
             return $"{_dbName}-{typeof(TEntity).Name}-{id}".ToLower();
@@ -395,14 +430,14 @@ namespace LagoVista.CloudStorage.DocumentDB
                         ChangeDate = DateTime.UtcNow.ToJSONString(),
                         ChangedBy = item.LastUpdatedBy,
                         Changes = new List<Core.Models.EntityChange>()
-                    {
-                        new Core.Models.EntityChange()
                         {
-                            OldValue = exisitng.Name,
-                            NewValue = item.Name,
-                            Field = nameof(item.Name),                             
+                            new Core.Models.EntityChange()
+                            {
+                                OldValue = exisitng.Name,
+                                NewValue = item.Name,
+                                Field = nameof(item.Name),
+                            }
                         }
-                    }
                     });
 
                     await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, item.Name);
@@ -417,6 +452,11 @@ namespace LagoVista.CloudStorage.DocumentDB
                 if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Dependency Manager is null");
             }
 
+            if (item is IDiscussableEntity)
+            {
+                Console.WriteLine($"===================> Checking it is discussable <========================================");
+                await PostDiscussionUpdates(item as IDiscussableEntity);
+            }
 
             var upsertResult = await container.UpsertItemAsync(item);
             switch (upsertResult.StatusCode)
@@ -546,7 +586,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
                 }
-               
+
                 DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
 
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -649,7 +689,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             doc.IsDeleted = true;
             doc.DeletionDate = DateTime.UtcNow.ToJSONString();
-            var result =await container.UpsertItemAsync(doc);
+            var result = await container.UpsertItemAsync(doc);
             timer.Dispose();
 
             _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id} in {sw.Elapsed.TotalMilliseconds} ms",
@@ -728,7 +768,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             timer.Dispose();
             DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-           
+
             _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] in {sw.Elapsed.TotalMilliseconds} ms",
                 new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
 
@@ -743,7 +783,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var bldr = new StringBuilder();
             bldr.AppendLine(sql);
-                        
+
 
             foreach (var param in sqlParams)
             {
@@ -795,7 +835,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
                         .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue|| !itm.IsDeleted.Value || listRequest.ShowDeleted) )
+                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted))
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
                         .Take(listRequest.PageSize);
 
@@ -904,7 +944,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
-                           System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class,ICategorized, ISummaryFactory, INoSQLEntity, ISoftDeletable
+                           System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ICategorized, ISummaryFactory, INoSQLEntity, ISoftDeletable
         {
             try
             {
@@ -917,7 +957,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
                         .Where(query)
-                        .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) ||  itm.Category.Key == listRequest.CategoryKey)
+                        .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) || itm.Category.Key == listRequest.CategoryKey)
                         .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted))
                         .OrderBy(sort)
                         .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
@@ -994,7 +1034,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 var page = 1;
 
-                
+
 
                 using (var iterator = linqQuery.ToFeedIterator<TEntityFactory>())
                 {
@@ -1099,7 +1139,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 var page = 1;
 
-                
+
                 var container = await GetContainerAsync();
 
                 using (var iterator = container.GetItemQueryIterator<TEntitySummary>(query))
@@ -1189,7 +1229,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
 
                 var listResponse = ListResponse<TEntity>.Create(listRequest, items);
-               
+
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
@@ -1226,7 +1266,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     query = query.WithParameter(param.Name, param.Value);
                 }
 
-                var page = 1;               
+                var page = 1;
                 var container = await GetContainerAsync();
                 using (var iterator = container.GetItemQueryIterator<TMiscEntity>(query))
                 {
@@ -1318,7 +1358,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                         }
                     }
                 }
-                
+
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
@@ -1346,7 +1386,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         /// <returns></returns>
         protected async Task<ListResponse<TEntity>> QueryAllAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
-            if(_stoargeProvider == StorageProviderTypes.CosmosDB)
+            if (_stoargeProvider == StorageProviderTypes.CosmosDB)
                 return await _storage.QueryAllAsync(query, listRequest);
 
             try
