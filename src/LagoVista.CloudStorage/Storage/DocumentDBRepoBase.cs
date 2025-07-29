@@ -359,28 +359,44 @@ namespace LagoVista.CloudStorage.DocumentDB
             await BackgroundServiceTaskQueueProvider.Instance.QueueBackgroundWorkItemAsync((token) =>
             {
                 var discussable = entity as IDiscussableEntity;
-
-
                 var mentionRegEx = new Regex(@"data-mention-id=""(?<mentionId>[A-F0-9]+)""");
                 var forMAttr = typeof(TEntity).GetCustomAttribute<EntityDescriptionAttribute>();
                 using (System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create())
-
-                foreach (var discussion in discussable.Discussions)
                 {
-                    foreach (Match match in mentionRegEx.Matches(discussion.Note))
+                    foreach (var discussion in discussable.Discussions)
                     {
-                        var inputBytes = System.Text.Encoding.ASCII.GetBytes(discussion.Note);
-                        var hashBytes = md5.ComputeHash(inputBytes);
-                        var hash = System.Convert.ToBase64String(hashBytes);
-                        if (!discussion.Handled || discussion.NoteHash != hash)
+                        foreach (Match match in mentionRegEx.Matches(discussion.Note))
                         {
-                            UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(match.Groups["mentionId"].Value, entity, discussion);
-                            discussion.Handled = true;
-                            discussion.NoteHash = hash;
+                            var inputBytes = System.Text.Encoding.ASCII.GetBytes(discussion.Note);
+                            var hashBytes = md5.ComputeHash(inputBytes);
+                            var hash = System.Convert.ToBase64String(hashBytes);
+                            if (!discussion.Handled || discussion.NoteHash != hash)
+                            {
+                                UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(match.Groups["mentionId"].Value, entity, discussion);
+                                discussion.Handled = true;
+                                discussion.NoteHash = hash;
+                                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Discussion] - {entity.Name}");
+                            }
                         }
-                    }                        
-                }
 
+                        foreach (var response in discussion.Responses)
+                        {
+                            foreach (Match responseMatch in mentionRegEx.Matches(response.Note))
+                            {
+                                var inputBytes = System.Text.Encoding.ASCII.GetBytes(response.Note);
+                                var hashBytes = md5.ComputeHash(inputBytes);
+                                var hash = System.Convert.ToBase64String(hashBytes);
+                                if (!response.Handled || response.NoteHash != hash)
+                                {
+                                    UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(responseMatch.Groups["mentionId"].Value, entity, discussion, response);
+                                    response.Handled = true;
+                                    response.NoteHash = hash;
+                                    _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Response] - {entity.Name}");
+                                }
+                            }
+                        }
+                    }
+                }
                 return Task.CompletedTask;
             });
         }
