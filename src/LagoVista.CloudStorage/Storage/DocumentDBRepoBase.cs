@@ -366,37 +366,40 @@ namespace LagoVista.CloudStorage.DocumentDB
             {
                 foreach (var discussion in discussable.Discussions)
                 {
-                    foreach (Match match in mentionRegEx.Matches(discussion.Note))
+                    if (!String.IsNullOrEmpty(discussion.Note))
                     {
-                        var inputBytes = System.Text.Encoding.ASCII.GetBytes(discussion.Note);
-                        var hashBytes = md5.ComputeHash(inputBytes);
-                        var hash = System.Convert.ToBase64String(hashBytes);
-                        if (!discussion.Handled || discussion.NoteHash != hash)
+                        foreach (Match match in mentionRegEx.Matches(discussion.Note))
                         {
-                            Console.WriteLine($"===> 1) Discussion {discussion.Id} Handled {discussion.Handled}, Note Hash {discussion.NoteHash}, Hash {hash}");
-                            await UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(match.Groups["mentionId"].Value, entity, discussion);
-                            discussion.Handled = true;
-                            discussion.NoteHash = hash;
-                            _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Discussion] - {entity.Name}");
-                            Console.WriteLine($"===> 2) Discussion {discussion.Id} Handled {discussion.Handled}, Note Hash {discussion.NoteHash}, Hash {hash}");
-                        }
-                    }
-
-                    foreach (var response in discussion.Responses)
-                    {
-                        foreach (Match responseMatch in mentionRegEx.Matches(response.Note))
-                        {
-                            var inputBytes = System.Text.Encoding.ASCII.GetBytes(response.Note);
+                            var inputBytes = System.Text.Encoding.ASCII.GetBytes(discussion.Note);
                             var hashBytes = md5.ComputeHash(inputBytes);
                             var hash = System.Convert.ToBase64String(hashBytes);
-                            if (!response.Handled || response.NoteHash != hash)
+                            if (!discussion.Handled || discussion.NoteHash != hash)
                             {
-                                Console.WriteLine($"===> 1) Response {response.Id} Handled {response.Handled}, Note Hash {response.NoteHash}, Hash {hash}");
-                                await UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(responseMatch.Groups["mentionId"].Value, entity, discussion, response);
-                                response.Handled = true;
-                                response.NoteHash = hash;
-                                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Response] - {entity.Name}");
-                                Console.WriteLine($"===> 2) Response {response.Id} Handled {response.Handled}, Note Hash {response.NoteHash}, Hash {hash}");
+                                Console.WriteLine($"===> 1) Discussion {discussion.Id} Handled {discussion.Handled}, Note Hash {discussion.NoteHash}, Hash {hash}");
+                                await UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(match.Groups["mentionId"].Value, entity, discussion);
+                                discussion.Handled = true;
+                                discussion.NoteHash = hash;
+                                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Discussion] - {entity.Name}");
+                                Console.WriteLine($"===> 2) Discussion {discussion.Id} Handled {discussion.Handled}, Note Hash {discussion.NoteHash}, Hash {hash}");
+                            }
+                        }
+
+                        foreach (var response in discussion.Responses)
+                        {
+                            foreach (Match responseMatch in mentionRegEx.Matches(response.Note))
+                            {
+                                var inputBytes = System.Text.Encoding.ASCII.GetBytes(response.Note);
+                                var hashBytes = md5.ComputeHash(inputBytes);
+                                var hash = System.Convert.ToBase64String(hashBytes);
+                                if (!response.Handled || response.NoteHash != hash)
+                                {
+                                    Console.WriteLine($"===> 1) Response {response.Id} Handled {response.Handled}, Note Hash {response.NoteHash}, Hash {hash}");
+                                    await UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(responseMatch.Groups["mentionId"].Value, entity, discussion, response);
+                                    response.Handled = true;
+                                    response.NoteHash = hash;
+                                    _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Response] - {entity.Name}");
+                                    Console.WriteLine($"===> 2) Response {response.Id} Handled {response.Handled}, Note Hash {response.NoteHash}, Hash {hash}");
+                                }
                             }
                         }
                     }
