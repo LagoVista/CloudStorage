@@ -2,7 +2,9 @@
 using Azure;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
+using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
+using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
@@ -123,6 +125,44 @@ namespace LagoVista.CloudStorage.Storage
 
             return null;
         }
+
+
+        public async Task<RatedEntity> AddRatingAsync(string id, int rating, EntityHeader org, EntityHeader user)
+        {
+            var sw = Stopwatch.StartNew();
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var item = await container.ReadItemAsync<RatedEntity>(id, PartitionKey.None);
+
+            var ratings = item.Resource;
+
+            var operations = new List<PatchOperation>()
+            {
+                PatchOperation.Set($"/{nameof(IRatedEntity.Stars)}", ratings.Stars),
+                PatchOperation.Set($"/{nameof(IRatedEntity.RatingsCount)}", ratings.RatingsCount),
+                PatchOperation.Set($"/{nameof(IRatedEntity.Ratings)}", ratings.Ratings),
+            };
+
+             
+            await container.PatchItemAsync<RatedEntity>(id, PartitionKey.None, operations);
+
+            return ratings;
+        }
+
+        public async Task<InvokeResult> SetCategoryAsync(string id, EntityHeader category, EntityHeader org, EntityHeader user)
+        {
+            var sw = Stopwatch.StartNew();
+            var container = Client.GetContainer(_dbName, _collectionName);
+
+            var operations = new List<PatchOperation>()
+            {
+                PatchOperation.Set($"/{nameof(ICategorized.Category)}", category),
+            };
+
+            await container.PatchItemAsync<ICategorized>(id, PartitionKey.None, operations);
+
+            return InvokeResult.Success;
+        }
+
 
         public async Task<TEntity> FindWithKeyAsync<TEntity>(string key) where TEntity : class, IIDEntity, INoSQLEntity, IKeyedEntity, IOwnedEntity
         {
@@ -252,6 +292,5 @@ namespace LagoVista.CloudStorage.Storage
 
             return null;
         }
-
     }
 }
