@@ -5,6 +5,7 @@ using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using LagoVista.IoT.Logging.Loggers;
 using LagoVista.IoT.Logging.Utils;
+using Moq;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -40,7 +41,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
             _uri = $"https://{_accountId}.documents.azure.com:443";
             var dbName = "dev";
 
-            _storageUtils = new StorageUtils(new AdminLogger(new ConsoleLogWriter()));
+            _storageUtils = new StorageUtils(new AdminLogger(new ConsoleLogWriter()), new Mock<ICacheProvider>().Object);
             _storageUtils.SetConnection(new ConnectionSettings()
             {
                 ResourceName = dbName,

@@ -1,5 +1,7 @@
 ﻿using Amazon.SecurityToken.Internal;
 using Azure;
+using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
@@ -8,6 +10,7 @@ using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using Microsoft.Azure.Cosmos.Serialization.HybridRow;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -29,9 +32,10 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ICacheProvider _cacheProvider;
 
 
-        public StorageUtils(IAdminLogger logger)
+        public StorageUtils(IAdminLogger logger, ICacheProvider cacheProvider)
         {
-            _logger = logger;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));    
+            _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
         }
 
 
@@ -68,6 +72,12 @@ namespace LagoVista.CloudStorage.Storage
         protected CosmosClient Client
         {
             get { return GetDocumentClient(); }
+        }
+
+
+        private string GetCacheKey(string entityname, string id)
+        {
+            return $"{_dbName}-{entityname}-{id}".ToLower();
         }
 
 
@@ -129,11 +139,37 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<RatedEntity> AddRatingAsync(string id, int rating, EntityHeader org, EntityHeader user)
         {
+
+            Console.WriteLine($"Requesting document {id}");
+
             var sw = Stopwatch.StartNew();
             var container = Client.GetContainer(_dbName, _collectionName);
-            var item = await container.ReadItemAsync<RatedEntity>(id, PartitionKey.None);
+            var item = await container.ReadItemAsync<EntityBase>(id, PartitionKey.None);
+
+            Console.WriteLine($"Got document {id}");
 
             var ratings = item.Resource;
+
+            var existing = ratings.Ratings.FirstOrDefault(rat => rat.User.Id == user.Id);
+            if (existing != null)
+            {
+                existing.Stars = rating;
+                existing.TimeStamp = DateTime.UtcNow.ToJSONString();
+            }
+            else
+            {
+                ratings.Ratings.Add(new EntityRating()
+                {
+                    Stars = rating,
+                    TimeStamp = DateTime.UtcNow.ToJSONString(),
+                    User = user,
+                });
+            }
+
+            ratings.Stars = ratings.Ratings.Average(rat => rat.Stars);
+            ratings.RatingsCount = ratings.Ratings.Count;
+
+            Console.WriteLine($"3. Requesting document {id}");
 
             var operations = new List<PatchOperation>()
             {
@@ -142,10 +178,16 @@ namespace LagoVista.CloudStorage.Storage
                 PatchOperation.Set($"/{nameof(IRatedEntity.Ratings)}", ratings.Ratings),
             };
 
-             
-            await container.PatchItemAsync<RatedEntity>(id, PartitionKey.None, operations);
+            await _cacheProvider.RemoveAsync(GetCacheKey(ratings.EntityType, id));
+            Console.WriteLine($"4. Requesting document {id}");
 
-            return ratings;
+            var response = await container.PatchItemAsync<RatedEntity>(id, PartitionKey.None, operations);
+
+            Console.WriteLine(response.StatusCode);
+
+            Console.WriteLine($"STARS -> {response.Resource.Stars} ");
+
+            return response.Resource;
         }
 
         public async Task<InvokeResult> SetCategoryAsync(string id, EntityHeader category, EntityHeader org, EntityHeader user)
