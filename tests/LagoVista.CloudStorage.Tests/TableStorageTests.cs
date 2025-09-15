@@ -113,21 +113,21 @@ namespace LagoVista.CloudStorage.IntegrationTests
 
             var existing = await _entityRepo.GetAsync(PARITION_KEY, rowKey);
 
-            Assert.AreEqual(entity.RowKey, existing.RowKey);
+            Assert.That(entity.RowKey == existing.RowKey);
 
-            Assert.AreEqual(entity.Value1, existing.Value1);
-            Assert.AreEqual(entity.Value2, existing.Value2);
+            Assert.That(entity.Value1 == existing.Value1);
+            Assert.That(entity.Value2 == existing.Value2);
         }
 
 
-        [TearDown]
-        public async Task CleanUp()
-        {
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountId};AccountKey={_accountKey}";
+        //[TearDown]
+        //public async Task CleanUp()
+        //{
+        //    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountId};AccountKey={_accountKey}";
 
-           // var tableClient = new TableClient(connectionString, nameof(TSEntity));
-           // await tableClient.DeleteAsync();
-        }
+        //     var tableClient = new TableClient(connectionString, nameof(TSEntity));
+        //     await tableClient.DeleteAsync();
+        //}
 
     }
 }

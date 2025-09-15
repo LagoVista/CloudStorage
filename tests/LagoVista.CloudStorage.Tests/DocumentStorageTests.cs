@@ -74,9 +74,7 @@ namespace LagoVista.CloudStorage.Tests
             await _docDBEntityRepo!.CreateDBDocment(newDoc);
 
             var existing = await _docDBEntityRepo.GetDocDBEntitty(newDoc.Id!);
-            Assert.AreEqual(newDoc.Name, existing.Name);
-
-
+            Assert.That(newDoc.Name == existing.Name);
         }
 
         [Test]
@@ -86,7 +84,7 @@ namespace LagoVista.CloudStorage.Tests
             await _docDBEntityRepo!.CreateDBDocment(newDoc);
 
             var existing = await _docDBEntityRepo.GetDocDBEntitty(newDoc.Id!);
-            Assert.AreEqual(newDoc.Name, existing.Name);
+            Assert.That(newDoc.Name == existing.Name);
 
             existing.Name = Guid.NewGuid().ToString();
 
@@ -94,7 +92,7 @@ namespace LagoVista.CloudStorage.Tests
 
             var updatedDoc = await _docDBEntityRepo.GetDocDBEntitty(newDoc.Id!);
 
-            Assert.AreEqual(existing.Name, updatedDoc.Name);
+            Assert.That(existing.Name == updatedDoc.Name);
         }
 
         [Test]
@@ -105,7 +103,7 @@ namespace LagoVista.CloudStorage.Tests
             await _docDBEntityRepo!.CreateDBDocment(newDoc);
 
             var existing = await _docDBEntityRepo.GetDocDBEntitty(newDoc.Id!);
-            Assert.AreEqual(newDoc.Name, existing.Name);
+            Assert.That(newDoc.Name == existing.Name);
 
             existing.Name = Guid.NewGuid().ToString();
 
@@ -127,8 +125,8 @@ namespace LagoVista.CloudStorage.Tests
 
             var results = await _docDBEntityRepo!.GetForOrgAsync(ORGID, rqst);
 
-            Assert.AreEqual(50, results.Model.Count());
-            Assert.AreEqual(50, results.PageSize);
+            Assert.That(50 == results.Model.Count());
+            Assert.That(50 == results.PageSize);
         }
 
         [Test]
@@ -144,10 +142,10 @@ namespace LagoVista.CloudStorage.Tests
 
             var results = await _docDBEntityRepo!.GetForOrgAsync(ORGID, rqst);
 
-            Assert.AreEqual(50, results.PageSize);
-            Assert.AreEqual(50, results.Model.Count());
-            Assert.AreEqual(2, results.PageIndex);
-            Assert.AreEqual(50, results.Model.First().Index);
+            Assert.That(50 == results.PageSize);
+            Assert.That(50 == results.Model.Count());
+            Assert.That(2 == results.PageIndex);
+            Assert.That(50 == results.Model.First().Index);
         }
 
 
@@ -163,14 +161,14 @@ namespace LagoVista.CloudStorage.Tests
             };
 
             var results = await _docDBEntityRepo!.GetForOrgDescAsync(ORGID, rqst);
-            Assert.AreEqual(99, results.Model.First().Index);
-            Assert.AreEqual(50, results.Model.Count());
+            Assert.That(99 == results.Model.First().Index);
+            Assert.That(50 == results.Model.Count());
 
 
             rqst.PageIndex = 2;
             results = await _docDBEntityRepo!.GetForOrgDescAsync(ORGID, rqst);
-            Assert.AreEqual(49, results.Model.First().Index);
-            Assert.AreEqual(50, results.Model.Count());
+            Assert.That(49 == results.Model.First().Index);
+            Assert.That(50 == results.Model.Count());
         }
 
 
@@ -187,8 +185,8 @@ namespace LagoVista.CloudStorage.Tests
 
             var results = await _docDBEntityRepo!.GetForOrgAllAsync(ORGID, rqst);
 
-            Assert.AreEqual(50, results.Model.Count());
-            Assert.AreEqual(rqst.PageSize, results.PageSize);
+            Assert.That(50 == results.Model.Count());
+            Assert.That(rqst.PageSize == results.PageSize);
         }
 
         private async Task Create200DocsAsync()
@@ -216,7 +214,7 @@ namespace LagoVista.CloudStorage.Tests
         {
             await Create200DocsAsync();
             var records = await _docDBEntityRepo!.GetForOrgAsync(ORGID);
-            Assert.AreEqual(100, records.Count());
+            Assert.That(100 == records.Count());
         }
 
 
@@ -225,7 +223,7 @@ namespace LagoVista.CloudStorage.Tests
         {
             await Create200DocsAsync();
             var records = await _docDBEntityRepo!.GetForOrgWithSQL(ORGID);
-            Assert.AreEqual(100, records.Count());
+            Assert.That(100 == records.Count());
         }
 
         [Test]
@@ -248,7 +246,7 @@ namespace LagoVista.CloudStorage.Tests
             };
 
             var result = await _docDBEntityRepo!.GetOrderedQuery(rqst);
-            Assert.IsTrue(result.Successful, result.Errors.FirstOrDefault()?.Message);
+            Assert.That(result.Successful, result.Errors.FirstOrDefault()?.Message);
         }
 
 
@@ -263,7 +261,7 @@ namespace LagoVista.CloudStorage.Tests
             };
 
             var result = await _docDBEntityRepo!.GetOrderedSummaryQuery(rqst);
-            Assert.IsTrue(result.Successful, result.Errors.FirstOrDefault()?.Message);
+            Assert.That(result.Successful, result.Errors.FirstOrDefault()?.Message);
         }
 
         private Support.DocDBEntitty CreateDoc(string orgId = null, int? idx = null)

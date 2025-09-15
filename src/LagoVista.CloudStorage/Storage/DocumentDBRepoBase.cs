@@ -969,7 +969,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
-                           System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ICategorized, ISummaryFactory, INoSQLEntity, ISoftDeletable
+                           System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ICategorized, ISummaryFactory, INoSQLEntity, INamedEntity, IRatedEntity, IAuditableEntity
         {
             try
             {
@@ -979,14 +979,67 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var items = new List<TEntityFactory>();
                 var requestCharge = 0.0;
 
+                if(listRequest.OrderBy != null && listRequest.OrderByDesc != null)
+                {
+                    return ListResponse<TEntitySummary>.FromError("order by AND order by desc were both provided, must either be both empty or only provide one of the two.");
+                }
+
+                if(listRequest.OrderBy != null)
+                {
+                    switch (listRequest.OrderBy.Value)
+                    {
+                        case OrderByTypes.Name:
+                            sort = (ele => ele.Name);
+                            break;
+                        case OrderByTypes.Rating:
+                            sort = (ele => ele.Stars.ToString());
+                            break;
+                        case OrderByTypes.CreationDate:
+                            sort = (ele => ele.CreationDate);
+                            break;
+                        case OrderByTypes.LastUpdateDate:
+                            sort = (ele => ele.LastUpdatedDate);
+                            break;
+                    }
+                }
+
+                System.Linq.Expressions.Expression<Func<TEntityFactory, string>> orderByDesc = null;
+
+                if (listRequest.OrderByDesc != null)
+                {
+                    switch (listRequest.OrderByDesc.Value)
+                    {
+                        case OrderByTypes.Name:
+                            orderByDesc = (ele => ele.Name);
+                            break;
+                        case OrderByTypes.Rating:
+                            orderByDesc = (ele => ele.Stars.ToString());
+                            break;
+                        case OrderByTypes.CreationDate:
+                            orderByDesc = (ele => ele.CreationDate);
+                            break;
+                        case OrderByTypes.LastUpdateDate:
+                            orderByDesc = (ele => ele.LastUpdatedDate);
+                            break;
+                    }
+                }
+
                 var container = await GetContainerAsync();
-                var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
-                        .Where(query)
-                        .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) || itm.Category.Key == listRequest.CategoryKey)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted))
-                        .OrderBy(sort)
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
+                var linqQuery = orderByDesc == null ? container.GetItemLinqQueryable<TEntityFactory>()
+                                                        .Where(query)
+                                                        .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) || itm.Category.Key == listRequest.CategoryKey)
+                                                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted))
+                                                        .OrderBy(sort)
+                                                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                                                        .Take(listRequest.PageSize) :
+                                                       container.GetItemLinqQueryable<TEntityFactory>()
+                                                        .Where(query)
+                                                        .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) || itm.Category.Key == listRequest.CategoryKey)
+                                                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted))
+                                                        .OrderByDescending(sort)
+                                                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                                                        .Take(listRequest.PageSize);
+
 
                 var page = 1;
 

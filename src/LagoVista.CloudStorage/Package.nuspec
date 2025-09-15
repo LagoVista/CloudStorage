@@ -2,22 +2,24 @@
 <package>
   <metadata>
     <id>LagoVista.CloudStorage</id>
-    <version>3.0.1963.1145</version>
+    <version>3.0.3043.1654</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <projectUrl>https://www.nuviot.com</projectUrl>
     <iconUrl>http://bytemaster.blob.core.windows.net/icons/LagoVistaIcon.png</iconUrl>
     <description>Provides an abstact mechanism to store object graphs to cloud storage.</description>
-    <copyright>Copyright Software Logistics - 2022</copyright>
+    <copyright>Copyright Software Logistics - 2025</copyright>
     <tags>HomeAutomation IoT LagoVista</tags>
     <icon>LagoVistaIcon.png</icon>
-    <releaseNotes>Build Date: 10/1/2022 3:45:22 PM UTC</releaseNotes>
+    <releaseNotes>Build Date: 9/15/2025 8:54:48 PM UTC</releaseNotes>
     <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
       <group targetFramework="netstandard2.1">
-        <dependency id="LagoVista.IoT.Logging" version="3.0.1963.1145" />
+        <dependency id="LagoVista.IoT.Logging" version="3.0.3043.1654" />
         <dependency id="Microsoft.Azure.Cosmos" version="3.30.1" />
+        <dependency id="MongoDB.Driver" version="2.24.0" />
+        <dependency id="prometheus-net" version="6.0.0" />
         <dependency id="StackExchange.Redis" version="2.6.66" />
         <dependency id="Azure.Data.Tables" version="12.6.1" />
         <dependency id="Azure.Storage.Blobs" version="12.13.1" />

@@ -24,8 +24,6 @@ namespace LagoVista.CloudStorage.Tests.Support
 
         public string FieldSix { get; set; }
 
-        public EntityHeader Category { get; set; }
-
         public DocDbSummary CreateSummary()
         {
             return new DocDbSummary()

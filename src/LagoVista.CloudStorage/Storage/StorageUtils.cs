@@ -1,7 +1,4 @@
-﻿using Amazon.SecurityToken.Internal;
-using Azure;
-using LagoVista.CloudStorage.StorageProviders;
-using LagoVista.Core;
+﻿using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
@@ -10,8 +7,6 @@ using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
-using Microsoft.Azure.Cosmos.Serialization.HybridRow;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -137,16 +132,36 @@ namespace LagoVista.CloudStorage.Storage
         }
 
 
-        public async Task<RatedEntity> AddRatingAsync(string id, int rating, EntityHeader org, EntityHeader user)
+        public async Task<RatedEntity> ClearRatingAsync(string id, EntityHeader org, EntityHeader user)
         {
-
-            Console.WriteLine($"Requesting document {id}");
-
-            var sw = Stopwatch.StartNew();
             var container = Client.GetContainer(_dbName, _collectionName);
             var item = await container.ReadItemAsync<EntityBase>(id, PartitionKey.None);
 
-            Console.WriteLine($"Got document {id}");
+            var ratings = item.Resource;
+
+            ratings.Ratings = ratings.Ratings.Where(rt => rt.User.Id != user.Id).ToList();
+
+            ratings.Stars = ratings.Ratings.Count > 0 ? ratings.Ratings.Average(rat => rat.Stars) : 0;
+            ratings.RatingsCount = ratings.Ratings.Count;
+
+            var operations = new List<PatchOperation>()
+            {
+                PatchOperation.Set($"/{nameof(IRatedEntity.Stars)}", ratings.Stars),
+                PatchOperation.Set($"/{nameof(IRatedEntity.RatingsCount)}", ratings.RatingsCount),
+                PatchOperation.Set($"/{nameof(IRatedEntity.Ratings)}", ratings.Ratings),
+            };
+
+            await _cacheProvider.RemoveAsync(GetCacheKey(ratings.EntityType, id));
+     
+            var response = await container.PatchItemAsync<RatedEntity>(id, PartitionKey.None, operations);
+            return response.Resource;
+        }
+
+        public async Task<RatedEntity> AddRatingAsync(string id, int rating, EntityHeader org, EntityHeader user)
+        {
+            var sw = Stopwatch.StartNew();
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var item = await container.ReadItemAsync<EntityBase>(id, PartitionKey.None);
 
             var ratings = item.Resource;
 
@@ -169,8 +184,6 @@ namespace LagoVista.CloudStorage.Storage
             ratings.Stars = ratings.Ratings.Average(rat => rat.Stars);
             ratings.RatingsCount = ratings.Ratings.Count;
 
-            Console.WriteLine($"3. Requesting document {id}");
-
             var operations = new List<PatchOperation>()
             {
                 PatchOperation.Set($"/{nameof(IRatedEntity.Stars)}", ratings.Stars),
@@ -179,14 +192,8 @@ namespace LagoVista.CloudStorage.Storage
             };
 
             await _cacheProvider.RemoveAsync(GetCacheKey(ratings.EntityType, id));
-            Console.WriteLine($"4. Requesting document {id}");
 
             var response = await container.PatchItemAsync<RatedEntity>(id, PartitionKey.None, operations);
-
-            Console.WriteLine(response.StatusCode);
-
-            Console.WriteLine($"STARS -> {response.Resource.Stars} ");
-
             return response.Resource;
         }
 
@@ -194,13 +201,17 @@ namespace LagoVista.CloudStorage.Storage
         {
             var sw = Stopwatch.StartNew();
             var container = Client.GetContainer(_dbName, _collectionName);
-
+            var response = await container.ReadItemAsync<EntityBase>(id, PartitionKey.None);
+            var item = response.Resource;
+            
             var operations = new List<PatchOperation>()
             {
                 PatchOperation.Set($"/{nameof(ICategorized.Category)}", category),
             };
 
-            await container.PatchItemAsync<ICategorized>(id, PartitionKey.None, operations);
+            var result = await container.PatchItemAsync<EntityBase>(id, PartitionKey.None, operations);
+            Console.WriteLine("UPDATED CATEGORY===> "+ result.Resource.Category.Text + " id ==> " + result.Resource.Id);
+            await _cacheProvider.RemoveAsync(GetCacheKey(item.EntityType, id));
 
             return InvokeResult.Success;
         }

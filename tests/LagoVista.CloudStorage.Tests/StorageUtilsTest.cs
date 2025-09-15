@@ -55,7 +55,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
         {
             await _storageUtils.DeleteByKeyIfExistsAsync<DocDBEntitty>("default", _orgEH);
             var result = await _storageUtils.FindWithKeyAsync<DocDBEntitty>("default");
-            Assert.IsNull(result);
+            Assert.That(result == null);
 
             await _storageUtils.UpsertDocumentAsync<DocDBEntitty>(new DocDBEntitty()
             {
@@ -64,7 +64,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
             });
 
             result = await _storageUtils.FindWithKeyAsync<DocDBEntitty>("default", _orgEH);
-            Assert.IsNotNull(result);
+            Assert.That(result != null);
         }
     }
 }

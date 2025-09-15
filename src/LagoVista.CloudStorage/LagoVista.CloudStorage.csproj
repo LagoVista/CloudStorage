@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <VersionPrefix>0.8.0</VersionPrefix>
     <TargetFramework>netstandard2.1</TargetFramework>
@@ -16,9 +16,9 @@
     <None Remove="Properties\**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="LagoVista.IoT.Logging" Version="3.0.3039.1520" />
+    <PackageReference Include="LagoVista.IoT.Logging" Version="3.0.3043.1654" />
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.30.1" />
-    <PackageReference Include="MongoDB.Driver" Version="2.24.0" />
+    <PackageReference Include="MongoDB.Driver" Version="3.5.0" />
     <PackageReference Include="prometheus-net" Version="6.0.0" />
     <PackageReference Include="StackExchange.Redis" Version="2.6.66" />
     <PackageReference Include="Azure.Data.Tables" Version="12.6.1" />
