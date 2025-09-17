@@ -16,11 +16,11 @@
     <None Remove="Properties\**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="LagoVista.IoT.Logging" Version="3.0.3045.1131" />
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.54.0-preview.1" />
+    <PackageReference Include="LagoVista.IoT.Logging" Version="3.0.3045.1352" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.53.1" />
     <PackageReference Include="MongoDB.Driver" Version="3.5.0" />
     <PackageReference Include="prometheus-net" Version="8.2.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.9.17" />
     <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0-beta.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.25.0" />
   </ItemGroup></Project>

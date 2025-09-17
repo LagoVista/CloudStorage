@@ -13,9 +13,9 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     internal class MongoDBStorage<TEntity> : IDocumentDBRepoBase<TEntity> where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
     {
-        MongoClient _mongoClient;
-        IMongoDatabase _mongoDb;
-        IMongoCollection<TEntity> _mongoCollection;
+        //MongoClient _mongoClient;
+        //IMongoDatabase _mongoDb;
+        //IMongoCollection<TEntity> _mongoCollection;
 
         public Task<OperationResponse<TEntity>> CreateDocumentAsync(TEntity item)
         {

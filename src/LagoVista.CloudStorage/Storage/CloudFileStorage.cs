@@ -4,7 +4,6 @@ using LagoVista.Core;
 using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
 using System;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Storage
@@ -13,8 +12,8 @@ namespace LagoVista.CloudStorage.Storage
     {
         private readonly IAdminLogger _logger;
 
-        private readonly string _accountId;
-        private readonly string _accessKey;
+        private string _accountId;
+        private string _accessKey;
         private string _containerName;
 
         public CloudFileStorage(string accountId, string accessKey, string containerName, IAdminLogger adminLogger) : this(accountId, accessKey, adminLogger)
@@ -36,24 +35,27 @@ namespace LagoVista.CloudStorage.Storage
             _containerName = null;
         }
 
+        public CloudFileStorage(IAdminLogger adminLogger)
+        {
+            _logger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
+        }
+
+        public void InitConnectionSettings(string accountId, string accessKey)
+        {
+            _accountId = accountId;
+            _accessKey = accessKey;
+
+            if (String.IsNullOrEmpty(accountId)) throw new ArgumentNullException(nameof(accountId));
+            if (String.IsNullOrEmpty(accessKey)) throw new ArgumentNullException(nameof(accessKey));
+        }
+
         private async Task<BlobContainerClient> CreateBlobContainerClient(String containerName )
         {
-
-            var baseuri = $"https://{_accountId}.blob.core.windows.net";
-
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountId};AccountKey={_accessKey}";
             var blobClient = new BlobServiceClient(connectionString);
-            try
-            {
-                var blobContainerClient = blobClient.GetBlobContainerClient(containerName);
-                return blobContainerClient;
-            }
-            catch (Exception)
-            {
-                var container = await blobClient.CreateBlobContainerAsync(containerName);
-
-                return container.Value;
-            }
+            var blobContainerClient = blobClient.GetBlobContainerClient(containerName);
+            await blobContainerClient.CreateIfNotExistsAsync();
+            return blobContainerClient;
         }
 
         public Task<InvokeResult<Uri>> AddFileAsync(string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null)
@@ -68,10 +70,10 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null)
         {
-            if (string.IsNullOrEmpty(fileName))
-            {
-                throw new ArgumentNullException(nameof(fileName));
-            }
+            if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
+            if (String.IsNullOrEmpty(containerName)) throw new ArgumentNullException(nameof(containerName));
+            if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
+            if (String.IsNullOrEmpty(_accessKey)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
 
             if (data == null)
             {
@@ -136,10 +138,10 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<InvokeResult<byte[]>> GetFileAsync(string containerName, string fileName)
         {
-            if (string.IsNullOrEmpty(fileName))
-            {
-                throw new ArgumentNullException(nameof(fileName));
-            }
+            if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
+            if (String.IsNullOrEmpty(containerName)) throw new ArgumentNullException(nameof(containerName));
+            if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
+            if (String.IsNullOrEmpty(_accessKey)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
 
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
@@ -183,12 +185,13 @@ namespace LagoVista.CloudStorage.Storage
 
             return DeleteFileAsync(_containerName, fileName);
         }
+
         public async Task<InvokeResult> DeleteFileAsync(string containerName, string fileName)
         { 
-            if (string.IsNullOrEmpty(fileName))
-            {
-                throw new ArgumentNullException(nameof(fileName));
-            }
+            if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
+            if (String.IsNullOrEmpty(containerName)) throw new ArgumentNullException(nameof(containerName));
+            if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
+            if (String.IsNullOrEmpty(_accessKey)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
 
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
