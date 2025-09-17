@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>LagoVista.CloudStorage</id>
-    <version>3.0.3045.0632</version>
+    <version>3.0.3045.1131</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -12,17 +12,17 @@
     <copyright>Copyright Software Logistics - 2025</copyright>
     <tags>HomeAutomation IoT LagoVista</tags>
     <icon>LagoVistaIcon.png</icon>
-    <releaseNotes>Build Date: 9/17/2025 10:32:54 AM UTC</releaseNotes>
+    <releaseNotes>Build Date: 9/17/2025 3:31:08 PM UTC</releaseNotes>
     <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
       <group targetFramework="netstandard2.1">
-        <dependency id="LagoVista.IoT.Logging" version="3.0.3045.0632" />
-        <dependency id="Microsoft.Azure.Cosmos" version="3.30.1" />
+        <dependency id="LagoVista.IoT.Logging" version="3.0.3045.1131" />
+        <dependency id="Microsoft.Azure.Cosmos" version="3.54.0-preview.1" />
         <dependency id="MongoDB.Driver" version="3.5.0" />
-        <dependency id="prometheus-net" version="6.0.0" />
-        <dependency id="StackExchange.Redis" version="2.6.66" />
-        <dependency id="Azure.Data.Tables" version="12.6.1" />
-        <dependency id="Azure.Storage.Blobs" version="12.13.1" />
+        <dependency id="prometheus-net" version="8.2.1" />
+        <dependency id="StackExchange.Redis" version="2.9.17" />
+        <dependency id="Azure.Data.Tables" version="12.11.0" />
+        <dependency id="Azure.Storage.Blobs" version="12.26.0-beta.1" />
       </group>
     </dependencies>
   </metadata>

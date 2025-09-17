@@ -15,9 +15,14 @@ namespace LagoVista.CloudStorage.Storage
 
         private readonly string _accountId;
         private readonly string _accessKey;
-        private readonly string _containerName;
+        private string _containerName;
 
-        public CloudFileStorage(string accountId, string accessKey, string containerName, IAdminLogger adminLogger)
+        public CloudFileStorage(string accountId, string accessKey, string containerName, IAdminLogger adminLogger) : this(accountId, accessKey, adminLogger)
+        {
+            _containerName = containerName;
+        }
+
+        public CloudFileStorage(string accountId, string accessKey, IAdminLogger adminLogger)
         {
             _logger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             if (String.IsNullOrEmpty(accessKey))
@@ -26,18 +31,13 @@ namespace LagoVista.CloudStorage.Storage
             if (String.IsNullOrEmpty(accountId))
                 throw new ArgumentNullException(nameof(accountId));
 
-            if (String.IsNullOrEmpty(containerName))
-                throw new ArgumentNullException(nameof(containerName));
-
-
             _accountId = accountId;
             _accessKey = accessKey;
-            _containerName = containerName;
+            _containerName = null;
         }
 
-        private async Task<BlobContainerClient> CreateBlobContainerClient(String containerName = null)
+        private async Task<BlobContainerClient> CreateBlobContainerClient(String containerName )
         {
-            if (string.IsNullOrEmpty(containerName)) containerName = _containerName;
 
             var baseuri = $"https://{_accountId}.blob.core.windows.net";
 
@@ -45,19 +45,28 @@ namespace LagoVista.CloudStorage.Storage
             var blobClient = new BlobServiceClient(connectionString);
             try
             {
-                var blobContainerClient = blobClient.GetBlobContainerClient(_containerName);
+                var blobContainerClient = blobClient.GetBlobContainerClient(containerName);
                 return blobContainerClient;
             }
             catch (Exception)
             {
-                var container = await blobClient.CreateBlobContainerAsync(_containerName);
+                var container = await blobClient.CreateBlobContainerAsync(containerName);
 
                 return container.Value;
             }
         }
 
+        public Task<InvokeResult<Uri>> AddFileAsync(string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null)
+        {
+            if(String.IsNullOrEmpty(_containerName))
+                throw new InvalidOperationException("Container name not specified for this instance of CloudFileStorage.  Use the overload that takes a container name.");
 
-        public async Task<InvokeResult<Uri>> AddFileAsync(string fileName, byte[] data, string contentType = "application/octet-stream")
+            return AddFileAsync(_containerName, fileName, data, contentType, cacheControl);
+        }
+
+
+
+        public async Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null)
         {
             if (string.IsNullOrEmpty(fileName))
             {
@@ -69,10 +78,12 @@ namespace LagoVista.CloudStorage.Storage
                 throw new ArgumentNullException(nameof(data));
             }
 
-            var containerClient = await CreateBlobContainerClient(_containerName);
+            var containerClient = await CreateBlobContainerClient(containerName);
 
             var blobClient = containerClient.GetBlobClient(fileName);
             var header = new BlobHttpHeaders { ContentType = contentType };
+            if (cacheControl != null)
+                header.CacheControl = cacheControl;
 
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
@@ -98,7 +109,7 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     if (retryCount == numberRetries)
                     {
-                        _logger.AddException("CloudFileStorage_AddFileAsync", ex, _containerName.ToKVP("containerName"));
+                        _logger.AddException("CloudFileStorage_AddFileAsync", ex, containerName.ToKVP("containerName"));
                         var exceptionResult = InvokeResult.FromException("CloudFileStorage_AddFileAsync", ex);
                         return InvokeResult<Uri>.FromInvokeResult(exceptionResult);
                     }
@@ -114,7 +125,16 @@ namespace LagoVista.CloudStorage.Storage
             return InvokeResult<Uri>.FromError("Could not upload file");
         }
 
+
         public async Task<InvokeResult<byte[]>> GetFileAsync(string fileName)
+        {
+            if (String.IsNullOrEmpty(_containerName))
+                throw new InvalidOperationException("Container name not specified for this instance of CloudFileStorage.  Use the overload that takes a container name.");
+
+            return await GetFileAsync(_containerName, fileName);
+        }
+
+        public async Task<InvokeResult<byte[]>> GetFileAsync(string containerName, string fileName)
         {
             if (string.IsNullOrEmpty(fileName))
             {
@@ -124,7 +144,7 @@ namespace LagoVista.CloudStorage.Storage
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
 
-            var containerClient = await CreateBlobContainerClient(_containerName);
+            var containerClient = await CreateBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(fileName);
 
             var numberRetries = 5;
@@ -141,13 +161,13 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     if (retryCount == numberRetries)
                     {
-                        _logger.AddException("CloudFileStorage_GetFileAsync", ex, _containerName.ToKVP("containerName"));
+                        _logger.AddException("CloudFileStorage_GetFileAsync", ex, containerName.ToKVP("containerName"));
                         return InvokeResult<byte[]>.FromException("CloudFileStorage_GetFileAsync", ex);
                     }
                     else
                     {
                         _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, "CloudFileStorage_GetFileAsync", "", fileName.ToKVP("fileName"),
-                           _containerName.ToKVP("containerName"), ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
+                           containerName.ToKVP("containerName"), ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
                     }
                     await Task.Delay(retryCount * 250);
                 }
@@ -156,9 +176,15 @@ namespace LagoVista.CloudStorage.Storage
             return InvokeResult<byte[]>.FromError("Could not retrieve Media Item");
         }
 
-        public async Task<InvokeResult> DeleteFileAsync(string fileName)
+        public Task<InvokeResult> DeleteFileAsync(string fileName)
         {
+            if (String.IsNullOrEmpty(_containerName))
+                throw new InvalidOperationException("Container name not specified for this instance of CloudFileStorage.  Use the overload that takes a container name.");
 
+            return DeleteFileAsync(_containerName, fileName);
+        }
+        public async Task<InvokeResult> DeleteFileAsync(string containerName, string fileName)
+        { 
             if (string.IsNullOrEmpty(fileName))
             {
                 throw new ArgumentNullException(nameof(fileName));
@@ -167,7 +193,7 @@ namespace LagoVista.CloudStorage.Storage
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
 
-            var containerClient = await CreateBlobContainerClient(_containerName);
+            var containerClient = await CreateBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(fileName);
             var numberRetries = 5;
             var retryCount = 0;
@@ -183,13 +209,13 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     if (retryCount == numberRetries)
                     {
-                        _logger.AddException("CloudFileStorage_GetFileAsync", ex, _containerName.ToKVP("containerName"));
+                        _logger.AddException("CloudFileStorage_GetFileAsync", ex, containerName.ToKVP("containerName"));
                         return InvokeResult.FromException("CloudFileStorage_GetFileAsync", ex);
                     }
                     else
                     {
                         _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, "CloudFileStorage_GetFileAsync", "", fileName.ToKVP("fileName"),
-                           _containerName.ToKVP("containerName"), ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
+                           containerName.ToKVP("containerName"), ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
                     }
                     await Task.Delay(retryCount * 250);
                 }
