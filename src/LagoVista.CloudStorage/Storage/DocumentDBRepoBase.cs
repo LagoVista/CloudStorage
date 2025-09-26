@@ -1026,22 +1026,34 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
                 }
 
-                var container = await GetContainerAsync();
-                var linqQuery = orderByDesc == null ? container.GetItemLinqQueryable<TEntityFactory>()
-                                                        .Where(query)
-                                                        .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) || itm.Category.Key == listRequest.CategoryKey)
-                                                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (itm.IsDraft == false || listRequest.ShowDrafts))
-                                                        .OrderBy(sort)
-                                                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                                                        .Take(listRequest.PageSize) :
-                                                       container.GetItemLinqQueryable<TEntityFactory>()
-                                                        .Where(query)
-                                                        .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) || itm.Category.Key == listRequest.CategoryKey)
-                                                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (itm.IsDraft == false || listRequest.ShowDrafts))
-                                                        .OrderByDescending(sort)
-                                                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                                                        .Take(listRequest.PageSize);
+                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> entityTypeQuery = (qry) => qry.EntityType == typeof(TEntity).Name;
+                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> isDeletedQuery = qry => !qry.IsDeleted.IsDefined() || qry.IsDeleted == false;
+                if (listRequest.ShowDeleted)
+                    isDeletedQuery = qry => true;
 
+                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> isDraftQuery = (qry) => !qry.IsDraft.IsDefined() || qry.IsDraft == false;
+                if(listRequest.ShowDrafts)
+                    isDraftQuery = qry => true;
+
+                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> categoryQuery = (qry) => qry.Category.Key == listRequest.CategoryKey;;
+                if (String.IsNullOrEmpty(listRequest.CategoryKey))
+                    categoryQuery = qry => true;
+
+                var container = await GetContainerAsync();
+                var baseQuery = container.GetItemLinqQueryable<TEntityFactory>();
+
+                var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
+                                                        .Where(query)
+                                                        .Where(entityTypeQuery)
+                                                        .Where(categoryQuery)
+                                                        .Where(isDeletedQuery)
+                                                        .Where(isDraftQuery); 
+                                     
+                if(orderByDesc != null)
+                    linqQuery = linqQuery.OrderByDescending(sort);
+
+                linqQuery = linqQuery.Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                                     .Take(listRequest.PageSize);
 
                 var page = 1;
 
