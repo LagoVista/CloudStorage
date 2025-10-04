@@ -201,7 +201,7 @@ namespace LagoVista.CloudStorage.Storage
                 var sw = Stopwatch.StartNew();
                 await _tableClient.CreateIfNotExistsAsync();
 
-                _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__InitAsync__{typeof(TEntity).Name}] Create If not Exists {sw.ElapsedMilliseconds}ms");
+                _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__InitAsync__{typeof(TEntity).Name}] Was not initialized, table created if didn't exist in {sw.ElapsedMilliseconds}ms");
 
                 _initDate = DateTime.UtcNow.Date;
                 Initialized = true;
@@ -926,7 +926,7 @@ namespace LagoVista.CloudStorage.Storage
                     {
                         if (response.StatusCode == HttpStatusCode.PreconditionFailed)
                         {
-                            _logger.AddError("TableStorageBase_InsertOrReplaceAsync(entity)", "contentModified",
+                            _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>__InsertOrReplaceAsync]", "contentModified",
                                 new KeyValuePair<string, string>("tableName", GetTableName()),
                                 new KeyValuePair<string, string>("rowKey", entity.RowKey),
                                 new KeyValuePair<string, string>("partitionKey", entity.PartitionKey));
@@ -937,7 +937,7 @@ namespace LagoVista.CloudStorage.Storage
                         }
                         else
                         {
-                            _logger.AddError("TableStorageBase_InsertOrReplaceAsync(entity)", "failureResponseCode",
+                            _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>__InsertOrReplaceAsync]", "failureResponseCode",
                                new KeyValuePair<string, string>("tableName", GetTableName()),
                                new KeyValuePair<string, string>("reasonPhrase", response.ReasonPhrase),
                                new KeyValuePair<string, string>("rowKey", entity.RowKey),
@@ -949,7 +949,7 @@ namespace LagoVista.CloudStorage.Storage
                         }
                     }
                     else
-                        _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__GetPagedResultsAsync] {sw.ElapsedMilliseconds}ms {operationUri}");
+                        _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__InsertOrReplaceAsync] {sw.ElapsedMilliseconds}ms {operationUri}");
                 }
             }
 
