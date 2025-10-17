@@ -1,4 +1,8 @@
-﻿using Azure.Data.Tables;
+// --- BEGIN CODE INDEX META (do not edit) ---
+// ContentHash: 8731ec54042a893a3bc54c749a88b6e9f63814487f93d72eef3db027c32d4492
+// IndexVersion: 1
+// --- END CODE INDEX META ---
+using Azure.Data.Tables;
 using LagoVista.CloudStorage.Tests;
 using LagoVista.CloudStorage.Tests.Support;
 using LagoVista.Core;

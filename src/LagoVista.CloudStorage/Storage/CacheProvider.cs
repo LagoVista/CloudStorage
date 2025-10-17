@@ -1,4 +1,8 @@
-﻿using System;
+// --- BEGIN CODE INDEX META (do not edit) ---
+// ContentHash: 99303d3fab421b6f93933bc15b8fc4b699195eb35454072b3772cebbf79f70de
+// IndexVersion: 1
+// --- END CODE INDEX META ---
+using System;
 using StackExchange.Redis;
 using System.Threading.Tasks;
 using System.Linq;
