@@ -1,6 +1,6 @@
 // --- BEGIN CODE INDEX META (do not edit) ---
-// ContentHash: 81a28b0ed00e7280a54c67ce311c8547df3cc187055aed2af1001d607d088d69
-// IndexVersion: 1
+// ContentHash: 73ccdcdc6691bbce18c2bc28f254684bcf4b8d35e3c9da61ec54b09473afd68b
+// IndexVersion: 0
 // --- END CODE INDEX META ---
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -8,6 +8,7 @@ using LagoVista.Core;
 using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Storage
@@ -70,14 +71,13 @@ namespace LagoVista.CloudStorage.Storage
             return AddFileAsync(_containerName, fileName, data, contentType, cacheControl);
         }
 
-
-
         public async Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null)
         {
+            var sw = Stopwatch.StartNew();
             if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
             if (String.IsNullOrEmpty(containerName)) throw new ArgumentNullException(nameof(containerName));
             if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
-            if (String.IsNullOrEmpty(_accessKey)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
+            if (String.IsNullOrEmpty(_accessKey)) throw new ArgumentNullException("Must provide access key in constructor, or provide in InitConnectionSettings");
 
             if (data == null)
             {
@@ -94,7 +94,8 @@ namespace LagoVista.CloudStorage.Storage
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
 
-            //TODO: Should really encapsulate the idea of retry of an action w/ error reporting
+            _logger.Trace($"[CloudFileStorage__AddFileAsync] - Uploading File to Blob Storage: {fileName}", fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
+
             var numberRetries = 5;
             var retryCount = 0;
             var completed = false;
@@ -109,19 +110,21 @@ namespace LagoVista.CloudStorage.Storage
                     if (statusCode < 200 || statusCode > 299)
                         throw new InvalidOperationException($"Invalid response Code {statusCode}");
 
+                    _logger.Trace($"[CloudFileStorage__AddFileAsync] - Uploaded File to Blob Storage: {fileName} in {sw.Elapsed.TotalMilliseconds}ms", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
+
                     return InvokeResult<Uri>.Create(blobClient.Uri);
                 }
                 catch (Exception ex)
                 {
                     if (retryCount == numberRetries)
                     {
-                        _logger.AddException("CloudFileStorage_AddFileAsync", ex, containerName.ToKVP("containerName"));
-                        var exceptionResult = InvokeResult.FromException("CloudFileStorage_AddFileAsync", ex);
+                        _logger.AddException("[CloudFileStorage__AddFileAsync]", ex, containerName.ToKVP("containerName"));
+                        var exceptionResult = InvokeResult.FromException("[CloudFileStorage__AddFileAsync]", ex);
                         return InvokeResult<Uri>.FromInvokeResult(exceptionResult);
                     }
                     else
                     {
-                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, "CloudFileStorage_AddFileAsync", "", ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
+                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, "[CloudFileStorage__AddFileAsync]", "", ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
                     }
                     await Task.Delay(retryCount * 250);
                 }
@@ -131,6 +134,11 @@ namespace LagoVista.CloudStorage.Storage
             return InvokeResult<Uri>.FromError("Could not upload file");
         }
 
+        public Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, string data, string contentType = "text/plain", string cacheControl = null)
+        {
+            var buffer = System.Text.ASCIIEncoding.UTF8.GetBytes(data);
+            return AddFileAsync(containerName, fileName, buffer, contentType, cacheControl);
+        }
 
         public async Task<InvokeResult<byte[]>> GetFileAsync(string fileName)
         {
