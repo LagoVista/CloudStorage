@@ -716,9 +716,18 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var container = await GetContainerAsync();
 
-            doc.IsDeleted = true;
-            doc.DeletionDate = DateTime.UtcNow.ToJSONString();
-            var result = await container.UpsertItemAsync(doc);
+            ItemResponse<TEntity> result;
+
+            if (doc.IsDeleted.HasValue && doc.IsDeleted.Value)
+            {
+                result = await container.DeleteItemAsync<TEntity>(doc.Id, PartitionKey.None);
+            }
+            else
+            {
+                doc.IsDeleted = true;
+                doc.DeletionDate = DateTime.UtcNow.ToJSONString();
+                result = await container.UpsertItemAsync(doc);
+            }
             timer.Dispose();
 
             _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id} in {sw.Elapsed.TotalMilliseconds} ms",
