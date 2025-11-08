@@ -1,6 +1,6 @@
 // --- BEGIN CODE INDEX META (do not edit) ---
 // ContentHash: 73ccdcdc6691bbce18c2bc28f254684bcf4b8d35e3c9da61ec54b09473afd68b
-// IndexVersion: 0
+// IndexVersion: 2
 // --- END CODE INDEX META ---
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
