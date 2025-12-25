@@ -19,6 +19,8 @@ namespace LagoVista.CloudStorage.Storage
 
         public CacheProvider(ICacheProviderSettings settings)
         {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
             if (settings.UseCache)
             {
                 _multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
@@ -27,6 +29,8 @@ namespace LagoVista.CloudStorage.Storage
 
         public Task AddAsync(string key, string value)
         {
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
@@ -47,6 +51,9 @@ namespace LagoVista.CloudStorage.Storage
 
         public Task AddToCollectionAsync(string collectionKey, string key, string value)
         {
+            if (string.IsNullOrWhiteSpace(collectionKey)) throw new ArgumentException("Collection key is required.", nameof(collectionKey));
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
@@ -58,13 +65,16 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<string> GetAsync(string key)
         {
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
                 var result = await db.StringGetAsync(key);
 
-                Console.WriteLine($"[RemoteCache__GetAsync] Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(result)}");
-                return (string)result;
+                var str = (string)result;
+                Console.WriteLine($"[RemoteCache__GetAsync] Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(str)}");
+                return str;
             }
             else
             {
@@ -85,8 +95,53 @@ namespace LagoVista.CloudStorage.Storage
             return null;
         }
 
+        /// <summary>
+        /// Fetch multiple string keys in one round-trip when backed by Redis.
+        /// Uses Redis MGET (StringGet with an array of keys) under the hood.
+        ///
+        /// Note: This is intentionally an additive method and does not require changing ICacheProvider.
+        /// </summary>
+        public async Task<IDictionary<string, string>> GetManyAsync(IEnumerable<string> keys)
+        {
+            if (keys == null) throw new ArgumentNullException(nameof(keys));
+
+            var keyList = keys.Where(k => !string.IsNullOrWhiteSpace(k)).Distinct().ToList();
+            if (keyList.Count == 0) return new Dictionary<string, string>();
+
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+
+                var redisKeys = keyList.Select(k => (RedisKey)k).ToArray();
+                var values = await db.StringGetAsync(redisKeys);
+
+                var result = new Dictionary<string, string>(keyList.Count, StringComparer.Ordinal);
+                for (var i = 0; i < keyList.Count; i++)
+                {
+                    result[keyList[i]] = (string)values[i];
+                }
+
+                return result;
+            }
+
+            if (_inMemoryCache != null)
+            {
+                var result = new Dictionary<string, string>(keyList.Count, StringComparer.Ordinal);
+                foreach (var k in keyList)
+                {
+                    result[k] = _inMemoryCache.ContainsKey(k) ? _inMemoryCache[k] : null;
+                }
+
+                return result;
+            }
+
+            return new Dictionary<string, string>();
+        }
+
         public async Task<IEnumerable<object>> GetCollection(string collectionKey)
         {
+            if (string.IsNullOrWhiteSpace(collectionKey)) throw new ArgumentException("Collection key is required.", nameof(collectionKey));
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
@@ -100,6 +155,9 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<string> GetFromCollection(string collectionKey, string key)
         {
+            if (string.IsNullOrWhiteSpace(collectionKey)) throw new ArgumentException("Collection key is required.", nameof(collectionKey));
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
@@ -114,6 +172,8 @@ namespace LagoVista.CloudStorage.Storage
 
         public Task RemoveAsync(string key)
         {
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
@@ -135,6 +195,9 @@ namespace LagoVista.CloudStorage.Storage
 
         public Task RemoveFromCollectionAsync(string collectionKey, string key)
         {
+            if (string.IsNullOrWhiteSpace(collectionKey)) throw new ArgumentException("Collection key is required.", nameof(collectionKey));
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
