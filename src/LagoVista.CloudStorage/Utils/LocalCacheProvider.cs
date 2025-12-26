@@ -35,6 +35,11 @@ namespace LagoVista.CloudStorage.Utils
             return Task<string>.FromResult((string)null);
         }
 
+        public async Task<IDictionary<string, string>> GetManyAsync(IEnumerable<string> keys)
+        {
+            return new  Dictionary<string, string>();
+        }
+
         public Task<IEnumerable<object>> GetCollection(string collectionKey)
         {
             return Task<string>.FromResult((IEnumerable<object>)null);
