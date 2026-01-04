@@ -965,8 +965,10 @@ namespace LagoVista.CloudStorage.DocumentDB
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted] in {sw.Elapsed.TotalMilliseconds} ms",
-                    new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
+                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted]", 
+                    $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted] in {sw.Elapsed.TotalMilliseconds} ms",
+                    items.Count.ToString().ToKVP("recordCount"),
+                    new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
 
 
                 return listResponse;
@@ -1092,16 +1094,14 @@ namespace LagoVista.CloudStorage.DocumentDB
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
-
-
-
                 var categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).ToList();
                 var groupedCategories = categories.Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id);
                 listResponse.Categories = groupedCategories.Select(itm => itm.First()).ToList();
                 listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
 
                 _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] in {sw.Elapsed.TotalMilliseconds} ms",
-                        new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
+                        items.Count.ToString().ToKVP("recordCount"),
+                        new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
 
                 return listResponse;
             }
@@ -1170,7 +1170,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
 
                 _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] in {sw.Elapsed.TotalMilliseconds} ms",
-                    new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
+                        items.Count.ToString().ToKVP("recordCount"),
+                        new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
 
 
                 return listResponse;
