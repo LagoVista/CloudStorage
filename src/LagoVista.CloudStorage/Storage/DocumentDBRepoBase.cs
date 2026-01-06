@@ -361,8 +361,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
         private async Task PostDiscussionUpdates(IDiscussableEntity entity)
-        {
-            
+        {            
             var discussable = entity as IDiscussableEntity;
             var mentionRegEx = new Regex(@"data-mention-id=""(?<mentionId>[A-F0-9]+)""");
             var forMAttr = typeof(TEntity).GetCustomAttribute<EntityDescriptionAttribute>();
