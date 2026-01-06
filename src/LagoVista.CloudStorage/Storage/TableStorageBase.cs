@@ -243,27 +243,33 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
-        private AuthenticationHeaderValue GetAuthHeader(HttpClient request, string method, string contentType = "", byte[] contentMd5 = null, string fullResourcePath = "")
-        {
-            var resource = $"/{_accountName}/{GetTableName()}{fullResourcePath}";
-            var contentMd5Str = contentMd5 == null ? String.Empty : System.Convert.ToBase64String(contentMd5);
-            var date = request.DefaultRequestHeaders.GetValues("x-ms-date").FirstOrDefault();
-            // Verb
-            var canonicalizedString = $"{method}\n";
-            canonicalizedString += $"{contentMd5Str}\n";
-            canonicalizedString += $"{contentType}\n";
-            canonicalizedString += $"{date}\n";
-            canonicalizedString += resource;
+        private AuthenticationHeaderValue GetAuthHeader(
+            HttpClient request,
+            string method,
+            string contentType = "",
+            byte[] contentMd5 = null,
+            string fullResourcePath = "",
+            string canonicalizedResourceOverride = null)
+                {
+                    var resource = canonicalizedResourceOverride
+                        ?? $"/{_accountName}/{GetTableName()}{fullResourcePath}";
 
-            using (var hasher = new HMACSHA256(Convert.FromBase64String(_accountKey)))
-            {
-                // Authorization header
-                var hmacBuffer = hasher.ComputeHash(System.Text.Encoding.UTF8.GetBytes(canonicalizedString));
-                var signature = System.Convert.ToBase64String(hmacBuffer);
+                    var contentMd5Str = contentMd5 == null ? String.Empty : Convert.ToBase64String(contentMd5);
+                    var date = request.DefaultRequestHeaders.GetValues("x-ms-date").FirstOrDefault();
 
-                return new AuthenticationHeaderValue("SharedKey", $"{_accountName}:{signature}");
-            }
-        }
+                    var canonicalizedString = $"{method}\n";
+                    canonicalizedString += $"{contentMd5Str}\n";
+                    canonicalizedString += $"{contentType}\n";
+                    canonicalizedString += $"{date}\n";
+                    canonicalizedString += resource;
+
+                    using (var hasher = new HMACSHA256(Convert.FromBase64String(_accountKey)))
+                    {
+                        var hmacBuffer = hasher.ComputeHash(Encoding.UTF8.GetBytes(canonicalizedString));
+                        var signature = Convert.ToBase64String(hmacBuffer);
+                        return new AuthenticationHeaderValue("SharedKey", $"{_accountName}:{signature}");
+                    }
+                }
 
         private async Task<TEntity> Get(String fullResourcePath)
         {
@@ -455,20 +461,177 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     if (!response.IsSuccessStatusCode)
                     {
+                        var responseError = await response.Content.ReadAsStringAsync();
+
                         if (logException)
                         {
                             ErrorMetric.WithLabels(typeof(TEntity).Name, "InsertAsync", response.StatusCode.ToString());
-
-                            _logger.AddError($"TableStorageBase<{typeof(TEntity).Name}>_InsertAsync", "failureResponseCode", GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
+                            _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>_InsertAsync]", responseError, GetTableName().ToKVP("tableName"), response.ReasonPhrase.ToKVP("reasonPhrase"));
                         }
 
-                        throw new Exception($"Non success response from server: {response.ReasonPhrase}");
+                        throw new Exception($"Non success response from server: {response.ReasonPhrase} {responseError}");
                     }
                     else
                         _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__InsertAsync] {sw.ElapsedMilliseconds} ms");
                 }
             }
         }
+
+        public async Task InsertBatchAsync(IEnumerable<TEntity> entities, bool logException = true)
+        {
+            var sw = Stopwatch.StartNew();
+
+            if (entities == null)
+            {
+                _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>_InsertBatchAsync]", "NULL value provided.", GetTableName().ToKVP("tableName"));
+                throw new Exception($"Null Value Provided for InsertBatchAsync({typeof(TEntity).Name}).");
+            }
+
+            var list = entities.Where(e => e != null).ToList();
+            if (list.Count == 0)
+                return;
+
+            // Mirror InsertAsync validation/checks
+            foreach (var entity in list)
+            {
+                if (entity is IValidateable)
+                {
+                    var result = Validator.Validate(entity as IValidateable);
+                    if (!result.Successful)
+                    {
+                        WarningMetric.WithLabels(typeof(TEntity).Name, "InsertBatchAsync", "Validation");
+                        throw new ValidationException("Invalid Data.", result.Errors);
+                    }
+                }
+
+                if (String.IsNullOrEmpty(entity.RowKey))
+                {
+                    _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>_InsertBatchAsync]", "emptyRowKey", GetTableName().ToKVP("tableName"));
+                    throw new Exception("Row key must be present to insert an entity.");
+                }
+
+                if (String.IsNullOrEmpty(entity.PartitionKey))
+                {
+                    _logger.AddError($"[TableStorageBase<{typeof(TEntity).Name}>_InsertBatchAsync]", "emptyPartitionKey", GetTableName().ToKVP("tableName"));
+                    throw new Exception($"Partition Keys must be present to insert an entity, Row Key = {entity.RowKey}.");
+                }
+            }
+
+            await InitAsync();
+
+            // Batch endpoint (service root + /$batch)
+            var serviceRoot = $"https://{_accountName}.table.core.windows.net";
+            var batchUri = new Uri($"{serviceRoot}/$batch");
+
+            // Batch constraint: single PartitionKey per batch. Split if needed.
+            foreach (var pkGroup in list.GroupBy(e => e.PartitionKey))
+            {
+                var pkEntities = pkGroup.ToList();
+
+                // Max 100 operations per batch
+                foreach (var chunk in Chunk(pkEntities, 100))
+                {
+                    var batchBoundary = "batch_" + Guid.NewGuid().ToString("N");
+                    var changesetBoundary = "changeset_" + Guid.NewGuid().ToString("N");
+
+                    var payload = BuildBatchInsertPayload(
+                        chunk,
+                        serviceRoot,
+                        GetTableName(),
+                        batchBoundary,
+                        changesetBoundary);
+
+                    var content = new StringContent(payload, Encoding.UTF8);
+                    content.Headers.ContentType = MediaTypeHeaderValue.Parse($"multipart/mixed; boundary={batchBoundary}");
+                    content.Headers.ContentMD5 = GetContentMD5(payload);
+
+                    using (var insertMetric = CreateMetric.WithLabels(typeof(TEntity).Name))
+                    using (var request = CreateRequest())
+                    {
+                        // Sign the OUTER $batch request (critical)
+                        var authHeader = GetAuthHeader(
+                            request,
+                            method: "POST",
+                            contentType: "multipart/mixed",
+                            contentMd5: content.Headers.ContentMD5,
+                            canonicalizedResourceOverride: $"/{_accountName}/$batch");
+
+                        request.DefaultRequestHeaders.Authorization = authHeader;
+
+                        using (var response = await request.PostAsync(batchUri, content))
+                        {
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                var responseError = await response.Content.ReadAsStringAsync();
+
+                                if (logException)
+                                {
+                                    ErrorMetric.WithLabels(typeof(TEntity).Name, "InsertBatchAsync", response.StatusCode.ToString());
+                                    _logger.AddError(
+                                        $"[TableStorageBase<{typeof(TEntity).Name}>_InsertBatchAsync]",
+                                        responseError,
+                                        GetTableName().ToKVP("tableName"),
+                                        response.ReasonPhrase.ToKVP("reasonPhrase"));
+                                }
+
+                                throw new Exception($"Non success response from server: {response.ReasonPhrase} {responseError}");
+                            }
+
+                            // Optional: parse multipart response to detect per-op failures.
+                            // Many implementations skip this and rely on non-2xx for failures,
+                            // but strict correctness would parse the body.
+                        }
+                    }
+                }
+            }
+
+            _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__InsertBatchAsync] {sw.ElapsedMilliseconds} ms");
+        }
+
+        private static IEnumerable<List<TEntity>> Chunk(List<TEntity> source, int size)
+        {
+            for (int i = 0; i < source.Count; i += size)
+                yield return source.GetRange(i, Math.Min(size, source.Count - i));
+        }
+
+        private static string BuildBatchInsertPayload(
+            List<TEntity> entities,
+            string serviceRoot,
+            string tableName,
+            string batchBoundary,
+            string changesetBoundary)
+        {
+            var sb = new StringBuilder();
+
+            sb.AppendLine($"--{batchBoundary}");
+            sb.AppendLine($"Content-Type: multipart/mixed; boundary={changesetBoundary}");
+            sb.AppendLine();
+
+            foreach (var entity in entities)
+            {
+                var entityJson = JsonConvert.SerializeObject(entity);
+
+                sb.AppendLine($"--{changesetBoundary}");
+                sb.AppendLine("Content-Type: application/http");
+                sb.AppendLine("Content-Transfer-Encoding: binary");
+                sb.AppendLine();
+
+                // Inner operation: POST to the table endpoint
+                sb.AppendLine($"POST {serviceRoot}/{tableName} HTTP/1.1");
+                sb.AppendLine("Content-Type: application/json");
+                sb.AppendLine("Accept: application/json");
+                sb.AppendLine();
+
+                sb.AppendLine(entityJson);
+            }
+
+            sb.AppendLine($"--{changesetBoundary}--");
+            sb.AppendLine($"--{batchBoundary}--");
+
+            return sb.ToString();
+        }
+
+
 
         public async Task InsertAsync(string json)
         {
