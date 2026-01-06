@@ -94,7 +94,7 @@ namespace LagoVista.CloudStorage.Storage
             if (fileName.StartsWith("/"))
                 fileName = fileName.TrimStart('/');
 
-            _logger.Trace($"[CloudFileStorage__AddFileAsync] - Uploading File to Blob Storage: {fileName}", fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
+            _logger.Trace($"{this.Tag()} - Uploading File to Blob Storage: {fileName}", fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
 
             var numberRetries = 5;
             var retryCount = 0;
@@ -110,7 +110,7 @@ namespace LagoVista.CloudStorage.Storage
                     if (statusCode < 200 || statusCode > 299)
                         throw new InvalidOperationException($"Invalid response Code {statusCode}");
 
-                    _logger.Trace($"[CloudFileStorage__AddFileAsync] - Uploaded File to Blob Storage: {fileName} in {sw.Elapsed.TotalMilliseconds}ms", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
+                    _logger.Trace($"{this.Tag()} - Uploaded File to Blob Storage: {fileName} in {sw.Elapsed.TotalMilliseconds}ms", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
 
                     return InvokeResult<Uri>.Create(blobClient.Uri);
                 }
@@ -118,13 +118,13 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     if (retryCount == numberRetries)
                     {
-                        _logger.AddException("[CloudFileStorage__AddFileAsync]", ex, containerName.ToKVP("containerName"));
+                        _logger.AddException(this.Tag(), ex, containerName.ToKVP("containerName"));
                         var exceptionResult = InvokeResult.FromException("[CloudFileStorage__AddFileAsync]", ex);
                         return InvokeResult<Uri>.FromInvokeResult(exceptionResult);
                     }
                     else
                     {
-                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, "[CloudFileStorage__AddFileAsync]", "", ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
+                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, this.Tag(), "", ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
                     }
                     await Task.Delay(retryCount * 250);
                 }
@@ -169,18 +169,19 @@ namespace LagoVista.CloudStorage.Storage
                 try
                 {
                     var content = await blobClient.DownloadContentAsync();
+                    _logger.Trace($"{this.Tag()} - download content", containerName.ToKVP("container"), fileName.ToKVP("fileName"));
                     return InvokeResult<byte[]>.Create(content.Value.Content.ToArray());
                 }
                 catch (Exception ex)
                 {
                     if (retryCount == numberRetries)
                     {
-                        _logger.AddException("CloudFileStorage_GetFileAsync", ex, containerName.ToKVP("containerName"));
+                        _logger.AddException(this.Tag(), ex, containerName.ToKVP("containerName"));
                         return InvokeResult<byte[]>.FromException("CloudFileStorage_GetFileAsync", ex);
                     }
                     else
                     {
-                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, "CloudFileStorage_GetFileAsync", "", fileName.ToKVP("fileName"),
+                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, this.Tag(), "", fileName.ToKVP("fileName"),
                            containerName.ToKVP("containerName"), ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
                     }
                     await Task.Delay(retryCount * 250);
