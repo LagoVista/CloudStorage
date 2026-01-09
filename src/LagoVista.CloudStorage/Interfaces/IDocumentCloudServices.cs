@@ -13,6 +13,6 @@ namespace LagoVista.CloudStorage.Interfaces
 
         IUserNotificationService UserNotificationService { get; }
 
-        IRagServices RagServices { get; }
+        IRagIndexingServices RagIndexingServices { get; }
     }
 }

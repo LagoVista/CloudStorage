@@ -9,12 +9,12 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     public class DocumentCloudServices : IDocumentCloudServices
     {
-        public DocumentCloudServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagServices ragServices)
+        public DocumentCloudServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices)
         {
             AdminLogger = adminLogger;
             DependencyManager = dependencyManager;
             UserNotificationService = userNotificationService;
-            RagServices = ragServices;
+            RagIndexingServices = ragServices;
         }
 
         public IAdminLogger AdminLogger { get; }
@@ -23,12 +23,12 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         public IUserNotificationService UserNotificationService { get; }
 
-        public IRagServices RagServices { get; }
+        public IRagIndexingServices RagIndexingServices { get; }
     }
 
     public class DocumentCloudCachedServices : DocumentCloudServices, IDocumentCloudCachedServices
     {
-        public DocumentCloudCachedServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagServices ragServices, ICacheProvider cacheProvider)
+        public DocumentCloudCachedServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, ICacheProvider cacheProvider)
             : base(adminLogger, dependencyManager, userNotificationService, ragServices)
         {
             CacheProvider = cacheProvider;
