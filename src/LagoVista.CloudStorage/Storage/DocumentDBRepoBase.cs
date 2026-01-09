@@ -27,6 +27,7 @@ using System.Reflection;
 using LagoVista.Core.Attributes;
 using System.Security.Policy;
 using LagoVista.Core.Models;
+using LagoVista.CloudStorage.Interfaces;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
@@ -142,6 +143,19 @@ namespace LagoVista.CloudStorage.DocumentDB
             _logger = logger;
 
         }
+
+        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudCachedServices cloudServices) : 
+            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, cloudServices.CacheProvider, cloudServices.DependencyManager)
+        { 
+
+        }
+
+        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudServices cloudServices) :
+            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger,  dependencyManager:cloudServices.DependencyManager)
+        {
+
+        }
+
 
         public void SetConnection(String connectionString, string sharedKey, string dbName)
         {

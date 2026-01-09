@@ -1,0 +1,38 @@
+﻿using LagoVista.CloudStorage.Interfaces;
+using LagoVista.Core.Interfaces;
+using LagoVista.IoT.Logging.Loggers;
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace LagoVista.CloudStorage.StorageProviders
+{
+    public class DocumentCloudServices : IDocumentCloudServices
+    {
+        public DocumentCloudServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagServices ragServices)
+        {
+            AdminLogger = adminLogger;
+            DependencyManager = dependencyManager;
+            UserNotificationService = userNotificationService;
+            RagServices = ragServices;
+        }
+
+        public IAdminLogger AdminLogger { get; }
+
+        public IDependencyManager DependencyManager { get; }
+
+        public IUserNotificationService UserNotificationService { get; }
+
+        public IRagServices RagServices { get; }
+    }
+
+    public class DocumentCloudCachedServices : DocumentCloudServices, IDocumentCloudCachedServices
+    {
+        public DocumentCloudCachedServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagServices ragServices, ICacheProvider cacheProvider)
+            : base(adminLogger, dependencyManager, userNotificationService, ragServices)
+        {
+            CacheProvider = cacheProvider;
+        }
+        public ICacheProvider CacheProvider { get; }
+    }
+}
