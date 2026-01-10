@@ -31,7 +31,7 @@ using LagoVista.CloudStorage.Interfaces;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
-    public class DocumentDBRepoBase<TEntity> where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity, IRevisionedEntity
+    public class DocumentDBRepoBase<TEntity> where TEntity : class, IEntityBase
     {
         enum StorageProviderTypes
         {
@@ -48,6 +48,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
+        private readonly IRagIndexingServices _ragIndexingServices;
 
         private readonly IDocumentDBRepoBase<TEntity> _storage;
 
@@ -132,6 +133,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
 
+
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null) :
             this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager)
         {
@@ -146,14 +148,14 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudCachedServices cloudServices) : 
             this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, cloudServices.CacheProvider, cloudServices.DependencyManager)
-        { 
-
+        {
+            _ragIndexingServices = cloudServices.RagIndexingServices;
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudServices cloudServices) :
-            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger,  dependencyManager:cloudServices.DependencyManager)
+            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, dependencyManager:cloudServices.DependencyManager)
         {
-
+            _ragIndexingServices = cloudServices.RagIndexingServices;
         }
 
 
@@ -362,6 +364,9 @@ namespace LagoVista.CloudStorage.DocumentDB
             {
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(CreateDocumentAsync)}] - Request Cost - {response.RequestCharge} - Elapsed {sw.Elapsed.TotalMilliseconds}ms");
 
+                if (_ragIndexingServices != null)
+                    await _ragIndexingServices.IndexAsync(item);
+
                 DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
                 DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
             }
@@ -544,6 +549,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                 await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item));
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Added {typeof(TEntity).Name} back to cache after update in {sw.Elapsed.TotalMilliseconds}ms");
             }
+
+            if (_ragIndexingServices != null)
+                await _ragIndexingServices.IndexAsync(item);
 
             return new OperationResponse<TEntity>(upsertResult);
         }
@@ -734,12 +742,16 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (doc.IsDeleted.HasValue && doc.IsDeleted.Value)
             {
                 result = await container.DeleteItemAsync<TEntity>(doc.Id, PartitionKey.None);
+                if(_ragIndexingServices != null)
+                  await _ragIndexingServices.RemoveIndexAsync(doc.OwnerOrganization.Id, doc.Id);
             }
             else
             {
                 doc.IsDeleted = true;
                 doc.DeletionDate = DateTime.UtcNow.ToJSONString();
                 result = await container.UpsertItemAsync(doc);
+                if (_ragIndexingServices != null)
+                    await _ragIndexingServices.IndexAsync(doc);
             }
             timer.Dispose();
 
