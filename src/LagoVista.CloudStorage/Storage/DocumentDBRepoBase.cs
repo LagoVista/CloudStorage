@@ -434,7 +434,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             return $"{_dbName}-{typeof(TEntity).Name}-{id}".ToLower();
         }
 
-        protected async Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item)
+        protected async Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item, bool checkEtag = false)
         {
             if (item is IValidateable)
             {
@@ -443,6 +443,13 @@ namespace LagoVista.CloudStorage.DocumentDB
                 {
                     throw new ValidationException("Invalid Data.", result.Errors);
                 }
+            }
+
+            ItemRequestOptions requestOptions = null;
+            if (checkEtag)
+            {
+                if (String.IsNullOrEmpty(item.ETag)) throw new ContentModifiedException() { EntityType = typeof(TEntity).Name, Id = item.Id };
+                requestOptions = new ItemRequestOptions() { IfMatchEtag = item.ETag };
             }
 
             item.Revision++;
@@ -505,7 +512,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 await PostDiscussionUpdates(discussable);
             }
 
-            var upsertResult = await container.UpsertItemAsync(item);
+            var upsertResult = await container.UpsertItemAsync(item, requestOptions: requestOptions);
             switch (upsertResult.StatusCode)
             {
                 case System.Net.HttpStatusCode.BadRequest:
@@ -527,6 +534,11 @@ namespace LagoVista.CloudStorage.DocumentDB
                         Id = item.Id
                     };
 
+                case System.Net.HttpStatusCode.PreconditionFailed:
+                    DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "PreconditionFailed", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    throw new ContentModifiedException() { EntityType = typeof(TEntity).Name, Id = item.Id };
+                    
                 case System.Net.HttpStatusCode.RequestEntityTooLarge:
                     _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync", "RequestEntityTooLarge]", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
