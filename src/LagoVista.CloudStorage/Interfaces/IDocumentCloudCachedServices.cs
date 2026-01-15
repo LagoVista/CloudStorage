@@ -9,5 +9,6 @@ namespace LagoVista.CloudStorage.Interfaces
     public interface IDocumentCloudCachedServices : IDocumentCloudServices
     {
         ICacheProvider CacheProvider { get; }
+        ICacheAborter CacheAborter { get; }
     }
 }

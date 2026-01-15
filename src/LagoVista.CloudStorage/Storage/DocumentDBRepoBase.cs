@@ -47,6 +47,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private static CosmosClient _cosmosClient;
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
+        private readonly ICacheAborter _cacheAborter;
         private readonly IDependencyManager _dependencyManager;
         private readonly IRagIndexingServices _ragIndexingServices;
 
@@ -150,6 +151,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, cloudServices.CacheProvider, cloudServices.DependencyManager)
         {
             _ragIndexingServices = cloudServices.RagIndexingServices;
+            _cacheAborter = cloudServices.CacheAborter;
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudServices cloudServices) :
@@ -371,7 +373,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
             }
 
-            if (_cacheProvider != null)
+            if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache))
             {
                 await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item));
             }
@@ -554,7 +556,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             timer.Dispose();
             DocumentRequestCharge.WithLabels(GetCollectionName()).Set(upsertResult.RequestCharge);
 
-            if (_cacheProvider != null)
+            if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache))
             {
                 await _cacheProvider.RemoveAsync(GetCacheKey(item.Id));
                 sw.Restart();
@@ -572,7 +574,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             var sw = Stopwatch.StartNew();
 
-            if (_cacheProvider != null)
+            if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache))
             {
                 var json = await _cacheProvider.GetAsync(GetCacheKey(id));
                 if (!String.IsNullOrEmpty(json))

@@ -28,11 +28,14 @@ namespace LagoVista.CloudStorage.StorageProviders
 
     public class DocumentCloudCachedServices : DocumentCloudServices, IDocumentCloudCachedServices
     {
-        public DocumentCloudCachedServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, ICacheProvider cacheProvider)
+        public DocumentCloudCachedServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, ICacheAborter aborter, ICacheProvider cacheProvider)
             : base(adminLogger, dependencyManager, userNotificationService, ragServices)
         {
             CacheProvider = cacheProvider;
+            CacheAborter = aborter;
         }
         public ICacheProvider CacheProvider { get; }
+
+        public ICacheAborter CacheAborter { get; }
     }
 }
