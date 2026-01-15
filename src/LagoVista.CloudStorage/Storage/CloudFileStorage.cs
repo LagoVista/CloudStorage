@@ -136,6 +136,11 @@ namespace LagoVista.CloudStorage.Storage
             return InvokeResult<Uri>.FromError("Could not upload file");
         }
 
+        public Task<InvokeResult<Uri>> UpdateFileAsync(string containerName, string fileName, string data, string contentType = "text/plain", string cacheControl = null)
+        {
+            return AddFileAsync(containerName, fileName, data, contentType, cacheControl);
+        }
+
         public Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, string data, string contentType = "text/plain", string cacheControl = null)
         {
             var buffer = System.Text.ASCIIEncoding.UTF8.GetBytes(data);
