@@ -27,7 +27,7 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
-        public Task AddAsync(string key, string value)
+        public Task AddAsync(string key, string value, TimeSpan? ttl = null)
         {
             if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
 
@@ -36,7 +36,7 @@ namespace LagoVista.CloudStorage.Storage
                 var db = _multiplexer.GetDatabase();
                 Console.WriteLine($"[RemoteCache__AddAsync] Key: {key}");
 
-                return db.StringSetAsync(key, value);
+                return db.StringSetAsync(key, value, ttl);
             }
             else if (_inMemoryCache != null)
             {

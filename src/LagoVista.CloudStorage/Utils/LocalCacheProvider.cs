@@ -20,7 +20,7 @@ namespace LagoVista.CloudStorage.Utils
             _host = host;
         }
 
-        public Task AddAsync(string key, string value)
+        public Task AddAsync(string key, string value, TimeSpan? ttl = null)
         {
             return Task.CompletedTask;
         }
