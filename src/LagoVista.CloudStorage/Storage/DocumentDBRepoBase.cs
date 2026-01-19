@@ -756,8 +756,11 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (doc.IsDeleted.HasValue && doc.IsDeleted.Value)
             {
                 result = await container.DeleteItemAsync<TEntity>(doc.Id, PartitionKey.None);
-                if(_ragIndexingServices != null)
-                  await _ragIndexingServices.RemoveIndexAsync(doc.OwnerOrganization.Id, doc.Id);
+                if (_ragIndexingServices != null)
+                {
+                    if(!EntityHeader.IsNullOrEmpty(doc.OwnerOrganization))
+                        await _ragIndexingServices.RemoveIndexAsync(doc.OwnerOrganization.Id, doc.Id);
+                }
             }
             else
             {
