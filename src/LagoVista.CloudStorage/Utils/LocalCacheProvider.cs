@@ -67,5 +67,20 @@ namespace LagoVista.CloudStorage.Utils
         {
             return Task.CompletedTask;
         }
+
+        public Task<T> GetAsync<T>(string key) where T : class
+        {
+            return null;
+        }
+
+        public Task<T> GetAndDeleteAsync<T>(string key) where T : class
+        {
+            return null;
+        }
+
+        public Task AddAsync<T>(string key, T value, TimeSpan? ttl = null)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

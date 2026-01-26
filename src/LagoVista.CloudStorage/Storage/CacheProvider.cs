@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
 using LagoVista.Core.Interfaces;
+using Newtonsoft.Json;
 
 namespace LagoVista.CloudStorage.Storage
 {
@@ -25,6 +26,16 @@ namespace LagoVista.CloudStorage.Storage
             {
                 _multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
             }
+        }
+
+        public Task AddAsync<T>(string key, T value, TimeSpan? ttl = null)
+        {
+            if(value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
+            return AddAsync(key, JsonConvert.SerializeObject(value), ttl);
         }
 
         public Task AddAsync(string key, string value, TimeSpan? ttl = null)
@@ -207,6 +218,52 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             return Task.CompletedTask;
+        }
+
+        public async Task<T> GetAsync<T>(string key) where T: class
+        {
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
+            var json = await GetAsync(key);
+            if (String.IsNullOrEmpty(json))
+                return null;
+
+            return JsonConvert.DeserializeObject<T>(json);
+        }
+
+        public async Task<T> GetAndDeleteAsync<T>(string key) where T : class
+        {
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                if (db == null)
+                {
+                    throw new ArgumentNullException("Database for cache provider is null.");
+                }
+
+                Console.WriteLine($"Removing item with key: {key}");
+                var json = await db.StringGetDeleteAsync(key);
+
+                if (String.IsNullOrEmpty(json))
+                    return null;
+
+                return JsonConvert.DeserializeObject<T>(json);
+            }
+            else if (_inMemoryCache != null)
+            {
+                if(_inMemoryCache.ContainsKey(key))
+                {
+                    var json = _inMemoryCache[key];
+                    _inMemoryCache.Remove(key);
+                    return JsonConvert.DeserializeObject<T>(json);
+                }
+
+                return null;
+            }
+
+            return null;
         }
     }
 }
