@@ -16,7 +16,7 @@ namespace LagoVista.CloudStorage.Storage
     {
         private readonly ConnectionMultiplexer _multiplexer = null;
 
-        private static Dictionary<string, string> _inMemoryCache = null;
+        private static Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>();
 
         public CacheProvider(ICacheProviderSettings settings)
         {

@@ -1121,9 +1121,9 @@ namespace LagoVista.CloudStorage.Storage
             }
 
         }
-
-        public async Task<IEnumerable<TEntity>> GetByParitionIdAsync(String partitionKey, int? count = null, int? skip = null)
+        public  async Task<IEnumerable<TEntity>> GetByPartitionIdAsync(String partitionKey, int? count = null, int? skip = null)
         {
+         
             var sw = Stopwatch.StartNew();
 
             await InitAsync();
@@ -1156,10 +1156,22 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
-        public async Task<string> GetRawJSONByParitionIdAsync(String partitionKey, int? count = null, int? skip = null)
-        {
-            var sw = Stopwatch.StartNew();
 
+        [Obsolete("Use GetByPartitionIdAsync instead (kevin's early typo).")]
+        public Task<IEnumerable<TEntity>> GetByParitionIdAsync(String partitionKey, int? count = null, int? skip = null)
+        {
+            return GetByPartitionIdAsync(partitionKey, count, skip);
+        }
+
+
+        [Obsolete("Use GetRawJSONByPartitionIdAsync instead (kevin's early typo).")]
+        public Task<string> GetRawJSONByParitionIdAsync(String partitionKey, int? count = null, int? skip = null)
+        {
+            return GetRawJSONByPartitionIdAsync(partitionKey, count, skip);   
+        }
+
+        public async Task<string> GetRawJSONByPartitionIdAsync(String partitionKey, int? count = null, int? skip = null)
+        {
             await InitAsync();
 
             var resource = $"()";
