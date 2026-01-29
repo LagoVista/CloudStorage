@@ -726,7 +726,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        protected async Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id)
+        protected async Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id, bool softDelete = true)
         {
             var sw = Stopwatch.StartNew();
 
@@ -753,7 +753,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             ItemResponse<TEntity> result;
 
-            if (doc.IsDeleted.HasValue && doc.IsDeleted.Value)
+            if (!softDelete || (doc.IsDeleted.HasValue && doc.IsDeleted.Value))
             {
                 result = await container.DeleteItemAsync<TEntity>(doc.Id, PartitionKey.None);
                 if (_ragIndexingServices != null)
