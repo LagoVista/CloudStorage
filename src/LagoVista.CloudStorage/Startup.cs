@@ -19,6 +19,7 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<IDocumentCloudServices, DocumentCloudServices>();
             services.AddSingleton<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
             services.AddSingleton<ICategoryManager, CategoryManager>();
+            services.AddSingleton<ISyncRepository, CosmosSyncRepository>();
         }
     }
 }
