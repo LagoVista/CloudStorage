@@ -10,35 +10,35 @@ namespace LagoVista.CloudStorage.Models
         [JsonProperty("id")]
         public string Id { get; set; }
 
-        [JsonProperty("entityType")]
+        [JsonProperty("EntityType")]
         public string EntityType { get; set; }
 
-        [JsonProperty("key")]
+        [JsonProperty("Key")]
         public string Key { get; set; }
 
-        [JsonProperty("name")]
+        [JsonProperty("Name")]
         public string Name { get; set; }
 
-        [JsonProperty("revision")]
+        [JsonProperty("Revision")]
         public int Revision { get; set; }
 
-        [JsonProperty("revisionTimeStamp")]
+        [JsonProperty("RevisionTimeStamp")]
         public string RevisionTimeStamp { get; set; }
 
         // Cosmos uses "_etag" on the wire; other stores can map this as needed.
         [JsonProperty(PropertyName = "_etag", NullValueHandling = NullValueHandling.Ignore)]
         public string ETag { get; set; }
 
-        [JsonProperty("isDeleted")]
+        [JsonProperty("IsDeleted")]
         public bool? IsDeleted { get; set; }
 
-        [JsonProperty("isDeprecated")]
+        [JsonProperty("IsDeprecated")]
         public bool IsDeprecated { get; set; }
 
-        [JsonProperty("isDraft")]
+        [JsonProperty("IsDraft")]
         public bool IsDraft { get; set; }
 
-        [JsonProperty("lastUpdatedDate")]
+        [JsonProperty("LastUpdatedDate")]
         public string LastUpdatedDate { get; set; }
     }
 

@@ -1,5 +1,6 @@
 ﻿using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
+using LagoVista.Core.PlatformSupport;
 using Microsoft.Azure.Cosmos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -27,21 +28,22 @@ namespace LagoVista.CloudStorage.Storage
         private readonly CosmosClient _client;
         private readonly Container _container;
         private readonly ISyncConnectionSettings _options;
+        private readonly ILogger _logger;
 
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
-        public CosmosSyncRepository(ISyncConnectionSettings options)
+        public CosmosSyncRepository(ISyncConnectionSettings options, ILogger logger)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-
-            _client = new CosmosClient(_options.SyncConnectionSettings.AccountId, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
+            _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
             {
-                SerializerOptions = new CosmosSerializationOptions
-                {
-                    PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
-                }
+                //SerializerOptions = new CosmosSerializationOptions
+                //{
+                //    PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
+                //}
             });
 
             _container = _client.GetContainer(_options.SyncConnectionSettings.ResourceName, $"{_options.SyncConnectionSettings.ResourceName}_Collections");
@@ -57,19 +59,24 @@ namespace LagoVista.CloudStorage.Storage
             if (string.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
             if (take <= 0) take = DEFAULT_TAKE;
 
+            _logger.Trace($"{this.Tag()} - Request object of entity type {entityType}");
+
             // Projection-only query: cheap RU and fast.
             // We keep it tolerant: if some fields are missing, Cosmos returns null/defaults.
             var sql =
                 "SELECT " +
-                "  c.id, c.entityType, c.key, c.name, " +
-                "  c.revision, c.revisionTimeStamp, c._etag, " +
-                "  c.isDeleted, c.isDeprecated, c.isDraft, c.lastUpdatedDate " +
+                "  c.id, c.EntityType, c.Key, c.Name, " +
+                "  c.Revision, c.RevisionTimeStamp, c._etag, " +
+                "  c.IsDeleted, c.IsDeprecated, c.IsDraft, c.LastUpdatedDate " +
                 "FROM c " +
-                "WHERE c.entityType = @entityType " +
+                "WHERE c.EntityType = @entityType " +
                 "  AND (IS_NULL(@search) OR @search = '' " +
-                "       OR CONTAINS(LOWER(c.name), @search) " +
-                "       OR CONTAINS(LOWER(c.key), @search)) " +
+                "       OR CONTAINS(LOWER(c.Name), @search) " +
+                "       OR CONTAINS(LOWER(c.Key), @search)) " +
                 "ORDER BY c.key";
+
+
+            _logger.Trace($"{this.Tag()} - Query {sql}");
 
             var qd = new QueryDefinition(sql)
                 .WithParameter("@entityType", entityType)
@@ -99,6 +106,8 @@ namespace LagoVista.CloudStorage.Storage
 
                 if (results.Count >= take) break;
             }
+
+            _logger.Trace($"{this.Tag()} - Retrieved {results.Count} summaries for entity type {entityType}");
 
             // Defensive normalization: entityType/key should be there, but trim for stable UI.
             foreach (var r in results)
