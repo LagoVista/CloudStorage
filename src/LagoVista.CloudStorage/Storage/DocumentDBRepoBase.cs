@@ -2,32 +2,37 @@
 // ContentHash: 0966a614884bf62f14e46c78019b9280b027724296e08c242d0c640e6d6e7d98
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using Azure;
+using LagoVista.CloudStorage.Exceptions;
+using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Models;
+using LagoVista.Core;
+using LagoVista.Core.Attributes;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
+using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
-using Newtonsoft.Json;
-using System;
-using LagoVista.Core;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using LagoVista.CloudStorage.Exceptions;
-using System.Diagnostics;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
-using Prometheus;
-using System.Text;
 using MongoDB.Driver;
-using System.Text.RegularExpressions;
-using Azure;
+using Newtonsoft.Json;
+using Prometheus;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
-using LagoVista.Core.Attributes;
+using System.Runtime.CompilerServices;
 using System.Security.Policy;
-using LagoVista.Core.Models;
-using LagoVista.CloudStorage.Interfaces;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using static LagoVista.CloudStorage.Storage.CosmosSyncRepository;
+using static LagoVista.Core.Models.AdaptiveCard.MSTeams;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
@@ -50,7 +55,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly ICacheAborter _cacheAborter;
         private readonly IDependencyManager _dependencyManager;
         private readonly IRagIndexingServices _ragIndexingServices;
-
+        private readonly IFkIndexTableWriterBatched _fkeyIndexWriter;
         private readonly IDocumentDBRepoBase<TEntity> _storage;
 
         private StorageProviderTypes _stoargeProvider = StorageProviderTypes.Original;
@@ -157,6 +162,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudServices cloudServices) :
             this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, dependencyManager:cloudServices.DependencyManager)
         {
+            _fkeyIndexWriter = cloudServices.FkIndexTableWriter;
             _ragIndexingServices = cloudServices.RagIndexingServices;
         }
 
@@ -331,6 +337,57 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
+        public async Task<EntityHeader> GetEntityHeaderForRecordAsync(string id, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+            var sql = @"SELECT c.id, c.Key, c.Name, c.Namespace, c.UserName, c.Email, c.EntityType
+FROM c
+where c.id = @id";
+
+            _logger.Trace($"{this.Tag()} - Request object fkey {sql}", id.ToKVP("id"));
+
+            var qd = new QueryDefinition(sql).WithParameter("@id", id);
+
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = Math.Min(1, 1)
+            };
+
+            if (!string.IsNullOrWhiteSpace(GetPartitionKey()))
+            {
+                requestOptions.PartitionKey = PartitionKey.None;
+            }
+
+            var container = await GetContainerAsync();
+            using var iterator = container.GetItemQueryIterator<EntityHeaderRow>(qd, requestOptions: requestOptions);
+
+            if (iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                var record = page.Resource?.FirstOrDefault();
+                if (record != null)
+                {
+                    return new EntityHeader()
+                    {
+                        Id = record.Id,
+                        Key = record.GetKey(),
+                        Text = record.Name,
+                        EntityType = record.EntityType
+                    };
+                }
+            }
+
+            var notFoundEh = new EntityHeader()
+            {
+                Id = NOT_FOUND_ID,
+                Key = NOT_FOUND_KEY,
+                Text = NOT_FOUND_TEXT,
+                EntityType = NOT_FOUND_ENTITYTYPE
+            };
+
+            return notFoundEh;
+        }
+
         protected virtual bool IsRuntimeData { get { return false; } }
 
         protected async Task<OperationResponse<TEntity>> CreateDocumentAsync(TEntity item)
@@ -344,6 +401,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
             }
 
+            var ehCache = new Dictionary<string, EntityHeader>();
+
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
 
@@ -351,6 +410,36 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var sw = Stopwatch.StartNew();
             var response = await container.CreateItemAsync(item);
+
+            var ehNodes = item.FindEntityHeaderNodes();
+            foreach (var node in ehNodes)
+            {
+                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType))
+                {
+                    if (ehCache.ContainsKey(node.Id))
+                    {
+                        var eh = ehCache[node.Id];
+                        item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.EntityType);
+                    }
+                    else
+                    {
+                        var eh = await GetEntityHeaderForRecordAsync(node.Id);
+                        if (eh.Id == NOT_FOUND_ID)
+                        {
+                            if (String.IsNullOrEmpty(node.Key))
+                                await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
+                            else
+                                await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
+                            _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
+                        }
+                        else
+                        {
+                            ehCache.Add(node.Id, eh);
+                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.EntityType);
+                        }
+                    }
+                }
+            }
 
             if (response.StatusCode != System.Net.HttpStatusCode.Created)
             {
@@ -368,6 +457,12 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 if (_ragIndexingServices != null)
                     await _ragIndexingServices.IndexAsync(item);
+
+                if (_fkeyIndexWriter != null)
+                {
+                    var fkNodes =ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehNodes);
+                    await _fkeyIndexWriter.UpsertAllAsync(fkNodes);
+                }
 
                 DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
                 DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
@@ -464,10 +559,42 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var sw = Stopwatch.StartNew();
             var timer = DocumentUpdate.WithLabels(typeof(TEntity).Name).NewTimer();
+            var ehCache = new Dictionary<string, EntityHeader>();
+            var ehCurrentNodes = item.FindEntityHeaderNodes();
+            var exisitng = await GetDocumentAsync(item.Id);
+            var ehPreviousNodes = exisitng.FindEntityHeaderNodes();
+
+            foreach (var node in ehCurrentNodes)
+            {
+                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType))
+                {
+                    if (ehCache.ContainsKey(node.Id))
+                    {
+                        var eh = ehCache[node.Id];
+                        item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.EntityType);
+                    }
+                    else
+                    {
+                        var eh = await GetEntityHeaderForRecordAsync(node.Id);
+                        if (eh.Id == NOT_FOUND_ID)
+                        {
+                            if (String.IsNullOrEmpty(node.Key))
+                                await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
+                            else
+                                await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
+                            _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
+                        }
+                        else
+                        {
+                            ehCache.Add(node.Id, eh);
+                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.EntityType);
+                        }
+                    }
+                }
+            }
 
             if (_dependencyManager != null)
             {
-                var exisitng = await GetDocumentAsync(item.Id);
                 if (exisitng.Name != item.Name)
                 {
                     var dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item);
@@ -515,6 +642,16 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
 
             var upsertResult = await container.UpsertItemAsync(item, requestOptions: requestOptions);
+
+            if (_fkeyIndexWriter != null)
+            {
+                var previousEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehPreviousNodes);
+                var currentEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehCurrentNodes);
+
+                var diff = FkEdgeDiff.DiffOutboundEdges(previousEdges, currentEdges);
+                await _fkeyIndexWriter.ApplyDiffAsync(diff);
+            }
+
             switch (upsertResult.StatusCode)
             {
                 case System.Net.HttpStatusCode.BadRequest:
@@ -1107,10 +1244,12 @@ namespace LagoVista.CloudStorage.DocumentDB
                                                         .Where(isDraftQuery); 
                                      
                 if(orderByDesc != null)
-                    linqQuery = linqQuery.OrderByDescending(sort);
+                    linqQuery = linqQuery.OrderByDescending(orderByDesc);
+                else if(sort != null)
+                    linqQuery = linqQuery.OrderBy(sort);
 
                 linqQuery = linqQuery.Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                                     .Take(listRequest.PageSize);
+                                         .Take(listRequest.PageSize);
 
                 var page = 1;
 

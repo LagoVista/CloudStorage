@@ -9,12 +9,13 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     public class DocumentCloudServices : IDocumentCloudServices
     {
-        public DocumentCloudServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices)
+        public DocumentCloudServices(IAdminLogger adminLogger, IFkIndexTableWriterBatched fkIndexTableWriter, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices)
         {
             AdminLogger = adminLogger;
             DependencyManager = dependencyManager;
             UserNotificationService = userNotificationService;
             RagIndexingServices = ragServices;
+            FkIndexTableWriter = fkIndexTableWriter;
         }
 
         public IAdminLogger AdminLogger { get; }
@@ -24,12 +25,14 @@ namespace LagoVista.CloudStorage.StorageProviders
         public IUserNotificationService UserNotificationService { get; }
 
         public IRagIndexingServices RagIndexingServices { get; }
+
+        public IFkIndexTableWriterBatched FkIndexTableWriter { get; }
     }
 
     public class DocumentCloudCachedServices : DocumentCloudServices, IDocumentCloudCachedServices
     {
-        public DocumentCloudCachedServices(IAdminLogger adminLogger, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, ICacheAborter aborter, ICacheProvider cacheProvider)
-            : base(adminLogger, dependencyManager, userNotificationService, ragServices)
+        public DocumentCloudCachedServices(IAdminLogger adminLogger, IFkIndexTableWriterBatched fkIndexTableWriter, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, ICacheAborter aborter, ICacheProvider cacheProvider)
+            : base(adminLogger, fkIndexTableWriter, dependencyManager, userNotificationService, ragServices)
         {
             CacheProvider = cacheProvider;
             CacheAborter = aborter;

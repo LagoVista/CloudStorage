@@ -1,17 +1,18 @@
 ﻿using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
+using LagoVista.Core.Interfaces;
+using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
+using LagoVista.Core.Validation;
 using Microsoft.Azure.Cosmos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-// =======================================================
-// File: Sync/Repositories/Cosmos/CosmosSyncRepository.cs
-// =======================================================
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,29 +30,163 @@ namespace LagoVista.CloudStorage.Storage
         private readonly Container _container;
         private readonly ISyncConnectionSettings _options;
         private readonly ILogger _logger;
+        private readonly IFkIndexTableWriterBatched _fkWriter;
+        private readonly ICacheProvider _cacheProvider;
 
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
-        public CosmosSyncRepository(ISyncConnectionSettings options, ILogger logger)
+        public CosmosSyncRepository(ISyncConnectionSettings options, IFkIndexTableWriterBatched fkWriter, ICacheProvider cacheProvider, ILogger logger)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _fkWriter = fkWriter ?? throw new ArgumentNullException(nameof(fkWriter));
+            _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
 
             _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
             {
-                //SerializerOptions = new CosmosSerializationOptions
-                //{
-                //    PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
-                //}
             });
 
             _container = _client.GetContainer(_options.SyncConnectionSettings.ResourceName, $"{_options.SyncConnectionSettings.ResourceName}_Collections");
         }
 
+        public static string NormalizeAlphaNumericKey(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return null;
+
+            var sb = new StringBuilder(input.Length);
+
+            foreach (var ch in input)
+            {
+                if (char.IsLetterOrDigit(ch))
+                {
+                    sb.Append(char.ToLowerInvariant(ch));
+                }
+            }
+
+            if (sb.Length == 0) return null;
+
+            // Ensure first character is a letter
+            if (!char.IsLetter(sb[0]))
+            {
+                sb.Insert(0, 'a');
+            }
+
+            return sb.ToString();
+        }
+
+
+        internal class EntityHeaderRow
+        {
+            [JsonProperty("id")]
+            public string Id { get; set; }
+
+            [JsonProperty("Key")]
+            public string Key { get; set; }
+
+            [JsonProperty("Name")]
+            public string Name { get; set; }
+
+            [JsonProperty("EntityType")]
+            public string EntityType { get; set; }
+
+            [JsonProperty("UserName")]
+            public string UserName { get; set; }
+
+            [JsonProperty("Namespace")]
+            public string Namespace { get; set; }
+
+            [JsonProperty("Eemail")]
+            public string Eemail { get; set; }
+
+            public string GetKey()
+            {
+                if (!String.IsNullOrEmpty(Namespace))
+                    return Namespace;
+
+                if (!String.IsNullOrEmpty(UserName))
+                    return NormalizeAlphaNumericKey(UserName);
+
+                if (String.IsNullOrEmpty(Key))
+                {
+                    if(!String.IsNullOrEmpty(Eemail))
+                        return NormalizeAlphaNumericKey(Eemail);
+                    else
+                        return Id.ToLower();
+                }
+
+                return Key;
+            }
+        }
+
+        public const string NOT_FOUND_ID = "09AE184AE5374B40B0E174D8F4956653";
+        public const string NOT_FOUND_KEY = "recordnotfound";
+        public const string NOT_FOUND_TEXT = "Record Not Found";    
+        public const string NOT_FOUND_ENTITYTYPE = "RecordNotFound";
+
+        private Dictionary<string, EntityHeader> _inMemoryCache = new Dictionary<string, EntityHeader>();
+
+        public async Task<EntityHeader> GetEntityHeaderForRecordAsync(string id, CancellationToken ct = default)
+        {
+            if(_inMemoryCache.ContainsKey(id))
+            {
+                return _inMemoryCache[id];
+            }
+
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+            _logger.Trace($"{this.Tag()} - Request object for id {id}");
+            var sql = @"SELECT c.id, c.Key, c.Name, c.Namespace, c.UserName, c.EntityType
+FROM c
+where c.id = @id";
+
+            var qd = new QueryDefinition(sql).WithParameter("@id", id);
+
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = Math.Min(1, 1)
+            };
+
+            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
+            {
+                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
+            }
+
+            using var iterator = _container.GetItemQueryIterator<EntityHeaderRow>(qd, requestOptions: requestOptions);
+
+            if(iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                var record = page.Resource?.FirstOrDefault();
+                if(record != null)
+                {
+                    var eh = new EntityHeader()
+                    {
+                        Id = record.Id,
+                        Key = record.GetKey(),
+                        Text = record.Name,
+                        EntityType = record.EntityType
+                    };
+                    _inMemoryCache.Add(eh.Id, eh);
+                    return eh;
+                }
+            }
+
+            var notFoundEh = new EntityHeader()
+            {
+                Id = NOT_FOUND_ID,
+                Key = NOT_FOUND_KEY,
+                Text = NOT_FOUND_TEXT,
+                EntityType = NOT_FOUND_ENTITYTYPE
+            };
+
+            _inMemoryCache.Add(id, notFoundEh);
+
+            return notFoundEh;
+        }
 
         public async Task<IReadOnlyList<SyncEntitySummary>> GetSummariesAsync(
                 string entityType,
+                string ownerOrganizationId,
                 string search = null,
                 int take = 200,
                 CancellationToken ct = default)
@@ -73,6 +208,7 @@ namespace LagoVista.CloudStorage.Storage
                 "  AND (IS_NULL(@search) OR @search = '' " +
                 "       OR CONTAINS(LOWER(c.Name), @search) " +
                 "       OR CONTAINS(LOWER(c.Key), @search)) " +
+                "  AND c.OwnerOrganization.Id = @ownerOrganizationId " + 
                 "ORDER BY c.key";
 
 
@@ -80,6 +216,7 @@ namespace LagoVista.CloudStorage.Storage
 
             var qd = new QueryDefinition(sql)
                 .WithParameter("@entityType", entityType)
+                .WithParameter("@ownerOrganizationId", ownerOrganizationId)
                 .WithParameter("@search", string.IsNullOrWhiteSpace(search) ? null : search.Trim().ToLowerInvariant());
 
             var results = new List<SyncEntitySummary>(Math.Min(take, 512));
@@ -120,13 +257,90 @@ namespace LagoVista.CloudStorage.Storage
             return results;
         }
 
-        public async Task<string> GetJsonByIdAsync(string id, CancellationToken ct = default)
+        private async Task<string> GetJsonByIdAsync(string id, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
 
             // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
             const string sql = "SELECT * FROM c WHERE c.id = @id";
-            var qd = new QueryDefinition(sql).WithParameter("@id", id.Trim());
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@id", id.Trim());
+
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = 1
+            };
+
+            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
+            {
+                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
+            }
+
+            using var iterator = _container.GetItemQueryIterator<JObject>(
+                qd,
+                requestOptions: requestOptions);
+
+            while (iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                var doc = page.Resource?.FirstOrDefault();
+                if (doc == null) continue;
+
+                // Return raw JSON for UI side-by-side display.
+                return doc.ToString(Formatting.Indented);
+            }
+
+            return null;
+        }
+
+        public async Task<string> GetOwnedJsonByIdAsync(string id, string ownerOrganizationId, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+
+            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
+            const string sql = "SELECT * FROM c WHERE c.id = @id and c.OwnerOrganization.Id = @ownerOrganizationId";
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@id", id.Trim())
+                .WithParameter("@ownerOrganizationId", ownerOrganizationId);
+            
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = 1
+            };
+
+            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
+            {
+                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
+            }
+
+
+            using var iterator = _container.GetItemQueryIterator<JObject>(
+                qd,
+                requestOptions: requestOptions);
+
+            while (iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                var doc = page.Resource?.FirstOrDefault();
+                if (doc == null) continue;
+
+                // Return raw JSON for UI side-by-side display.
+                return doc.ToString(Formatting.Indented);
+            }
+
+            return null;
+        }
+
+        public async Task<string> GetJsonByEntityTypeAndKeyAsync(string key, string entityType, string ownerOrganizationId, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("key is required.", nameof(key));
+
+            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
+            const string sql = "SELECT * FROM c WHERE c.id = @id and c.EntityType = @entityType and c.OwnerOrganization.Id = @ownerOrganizationId";
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@key", key.Trim())
+                .WithParameter("@entityType", entityType.Trim())
+                .WithParameter("@ownerOrganizationId", ownerOrganizationId);
 
             var requestOptions = new QueryRequestOptions
             {
@@ -180,8 +394,8 @@ namespace LagoVista.CloudStorage.Storage
                 doc["id"] = id;
             }
 
-            var entityType = doc["entityType"]?.Value<string>()?.Trim();
-            var key = doc["key"]?.Value<string>()?.Trim();
+            var entityType = doc["EntityType"]?.Value<string>()?.Trim();
+            var key = doc["Key"]?.Value<string>()?.Trim();
 
             if (string.IsNullOrWhiteSpace(entityType))
                 throw new ArgumentException("json must contain a non-empty 'entityType' property.", nameof(json));
@@ -190,8 +404,8 @@ namespace LagoVista.CloudStorage.Storage
                 throw new ArgumentException("json must contain a non-empty 'key' property.", nameof(json));
 
             // Ensure trimmed values are persisted.
-            doc["entityType"] = entityType;
-            doc["key"] = key;
+            doc["EntityType"] = entityType;
+            doc["Key"] = key;
 
             // We use stream APIs to avoid binding to any model types.
             var bytes = System.Text.Encoding.UTF8.GetBytes(doc.ToString(Formatting.None));
@@ -255,6 +469,116 @@ namespace LagoVista.CloudStorage.Storage
                 StatusCode = (int)resp.StatusCode,
                 RequestCharge = resp.Headers?.RequestCharge
             };
+        }
+
+    public sealed class CosmosScanRow
+        {
+            [JsonProperty("id")]
+            public string Id { get; set; }
+
+            // Cosmos system property for concurrency/change detection
+            [JsonProperty("_etag")]
+            public string ETag { get; set; }
+        }
+
+        /// <summary>
+        /// Scans a container using Cosmos paging and returns the continuation token to resume later.
+        /// Persist the returned continuationToken somewhere durable.
+        /// </summary>
+        public async Task<string> ScanContainerAsync(Func<CosmosScanRow, CancellationToken, Task> handleRowAsync,
+            string continuationToken = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default)
+        {
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = pageSize
+            };
+
+            if (!string.IsNullOrWhiteSpace(fixedPartitionKey))
+            {
+                requestOptions.PartitionKey = new PartitionKey(fixedPartitionKey);
+            }
+
+            // Minimal SELECT keeps RU and payload down. Add fields as needed.
+            var qd = new QueryDefinition("SELECT c.id, c._etag FROM c");
+
+            using var iterator = _container.GetItemQueryIterator<CosmosScanRow>(qd, continuationToken: continuationToken, requestOptions: requestOptions);
+            var pagesRead = 0;
+
+            while (iterator.HasMoreResults && pagesRead < maxPagesThisRun)
+            {
+                FeedResponse<CosmosScanRow> page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                pagesRead++;
+
+                foreach (var row in page)
+                {
+                    await handleRowAsync(row, ct).ConfigureAwait(false);
+                }
+
+                // This is the real “resume from here” cursor.
+                continuationToken = page.ContinuationToken;
+            }
+
+            return continuationToken; // null means you're done (or you started at end)
+        }
+
+        public async Task<InvokeResult<EhResolvedEntity>> ResolveEntityEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false)
+        {
+            var json = await GetJsonByIdAsync(id);
+            var entity = JsonConvert.DeserializeObject<EntityBase>(json);
+            var token = JToken.Parse(json);
+            if(entity.EntityType == "AppUser")
+            {
+                var userName = token["UserName"]?.Value<string>();
+                if (userName == null)
+                {
+                    userName = token["Email"]?.Value<string>();
+                    token["UserName"] = userName;
+                }
+                token["Key"] = NormalizeAlphaNumericKey(userName);
+            }
+
+            var nodes = EntityHeaderJson.FindEntityHeaderNodes(token);
+            var wasUpdated = false;
+            foreach (var node in nodes)
+            {
+                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) )
+                {
+                    wasUpdated = true;
+                    var eh = await GetEntityHeaderForRecordAsync(node.Id);
+                    if (eh != null)
+                    {
+                        if(eh.Id == NOT_FOUND_ID)
+                        {
+                            if (!dryRun)
+                            {
+                                if(String.IsNullOrEmpty(node.Key))
+                                    await _fkWriter.AddOrphanedEHAsync(entity, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
+                                else 
+                                    await _fkWriter.AddOrphanedEHAsync(entity, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
+                            }
+                            _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {entity.Id}");
+                        }
+                        EntityHeaderJson.Update(node.Object, eh.Key, eh.Text, eh.EntityType);
+                    }
+                }
+            }
+
+            var fkNodes = ForeignKeyEdgeFactory.FromEntityHeaderNodes(entity, nodes);
+            if(!dryRun)
+                await _fkWriter.UpsertAllAsync(fkNodes);
+
+            if(wasUpdated && !dryRun)
+                await UpsertJsonAsync(token.ToString());
+
+            var result = new EhResolvedEntity()
+            {
+                Entity = entity,
+                EntityHeaderNodes = nodes,
+                ForeignKeyEdges = fkNodes.ToList(),
+                NotFoundEntityHeaderNodes = nodes.Where(n => String.IsNullOrEmpty(n.Key) || String.IsNullOrEmpty(n.EntityType)).ToList()
+            };
+
+            return InvokeResult<EhResolvedEntity>.Create(result);  
         }
     }
 }

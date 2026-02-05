@@ -6,7 +6,7 @@ using System.Text;
 
 namespace LagoVista.CloudStorage.Interfaces
 {
-    public interface IDocumentCloudServices
+    public interface IDocumentCloudServices 
     {
         IAdminLogger AdminLogger { get; }
         IDependencyManager DependencyManager { get;  }
@@ -14,5 +14,7 @@ namespace LagoVista.CloudStorage.Interfaces
         IUserNotificationService UserNotificationService { get; }
 
         IRagIndexingServices RagIndexingServices { get; }
+
+        IFkIndexTableWriterBatched FkIndexTableWriter { get; }
     }
 }

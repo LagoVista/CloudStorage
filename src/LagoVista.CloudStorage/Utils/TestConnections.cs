@@ -87,14 +87,14 @@ namespace LagoVista.CloudStorage.Utils
                 {
                     Uri = Environment.GetEnvironmentVariable("DEV_DOCDB_ACCOUNT_URL"),
                     AccountId = Environment.GetEnvironmentVariable("DEV_DOCDB_ACCOUNT_ID"),
-                    AccessKey = Environment.GetEnvironmentVariable("DEV_DOCDB_ACCESSKEY"),
-                    ResourceName = Environment.GetEnvironmentVariable("PROD_DOCDB_ACCESS_KEY"),
+                    AccessKey = Environment.GetEnvironmentVariable("DEV_DOCDB_ACCESS_KEY"),
+                    ResourceName = Environment.GetEnvironmentVariable("DEV_DOCDB_DATABASE"),
                 };
 
                 if (String.IsNullOrEmpty(cs.Uri)) Console.WriteLine("[ERROR] - Missing DEV_DOCDB_ACCOUNT_URL as environment variable");
                 if (String.IsNullOrEmpty(cs.AccountId)) Console.WriteLine("[ERROR] - Missing DEV_DOCDB_ACCOUNT_ID as environment variable");
-                if (String.IsNullOrEmpty(cs.AccessKey)) Console.WriteLine("[ERROR] - Missing PROD_DOCDB_ACCESS_KEY as environment variable");
-                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing DEV_DOCDB_ACCESSKEY as environment variable");
+                if (String.IsNullOrEmpty(cs.AccessKey)) Console.WriteLine("[ERROR] - Missing DEV_DOCDB_ACCESS_KEY as environment variable");
+                if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing DEV_DOCDB_DATABASE as environment variable");
 
                 return cs;
             }
