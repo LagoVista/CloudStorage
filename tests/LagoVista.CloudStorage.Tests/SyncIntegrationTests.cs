@@ -8,6 +8,7 @@ using Moq;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.IntegrationTests
@@ -44,7 +45,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
         [Test]
         public async Task ResolveFksys()
         {
-           var result = await  _syncRepo.ResolveEntityEntityHeadersAsync("41CA44CB485D4B3BA751F0DAAC3E1F76");
+           var result = await  _syncRepo.ResolveEntityHeadersAsync("41CA44CB485D4B3BA751F0DAAC3E1F76");
         }
 
         [Test]
@@ -53,9 +54,9 @@ namespace LagoVista.CloudStorage.IntegrationTests
             string continuationToken = null;
             var ct = await _syncRepo.ScanContainerAsync(async (row, ct) =>
             {
-                await _syncRepo.ResolveEntityEntityHeadersAsync(row.Id, dryRun:false);
+                await _syncRepo.ResolveEntityHeadersAsync(row.Id, dryRun:false);
                 Console.WriteLine(row.Id);
-            }, continuationToken, 50, 1, null);
+            }, null, continuationToken, 50, 1, null);
         }
 
         [Test]
@@ -67,6 +68,20 @@ namespace LagoVista.CloudStorage.IntegrationTests
             await _syncRepo.UpsertJsonAsync(json, entity.OwnerOrganization, entity.CreatedBy);
         }
 
+        [Test]
+        public async Task ResolveEntityForToolBox()
+        {
+            var result = await _syncRepo.ResolveEntityHeadersAsync("AgentToolBox", null);
+            Console.WriteLine($"Resolved {result.Result.Count} entities, Updated: {result.Result.Where(res=>res.UpdatedEntity).Count()}");
+        }
+
+
+        [Test]
+        public async Task ResolveEntityForDetailDesignReview()
+        {
+            var result = await _syncRepo.ResolveEntityHeadersAsync("DetailedDesignReview", null);
+            Console.WriteLine($"Resolved {result.Result.Count} entities, Updated: {result.Result.Where(res => res.UpdatedEntity).Count()}");
+        }
 
         class SyncSettings : ISyncConnectionSettings, IDefaultConnectionSettings
         {

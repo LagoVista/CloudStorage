@@ -34,9 +34,9 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<SyncUpsertResult> UpsertJsonAsync(string json, string expectedETag = null, CancellationToken ct = default);
         Task<SyncUpsertResult> UpsertJsonAsync(string json, EntityHeader org, EntityHeader user, CancellationToken ct = default);
         Task<EntityHeader> GetEntityHeaderForRecordAsync(string id, CancellationToken ct = default);
-        Task<InvokeResult<EhResolvedEntity>> ResolveEntityEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false);
-
+        Task<InvokeResult<EhResolvedEntity>> ResolveEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false);
+        Task<InvokeResult<List<EhResolvedEntity>>> ResolveEntityHeadersAsync(string entityType, string continuationToken, int pageSize = 100, int maxPagesThisRun = 10, CancellationToken ct = default, bool dryRun = false);
         Task<string> ScanContainerAsync(Func<CosmosScanRow, CancellationToken, Task> handleRowAsync,
-            string continuationToken = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default);
+            string continuationToken = null, string entityType = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default);
     }
 }

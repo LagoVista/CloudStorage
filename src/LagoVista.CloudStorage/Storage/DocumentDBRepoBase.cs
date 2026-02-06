@@ -339,12 +339,12 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public async Task<EntityHeader> GetEntityHeaderForRecordAsync(string id, CancellationToken ct = default)
         {
+
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
-            var sql = @"SELECT c.id, c.Key, c.Name, c.Namespace, c.UserName, c.Email, c.EntityType
+            _logger.Trace($"{this.Tag()} - Request object for id {id}");
+            var sql = @"SELECT c.id, c.Key, c.Name, c.Namespace, c.UserName, c.EntityType, c.OwnerOrganization, c.IsPublic
 FROM c
 where c.id = @id";
-
-            _logger.Trace($"{this.Tag()} - Request object fkey {sql}", id.ToKVP("id"));
 
             var qd = new QueryDefinition(sql).WithParameter("@id", id);
 
@@ -353,9 +353,9 @@ where c.id = @id";
                 MaxItemCount = Math.Min(1, 1)
             };
 
-            if (!string.IsNullOrWhiteSpace(GetPartitionKey()))
+            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
             {
-                requestOptions.PartitionKey = PartitionKey.None;
+                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
             }
 
             var container = await GetContainerAsync();
@@ -367,13 +367,16 @@ where c.id = @id";
                 var record = page.Resource?.FirstOrDefault();
                 if (record != null)
                 {
-                    return new EntityHeader()
+                    var eh = new EntityHeader()
                     {
                         Id = record.Id,
                         Key = record.GetKey(),
                         Text = record.Name,
+                        OwnerOrgId = record.OwnerOrganization?.Id,
+                        IsPublic = record.IsPublic,
                         EntityType = record.EntityType
                     };
+                    return eh;
                 }
             }
 
@@ -382,6 +385,7 @@ where c.id = @id";
                 Id = NOT_FOUND_ID,
                 Key = NOT_FOUND_KEY,
                 Text = NOT_FOUND_TEXT,
+                OwnerOrgId = NOT_FOUND_OWNER_ORG_ID,
                 EntityType = NOT_FOUND_ENTITYTYPE
             };
 
@@ -416,7 +420,8 @@ where c.id = @id";
             var ehNodes = item.FindEntityHeaderNodes();
             foreach (var node in ehNodes)
             {
-                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType))
+                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
+                     (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
                 {
                     if (ehCache.ContainsKey(node.Id))
                     {
@@ -441,7 +446,7 @@ where c.id = @id";
                         else
                         {
                             ehCache.Add(node.Id, eh);
-                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.EntityType);
+                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
                         }
                     }
                 }
@@ -572,12 +577,13 @@ where c.id = @id";
 
             foreach (var node in ehCurrentNodes)
             {
-                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType))
+                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
+                      (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
                 {
                     if (ehCache.ContainsKey(node.Id))
                     {
                         var eh = ehCache[node.Id];
-                        item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.EntityType);
+                        item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
                     }
                     else
                     {
@@ -597,7 +603,7 @@ where c.id = @id";
                         else
                         {
                             ehCache.Add(node.Id, eh);
-                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.EntityType);
+                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
                         }
                     }
                 }

@@ -7,6 +7,7 @@ namespace LagoVista.CloudStorage.Models
 {
     public class EhResolvedEntity
     {
+        public bool UpdatedEntity { get; set; }
         public EntityBase Entity { get; set; }
         public IReadOnlyList<EntityHeaderNode> EntityHeaderNodes { get; set; }
         public IReadOnlyList<EntityHeaderNode> NotFoundEntityHeaderNodes { get; set; }

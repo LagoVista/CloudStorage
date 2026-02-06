@@ -80,6 +80,7 @@ namespace LagoVista.CloudStorage.Storage
         }
      
         public const string NOT_FOUND_ID = "09AE184AE5374B40B0E174D8F4956653";
+        public const string NOT_FOUND_OWNER_ORG_ID = "00000000000000000000000000000000";
         public const string NOT_FOUND_KEY = "recordnotfound";
         public const string NOT_FOUND_TEXT = "Record Not Found";    
         public const string NOT_FOUND_ENTITYTYPE = "RecordNotFound";
@@ -95,7 +96,7 @@ namespace LagoVista.CloudStorage.Storage
 
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
             _logger.Trace($"{this.Tag()} - Request object for id {id}");
-            var sql = @"SELECT c.id, c.Key, c.Name, c.Namespace, c.UserName, c.EntityType
+            var sql = @"SELECT c.id, c.Key, c.Name, c.Namespace, c.UserName, c.EntityType, c.OwnerOrganization, c.IsPublic
 FROM c
 where c.id = @id";
 
@@ -124,6 +125,8 @@ where c.id = @id";
                         Id = record.Id,
                         Key = record.GetKey(),
                         Text = record.Name,
+                        OwnerOrgId = record.OwnerOrganization?.Id,
+                        IsPublic = record.IsPublic,
                         EntityType = record.EntityType
                     };
                     _inMemoryCache.Add(eh.Id, eh);
@@ -136,6 +139,7 @@ where c.id = @id";
                 Id = NOT_FOUND_ID,
                 Key = NOT_FOUND_KEY,
                 Text = NOT_FOUND_TEXT,
+                OwnerOrgId = NOT_FOUND_OWNER_ORG_ID,
                 EntityType = NOT_FOUND_ENTITYTYPE
             };
 
@@ -510,7 +514,7 @@ where c.id = @id";
         /// Persist the returned continuationToken somewhere durable.
         /// </summary>
         public async Task<string> ScanContainerAsync(Func<CosmosScanRow, CancellationToken, Task> handleRowAsync,
-            string continuationToken = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default)
+            string continuationToken = null, string entityType  = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default)
         {
             var requestOptions = new QueryRequestOptions
             {
@@ -522,8 +526,14 @@ where c.id = @id";
                 requestOptions.PartitionKey = new PartitionKey(fixedPartitionKey);
             }
 
+            var query = "SELECT c.id, c._etag FROM c";
+            if (!String.IsNullOrEmpty(entityType))
+                query += " WHERE c.EntityType = @entityType";
+
             // Minimal SELECT keeps RU and payload down. Add fields as needed.
-            var qd = new QueryDefinition("SELECT c.id, c._etag FROM c");
+            var qd = !String.IsNullOrEmpty(entityType) ? 
+                new QueryDefinition(query).WithParameter("@entityType", entityType) :
+                new QueryDefinition(query);
 
             using var iterator = _container.GetItemQueryIterator<CosmosScanRow>(qd, continuationToken: continuationToken, requestOptions: requestOptions);
             var pagesRead = 0;
@@ -545,7 +555,7 @@ where c.id = @id";
             return continuationToken; // null means you're done (or you started at end)
         }
 
-        public async Task<InvokeResult<EhResolvedEntity>> ResolveEntityEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false)
+        public async Task<InvokeResult<EhResolvedEntity>> ResolveEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false)
         {
             var json = await GetJsonByIdAsync(id);
             var entity = JsonConvert.DeserializeObject<EntityBase>(json);
@@ -565,7 +575,8 @@ where c.id = @id";
             var wasUpdated = false;
             foreach (var node in nodes)
             {
-                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) )
+                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) && 
+                    (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
                 {
                     wasUpdated = true;
                     var eh = await GetEntityHeaderForRecordAsync(node.Id);
@@ -582,7 +593,8 @@ where c.id = @id";
                             }
                             _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {entity.Id}");
                         }
-                        EntityHeaderJson.Update(node.Object, eh.Key, eh.Text, eh.EntityType);
+
+                        EntityHeaderJson.Update(node.Object, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
                     }
                 }
             }
@@ -591,11 +603,14 @@ where c.id = @id";
             if(!dryRun)
                 await _fkWriter.UpsertAllAsync(fkNodes);
 
+            token["Sha256Hex"] = EntityHasher.CalculateHash(token.DeepClone());
+
             if(wasUpdated && !dryRun)
                 await UpsertJsonAsync(token.ToString());
 
             var result = new EhResolvedEntity()
             {
+                UpdatedEntity = wasUpdated,
                 Entity = entity,
                 EntityHeaderNodes = nodes,
                 ForeignKeyEdges = fkNodes.ToList(),
@@ -603,6 +618,20 @@ where c.id = @id";
             };
 
             return InvokeResult<EhResolvedEntity>.Create(result);  
+        }
+
+        public async Task<InvokeResult<List<EhResolvedEntity>>> ResolveEntityHeadersAsync(string entityType, string continuationToken, int pageSize = 100, int maxPagesThisRun = 10, CancellationToken ct = default, bool dryRun = false)
+        {
+            var results = new List<EhResolvedEntity>();
+
+            await ScanContainerAsync(async (rec, ct) =>
+            {
+                 var result = await ResolveEntityHeadersAsync(rec.Id, ct);
+                 results.Add(result.Result);
+
+            }, continuationToken, entityType, pageSize, maxPagesThisRun);
+
+            return InvokeResult<List<EhResolvedEntity>>.Create(results);
         }
     }
 }

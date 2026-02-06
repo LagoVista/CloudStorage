@@ -1,4 +1,5 @@
 ﻿using LagoVista.CloudStorage.Storage;
+using LagoVista.Core.Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -28,6 +29,12 @@ namespace LagoVista.CloudStorage.Models
 
         [JsonProperty("Eemail")]
         public string Eemail { get; set; }
+
+        [JsonProperty("OwnerOrganization")]
+        public EntityHeader OwnerOrganization { get; set; }
+
+        [JsonProperty("IsPublic")]
+        public bool IsPublic { get; set; }
 
         public string GetKey()
         {
