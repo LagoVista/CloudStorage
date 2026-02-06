@@ -1,5 +1,7 @@
 ﻿using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.Core;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
@@ -12,6 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,6 +35,7 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ILogger _logger;
         private readonly IFkIndexTableWriterBatched _fkWriter;
         private readonly ICacheProvider _cacheProvider;
+        private readonly string _dbName;
 
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
@@ -42,7 +46,7 @@ namespace LagoVista.CloudStorage.Storage
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fkWriter = fkWriter ?? throw new ArgumentNullException(nameof(fkWriter));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
-
+            _dbName = _options.SyncConnectionSettings.ResourceName;
             _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
             {
             });
@@ -74,51 +78,7 @@ namespace LagoVista.CloudStorage.Storage
 
             return sb.ToString();
         }
-
-
-        internal class EntityHeaderRow
-        {
-            [JsonProperty("id")]
-            public string Id { get; set; }
-
-            [JsonProperty("Key")]
-            public string Key { get; set; }
-
-            [JsonProperty("Name")]
-            public string Name { get; set; }
-
-            [JsonProperty("EntityType")]
-            public string EntityType { get; set; }
-
-            [JsonProperty("UserName")]
-            public string UserName { get; set; }
-
-            [JsonProperty("Namespace")]
-            public string Namespace { get; set; }
-
-            [JsonProperty("Eemail")]
-            public string Eemail { get; set; }
-
-            public string GetKey()
-            {
-                if (!String.IsNullOrEmpty(Namespace))
-                    return Namespace;
-
-                if (!String.IsNullOrEmpty(UserName))
-                    return NormalizeAlphaNumericKey(UserName);
-
-                if (String.IsNullOrEmpty(Key))
-                {
-                    if(!String.IsNullOrEmpty(Eemail))
-                        return NormalizeAlphaNumericKey(Eemail);
-                    else
-                        return Id.ToLower();
-                }
-
-                return Key;
-            }
-        }
-
+     
         public const string NOT_FOUND_ID = "09AE184AE5374B40B0E174D8F4956653";
         public const string NOT_FOUND_KEY = "recordnotfound";
         public const string NOT_FOUND_TEXT = "Record Not Found";    
@@ -184,12 +144,7 @@ where c.id = @id";
             return notFoundEh;
         }
 
-        public async Task<IReadOnlyList<SyncEntitySummary>> GetSummariesAsync(
-                string entityType,
-                string ownerOrganizationId,
-                string search = null,
-                int take = 200,
-                CancellationToken ct = default)
+        public async Task<IReadOnlyList<SyncEntitySummary>> GetSummariesAsync(string entityType, string ownerOrganizationId, string search = null, int take = 200, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
             if (take <= 0) take = DEFAULT_TAKE;
@@ -257,7 +212,7 @@ where c.id = @id";
             return results;
         }
 
-        private async Task<string> GetJsonByIdAsync(string id, CancellationToken ct = default)
+        public async Task<string> GetJsonByIdAsync(string id, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
 
@@ -371,19 +326,9 @@ where c.id = @id";
             return null;
         }
 
-        public async Task<SyncUpsertResult> UpsertJsonAsync(string json, string expectedETag = null, CancellationToken ct = default)
+        private async Task<SyncUpsertResult> UpsertJsonAsync(JObject doc, string expectedETag = null, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(json)) throw new ArgumentException("json is required.", nameof(json));
-
-            JObject doc;
-            try
-            {
-                doc = JObject.Parse(json);
-            }
-            catch (JsonException ex)
-            {
-                throw new ArgumentException("json must be a valid JSON object.", nameof(json), ex);
-            }
+            _logger.Trace($"{this.Tag()} - Apply");
 
             // Validate minimum shape.
             var id = doc["id"]?.Value<string>()?.Trim();
@@ -394,14 +339,17 @@ where c.id = @id";
                 doc["id"] = id;
             }
 
+
             var entityType = doc["EntityType"]?.Value<string>()?.Trim();
             var key = doc["Key"]?.Value<string>()?.Trim();
 
             if (string.IsNullOrWhiteSpace(entityType))
-                throw new ArgumentException("json must contain a non-empty 'entityType' property.", nameof(json));
+                throw new ArgumentException("json must contain a non-empty 'entityType' property.", nameof(doc));
 
             if (string.IsNullOrWhiteSpace(key))
-                throw new ArgumentException("json must contain a non-empty 'key' property.", nameof(json));
+                throw new ArgumentException("json must contain a non-empty 'key' property.", nameof(doc));
+
+            _logger.Trace($"{this.Tag()} - Apply", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
 
             // Ensure trimmed values are persisted.
             doc["EntityType"] = entityType;
@@ -445,12 +393,15 @@ where c.id = @id";
             // Surface common concurrency conflicts clearly.
             if (resp.StatusCode == HttpStatusCode.PreconditionFailed)
             {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "Upsert failed due to ETag mismatch (412 Precondition Failed).");
                 throw new InvalidOperationException("Upsert failed due to ETag mismatch (412 Precondition Failed).");
             }
 
             if (!resp.IsSuccessStatusCode)
-            {
+            {    
                 var body = resp.Content != null ? await new StreamReader(resp.Content).ReadToEndAsync().ConfigureAwait(false) : null;
+
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "No success code updating", body.ToKVP("error"));
                 throw new InvalidOperationException($"Upsert failed ({(int)resp.StatusCode} {resp.StatusCode}). {body}");
             }
 
@@ -462,6 +413,8 @@ where c.id = @id";
                 returnedEtag = null;
             }
 
+            _logger.Trace($"{this.Tag()} - Success", resp.StatusCode.ToString().ToKVP("responseCode"));
+
             return new SyncUpsertResult
             {
                 Id = id,
@@ -471,7 +424,78 @@ where c.id = @id";
             };
         }
 
-    public sealed class CosmosScanRow
+        private string GetCacheKey(string entityType, string id)
+        {
+            return $"{_dbName}-{entityType}-{id}".ToLower();
+        }
+
+        public async Task<SyncUpsertResult> UpsertJsonAsync(string json, EntityHeader org, EntityHeader user, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(json)) throw new ArgumentException("json is required.", nameof(json));
+            _logger.Trace($"{this.Tag()} - Starting ");
+
+            JObject doc;
+            try
+            {
+                doc = JObject.Parse(json);
+                var id = doc["id"].Value<string>();
+                var key = doc[nameof(EntityBase.Key)].Value<string>();
+                var entityType = doc[nameof(EntityBase.EntityType)].Value<string>();
+                _logger.Trace($"{this.Tag()} - Parsed JSON", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
+
+                var existing = await GetJsonByIdAsync(id, ct);
+                if (String.IsNullOrEmpty(existing))
+                {
+                    existing = await GetJsonByEntityTypeAndKeyAsync(key, entityType, org.Id);
+                }
+
+                if(String.IsNullOrEmpty(existing))
+                {
+                    _logger.Trace($"{this.Tag()} - No matching record", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
+                    doc[nameof(EntityBase.CreationDate)] = JToken.FromObject(user);
+                    doc[nameof(EntityBase.CreatedBy)] = DateTime.UtcNow.ToJSONString();
+                }
+                else
+                {
+                    var entity = JsonConvert.DeserializeObject<EntityBase>(existing);
+                    _logger.Trace($"{this.Tag()} - Found Exisitng Record", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
+                    id = entity.Id;
+                    doc["id"] = id;
+                }
+
+                doc[nameof(EntityBase.OwnerOrganization)] = JToken.FromObject(org);
+                doc[nameof(EntityBase.LastUpdatedBy)] = JToken.FromObject(user);
+                doc[nameof(EntityBase.LastUpdatedDate)] = DateTime.UtcNow.ToJSONString();
+
+                await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
+            }
+            catch (JsonException ex)
+            {
+                throw new ArgumentException("json must be a valid JSON object.", nameof(json), ex);
+            }
+
+            return await UpsertJsonAsync(doc, null, ct);
+        }
+
+
+        public Task<SyncUpsertResult> UpsertJsonAsync(string json, string expectedETag = null, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(json)) throw new ArgumentException("json is required.", nameof(json));
+
+            JObject doc;
+            try
+            {
+                doc = JObject.Parse(json);
+            }
+            catch (JsonException ex)
+            {
+                throw new ArgumentException("json must be a valid JSON object.", nameof(json), ex);
+            }
+
+            return UpsertJsonAsync(doc, expectedETag, ct);
+        }
+
+        public sealed class CosmosScanRow
         {
             [JsonProperty("id")]
             public string Id { get; set; }

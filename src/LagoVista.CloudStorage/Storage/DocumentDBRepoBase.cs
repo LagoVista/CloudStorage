@@ -119,7 +119,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected static readonly Counter DocumentCacheMiss = Metrics.CreateCounter("nuviot_document_cache_miss", "Document Cache Miss.", "entity");
         protected static readonly Counter DocumentNotCached = Metrics.CreateCounter("nuviot_document_not_cached", "Document Not Cached.", "entity");
 
-        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null)
+        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null)
         {
             _endPointString = endpoint.ToString();
 
@@ -128,6 +128,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             _logger = logger;
             _cacheProvider = cacheProvider;
             _dependencyManager = dependencyManager;
+            _fkeyIndexWriter = fkWriter;
 
             _storage = new StorageProviders.CosmosDBStorage<TEntity>(endpoint, sharedKey, dbName, logger, cacheProvider, dependencyManager);
 
@@ -140,8 +141,8 @@ namespace LagoVista.CloudStorage.DocumentDB
 
 
 
-        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null) :
-            this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager)
+        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null) :
+            this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager, fkWriter)
         {
 
         }
@@ -153,17 +154,16 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudCachedServices cloudServices) : 
-            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, cloudServices.CacheProvider, cloudServices.DependencyManager)
+            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, cloudServices.CacheProvider, cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter)
         {
             _ragIndexingServices = cloudServices.RagIndexingServices;
             _cacheAborter = cloudServices.CacheAborter;
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudServices cloudServices) :
-            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, dependencyManager:cloudServices.DependencyManager)
+            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, dependencyManager:cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter)
         {
             _fkeyIndexWriter = cloudServices.FkIndexTableWriter;
-            _ragIndexingServices = cloudServices.RagIndexingServices;
         }
 
 
@@ -409,6 +409,8 @@ where c.id = @id";
             var container = await GetContainerAsync();
 
             var sw = Stopwatch.StartNew();
+            item.SetHash();
+
             var response = await container.CreateItemAsync(item);
 
             var ehNodes = item.FindEntityHeaderNodes();
@@ -426,10 +428,14 @@ where c.id = @id";
                         var eh = await GetEntityHeaderForRecordAsync(node.Id);
                         if (eh.Id == NOT_FOUND_ID)
                         {
-                            if (String.IsNullOrEmpty(node.Key))
-                                await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
-                            else
-                                await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
+                            if (_fkeyIndexWriter != null)
+                            {
+                                if (String.IsNullOrEmpty(node.Key))
+                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
+                                else
+                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
+                            }
+
                             _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
                         }
                         else
@@ -554,7 +560,7 @@ where c.id = @id";
 
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
-
+           
             var container = await GetContainerAsync();
 
             var sw = Stopwatch.StartNew();
@@ -578,10 +584,14 @@ where c.id = @id";
                         var eh = await GetEntityHeaderForRecordAsync(node.Id);
                         if (eh.Id == NOT_FOUND_ID)
                         {
-                            if (String.IsNullOrEmpty(node.Key))
-                                await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
-                            else
-                                await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
+                            if (_fkeyIndexWriter != null)
+                            {
+                                if (String.IsNullOrEmpty(node.Key))
+                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
+                                else
+                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
+                            }
+
                             _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
                         }
                         else
@@ -641,16 +651,9 @@ where c.id = @id";
                 await PostDiscussionUpdates(discussable);
             }
 
+            item.SetHash();
             var upsertResult = await container.UpsertItemAsync(item, requestOptions: requestOptions);
 
-            if (_fkeyIndexWriter != null)
-            {
-                var previousEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehPreviousNodes);
-                var currentEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehCurrentNodes);
-
-                var diff = FkEdgeDiff.DiffOutboundEdges(previousEdges, currentEdges);
-                await _fkeyIndexWriter.ApplyDiffAsync(diff);
-            }
 
             switch (upsertResult.StatusCode)
             {
@@ -686,6 +689,15 @@ where c.id = @id";
 
                 case System.Net.HttpStatusCode.OK:
                 case System.Net.HttpStatusCode.Created:
+                    if (_fkeyIndexWriter != null)
+                    {
+                        var previousEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehPreviousNodes);
+                        var currentEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehCurrentNodes);
+
+                        var diff = FkEdgeDiff.DiffOutboundEdges(previousEdges, currentEdges);
+                        await _fkeyIndexWriter.ApplyDiffAsync(diff);
+                    }
+
                     _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Document Update {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {upsertResult.RequestCharge}");
                     break;
             }

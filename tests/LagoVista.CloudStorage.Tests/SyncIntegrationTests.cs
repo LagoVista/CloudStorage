@@ -1,9 +1,11 @@
 ﻿using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.Core.Interfaces;
+using LagoVista.Core.Models;
 using LagoVista.IoT.Logging.Loggers;
 using LagoVista.IoT.Logging.Utils;
 using Moq;
+using Newtonsoft.Json;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -54,7 +56,16 @@ namespace LagoVista.CloudStorage.IntegrationTests
                 await _syncRepo.ResolveEntityEntityHeadersAsync(row.Id, dryRun:false);
                 Console.WriteLine(row.Id);
             }, continuationToken, 50, 1, null);
-        }   
+        }
+
+        [Test]
+        public async Task UpsertEntity()
+        {
+            var json = await _syncRepo.GetJsonByIdAsync("41CA44CB485D4B3BA751F0DAAC3E1F76");
+            var entity = JsonConvert.DeserializeObject<EntityBase>(json);
+
+            await _syncRepo.UpsertJsonAsync(json, entity.OwnerOrganization, entity.CreatedBy);
+        }
 
 
         class SyncSettings : ISyncConnectionSettings, IDefaultConnectionSettings

@@ -24,7 +24,7 @@ namespace LagoVista.CloudStorage.Interfaces
         /// (Cosmos will include "_etag" in the returned body).
         /// </summary>
         Task<string> GetOwnedJsonByIdAsync(string id, string ownerOrganizationId, CancellationToken ct = default);
-
+        Task<string> GetJsonByIdAsync(string id, CancellationToken ct = default);
         Task<string> GetJsonByEntityTypeAndKeyAsync(string key, string entityType, string ownerOrganizationId, CancellationToken ct = default);
 
         /// <summary>
@@ -32,8 +32,8 @@ namespace LagoVista.CloudStorage.Interfaces
         /// the upsert must fail if the current server-side etag does not match.
         /// </summary>
         Task<SyncUpsertResult> UpsertJsonAsync(string json, string expectedETag = null, CancellationToken ct = default);
+        Task<SyncUpsertResult> UpsertJsonAsync(string json, EntityHeader org, EntityHeader user, CancellationToken ct = default);
         Task<EntityHeader> GetEntityHeaderForRecordAsync(string id, CancellationToken ct = default);
-
         Task<InvokeResult<EhResolvedEntity>> ResolveEntityEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false);
 
         Task<string> ScanContainerAsync(Func<CosmosScanRow, CancellationToken, Task> handleRowAsync,
