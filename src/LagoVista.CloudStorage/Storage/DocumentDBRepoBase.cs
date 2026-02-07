@@ -590,14 +590,7 @@ where c.id = @id";
                         var eh = await GetEntityHeaderForRecordAsync(node.Id);
                         if (eh.Id == NOT_FOUND_ID)
                         {
-                            if (_fkeyIndexWriter != null)
-                            {
-                                if (String.IsNullOrEmpty(node.Key))
-                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
-                                else
-                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
-                            }
-
+                            eh.Resolved = false;
                             _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
                         }
                         else

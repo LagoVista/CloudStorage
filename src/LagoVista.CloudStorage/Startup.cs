@@ -6,6 +6,7 @@ using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Managers;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.CloudStorage.Utils.TableSizer;
 using LagoVista.Core.Interfaces;
 
 namespace LagoVista.CloudStorage
@@ -19,6 +20,8 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<IDocumentCloudServices, DocumentCloudServices>();
             services.AddSingleton<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
             services.AddSingleton<ICategoryManager, CategoryManager>();
+            services.AddSingleton<ITableSizer, TableSizer>();
+            services.AddSingleton<INodeLocatorTableWriterBatched,  NodeLocatorTableWriterBatched>();
             services.AddSingleton<ISyncRepository, CosmosSyncRepository>();
             services.AddSingleton<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
         }

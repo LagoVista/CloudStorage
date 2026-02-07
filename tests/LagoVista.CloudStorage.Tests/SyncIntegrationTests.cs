@@ -17,6 +17,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
     {
         ISyncRepository _syncRepo;
         IFkIndexTableWriterBatched _fkeyWriter;
+        INodeLocatorTableWriterBatched _nodeWriter;
         IAdminLogger _logger;
 
         [SetUp]
@@ -24,7 +25,8 @@ namespace LagoVista.CloudStorage.IntegrationTests
         {
             _logger = new AdminLogger(new ConsoleLogWriter());
             _fkeyWriter = new FkIndexTableWriterBatched(new SyncSettings(), _logger);
-            _syncRepo = new CosmosSyncRepository(new SyncSettings(), _fkeyWriter, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
+            _nodeWriter = new NodeLocatorTableWriterBatched(new SyncSettings(), _logger);
+            _syncRepo = new CosmosSyncRepository(new SyncSettings(), _fkeyWriter, _nodeWriter, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
         }
 
 
@@ -45,7 +47,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
         [Test]
         public async Task ResolveFksys()
         {
-           var result = await  _syncRepo.ResolveEntityHeadersAsync("41CA44CB485D4B3BA751F0DAAC3E1F76");
+            var result = await _syncRepo.ResolveEntityHeadersAsync("41CA44CB485D4B3BA751F0DAAC3E1F76");
         }
 
         [Test]
@@ -54,7 +56,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
             string continuationToken = null;
             var ct = await _syncRepo.ScanContainerAsync(async (row, ct) =>
             {
-                await _syncRepo.ResolveEntityHeadersAsync(row.Id, dryRun:false);
+                await _syncRepo.ResolveEntityHeadersAsync(row.Id, dryRun: false);
                 Console.WriteLine(row.Id);
             }, null, continuationToken, 50, 1, null);
         }
@@ -72,7 +74,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
         public async Task ResolveEntityForToolBox()
         {
             var result = await _syncRepo.ResolveEntityHeadersAsync("AgentToolBox", null);
-            Console.WriteLine($"Resolved {result.Result.Count} entities, Updated: {result.Result.Where(res=>res.UpdatedEntity).Count()}");
+            Console.WriteLine($"Resolved {result.Result.Count} entities, Updated: {result.Result.Where(res => res.UpdatedEntity).Count()}");
         }
 
 
@@ -82,16 +84,17 @@ namespace LagoVista.CloudStorage.IntegrationTests
             var result = await _syncRepo.ResolveEntityHeadersAsync("DetailedDesignReview", null);
             Console.WriteLine($"Resolved {result.Result.Count} entities, Updated: {result.Result.Where(res => res.UpdatedEntity).Count()}");
         }
-
-        class SyncSettings : ISyncConnectionSettings, IDefaultConnectionSettings
-        {
-            public IConnectionSettings SyncConnectionSettings => Utils.TestConnections.DevDocDB;
-
-            public IConnectionSettings DefaultDocDbSettings => throw new NotImplementedException();
-
-            public IConnectionSettings DefaultTableStorageSettings => Utils.TestConnections.DevTableStorageDB;
-
-            public IConnectionSettings EHCheckPointStorageSettings => throw new NotImplementedException();
-        }
     }
+
+    class SyncSettings : ISyncConnectionSettings, IDefaultConnectionSettings
+    {
+        public IConnectionSettings SyncConnectionSettings => Utils.TestConnections.DevDocDB;
+
+        public IConnectionSettings DefaultDocDbSettings => throw new NotImplementedException();
+
+        public IConnectionSettings DefaultTableStorageSettings => Utils.TestConnections.DevTableStorageDB;
+
+        public IConnectionSettings EHCheckPointStorageSettings => throw new NotImplementedException();
+    }
+    
 }

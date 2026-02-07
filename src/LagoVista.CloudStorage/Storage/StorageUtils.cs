@@ -2,6 +2,7 @@
 // ContentHash: 2d3c3740f965c6ffa5f3224db7385dd5d0d8118d63662437af38c4968a189eb6
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using LagoVista.CloudStorage.Models;
 using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -11,10 +12,13 @@ using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Storage
@@ -323,6 +327,99 @@ namespace LagoVista.CloudStorage.Storage
 
                 await container.DeleteItemAsync<TEntity>(id, PartitionKey.None);
             }
+        }
+
+        public const string NOT_FOUND_ID = "09AE184AE5374B40B0E174D8F4956653";
+        public const string NOT_FOUND_OWNER_ORG_ID = "00000000000000000000000000000000";
+        public const string NOT_FOUND_KEY = "recordnotfound";
+        public const string NOT_FOUND_TEXT = "Record Not Found";
+        public const string NOT_FOUND_ENTITYTYPE = "RecordNotFound";
+
+
+        public async Task<string> GetJsonByIdAsync(string id, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+
+            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
+            const string sql = "SELECT * FROM c WHERE c.id = @id";
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@id", id.Trim());
+
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = 1
+            };
+
+            
+            var container = Client.GetContainer(_dbName, _collectionName);
+
+            using var iterator = container.GetItemQueryIterator<JObject>(
+                qd,
+                requestOptions: requestOptions);
+
+            while (iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                var doc = page.Resource?.FirstOrDefault();
+                if (doc == null) continue;
+
+                // Return raw JSON for UI side-by-side display.
+                return doc.ToString(Formatting.Indented);
+            }
+
+            return null;
+        }
+
+        public async Task<EntityGraph> GetEntityGraphAsync(string id, EntityHeader org, EntityHeader user)
+        {
+            if(String.IsNullOrEmpty(id)) throw new ArgumentException("id is required.", nameof(id));
+
+            _logger.Trace($"{this.Tag()} - Getting entity graph for {id} in org {org.Text} for user {user.Text}.");
+            var json = await GetJsonByIdAsync(id);
+            if(String.IsNullOrEmpty(json))
+            {
+                return null;
+            }  
+
+            var entity = JsonConvert.DeserializeObject<EntityBase>(json);
+            if (entity.EntityType == "Organization" || entity.EntityType == "AppUser")
+                return null;
+            
+            if(entity.OwnerOrganization.Id != org.Id && !entity.IsPublic)
+            {
+                throw new NotAuthorizedException($"Attempt to load entity graph for {entity.Name} of type {entity.EntityType} owned by org {entity.OwnerOrganization.Text} by org {org.Text}");
+            }
+
+            _logger.Trace($"{this.Tag()} - Loaded entity {entity.Name} for {id} in org {org.Text} for user {user.Text}.");
+
+            var token = JToken.Parse(json);
+            var topLevel = new EntityGraph()
+            {
+                EntityType = entity.EntityType,
+                IsPublic = entity.IsPublic,
+                Text = entity.Name,
+                Id = entity.Id,
+                Key = entity.Key,
+                OwnerOrgId = entity.OwnerOrganization?.Id,
+            };
+            
+            var nodes = EntityHeaderJson.FindEntityHeaderNodes(token);
+            foreach(var node in nodes)
+            {
+                if(node.Path.EndsWith("CreatedBy") || node.Path.EndsWith("LastUpdatedBy") || node.Path.EndsWith("OwnerOrganization"))
+                {
+                    _logger.Trace($"{this.Tag()} - {node.NormalizedPath} - Skipping audit field.");
+                    continue;
+                }
+
+                _logger.Trace($"{this.Tag()} - {node.NormalizedPath} - Requesting child node {node.Text} with {node.Id}");
+
+                var child = await GetEntityGraphAsync(node.Id, org, user);
+                if(child != null)
+                    topLevel.Children.Add(child);
+            }
+
+            return topLevel;
         }
 
 

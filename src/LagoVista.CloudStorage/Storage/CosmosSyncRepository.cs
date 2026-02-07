@@ -1,6 +1,5 @@
 ﻿using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
-using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
@@ -11,10 +10,10 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,17 +33,19 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ISyncConnectionSettings _options;
         private readonly ILogger _logger;
         private readonly IFkIndexTableWriterBatched _fkWriter;
+        private readonly INodeLocatorTableWriterBatched _nodeLocatorWriter;
         private readonly ICacheProvider _cacheProvider;
         private readonly string _dbName;
 
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
-        public CosmosSyncRepository(ISyncConnectionSettings options, IFkIndexTableWriterBatched fkWriter, ICacheProvider cacheProvider, ILogger logger)
+        public CosmosSyncRepository(ISyncConnectionSettings options, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, ICacheProvider cacheProvider, ILogger logger)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fkWriter = fkWriter ?? throw new ArgumentNullException(nameof(fkWriter));
+            _nodeLocatorWriter = nodeLocatorWriter ?? throw new ArgumentNullException(nameof(nodeLocatorWriter));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
             _dbName = _options.SyncConnectionSettings.ResourceName;
             _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
@@ -542,12 +543,24 @@ where c.id = @id";
             {
                 FeedResponse<CosmosScanRow> page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
                 pagesRead++;
+                var dop = 16;
+                using var gate = new SemaphoreSlim(dop);
 
-                foreach (var row in page)
+                var tasks = page.Select(async id =>
                 {
-                    await handleRowAsync(row, ct).ConfigureAwait(false);
-                }
+                    await gate.WaitAsync(ct);
+                    try
+                    {
+                        await handleRowAsync(id, ct).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        gate.Release();
+                    }
+                });
 
+                await Task.WhenAll(tasks);
+                
                 // This is the real “resume from here” cursor.
                 continuationToken = page.ContinuationToken;
             }
@@ -584,6 +597,7 @@ where c.id = @id";
                     {
                         if(eh.Id == NOT_FOUND_ID)
                         {
+                            EntityHeaderJson.SetResolved(node.Object, false);
                             if (!dryRun)
                             {
                                 if(String.IsNullOrEmpty(node.Key))
@@ -593,8 +607,8 @@ where c.id = @id";
                             }
                             _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {entity.Id}");
                         }
-
-                        EntityHeaderJson.Update(node.Object, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
+                        else
+                            EntityHeaderJson.Update(node.Object, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
                     }
                 }
             }
@@ -620,7 +634,52 @@ where c.id = @id";
             return InvokeResult<EhResolvedEntity>.Create(result);  
         }
 
-        public async Task<InvokeResult<List<EhResolvedEntity>>> ResolveEntityHeadersAsync(string entityType, string continuationToken, int pageSize = 100, int maxPagesThisRun = 10, CancellationToken ct = default, bool dryRun = false)
+        public async Task<List<NodeLocatorEntry>> WriteNodesAsync(string id, CancellationToken ct = default)
+        {
+            var sw = Stopwatch.StartNew();
+            var json = await GetJsonByIdAsync(id);
+            var entity = JsonConvert.DeserializeObject<EntityBase>(json);
+            var token = JObject.Parse(json);
+            if (entity.EntityType == null)
+                return new List<NodeLocatorEntry > ();
+
+            var getMs = sw.Elapsed.TotalMilliseconds;
+            sw.Restart();
+
+            var nodes =  NodeLocatorWalker.ExtractNodeLocators(token, entity.OwnerOrganization?.Id ?? "SYSTEM", entity.EntityType, entity.Id, entity.Revision, entity.LastUpdatedDate);
+            nodes = NodeLocatorTableWriterBatched.DeduplicateByNodeId(nodes, id);
+
+            var dups = NodeLocatorTableWriterBatched.FindDuplicateNodeIds(nodes);
+            if (dups.Count > 0)
+            {
+                Console.Error.WriteLine($"Found {dups.Count} duplicate NodeIds:");
+                foreach (var dup in dups)
+                {
+                    Console.WriteLine($"RootId: {nodes.First().RootId}/{nodes.First().RootType} Count: {dup.Count} NodeType: {String.Join(',', dup.NodeTypes)}");
+                    foreach (var path in dup.Paths)
+                    {
+                        Console.Write($"  Path: {path}");
+                    }
+                    Console.WriteLine();
+                }
+                Debugger.Break();
+            }
+
+            var extractDeDupMs = sw.Elapsed.TotalMilliseconds;
+            sw.Restart();
+            await _nodeLocatorWriter.UpsertAllAsync(nodes);
+
+            var writeMs = sw.Elapsed.TotalMilliseconds;
+            if (nodes.Count > 0)
+                Console.WriteLine($"{nodes.First().RootType} - Node Count: {nodes.Count} - {getMs}/{extractDeDupMs}/{writeMs}");
+            else
+                Console.WriteLine("No node found ?!?!?!?!");
+
+            return nodes;
+        }
+
+        public async Task<InvokeResult<List<EhResolvedEntity>>> ResolveEntityHeadersAsync(string entityType, string continuationToken, int pageSize = 100, int maxPagesThisRun = 10, 
+                                            CancellationToken ct = default, bool dryRun = false)
         {
             var results = new List<EhResolvedEntity>();
 
@@ -632,6 +691,24 @@ where c.id = @id";
             }, continuationToken, entityType, pageSize, maxPagesThisRun);
 
             return InvokeResult<List<EhResolvedEntity>>.Create(results);
+        }
+
+        public async Task<InvokeResult<NodeLocatorResult>> AddNodeLocatorsAsync(string continuationToken, int pageSize = 100, int maxPagesThisRun = 10, CancellationToken ct = default, bool dryRun = false)
+        {
+            var result = new NodeLocatorResult();
+            var recordIdx = 1;
+            var continueToken = await ScanContainerAsync(async (rec, ct) =>
+            {
+                Console.Write($"{recordIdx++}/{pageSize * maxPagesThisRun} - ");
+                var nodes = await WriteNodesAsync(rec.Id, ct);
+                result.Entries.AddRange(nodes);
+
+
+            }, continuationToken, pageSize: pageSize, maxPagesThisRun: maxPagesThisRun);
+
+            result.ContinuationToken = continueToken;
+
+            return InvokeResult<NodeLocatorResult>.Create(result);
         }
     }
 }
