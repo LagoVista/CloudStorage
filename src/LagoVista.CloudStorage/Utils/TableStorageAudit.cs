@@ -103,7 +103,7 @@ namespace LagoVista.CloudStorage.Utils
 
                             var stats = await SampleTableAsync(tableClient, tableName, sampleSizePerTable, ct).ConfigureAwait(false);
 
-                            //stats.RowCount = await CountEntitiesExactAsync(tableClient, ct); 
+                            stats.RowCount = await CountEntitiesExactAsync(tableClient, ct); 
 
                             _logger.Trace($"{this.Tag()} - {thisIdx} - End {tableName} found {stats.SampledEntities} in {sw.Elapsed.TotalSeconds} seconds");
 

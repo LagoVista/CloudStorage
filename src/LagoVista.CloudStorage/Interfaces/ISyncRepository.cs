@@ -38,6 +38,8 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<InvokeResult<List<EhResolvedEntity>>> ResolveEntityHeadersAsync(string entityType, string continuationToken, int pageSize = 100, int maxPagesThisRun = 10, CancellationToken ct = default, bool dryRun = false);
         Task<InvokeResult<NodeLocatorResult>> AddNodeLocatorsAsync(string continuationToken, int pageSize = 100, int maxPagesThisRun = 10, CancellationToken ct = default, bool dryRun = false);
 
+        Task<InvokeResult<EntityDeleteResult>> DeleteByEntityTypeAsync(string entityType, string continuationToken, bool dryRun, int pageSize = 100, int maxPagesThisRun = 10, CancellationToken ct = default);
+
         Task<string> ScanContainerAsync(Func<CosmosScanRow, CancellationToken, Task> handleRowAsync,
             string continuationToken = null, string entityType = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default);
     }

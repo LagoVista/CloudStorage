@@ -6,6 +6,7 @@ using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Serialization.HybridRow;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -505,6 +506,9 @@ where c.id = @id";
             [JsonProperty("id")]
             public string Id { get; set; }
 
+            [JsonProperty("EntityType")]
+            public string EntityType { get; set; }
+
             // Cosmos system property for concurrency/change detection
             [JsonProperty("_etag")]
             public string ETag { get; set; }
@@ -527,7 +531,7 @@ where c.id = @id";
                 requestOptions.PartitionKey = new PartitionKey(fixedPartitionKey);
             }
 
-            var query = "SELECT c.id, c._etag FROM c";
+            var query = "SELECT c.id, c.EntityType, c._etag FROM c";
             if (!String.IsNullOrEmpty(entityType))
                 query += " WHERE c.EntityType = @entityType";
 
@@ -546,12 +550,12 @@ where c.id = @id";
                 var dop = 16;
                 using var gate = new SemaphoreSlim(dop);
 
-                var tasks = page.Select(async id =>
+                var tasks = page.Select(async row =>
                 {
                     await gate.WaitAsync(ct);
                     try
                     {
-                        await handleRowAsync(id, ct).ConfigureAwait(false);
+                        await handleRowAsync(row, ct).ConfigureAwait(false);
                     }
                     finally
                     {
@@ -709,6 +713,32 @@ where c.id = @id";
             result.ContinuationToken = continueToken;
 
             return InvokeResult<NodeLocatorResult>.Create(result);
+        }
+
+        public async Task<InvokeResult<EntityDeleteResult>> DeleteByEntityTypeAsync(string entityType, string continuationToken, bool dryRun, int pageSize = 100, int maxPagesThisRun = 10, CancellationToken ct = default)
+        {
+            var result = new EntityDeleteResult();
+
+            var fullSw = Stopwatch.StartNew();
+            result.ContinuationToken = await ScanContainerAsync(async (rec, ct) =>
+            {
+                if (dryRun)
+                {
+                    _logger.Trace($"{result.DeletedCount} - Would Delete {rec.Id} - {rec.EntityType}");
+                }
+                else
+                {
+                    var sw = Stopwatch.StartNew();
+                   var deleteResult = await  _container.DeleteItemAsync<EntityBase>(rec.Id, PartitionKey.None, cancellationToken:ct);
+                    _logger.Trace($"{result.DeletedCount:0000} - Did Delete {rec.Id} - {rec.EntityType} in {sw.Elapsed.TotalMilliseconds}ms");
+                    result.DeletedCount++;
+                }
+
+            }, continuationToken, entityType, pageSize, maxPagesThisRun);
+
+            _logger.Trace($"Deleted {result.DeletedCount} in {fullSw.Elapsed.TotalMilliseconds} ms");
+
+            return InvokeResult<EntityDeleteResult>.Create(result);
         }
     }
 }

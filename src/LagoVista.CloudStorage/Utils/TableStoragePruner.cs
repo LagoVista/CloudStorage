@@ -1,4 +1,5 @@
-﻿using Azure.Data.Tables;
+﻿using Azure;
+using Azure.Data.Tables;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
@@ -23,7 +24,7 @@ namespace LagoVista.CloudStorage.Utils
         public class PruneOptions
         {
             public bool DryRun { get; set; } = true;
-            public bool PruneEmptyTables { get; set; } = true;  
+            public bool PruneEmptyTables { get; set; } = true;
             public bool PruneOldTables { get; set; } = true;
             public bool PruneBasedOnLastWrite { get; set; } = true;
         }
@@ -121,7 +122,7 @@ namespace LagoVista.CloudStorage.Utils
                 if (String.IsNullOrEmpty(_accountKey)) throw new ArgumentNullException(nameof(_accountKey));
             }
 
-            public async Task<InvokeResult> PruneTableAsync(string tableName, CancellationToken ct = default)
+            public async Task<InvokeResult> DeleteTableAsync(string tableName, CancellationToken ct = default)
             {
                 try
                 {
@@ -146,7 +147,7 @@ namespace LagoVista.CloudStorage.Utils
                 PruneOptions pruneOptions,
                 int sampleSizePerTable = 500,
                 int maxConcurrency = 6,
-               
+
                 CancellationToken ct = default)
             {
                 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountName};AccountKey={_accountKey}";
@@ -267,7 +268,7 @@ namespace LagoVista.CloudStorage.Utils
                                 });
 
                             }
-              
+
                         }
                         catch (Exception ex)
                         {
@@ -314,7 +315,7 @@ namespace LagoVista.CloudStorage.Utils
                     stats.SampledBytes += est;
                     stats.SampledEntities++;
 
-                    if(timeStamp == DateTime.MinValue)
+                    if (timeStamp == DateTime.MinValue)
                         stats.LastWritten = entity.Timestamp?.UtcDateTime ?? DateTime.MinValue;
 
                     if (est > stats.MaxEntityBytes)
@@ -357,7 +358,7 @@ namespace LagoVista.CloudStorage.Utils
                 if (string.IsNullOrWhiteSpace(rowKey))
                     throw new ArgumentException("rowKey is required.", nameof(rowKey));
 
-             
+
                 // take the first 19 digits
                 var datePart = rowKey.Length >= 19 ? rowKey.Substring(0, 19) : rowKey;
 
@@ -422,6 +423,94 @@ namespace LagoVista.CloudStorage.Utils
                 }
 
                 return size;
+            }
+
+
+
+            public async Task<long> DeleteWhereAsync(string tableName, string filter, bool dryRun = false, int pageSize = 1000, CancellationToken ct = default)
+            {
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountName};AccountKey={_accountKey}";
+
+                if (string.IsNullOrWhiteSpace(connectionString))
+                    throw new ArgumentException("connectionString is required.", nameof(connectionString));
+
+                var service = new TableServiceClient(connectionString);
+
+               var table = service.GetTableClient(tableName);
+
+                if (table == null) throw new ArgumentNullException(nameof(table));
+                if (string.IsNullOrWhiteSpace(filter)) throw new ArgumentException("filter is required.", nameof(filter));
+
+                long deleted = 0;
+
+                // Select only keys for minimal RU/transaction costs
+                var select = new[] { "PartitionKey", "RowKey", nameof(TableEntity.Timestamp) };
+                //var select = new[] { "PartitionKey", "RowKey" };
+
+                // We’ll accumulate deletes per partition, then submit in chunks of 100
+                var pendingByPk = new Dictionary<string, List<TableTransactionAction>>(StringComparer.Ordinal);
+
+                await foreach (var entity in table.QueryAsync<TableEntity>(filter: filter,select: select, maxPerPage: pageSize, cancellationToken: ct))
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    Console.WriteLine($"Found entity to delete: PK={entity.PartitionKey} RK={entity.RowKey} Timestamp={entity.Timestamp}");
+                    
+
+                    var pk = entity.PartitionKey;
+                    if (string.IsNullOrEmpty(pk)) continue;
+
+                    if (!pendingByPk.TryGetValue(pk, out var actions))
+                    {
+                        actions = new List<TableTransactionAction>(capacity: 100);
+                        pendingByPk[pk] = actions;
+                    }
+
+                    // Delete uses ETag wildcard to avoid needing the exact ETag
+                    var toDelete = new TableEntity(pk, entity.RowKey) { ETag = ETag.All };
+                    actions.Add(new TableTransactionAction(TableTransactionActionType.Delete, toDelete));
+
+                    // If we hit 100 actions for this partition, flush now
+                    if (actions.Count == 100)
+                    {
+                        await table.SubmitTransactionAsync(actions, ct).ConfigureAwait(false);
+                        deleted += actions.Count;
+                        actions.Clear();
+                        _logger.Trace($"{this.Tag()} Deleting Records {deleted}");
+                    }
+
+                    //Optional: if dictionary grows huge due to many partitions, flush periodically
+                    if (pendingByPk.Count > 256)
+                    {
+                        deleted += await FlushAllAsync(table, pendingByPk, ct).ConfigureAwait(false);
+                    }
+                }
+
+                deleted += await FlushAllAsync(table, pendingByPk, ct).ConfigureAwait(false);
+                return deleted;
+            }
+
+            private async Task<long> FlushAllAsync(
+                TableClient table,
+                Dictionary<string, List<TableTransactionAction>> pendingByPk,
+                CancellationToken ct)
+            {
+                long deleted = 0;
+
+                foreach (var kvp in pendingByPk)
+                {
+                    var actions = kvp.Value;
+                    if (actions == null || actions.Count == 0) continue;
+
+                    // Submit remaining actions (<=100)
+                    await table.SubmitTransactionAsync(actions, ct).ConfigureAwait(false);
+                    deleted += actions.Count;
+                    actions.Clear();
+                    _logger.Trace($"{this.Tag()} Flushing Records {deleted}");
+                }
+
+                pendingByPk.Clear();
+                return deleted;
             }
         }
     }
