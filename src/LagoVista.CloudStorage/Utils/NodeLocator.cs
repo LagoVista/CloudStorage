@@ -12,9 +12,7 @@ namespace LagoVista.CloudStorage.Utils
             public List<NodeLocatorEntry> Deletes { get; } = new List<NodeLocatorEntry>();
         }
 
-        public static DiffResult Diff(
-            IEnumerable<NodeLocatorEntry> oldEntries,
-            IEnumerable<NodeLocatorEntry> newEntries)
+        public static DiffResult Diff(IEnumerable<NodeLocatorEntry> oldEntries, IEnumerable<NodeLocatorEntry> newEntries)
         {
             var result = new DiffResult();
 

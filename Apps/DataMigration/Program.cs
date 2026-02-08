@@ -16,8 +16,8 @@ IFkIndexTableWriterBatched _fkeyWriter;
 INodeLocatorTableWriterBatched _nodeWriter;
 IAdminLogger _logger;
 
-var mode = "deletetablerows";
-var env = "prod";
+var mode = "buildnodeindex";
+var env = "dev";
 var entityType = "ExternalWorkTask";
 var pageSize = 500;
 var pageCount = 10;
@@ -61,16 +61,13 @@ async Task BuildNodeLocatorIndexAsync(CancellationToken ct)
 
     string contents = String.Empty;
     string token = null;
-    var fn = @"X:\Nodes.txt";
+    var fn = @$"X:\Nodes-{env}.txt";
     if (System.IO.File.Exists(fn))
     {
         contents = System.IO.File.ReadAllText(fn);
         var lines = contents.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
         token = lines.Last();
     }
-
-    const int pageSize = 100;
-    const int pageCount = 10;
 
     var result = await _syncRepo.AddNodeLocatorsAsync(token, pageSize, pageCount);
     if (result.Successful)

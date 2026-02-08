@@ -2,7 +2,9 @@
 // ContentHash: 2d3c3740f965c6ffa5f3224db7385dd5d0d8118d63662437af38c4968a189eb6
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.Utils;
 using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -18,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,12 +36,14 @@ namespace LagoVista.CloudStorage.Storage
         private string _collectionName;
         private CosmosClient _client;
         private readonly ICacheProvider _cacheProvider;
+        private readonly INodeLocatorTableReader _nodeLocator;
 
 
-        public StorageUtils(IAdminLogger logger, ICacheProvider cacheProvider)
+        public StorageUtils(IAdminLogger logger, INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));    
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
+            _nodeLocator = nodeLocator ?? throw new ArgumentNullException(nameof(nodeLocator));
         }
 
 
@@ -203,6 +208,30 @@ namespace LagoVista.CloudStorage.Storage
 
             var response = await container.PatchItemAsync<RatedEntity>(id, PartitionKey.None, operations);
             return response.Resource;
+        }
+
+        public async Task<InvokeResult> SetEntityPublicAsync(string id, EntityHeader org, EntityHeader user)
+        {
+            _logger.Trace($"{this.Tag()}  - Setting entity {id} public by user {user.Text} in org {org.Text}");
+
+            var sw = Stopwatch.StartNew();
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var item = await container.ReadItemAsync<EntityBase>(id, PartitionKey.None);
+            _logger.Trace($"{this.Tag()} - found item {id} - {item.Resource.Name}");
+
+            var operations = new List<PatchOperation>()
+            {
+                PatchOperation.Set($"/{nameof(EntityBase.IsPublic)}", true),
+                PatchOperation.Set($"/{nameof(EntityBase.PublicPromotionDate)}", DateTime.UtcNow.ToJSONString()),
+                PatchOperation.Set($"/{nameof(EntityBase.PublicPromotedBy)}", user),
+            };
+
+            await _cacheProvider.RemoveAsync(GetCacheKey(item.Resource.EntityType, id));
+
+            var response = await container.PatchItemAsync<RatedEntity>(id, PartitionKey.None, operations);
+            _logger.Trace($"{this.Tag()} - response {response.StatusCode} setting {id} to public in {sw.Elapsed.TotalMilliseconds}ms");   
+
+            return InvokeResult.Success;
         }
 
         public async Task<InvokeResult> SetCategoryAsync(string id, EntityHeader category, EntityHeader org, EntityHeader user)
@@ -378,7 +407,32 @@ namespace LagoVista.CloudStorage.Storage
             var json = await GetJsonByIdAsync(id);
             if(String.IsNullOrEmpty(json))
             {
-                return null;
+                var node = await _nodeLocator.TryGetAsync(id);
+                if (node == null)
+                {
+                    return null;
+                }
+
+                var childJson = await GetJsonByIdAsync(node.RootId);
+                if(childJson == null)
+                {
+                    return null;
+                }
+
+                var hostEntity = JsonConvert.DeserializeObject<EntityBase>(childJson);
+                var childEh = EntityHeaderJsonPathExtractor.TryExtract(childJson, node.NodePath);
+                return new EntityGraph()
+                {
+                    Id = node.NodeId,
+                    EntityType = node.NodeEntityType ?? node.NodeType,
+                    Text = childEh?.Text ?? "Unknown",
+                    HostEntityName = hostEntity.Name,
+                    HostEntityType = hostEntity.EntityType,
+                    HostEntityId = hostEntity.Id,
+                    IsHostEntityPublic = hostEntity.IsPublic,
+                    IsPublic = hostEntity.IsPublic,
+                    OwnerOrgId = hostEntity.OwnerOrganization.Id,
+                };
             }  
 
             var entity = JsonConvert.DeserializeObject<EntityBase>(json);

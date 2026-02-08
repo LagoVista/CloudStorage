@@ -99,9 +99,7 @@ namespace LagoVista.CloudStorage.Storage
             public List<string> NodeTypes { get; set; } = new List<string>();
         }
 
-        public static List<NodeLocatorEntry> DeduplicateByNodeId(
-        IEnumerable<NodeLocatorEntry> entries,
-        string rootId)
+        public static List<NodeLocatorEntry> DeduplicateByNodeId(IEnumerable<NodeLocatorEntry> entries,string rootId)
         {
             if (entries == null) throw new ArgumentNullException(nameof(entries));
 

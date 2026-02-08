@@ -90,7 +90,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
     {
         public IConnectionSettings SyncConnectionSettings => Utils.TestConnections.DevDocDB;
 
-        public IConnectionSettings DefaultDocDbSettings => throw new NotImplementedException();
+        public IConnectionSettings DefaultDocDbSettings => Utils.TestConnections.DevDocDB;
 
         public IConnectionSettings DefaultTableStorageSettings => Utils.TestConnections.DevTableStorageDB;
 

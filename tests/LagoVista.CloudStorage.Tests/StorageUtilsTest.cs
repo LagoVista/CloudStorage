@@ -2,6 +2,7 @@
 // ContentHash: 22dea970f2aabb53ef73680c0feda9bc68e146cbbdfc0059f47f92b47449ff01
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Tests;
 using LagoVista.CloudStorage.Tests.Support;
@@ -10,6 +11,7 @@ using LagoVista.Core.Models;
 using LagoVista.IoT.Logging.Loggers;
 using LagoVista.IoT.Logging.Utils;
 using Moq;
+using Newtonsoft.Json;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -18,40 +20,33 @@ namespace LagoVista.CloudStorage.IntegrationTests
 {
     public class StorageUtilsTest
     {
-        private string _accountId;
-        private string _accountKey;
-        private string _uri;
+        const string DEVORGID = "C8AD4589F26842E7A1AEFBAEFC979C9B";
 
-        const string ORGID = "DDF92E1566C54AA3A8011EE0879D49E3";
+        IAdminLogger _logger;
         IStorageUtils _storageUtils;
-
+        INodeLocatorTableReader _nodeLocator;
         EntityHeader _orgEH;
+        EntityHeader _userEH;
 
         [SetUp]
         public void Setup()
         {
-            _orgEH = new EntityHeader()
-            {
-                Id = ORGID,
-                Text = "DELETE ME ORG"
-            };
+            _logger = new AdminLogger(new ConsoleLogWriter());
+            _orgEH = new EntityHeader(){Id = DEVORGID, Text = "Development Org Id"};
+            _userEH = new EntityHeader(){Id = "DDF92E1566C54AA3A8011EE0879D49E3", Text = "DELETE ME USER" };
 
-            _accountId = Environment.GetEnvironmentVariable("TEST_DOCDB_ACCOUNTID");
-            _accountKey = Environment.GetEnvironmentVariable("TEST_DOCDB_ACCOUTKEY");
+            var syncSettings = new SyncSettings();
+            
+            _nodeLocator = new NodeLocatorTableReader(syncSettings, _logger);
+            _storageUtils = new StorageUtils(_logger, _nodeLocator, new Mock<ICacheProvider>().Object);
+            _storageUtils.SetConnection(syncSettings.DefaultDocDbSettings);
+        }
 
-            if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Please add TEST_AZURESTORAGE_ACCOUNTID as an environnment variable");
-            if (String.IsNullOrEmpty(_accountKey)) throw new ArgumentNullException("Please add TEST_AZURESTORAGE_ACCESSKEY as an environnment variable");
-
-            _uri = $"https://{_accountId}.documents.azure.com:443";
-            var dbName = "dev";
-
-            _storageUtils = new StorageUtils(new AdminLogger(new ConsoleLogWriter()), new Mock<ICacheProvider>().Object);
-            _storageUtils.SetConnection(new ConnectionSettings()
-            {
-                ResourceName = dbName,
-                Uri = _uri,
-                AccessKey = _accountKey,
-            }); 
+        [Test]
+        public async Task BuildObjectGraphTest()
+        {
+            var graph = await _storageUtils.GetEntityGraphAsync("04AE615F8B4B4E0E9234E4AF200AE3AE", _orgEH, _userEH);
+            Console.WriteLine(JsonConvert.SerializeObject(graph, Formatting.Indented));
         }
 
         [Test]

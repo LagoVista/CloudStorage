@@ -23,6 +23,7 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<ITableSizer, TableSizer>();
             services.AddSingleton<INodeLocatorTableWriterBatched,  NodeLocatorTableWriterBatched>();
             services.AddSingleton<ISyncRepository, CosmosSyncRepository>();
+            services.AddSingleton<INodeLocatorTableReader, NodeLocatorTableReader>();
             services.AddSingleton<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
         }
     }
