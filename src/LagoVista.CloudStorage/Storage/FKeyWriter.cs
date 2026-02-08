@@ -36,47 +36,60 @@ namespace LagoVista.CloudStorage.Storage
             if (String.IsNullOrEmpty(_accountKey)) throw new ArgumentNullException(nameof(_accountKey));
         }
 
+        private readonly SemaphoreSlim _initGate = new SemaphoreSlim(1, 1);
+
+
         private bool Initialized { get; set; }
         DateTime? _initDate;
 
         private async Task InitAsync(CancellationToken ct = default)
         {
-            lock (this)
-            {
-                if (Initialized && _initDate.HasValue && _initDate == DateTime.UtcNow.Date)
-                {
-                    return;
-                }
-            }
+            // Fast-path check (no lock)
+            if (Initialized && _initDate.HasValue && _initDate.Value == DateTime.UtcNow.Date)
+                return;
+
+            await _initGate.WaitAsync(ct).ConfigureAwait(false);
 
             try
             {
+                // Double-check inside gate
+                if (Initialized && _initDate.HasValue && _initDate.Value == DateTime.UtcNow.Date)
+                    return;
+
                 var sw = Stopwatch.StartNew();
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountName};AccountKey={_accountKey}";
+
+                var connectionString =
+                    $"DefaultEndpointsProtocol=https;AccountName={_accountName};AccountKey={_accountKey}";
 
                 var serviceClient = new TableServiceClient(connectionString);
-                _inbound = serviceClient.GetTableClient(FkIndexKeys.InboundTable);
-                _outbound = serviceClient.GetTableClient(FkIndexKeys.OutboundTable);
-                _orphaned  = serviceClient.GetTableClient(FkIndexKeys.OrphandedTable);
 
-                _logger.Trace($"{this.Tag()} Was not initialized, table created if didn't exist in {sw.ElapsedMilliseconds}ms");
+                var inbound = serviceClient.GetTableClient(FkIndexKeys.InboundTable);
+                var outbound = serviceClient.GetTableClient(FkIndexKeys.OutboundTable);
+                var orphaned = serviceClient.GetTableClient(FkIndexKeys.OrphandedTable);
 
-                _initDate = DateTime.UtcNow.Date;
+                await orphaned.CreateIfNotExistsAsync(ct).ConfigureAwait(false);
+                await inbound.CreateIfNotExistsAsync(ct).ConfigureAwait(false);
+                await outbound.CreateIfNotExistsAsync(ct).ConfigureAwait(false);
+
+                // Assign only after successful creation
+                _inbound = inbound;
+                _outbound = outbound;
+                _orphaned = orphaned;
+
                 Initialized = true;
-                await EnsureCreatedAsync(ct);
+                _initDate = DateTime.UtcNow.Date;
+
+                _logger.Trace($"{this.Tag()} Initialized FK index tables in {sw.ElapsedMilliseconds}ms");
             }
             catch (Exception ex)
             {
                 _logger.AddException(this.Tag(), ex);
+                throw;
             }
-
-        }
-
-        private async Task EnsureCreatedAsync(CancellationToken ct = default)
-        {
-            await _orphaned.CreateIfNotExistsAsync(ct).ConfigureAwait(false);
-            await _inbound.CreateIfNotExistsAsync(ct).ConfigureAwait(false);
-            await _outbound.CreateIfNotExistsAsync(ct).ConfigureAwait(false);
+            finally
+            {
+                _initGate.Release();
+            }
         }
 
         public async Task ApplyDiffAsync(FkEdgeDiff.DiffResult diff, CancellationToken ct = default)
@@ -138,10 +151,8 @@ namespace LagoVista.CloudStorage.Storage
 
             foreach (var e in removed)
             {
-                string pk, rk;
-                FkIndexKeys.GetOutboundKeys(e, out pk, out rk);
-                var te = new TableEntity(pk, rk) { ETag = ETag.All };
-                yield return new TableTransactionAction(TableTransactionActionType.Delete, te);
+                var te = FkTableEntityFactory.ToOutboundTombstone(e, reason: "diff_removed");
+                yield return new TableTransactionAction(TableTransactionActionType.UpsertReplace, te);
             }
         }
 
@@ -157,12 +168,11 @@ namespace LagoVista.CloudStorage.Storage
 
             foreach (var e in removed)
             {
-                string pk, rk;
-                FkIndexKeys.GetInboundKeys(e, out pk, out rk);
-                var te = new TableEntity(pk, rk) { ETag = ETag.All };
-                yield return new TableTransactionAction(TableTransactionActionType.Delete, te);
+                var te = FkTableEntityFactory.ToInboundTombstone(e, reason: "diff_removed");
+                yield return new TableTransactionAction(TableTransactionActionType.UpsertReplace, te);
             }
         }
+
 
         private static async Task SubmitBatchesAsync(
             TableClient client,
@@ -193,24 +203,89 @@ namespace LagoVista.CloudStorage.Storage
     }
 
 
-
     public static class FkTableEntityFactory
     {
+        private const string COL_IS_DELETED = "IsDeleted";
+        private const string COL_DELETED_AT = "DeletedAt";
+        private const string COL_TOMBSTONE_REASON = "TombstoneReason";
+
         public static TableEntity ToInboundEntity(ForeignKeyEdge e)
         {
             e.EnsurePathHash();
             string pk, rk;
             FkIndexKeys.GetInboundKeys(e, out pk, out rk);
 
-            return BuildEntity(pk, rk, e);
+            var te = BuildEntity(pk, rk, e);
+
+            // If an edge is re-added after being removed, make sure it comes back "alive".
+            ClearTombstone(te);
+
+            return te;
+        }
+
+        public static TableEntity ToOutboundEntity(ForeignKeyEdge e)
+        {
+            e.EnsurePathHash();
+            string pk, rk;
+            FkIndexKeys.GetOutboundKeys(e, out pk, out rk);
+
+            var te = BuildEntity(pk, rk, e);
+
+            // If an edge is re-added after being removed, make sure it comes back "alive".
+            ClearTombstone(te);
+
+            return te;
+        }
+
+        public static TableEntity ToInboundTombstone(ForeignKeyEdge e, string reason = "diff_removed")
+        {
+            e.EnsurePathHash();
+            string pk, rk;
+            FkIndexKeys.GetInboundKeys(e, out pk, out rk);
+
+            var te = new TableEntity(pk, rk);
+            ApplyTombstone(te, reason);
+            return te;
+        }
+
+        public static TableEntity ToOutboundTombstone(ForeignKeyEdge e, string reason = "diff_removed")
+        {
+            e.EnsurePathHash();
+            string pk, rk;
+            FkIndexKeys.GetOutboundKeys(e, out pk, out rk);
+
+            var te = new TableEntity(pk, rk);
+            ApplyTombstone(te, reason);
+            return te;
+        }
+
+        private static void ApplyTombstone(TableEntity te, string reason)
+        {
+            te[COL_IS_DELETED] = true;
+            te[COL_DELETED_AT] = DateTime.UtcNow.ToJSONString();
+
+            if (!String.IsNullOrWhiteSpace(reason))
+                te[COL_TOMBSTONE_REASON] = reason;
+        }
+
+        private static void ClearTombstone(TableEntity te)
+        {
+            te[COL_IS_DELETED] = false;
+
+            // These are optional, but keeping them consistent helps avoid confusion.
+            te.Remove(COL_DELETED_AT);
+            te.Remove(COL_TOMBSTONE_REASON);
         }
 
         public static TableEntity ToOrphanedEntity(IEntityBase entityBase, string path, EntityHeader eh)
         {
-            var pk = entityBase.OwnerOrganization == null ? $"SYSTEM|{entityBase.EntityType}":  $"{entityBase.OwnerOrganization.Id}|{entityBase.EntityType}";
+            var pk = entityBase.OwnerOrganization == null
+                ? $"SYSTEM|{entityBase.EntityType}"
+                : $"{entityBase.OwnerOrganization.Id}|{entityBase.EntityType}";
+
             var rk = $"{entityBase.Id}";
             var te = new TableEntity(pk, rk);
-            te["EntityName"]  = entityBase.Name;
+            te["EntityName"] = entityBase.Name;
             te["EntityId"] = entityBase.Id;
             te["EntityCreationDate"] = entityBase.CreationDate;
             te["EntityLastUpdatedDate"] = entityBase.LastUpdatedDate;
@@ -222,15 +297,6 @@ namespace LagoVista.CloudStorage.Storage
             te["OrphanedKey"] = String.IsNullOrEmpty(eh.Key) ? "-" : eh.Key;
             te["OrphanedText"] = eh.Text;
             return te;
-        }
-
-        public static TableEntity ToOutboundEntity(ForeignKeyEdge e)
-        {
-            e.EnsurePathHash();
-            string pk, rk;
-            FkIndexKeys.GetOutboundKeys(e, out pk, out rk);
-
-            return BuildEntity(pk, rk, e);
         }
 
         private static TableEntity BuildEntity(string pk, string rk, ForeignKeyEdge e)
@@ -248,7 +314,6 @@ namespace LagoVista.CloudStorage.Storage
             te["RefPath"] = e.RefPath;
             te["RefPathHash"] = e.RefPathHash;
 
-            // Optional metadata
             te["DstKey"] = e.TargetKey;
             te["DstText"] = e.TargetText;
 
@@ -263,4 +328,5 @@ namespace LagoVista.CloudStorage.Storage
             return te;
         }
     }
+
 }

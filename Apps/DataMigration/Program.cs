@@ -16,8 +16,8 @@ IFkIndexTableWriterBatched _fkeyWriter;
 INodeLocatorTableWriterBatched _nodeWriter;
 IAdminLogger _logger;
 
-var mode = "buildnodeindex";
-var env = "dev";
+var mode = "tablesizes";
+var env = "prod";
 var entityType = "ExternalWorkTask";
 var pageSize = 500;
 var pageCount = 10;
@@ -91,10 +91,15 @@ async Task GetTableSizesAsync(CancellationToken ct)
     var tableSizer = new TableSizer(syncSettings, _logger);
 
     var stats = await tableSizer.RunAsync(sampleSizePerTable: 500, maxConcurrency: 6, ct);
+    var builder = new System.Text.StringBuilder();
+
     foreach (var s in stats)
     {
+        builder.AppendLine($"{s.Table},{s.RowCount},{s.AvgEntityBytes,8:0}B,{s.RowCount * s.AvgEntityBytes / (1024.0*1024.0)}mb");
         Console.WriteLine($"{s.Table,-40}\t\t\tcount={s.RowCount}, avg={s.AvgEntityBytes,8:0}B, {s.RowCount * s.AvgEntityBytes / (1024.0*1024.0)}mb");
     }
+
+    System.IO.File.WriteAllText($@"X:\TableSizes-{env}.csv", builder.ToString());
 }
 
 async Task PruneTableStorage(CancellationToken ct)
