@@ -139,8 +139,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-
-
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null) :
             this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager, fkWriter)
         {
