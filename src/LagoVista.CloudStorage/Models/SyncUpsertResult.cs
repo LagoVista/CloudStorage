@@ -21,6 +21,9 @@ namespace LagoVista.CloudStorage.Models
         // Optional diagnostics.
         [JsonProperty("requestCharge", NullValueHandling = NullValueHandling.Ignore)]
         public double? RequestCharge { get; set; }
+
+        [JsonProperty("message", NullValueHandling = NullValueHandling.Ignore)]
+        public string Messsage { get; set; }
     }
 
 }

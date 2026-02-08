@@ -134,6 +134,8 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task AddOrphanedEHAsync(IEntityBase entity, string path, EntityHeader eh, CancellationToken ct = default)
         {
+            await InitAsync();
+
             var te = FkTableEntityFactory.ToOrphanedEntity(entity, path, eh);
             var tableTx = new TableTransactionAction(TableTransactionActionType.UpsertReplace, te);
             await _orphaned.UpsertEntityAsync(te, TableUpdateMode.Replace, ct);

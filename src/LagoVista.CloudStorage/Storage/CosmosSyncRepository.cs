@@ -35,18 +35,20 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ILogger _logger;
         private readonly IFkIndexTableWriterBatched _fkWriter;
         private readonly INodeLocatorTableWriterBatched _nodeLocatorWriter;
+        private readonly INodeLocatorTableReader _nodeLocator;
         private readonly ICacheProvider _cacheProvider;
         private readonly string _dbName;
 
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
-        public CosmosSyncRepository(ISyncConnectionSettings options, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, ICacheProvider cacheProvider, ILogger logger)
+        public CosmosSyncRepository(ISyncConnectionSettings options, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider, ILogger logger)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fkWriter = fkWriter ?? throw new ArgumentNullException(nameof(fkWriter));
             _nodeLocatorWriter = nodeLocatorWriter ?? throw new ArgumentNullException(nameof(nodeLocatorWriter));
+            _nodeLocator = nodeLocator ?? throw new ArgumentNullException(nameof(nodeLocator));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
             _dbName = _options.SyncConnectionSettings.ResourceName;
             _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
@@ -91,9 +93,12 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<EntityHeader> GetEntityHeaderForRecordAsync(string id, CancellationToken ct = default)
         {
-            if(_inMemoryCache.ContainsKey(id))
+            lock (_inMemoryCache)
             {
-                return _inMemoryCache[id];
+                if (_inMemoryCache.ContainsKey(id))
+                {
+                    return _inMemoryCache[id];
+                }
             }
 
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
@@ -131,12 +136,16 @@ where c.id = @id";
                         IsPublic = record.IsPublic,
                         EntityType = record.EntityType
                     };
-                    _inMemoryCache.Add(eh.Id, eh);
+                    lock (_inMemoryCache)
+                    {
+                        if (!_inMemoryCache.ContainsKey(eh.Id))
+                            _inMemoryCache.Add(eh.Id, eh);
+                    }
                     return eh;
                 }
             }
 
-            var notFoundEh = new EntityHeader()
+            return new EntityHeader()
             {
                 Id = NOT_FOUND_ID,
                 Key = NOT_FOUND_KEY,
@@ -144,10 +153,6 @@ where c.id = @id";
                 OwnerOrgId = NOT_FOUND_OWNER_ORG_ID,
                 EntityType = NOT_FOUND_ENTITYTYPE
             };
-
-            _inMemoryCache.Add(id, notFoundEh);
-
-            return notFoundEh;
         }
 
         public async Task<IReadOnlyList<SyncEntitySummary>> GetSummariesAsync(string entityType, string ownerOrganizationId, string search = null, int take = 200, CancellationToken ct = default)
@@ -163,14 +168,15 @@ where c.id = @id";
                 "SELECT " +
                 "  c.id, c.EntityType, c.Key, c.Name, " +
                 "  c.Revision, c.RevisionTimeStamp, c._etag, " +
-                "  c.IsDeleted, c.IsDeprecated, c.IsDraft, c.LastUpdatedDate " +
+                "  c.IsDeleted, c.IsDeprecated, c.IsDraft, c.LastUpdatedDate, c.Sha256Hex " +
                 "FROM c " +
                 "WHERE c.EntityType = @entityType " +
-                "  AND (IS_NULL(@search) OR @search = '' " +
+                "  AND (NOT IS_DEFINED(c.IsDeleted) or c.IsDeleted = false)" + 
+                "  AND (IS_NULL(@search) OR @search = ''" +
                 "       OR CONTAINS(LOWER(c.Name), @search) " +
                 "       OR CONTAINS(LOWER(c.Key), @search)) " +
                 "  AND c.OwnerOrganization.Id = @ownerOrganizationId " + 
-                "ORDER BY c.key";
+                "ORDER BY c.Name";
 
 
             _logger.Trace($"{this.Tag()} - Query {sql}");
@@ -338,22 +344,43 @@ where c.id = @id";
 
             // Validate minimum shape.
             var id = doc["id"]?.Value<string>()?.Trim();
-            if (string.IsNullOrWhiteSpace(id))
-            {
-                // Caller can omit; we generate.
-                id = Guid.NewGuid().ToString("N");
-                doc["id"] = id;
-            }
-
-
             var entityType = doc["EntityType"]?.Value<string>()?.Trim();
             var key = doc["Key"]?.Value<string>()?.Trim();
 
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                Debugger.Break();
+                return new SyncUpsertResult()
+                {
+                    StatusCode = 500,
+                    Messsage = $"Entity missing id - should never happen."
+                };
+            }
+
             if (string.IsNullOrWhiteSpace(entityType))
-                throw new ArgumentException("json must contain a non-empty 'entityType' property.", nameof(doc));
+            {
+                Debugger.Break();
+                return new SyncUpsertResult()
+                {
+                    StatusCode = 500,
+                    Messsage = $"Entity with ID: {id} missing entity type."
+                };
+            }
 
             if (string.IsNullOrWhiteSpace(key))
-                throw new ArgumentException("json must contain a non-empty 'key' property.", nameof(doc));
+            {
+                if (entityType == "VerificationResults" || entityType == "CalendarEvent"  || entityType == "UserFavorites" || entityType == "MostRecentlyUsed" || entityType == "Meeting")
+                    doc["key"] = Guid.NewGuid().ToId().ToLower();
+                else
+                {
+                    Debugger.Break();
+                    return new SyncUpsertResult()
+                    {
+                        StatusCode = 500,
+                        Messsage = $"Entity with ID: {id} of type {entityType} missing key."
+                    };
+                }
+            }
 
             _logger.Trace($"{this.Tag()} - Apply", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
 
@@ -588,6 +615,11 @@ where c.id = @id";
                 token["Key"] = NormalizeAlphaNumericKey(userName);
             }
 
+            if(entity.EntityType == "Organization")
+            {
+                token["Key"] = token["Namespace"]?.Value<string>();
+            }
+
             var nodes = EntityHeaderJson.FindEntityHeaderNodes(token);
             var wasUpdated = false;
             foreach (var node in nodes)
@@ -601,15 +633,24 @@ where c.id = @id";
                     {
                         if(eh.Id == NOT_FOUND_ID)
                         {
-                            EntityHeaderJson.SetResolved(node.Object, false);
-                            if (!dryRun)
+                            var childNode = await _nodeLocator.TryGetAsync(eh.Id, ct);
+                            if (childNode == null)
                             {
-                                if(String.IsNullOrEmpty(node.Key))
-                                    await _fkWriter.AddOrphanedEHAsync(entity, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
-                                else 
-                                    await _fkWriter.AddOrphanedEHAsync(entity, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
+                                EntityHeaderJson.SetResolved(node.Object, false);
+                                if (!dryRun)
+                                {
+                                    if (String.IsNullOrEmpty(node.Key))
+                                        await _fkWriter.AddOrphanedEHAsync(entity, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
+                                    else
+                                        await _fkWriter.AddOrphanedEHAsync(entity, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
+                                }
+                                _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {entity.Id}");
                             }
-                            _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {entity.Id}");
+                            else
+                            {
+                                eh = await GetEntityHeaderForRecordAsync(childNode.RootId);
+                                EntityHeaderJson.Update(node.Object, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
+                            }
                         }
                         else
                             EntityHeaderJson.Update(node.Object, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
@@ -617,25 +658,41 @@ where c.id = @id";
                 }
             }
 
+            _logger.Trace($"{this.Tag()} - Resolved {nodes.Count} entity header nodes for entity {entity.Id} of type {entity.EntityType}. Updated: {wasUpdated}");
+
             var fkNodes = ForeignKeyEdgeFactory.FromEntityHeaderNodes(entity, nodes);
             if(!dryRun)
                 await _fkWriter.UpsertAllAsync(fkNodes);
 
             token["Sha256Hex"] = EntityHasher.CalculateHash(token.DeepClone());
 
-            if(wasUpdated && !dryRun)
+            if (wasUpdated && !dryRun)
+            {
                 await UpsertJsonAsync(token.ToString());
 
-            var result = new EhResolvedEntity()
-            {
-                UpdatedEntity = wasUpdated,
-                Entity = entity,
-                EntityHeaderNodes = nodes,
-                ForeignKeyEdges = fkNodes.ToList(),
-                NotFoundEntityHeaderNodes = nodes.Where(n => String.IsNullOrEmpty(n.Key) || String.IsNullOrEmpty(n.EntityType)).ToList()
-            };
+                var result = new EhResolvedEntity()
+                {
+                    UpdatedEntity = wasUpdated,
+                    Entity = entity,
+                    EntityHeaderNodes = nodes,
+                    ForeignKeyEdges = fkNodes.ToList(),
+                    NotFoundEntityHeaderNodes = nodes.Where(n => String.IsNullOrEmpty(n.Key) || String.IsNullOrEmpty(n.EntityType)).ToList()
+                };
+                return InvokeResult<EhResolvedEntity>.Create(result);
+            }
+            else
+            { 
+                var result = new EhResolvedEntity()
+                {
+                    UpdatedEntity = wasUpdated,
+                    Entity = entity,
+                    EntityHeaderNodes = nodes,
+                    ForeignKeyEdges = fkNodes.ToList(),
+                    NotFoundEntityHeaderNodes = nodes.Where(n => String.IsNullOrEmpty(n.Key) || String.IsNullOrEmpty(n.EntityType)).ToList()
+                };
+                return InvokeResult<EhResolvedEntity>.Create(result);
+            }
 
-            return InvokeResult<EhResolvedEntity>.Create(result);  
         }
 
         public async Task<List<NodeLocatorEntry>> WriteNodesAsync(string id, CancellationToken ct = default)

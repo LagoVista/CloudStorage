@@ -18,7 +18,8 @@ namespace LagoVista.CloudStorage.IntegrationTests
         ISyncRepository _syncRepo;
         IFkIndexTableWriterBatched _fkeyWriter;
         INodeLocatorTableWriterBatched _nodeWriter;
-        IAdminLogger _logger;
+        INodeLocatorTableReader _nodeReader;
+    IAdminLogger _logger;
 
         [SetUp]
         public void Setup()
@@ -26,7 +27,8 @@ namespace LagoVista.CloudStorage.IntegrationTests
             _logger = new AdminLogger(new ConsoleLogWriter());
             _fkeyWriter = new FkIndexTableWriterBatched(new SyncSettings(), _logger);
             _nodeWriter = new NodeLocatorTableWriterBatched(new SyncSettings(), _logger);
-            _syncRepo = new CosmosSyncRepository(new SyncSettings(), _fkeyWriter, _nodeWriter, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
+            _nodeReader = new NodeLocatorTableReader(new SyncSettings(), _logger);
+            _syncRepo = new CosmosSyncRepository(new SyncSettings(), _fkeyWriter, _nodeWriter,_nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
         }
 
 

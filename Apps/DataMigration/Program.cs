@@ -8,16 +8,18 @@ using LagoVista.Core;
 using LagoVista.Core.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
 using LagoVista.IoT.Logging.Utils;
+using Microsoft.Azure.Cosmos.Serialization.HybridRow;
 using Moq;
 using System.Diagnostics;
 
 ISyncRepository _syncRepo;
 IFkIndexTableWriterBatched _fkeyWriter;
 INodeLocatorTableWriterBatched _nodeWriter;
+INodeLocatorTableReader _nodeReader;
 IAdminLogger _logger;
 
-var mode = "tablesizes";
-var env = "prod";
+var mode = "resolvefkeys";
+var env = "dev";
 var entityType = "ExternalWorkTask";
 var pageSize = 500;
 var pageCount = 10;
@@ -28,10 +30,10 @@ var syncSettings = new SyncSettings(env);
 _logger = new AdminLogger(new ConsoleLogWriter());
 _fkeyWriter = new FkIndexTableWriterBatched(syncSettings, _logger);
 _nodeWriter = new NodeLocatorTableWriterBatched(syncSettings, _logger);
-_syncRepo = new CosmosSyncRepository(syncSettings, _fkeyWriter, _nodeWriter, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
+_nodeReader = new   NodeLocatorTableReader(syncSettings, _logger);
+_syncRepo = new CosmosSyncRepository(syncSettings, _fkeyWriter, _nodeWriter, _nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
 
 CancellationTokenSource _shutdownCts = new CancellationTokenSource();
-
 
 void HookShutdownSignals()
 {
@@ -124,6 +126,31 @@ async Task PruneTableStorage(CancellationToken ct)
     }
 }
 
+async Task ResolveFKeysAsync(int pageSize, int pageCount, bool dryRun, CancellationToken ct)
+{
+    string contents = String.Empty;
+    string token = null;
+    var fn = @$"X:\FKeyResolver-{env}.txt";
+    if (System.IO.File.Exists(fn))
+    {
+        contents = System.IO.File.ReadAllText(fn);
+        var lines = contents.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+        token = lines.Last();
+    }
+
+    int idx = 0;
+    var result = await _syncRepo.ScanContainerAsync(async (row, ct) =>
+    {
+        await _syncRepo.ResolveEntityHeadersAsync(row.Id, dryRun: false);
+        idx++;
+    }, token, null, pageSize, pageCount, null);
+
+    
+    contents += $"{DateTime.UtcNow.ToJSONString()} - Records Processed. {idx}{Environment.NewLine}";
+    contents += result + Environment.NewLine;
+    System.IO.File.WriteAllText(fn, contents);
+}
+
 async Task DeleteByEntityType(string entityType, int pageSize, int pageCount, bool dryRun, CancellationToken ct)
 {
     var sw = Stopwatch.StartNew();
@@ -171,6 +198,9 @@ HookShutdownSignals();
 
 switch (mode)
 {
+    case "resolvefkeys":
+        await ResolveFKeysAsync(pageSize, pageCount, dryRun, _shutdownCts.Token);
+        break;
     case "buildnodeindex":
         await BuildNodeLocatorIndexAsync(_shutdownCts.Token);
         break;

@@ -40,8 +40,10 @@ namespace LagoVista.CloudStorage.Models
 
         [JsonProperty("LastUpdatedDate")]
         public string LastUpdatedDate { get; set; }
-    }
 
+        [JsonProperty("Sha256Hex")]
+        public string Sha256Hex { get; set; }
+    }
 
     public class SyncJsonEnvelope
     {
