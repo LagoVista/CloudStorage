@@ -378,7 +378,6 @@ namespace LagoVista.CloudStorage.Storage
             {
                 MaxItemCount = 1
             };
-
             
             var container = Client.GetContainer(_dbName, _collectionName);
 
@@ -410,13 +409,29 @@ namespace LagoVista.CloudStorage.Storage
                 var node = await _nodeLocator.TryGetAsync(id);
                 if (node == null)
                 {
-                    return null;
+                    return new EntityGraph()
+                    {
+                        Id = id,
+                        EntityType = NOT_FOUND_ENTITYTYPE,
+                        Text = NOT_FOUND_TEXT,
+                        HostEntityName = NOT_FOUND_TEXT,
+                        HostEntityType = NOT_FOUND_ENTITYTYPE,
+                        Exists = false,
+                    };
                 }
 
                 var childJson = await GetJsonByIdAsync(node.RootId);
                 if(childJson == null)
                 {
-                    return null;
+                    return new EntityGraph()
+                    {
+                        Id = id,
+                        EntityType = NOT_FOUND_ENTITYTYPE,
+                        Text = NOT_FOUND_TEXT,
+                        HostEntityName = NOT_FOUND_TEXT,
+                        HostEntityType = NOT_FOUND_ENTITYTYPE,
+                        Exists = false,
+                    };
                 }
 
                 var hostEntity = JsonConvert.DeserializeObject<EntityBase>(childJson);

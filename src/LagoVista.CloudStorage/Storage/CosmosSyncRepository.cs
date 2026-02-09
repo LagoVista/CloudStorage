@@ -10,14 +10,18 @@ using Microsoft.Azure.Cosmos.Serialization.HybridRow;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.ClientModel;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static LagoVista.Core.Attributes.EntityDescriptionAttribute;
+using static LagoVista.Core.Models.AdaptiveCard.MSTeams;
 
 namespace LagoVista.CloudStorage.Storage
 {
@@ -385,9 +389,9 @@ where c.id = @id";
             _logger.Trace($"{this.Tag()} - Apply", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
 
             // Ensure trimmed values are persisted.
-            doc["EntityType"] = entityType;
-            doc["Key"] = key;
-
+            doc[nameof(EntityBase.EntityType)] = entityType;
+            doc[nameof(EntityBase.Key)] = key;
+            doc[nameof(EntityBase.Sha256Hex)] = EntityHasher.CalculateHash(doc);
             // We use stream APIs to avoid binding to any model types.
             var bytes = System.Text.Encoding.UTF8.GetBytes(doc.ToString(Formatting.None));
             using var ms = new MemoryStream(bytes);
@@ -404,6 +408,8 @@ where c.id = @id";
             {
                 pk = new PartitionKey(FIXED_PARITIONKEY);
             }
+
+
 
             ResponseMessage resp;
             if (pk.HasValue)
@@ -485,8 +491,8 @@ where c.id = @id";
                 if(String.IsNullOrEmpty(existing))
                 {
                     _logger.Trace($"{this.Tag()} - No matching record", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
-                    doc[nameof(EntityBase.CreationDate)] = JToken.FromObject(user);
-                    doc[nameof(EntityBase.CreatedBy)] = DateTime.UtcNow.ToJSONString();
+                    doc[nameof(EntityBase.CreatedBy)] = JToken.FromObject(user);
+                    doc[nameof(EntityBase.CreationDate)] = DateTime.UtcNow.ToJSONString();
                 }
                 else
                 {
@@ -496,6 +502,7 @@ where c.id = @id";
                     doc["id"] = id;
                 }
 
+                doc[nameof(EntityBase.DatabaseName)] = _dbName; 
                 doc[nameof(EntityBase.OwnerOrganization)] = JToken.FromObject(org);
                 doc[nameof(EntityBase.LastUpdatedBy)] = JToken.FromObject(user);
                 doc[nameof(EntityBase.LastUpdatedDate)] = DateTime.UtcNow.ToJSONString();
@@ -597,6 +604,61 @@ where c.id = @id";
             }
 
             return continuationToken; // null means you're done (or you started at end)
+        }
+
+        public async Task<InvokeResult> SetEntityHashAsync(string id, CancellationToken ct = default)
+        {
+            var json = await GetJsonByIdAsync(id, ct);
+            if (String.IsNullOrEmpty(json))
+                return InvokeResult.FromError($"Could not load entity for id {id}");
+
+            var token = JToken.Parse(json);
+            var entity = JsonConvert.DeserializeObject<EntityBase>(json);
+            if (entity.EntityType == "AppUser")
+            {
+                var userName = token["UserName"]?.Value<string>();
+                if (userName == null)
+                {
+                    userName = token["Email"]?.Value<string>();
+                    token["UserName"] = userName;
+                }
+                token["Key"] = NormalizeAlphaNumericKey(userName);
+            }
+
+            if (entity.EntityType == "Organization")
+            {
+                token["Key"] = token["Namespace"]?.Value<string>();
+            }
+
+            var key = token["Key"]?.Value<string>();
+            if(key == null)
+            {
+                token["Key"] = Guid.NewGuid().ToId().ToLowerInvariant();
+            }    
+
+            token["Sha256Hex"] = EntityHasher.CalculateHash(token.DeepClone());
+            var bytes = System.Text.Encoding.UTF8.GetBytes(token.ToString(Formatting.None));
+            using var ms = new MemoryStream(bytes);
+
+            var requestOptions = new ItemRequestOptions();
+          
+            // If you truly have a fixed/single partition key value, this makes writes deterministic.
+            PartitionKey? pk = null;
+
+            var cacheKey = GetCacheKey(entity.EntityType, entity.Id);   
+            try
+            {
+                var resp = await _container.UpsertItemStreamAsync(ms, PartitionKey.None, requestOptions, ct).ConfigureAwait(false);
+                await _cacheProvider.RemoveAsync(cacheKey);
+
+                return resp.IsSuccessStatusCode ? InvokeResult.Success : InvokeResult.FromError($"Error upserting entity with id {id} to set hash. Response code: {resp.StatusCode}");
+            }
+            catch(Exception ex)
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Error upserting entity with id {id} to set hash.", ex.Message.ToKVP("exception"));
+                return InvokeResult.FromException(this.Tag(), ex);
+            }
+            
         }
 
         public async Task<InvokeResult<EhResolvedEntity>> ResolveEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false)
@@ -796,6 +858,108 @@ where c.id = @id";
             _logger.Trace($"Deleted {result.DeletedCount} in {fullSw.Elapsed.TotalMilliseconds} ms");
 
             return InvokeResult<EntityDeleteResult>.Create(result);
+        }
+
+        public async Task<InvokeResult> PatchEntityAsync(PatchRequest request, EntityHeader org, EntityHeader user, CancellationToken ct = default)
+        {
+            _logger.Trace($"{this.Tag()} - Starting patch for entity {request.Id} of type {request.EntityType} with {request.Steps.Count} steps.");
+
+            if (string.IsNullOrWhiteSpace(request.Id))
+                return InvokeResult.FromError("id is required.");
+
+            var ops = new List<PatchOperation>();
+
+            foreach (var step in request.Steps)
+            {
+                switch (step.Op)
+                {
+                    case PatchOp.Remove:
+                        ops.Add(PatchOperation.Remove(step.CosmosPath));
+                        break;
+
+                    case PatchOp.Set:
+                        ops.Add(PatchOperation.Set(step.CosmosPath, step.Value));
+                        break;
+                    case PatchOp.Add:
+                        ops.Add(PatchOperation.Add(step.CosmosPath, step.Value));
+                        break;
+                }
+                _logger.Trace($"{this.Tag()} - Patch {step.Op} - {step.CosmosPath}.");
+
+            }
+
+            var options = new PatchItemRequestOptions
+            {
+                IfMatchEtag = request.ETag
+            };
+
+            if (ops.Count == 0)
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "No operations for patch", request.Id.ToKVP("id"), request.EntityType.ToKVP("entityType"));
+                return InvokeResult.FromError("No patch operations were provided.");
+            }
+
+            try
+            {
+                var patchResult = await _container.PatchItemAsync<JObject>(
+                   id: request.Id,
+                   partitionKey:  request.PartitionKey == null ? PartitionKey.None : new PartitionKey(request.PartitionKey),
+                   patchOperations: ops,
+                   requestOptions: options,
+                   cancellationToken: ct);
+
+                _logger.Trace($"{this.Tag()} - Status Response: {patchResult.StatusCode} - Patched entity {request.Id} of type {request.EntityType} with {request.Steps.Count} steps.", 
+                    request.Id.ToKVP("id"), 
+                    request.EntityType.ToKVP("entityType"));
+
+                if (patchResult.StatusCode == HttpStatusCode.PreconditionFailed)
+                {
+                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "Patch failed due to ETag mismatch (412 Precondition Failed).", request.Id.ToKVP("id"), request.EntityType.ToKVP("entityType"));
+                    return InvokeResult.FromError("Patch failed due to ETag mismatch (412 Precondition Failed).");
+                }
+
+                await SetEntityHashAsync(request.Id);
+                await _cacheProvider.RemoveAsync(GetCacheKey(request.EntityType, request.Id));
+                return InvokeResult.Success;
+            }
+            catch(CosmosException ex) when(ex.StatusCode == HttpStatusCode.PreconditionFailed)
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(),
+                    "Patch failed due to ETag mismatch (412 Precondition Failed).",
+                    request.Id.ToKVP("id"),
+                    request.EntityType.ToKVP("entityType"));
+
+                return InvokeResult.FromError("Patch failed due to ETag mismatch (412 Precondition Failed).");
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(),
+                    "Patch failed (404 NotFound) - item missing or wrong partition key.",
+                    request.Id.ToKVP("id"),
+                    (request.PartitionKey ?? request.Id).ToKVP("pk"),
+                    request.EntityType.ToKVP("entityType"));
+
+                return InvokeResult.FromError("Patch failed because the document was not found.");
+            }
+            catch (CosmosException ex) when (ex.StatusCode == (HttpStatusCode)429)
+            {
+                _logger.AddCustomEvent(LogLevel.Warning, this.Tag(),
+                    "Patch throttled (429 TooManyRequests).",
+                    request.Id.ToKVP("id"),
+                    ex.RetryAfter.ToString().ToKVP("retryAfter"));
+
+                return InvokeResult.FromError("Cosmos throttled the request. Please retry.");
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.BadRequest)
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(),
+                    "Patch failed (400 BadRequest) - invalid patch operations.",
+                    request.Id.ToKVP("id"),
+                    request.EntityType.ToKVP("entityType"),
+                    ex.Message.ToKVP("cosmosMessage"));
+
+                return InvokeResult.FromError("Patch failed due to invalid patch operations.");
+            }
         }
     }
 }

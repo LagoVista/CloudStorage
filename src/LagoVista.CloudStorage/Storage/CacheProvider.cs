@@ -51,10 +51,13 @@ namespace LagoVista.CloudStorage.Storage
             }
             else if (_inMemoryCache != null)
             {
-                if (_inMemoryCache.ContainsKey(key))
-                    _inMemoryCache.Remove(key);
+                lock (_inMemoryCache)
+                {
+                    if (_inMemoryCache.ContainsKey(key))
+                        _inMemoryCache.Remove(key);
 
-                _inMemoryCache.Add(key, value);
+                    _inMemoryCache.Add(key, value);
+                }
             }
 
             return Task.CompletedTask;

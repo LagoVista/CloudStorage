@@ -12,6 +12,7 @@ namespace LagoVista.CloudStorage.Interfaces
 {
     public interface ISyncRepository
     {
+        Task<InvokeResult> SetEntityHashAsync(string id, CancellationToken ct = default);
         Task<IReadOnlyList<SyncEntitySummary>> GetSummariesAsync(string entityType, string ownerOrganizationId = null, string search = null, int take = 200, CancellationToken ct = default);
 
         Task<string> GetOwnedJsonByIdAsync(string id, string ownerOrganizationId, CancellationToken ct = default);
@@ -29,5 +30,7 @@ namespace LagoVista.CloudStorage.Interfaces
 
         Task<string> ScanContainerAsync(Func<CosmosScanRow, CancellationToken, Task> handleRowAsync,
             string continuationToken = null, string entityType = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default);
+
+        Task<InvokeResult> PatchEntityAsync(PatchRequest request, EntityHeader org, EntityHeader user, CancellationToken ct = default);
     }
 }

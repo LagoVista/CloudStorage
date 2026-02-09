@@ -9,31 +9,27 @@ using LagoVista.Core.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
 using LagoVista.IoT.Logging.Utils;
 using Microsoft.Azure.Cosmos.Serialization.HybridRow;
+using MongoDB.Bson.Serialization.IdGenerators;
 using Moq;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using ZstdSharp.Unsafe;
+using static System.Net.WebRequestMethods;
 
 ISyncRepository _syncRepo;
 IFkIndexTableWriterBatched _fkeyWriter;
 INodeLocatorTableWriterBatched _nodeWriter;
 INodeLocatorTableReader _nodeReader;
 IAdminLogger _logger;
+ISyncConnectionSettings _syncSettings;
+IDefaultConnectionSettings _defaultConnetionSettings;
 
-var mode = "resolvefkeys";
-var env = "dev";
-var entityType = "ExternalWorkTask";
-var pageSize = 500;
-var pageCount = 10;
-var dryRun = false;
+CancellationTokenSource _shutdownCts;
 
-var syncSettings = new SyncSettings(env);
+const int defaultPageSize = 500;
+const int defaultPageCount = 10;
 
-_logger = new AdminLogger(new ConsoleLogWriter());
-_fkeyWriter = new FkIndexTableWriterBatched(syncSettings, _logger);
-_nodeWriter = new NodeLocatorTableWriterBatched(syncSettings, _logger);
-_nodeReader = new   NodeLocatorTableReader(syncSettings, _logger);
-_syncRepo = new CosmosSyncRepository(syncSettings, _fkeyWriter, _nodeWriter, _nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
-
-CancellationTokenSource _shutdownCts = new CancellationTokenSource();
+string _env;
 
 void HookShutdownSignals()
 {
@@ -56,14 +52,33 @@ void HookShutdownSignals()
     };
 }
 
+void Init(string env)
+{
+    _env = env;
+    var syncSettings = new SyncSettings(env);
+    _syncSettings = syncSettings;
+    _defaultConnetionSettings = syncSettings;
 
-async Task BuildNodeLocatorIndexAsync(CancellationToken ct)
+    _logger = new AdminLogger(new ConsoleLogWriter());
+    _fkeyWriter = new FkIndexTableWriterBatched(syncSettings, _logger);
+    _nodeWriter = new NodeLocatorTableWriterBatched(syncSettings, _logger);
+    _nodeReader = new NodeLocatorTableReader(syncSettings, _logger);
+    _syncRepo = new CosmosSyncRepository(syncSettings, _fkeyWriter, _nodeWriter, _nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
+
+    _shutdownCts = new CancellationTokenSource();
+
+    HookShutdownSignals();
+}
+
+
+
+async Task BuildNodeLocatorIndexAsync(int pageSize = defaultPageSize, int pageCount = defaultPageCount, CancellationToken ct = default)
 {
     var sw = Stopwatch.StartNew();
 
     string contents = String.Empty;
     string token = null;
-    var fn = @$"X:\Nodes-{env}.txt";
+    var fn = @$"X:\Nodes-{_env}.txt";
     if (System.IO.File.Exists(fn))
     {
         contents = System.IO.File.ReadAllText(fn);
@@ -88,9 +103,9 @@ async Task BuildNodeLocatorIndexAsync(CancellationToken ct)
     Console.WriteLine(result.Successful ? $"Records Processed. {result.Result.Entries.Count} from {pageSize * pageCount} records in {sw.Elapsed.TotalSeconds} " : $"Error: {result.ErrorMessage}");
 }
 
-async Task GetTableSizesAsync(CancellationToken ct)
+async Task GetTableSizesAsync(CancellationToken ct = default)
 {
-    var tableSizer = new TableSizer(syncSettings, _logger);
+    var tableSizer = new TableSizer(_defaultConnetionSettings, _logger);
 
     var stats = await tableSizer.RunAsync(sampleSizePerTable: 500, maxConcurrency: 6, ct);
     var builder = new System.Text.StringBuilder();
@@ -101,12 +116,12 @@ async Task GetTableSizesAsync(CancellationToken ct)
         Console.WriteLine($"{s.Table,-40}\t\t\tcount={s.RowCount}, avg={s.AvgEntityBytes,8:0}B, {s.RowCount * s.AvgEntityBytes / (1024.0*1024.0)}mb");
     }
 
-    System.IO.File.WriteAllText($@"X:\TableSizes-{env}.csv", builder.ToString());
+    System.IO.File.WriteAllText($@"X:\TableSizes-{_env}.csv", builder.ToString());
 }
 
-async Task PruneTableStorage(CancellationToken ct)
+async Task PruneTableStorage(CancellationToken ct = default)
 {
-    var pruner = new TableStoragePruner(syncSettings, _logger);
+    var pruner = new TableStoragePruner(_defaultConnetionSettings, _logger);
     var options = new PruneOptions
     {   PruneEmptyTables = true,
         DryRun = true
@@ -126,11 +141,11 @@ async Task PruneTableStorage(CancellationToken ct)
     }
 }
 
-async Task ResolveFKeysAsync(int pageSize, int pageCount, bool dryRun, CancellationToken ct)
+async Task ResolveFKeysAsync(int pageSize = defaultPageSize, int pageCount = defaultPageCount, bool dryRun = false, CancellationToken ct = default)
 {
     string contents = String.Empty;
     string token = null;
-    var fn = @$"X:\FKeyResolver-{env}.txt";
+    var fn = @$"X:\FKeyResolver-{_env}.txt";
     if (System.IO.File.Exists(fn))
     {
         contents = System.IO.File.ReadAllText(fn);
@@ -151,7 +166,7 @@ async Task ResolveFKeysAsync(int pageSize, int pageCount, bool dryRun, Cancellat
     System.IO.File.WriteAllText(fn, contents);
 }
 
-async Task DeleteByEntityType(string entityType, int pageSize, int pageCount, bool dryRun, CancellationToken ct)
+async Task DeleteByEntityType(string entityType, int pageSize = defaultPageSize, int pageCount = defaultPageCount, bool dryRun = false, CancellationToken ct = default)
 {
     var sw = Stopwatch.StartNew();
     string contents = String.Empty;
@@ -181,7 +196,7 @@ async Task DeleteByEntityType(string entityType, int pageSize, int pageCount, bo
 
 async Task DeleteTableRows(string tableName, int pageSize,  bool dryRun, CancellationToken ct)
 {
-    var pruner = new TableStoragePruner(syncSettings, _logger);
+    var pruner = new TableStoragePruner(_defaultConnetionSettings, _logger);
     var sw = Stopwatch.StartNew();
 
     var cutoff = DateTimeOffset.UtcNow.AddMonths(-2);
@@ -193,16 +208,73 @@ async Task DeleteTableRows(string tableName, int pageSize,  bool dryRun, Cancell
     await pruner.DeleteWhereAsync("errors", filter, dryRun, pageSize, ct);
 }
 
-HookShutdownSignals();
+string GetCacheKey(string dbName, string entityType, string id)
+{
+    return $"{dbName}-{entityType}-{id}".ToLower();
+}
 
+async Task SetEntityHashAsync(string? entityType = null, int pageSize = defaultPageSize, int pageCount = defaultPageCount, CancellationToken ct = default)
+{
+    var http = new HttpClient();
+
+    string contents = String.Empty;
+    string token = null;
+    var fn = @$"X:\HashSet-{_env}.txt";
+    if (System.IO.File.Exists(fn))
+    {
+        contents = System.IO.File.ReadAllText(fn);
+        var lines = contents.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+        token = lines.Last();
+    }
+
+    if (token != null && token.StartsWith("[COMPLETED]"))
+    {
+        Console.WriteLine("Done.");
+        return;
+    }
+
+    int idx = 0;
+    var result = await _syncRepo.ScanContainerAsync(async (row, ct) =>
+    {
+        var cacheKey = GetCacheKey(_syncSettings.SyncConnectionSettings.ResourceName, row.EntityType, row.Id);  
+
+        var sw = Stopwatch.StartNew();
+        var result = await _syncRepo.SetEntityHashAsync(row.Id);
+        if (result.Successful)
+        {
+            var hostName = _env == "prod" ? "www" : "dev";   
+            await http.GetAsync($"https://{hostName}.nuviot.com/api/core/cache/clear/{cacheKey}", ct).ConfigureAwait(false);
+            Console.WriteLine($"Updated {++idx:00000} of {pageSize * pageCount} in {sw.Elapsed.TotalMilliseconds}ms");
+        }
+        else
+            Console.WriteLine($"Error updating {++idx} {result.ErrorMessage} in {sw.Elapsed.TotalMilliseconds}ms");
+
+    }, token, entityType, pageSize, pageCount, null);
+
+
+    contents += $"{DateTime.UtcNow.ToJSONString()} - Records Processed. {idx}{Environment.NewLine}";
+    if (String.IsNullOrEmpty(result))
+        contents += "[COMPLETED]";
+    else
+        contents += result + Environment.NewLine;
+    System.IO.File.WriteAllText(fn, contents);
+}
+
+
+var mode = "sethash";
+var env = "prod";
+var entityType = "ExternalWorkTask";
+var dryRun = false;
+
+Init(env);
 
 switch (mode)
 {
     case "resolvefkeys":
-        await ResolveFKeysAsync(pageSize, pageCount, dryRun, _shutdownCts.Token);
+        await ResolveFKeysAsync(dryRun:dryRun, ct:_shutdownCts.Token);
         break;
     case "buildnodeindex":
-        await BuildNodeLocatorIndexAsync(_shutdownCts.Token);
+        await BuildNodeLocatorIndexAsync(ct:_shutdownCts.Token);
         break;
     case "tablesizes":
         await GetTableSizesAsync(_shutdownCts.Token);
@@ -211,9 +283,12 @@ switch (mode)
         await PruneTableStorage(_shutdownCts.Token);
         break;
     case "deletebytype":
-        await DeleteByEntityType(entityType, pageSize, pageCount, dryRun,  _shutdownCts.Token);
+        await DeleteByEntityType(entityType, dryRun:dryRun,  ct:_shutdownCts.Token);
         break;
     case "deletetablerows":
         await DeleteTableRows("errors", 10, false, _shutdownCts.Token);
+        break;
+    case "sethash":
+        await SetEntityHashAsync("Module");
         break;
 }

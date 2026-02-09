@@ -1,6 +1,8 @@
-﻿using Newtonsoft.Json;
+﻿using LagoVista.Core;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 
 namespace LagoVista.CloudStorage.Models
@@ -43,9 +45,42 @@ namespace LagoVista.CloudStorage.Models
 
         [JsonProperty("Sha256Hex")]
         public string Sha256Hex { get; set; }
-    }
 
-    public class SyncJsonEnvelope
+        [JsonIgnore]
+        public string FormattedLastUpdatedDate
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(LastUpdatedDate))
+                    return "(missing)";
+
+                // Parse ISO 8601 safely, treat as UTC, and normalize to UTC
+                if (DateTimeOffset.TryParse(
+                        LastUpdatedDate,
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                        out var parsed))
+                {
+                    var delta = DateTimeOffset.UtcNow - parsed;
+
+                    if (delta.TotalSeconds < 60) return "A few seconds ago";
+                    if (delta.TotalMinutes < 2) return "A minute ago";
+                    if (delta.TotalMinutes < 60) return $"{(int)delta.TotalMinutes} minutes ago";
+                    if (delta.TotalHours < 2) return "An hour ago";
+                    if (delta.TotalHours < 24) return $"{(int)delta.TotalHours} hours ago";
+                    if (delta.TotalDays < 2) return "A day ago";
+                    if (delta.TotalDays < 7) return $"{(int)delta.TotalDays} days ago";
+
+                    // Past a week: compact absolute time (UTC)
+                    return parsed.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) + "Z";
+                }
+
+                return LastUpdatedDate; // fallback if it’s some non-date string
+            }
+        }
+}
+
+public class SyncJsonEnvelope
     {
         [JsonProperty("json")]
         public string Json { get; set; }
