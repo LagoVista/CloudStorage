@@ -13,7 +13,7 @@ namespace LagoVista.CloudStorage.Models
     {
         public PatchOp Op { get; set; }
         public string CosmosPath { get; set; }
-        public JToken? Value { get; set; }
+        public JToken Value { get; set; }
         public string LogicalPath { get; set; }
 
         public string ValuePreview => Value == null ? "(removed)"
@@ -27,7 +27,7 @@ namespace LagoVista.CloudStorage.Models
 
     public static class StringExtensions
     {
-        public static string Truncate(this string? value, int maxLength)
+        public static string Truncate(this string value, int maxLength)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return string.Empty;

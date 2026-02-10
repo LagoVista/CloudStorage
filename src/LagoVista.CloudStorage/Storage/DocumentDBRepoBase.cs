@@ -2,7 +2,6 @@
 // ContentHash: 0966a614884bf62f14e46c78019b9280b027724296e08c242d0c640e6d6e7d98
 // IndexVersion: 2
 // --- END CODE INDEX META ---
-using Azure;
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
@@ -25,14 +24,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using static LagoVista.CloudStorage.Storage.CosmosSyncRepository;
-using static LagoVista.Core.Models.AdaptiveCard.MSTeams;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {

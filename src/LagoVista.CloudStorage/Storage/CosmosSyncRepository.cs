@@ -86,11 +86,11 @@ namespace LagoVista.CloudStorage.Storage
 
             return sb.ToString();
         }
-     
+
         public const string NOT_FOUND_ID = "09AE184AE5374B40B0E174D8F4956653";
         public const string NOT_FOUND_OWNER_ORG_ID = "00000000000000000000000000000000";
         public const string NOT_FOUND_KEY = "recordnotfound";
-        public const string NOT_FOUND_TEXT = "Record Not Found";    
+        public const string NOT_FOUND_TEXT = "Record Not Found";
         public const string NOT_FOUND_ENTITYTYPE = "RecordNotFound";
 
         private Dictionary<string, EntityHeader> _inMemoryCache = new Dictionary<string, EntityHeader>();
@@ -125,11 +125,11 @@ where c.id = @id";
 
             using var iterator = _container.GetItemQueryIterator<EntityHeaderRow>(qd, requestOptions: requestOptions);
 
-            if(iterator.HasMoreResults)
+            if (iterator.HasMoreResults)
             {
                 var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
                 var record = page.Resource?.FirstOrDefault();
-                if(record != null)
+                if (record != null)
                 {
                     var eh = new EntityHeader()
                     {
@@ -175,11 +175,11 @@ where c.id = @id";
                 "  c.IsDeleted, c.IsDeprecated, c.IsDraft, c.LastUpdatedDate, c.Sha256Hex " +
                 "FROM c " +
                 "WHERE c.EntityType = @entityType " +
-                "  AND (NOT IS_DEFINED(c.IsDeleted) or c.IsDeleted = false)" + 
+                "  AND (NOT IS_DEFINED(c.IsDeleted) or c.IsDeleted = false)" +
                 "  AND (IS_NULL(@search) OR @search = ''" +
                 "       OR CONTAINS(LOWER(c.Name), @search) " +
                 "       OR CONTAINS(LOWER(c.Key), @search)) " +
-                "  AND c.OwnerOrganization.Id = @ownerOrganizationId " + 
+                "  AND c.OwnerOrganization.Id = @ownerOrganizationId " +
                 "ORDER BY c.Name";
 
 
@@ -273,7 +273,7 @@ where c.id = @id";
             var qd = new QueryDefinition(sql)
                 .WithParameter("@id", id.Trim())
                 .WithParameter("@ownerOrganizationId", ownerOrganizationId);
-            
+
             var requestOptions = new QueryRequestOptions
             {
                 MaxItemCount = 1
@@ -373,7 +373,7 @@ where c.id = @id";
 
             if (string.IsNullOrWhiteSpace(key))
             {
-                if (entityType == "VerificationResults" || entityType == "CalendarEvent"  || entityType == "UserFavorites" || entityType == "MostRecentlyUsed" || entityType == "Meeting")
+                if (entityType == "VerificationResults" || entityType == "CalendarEvent" || entityType == "UserFavorites" || entityType == "MostRecentlyUsed" || entityType == "Meeting")
                     doc["key"] = Guid.NewGuid().ToId().ToLower();
                 else
                 {
@@ -437,7 +437,7 @@ where c.id = @id";
             }
 
             if (!resp.IsSuccessStatusCode)
-            {    
+            {
                 var body = resp.Content != null ? await new StreamReader(resp.Content).ReadToEndAsync().ConfigureAwait(false) : null;
 
                 _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "No success code updating", body.ToKVP("error"));
@@ -488,7 +488,7 @@ where c.id = @id";
                     existing = await GetJsonByEntityTypeAndKeyAsync(key, entityType, org.Id);
                 }
 
-                if(String.IsNullOrEmpty(existing))
+                if (String.IsNullOrEmpty(existing))
                 {
                     _logger.Trace($"{this.Tag()} - No matching record", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
                     doc[nameof(EntityBase.CreatedBy)] = JToken.FromObject(user);
@@ -502,19 +502,28 @@ where c.id = @id";
                     doc["id"] = id;
                 }
 
-                doc[nameof(EntityBase.DatabaseName)] = _dbName; 
+                doc[nameof(EntityBase.DatabaseName)] = _dbName;
                 doc[nameof(EntityBase.OwnerOrganization)] = JToken.FromObject(org);
                 doc[nameof(EntityBase.LastUpdatedBy)] = JToken.FromObject(user);
                 doc[nameof(EntityBase.LastUpdatedDate)] = DateTime.UtcNow.ToJSONString();
 
+
+                var result = await UpsertJsonAsync(doc, null, ct);
+
                 await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
+
+                if (entityType == "Module")
+                {
+                    await _cacheProvider.RemoveAsync(ALL_MODULES_CACHE_KEY);
+                    await _cacheProvider.RemoveAsync($"{MODULE_CACHE_KEY}{key}");
+                }
+
+                return result;
             }
             catch (JsonException ex)
             {
                 throw new ArgumentException("json must be a valid JSON object.", nameof(json), ex);
             }
-
-            return await UpsertJsonAsync(doc, null, ct);
         }
 
 
@@ -553,7 +562,7 @@ where c.id = @id";
         /// Persist the returned continuationToken somewhere durable.
         /// </summary>
         public async Task<string> ScanContainerAsync(Func<CosmosScanRow, CancellationToken, Task> handleRowAsync,
-            string continuationToken = null, string entityType  = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default)
+            string continuationToken = null, string entityType = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default)
         {
             var requestOptions = new QueryRequestOptions
             {
@@ -570,7 +579,7 @@ where c.id = @id";
                 query += " WHERE c.EntityType = @entityType";
 
             // Minimal SELECT keeps RU and payload down. Add fields as needed.
-            var qd = !String.IsNullOrEmpty(entityType) ? 
+            var qd = !String.IsNullOrEmpty(entityType) ?
                 new QueryDefinition(query).WithParameter("@entityType", entityType) :
                 new QueryDefinition(query);
 
@@ -598,7 +607,7 @@ where c.id = @id";
                 });
 
                 await Task.WhenAll(tasks);
-                
+
                 // This is the real “resume from here” cursor.
                 continuationToken = page.ContinuationToken;
             }
@@ -631,21 +640,17 @@ where c.id = @id";
             }
 
             var key = token["Key"]?.Value<string>();
-            if(key == null)
+            if (key == null)
             {
                 token["Key"] = Guid.NewGuid().ToId().ToLowerInvariant();
-            }    
+            }
 
             token["Sha256Hex"] = EntityHasher.CalculateHash(token.DeepClone());
             var bytes = System.Text.Encoding.UTF8.GetBytes(token.ToString(Formatting.None));
             using var ms = new MemoryStream(bytes);
 
             var requestOptions = new ItemRequestOptions();
-          
-            // If you truly have a fixed/single partition key value, this makes writes deterministic.
-            PartitionKey? pk = null;
-
-            var cacheKey = GetCacheKey(entity.EntityType, entity.Id);   
+            var cacheKey = GetCacheKey(entity.EntityType, entity.Id);
             try
             {
                 var resp = await _container.UpsertItemStreamAsync(ms, PartitionKey.None, requestOptions, ct).ConfigureAwait(false);
@@ -653,12 +658,12 @@ where c.id = @id";
 
                 return resp.IsSuccessStatusCode ? InvokeResult.Success : InvokeResult.FromError($"Error upserting entity with id {id} to set hash. Response code: {resp.StatusCode}");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Error upserting entity with id {id} to set hash.", ex.Message.ToKVP("exception"));
                 return InvokeResult.FromException(this.Tag(), ex);
             }
-            
+
         }
 
         public async Task<InvokeResult<EhResolvedEntity>> ResolveEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false)
@@ -666,7 +671,7 @@ where c.id = @id";
             var json = await GetJsonByIdAsync(id);
             var entity = JsonConvert.DeserializeObject<EntityBase>(json);
             var token = JToken.Parse(json);
-            if(entity.EntityType == "AppUser")
+            if (entity.EntityType == "AppUser")
             {
                 var userName = token["UserName"]?.Value<string>();
                 if (userName == null)
@@ -677,7 +682,7 @@ where c.id = @id";
                 token["Key"] = NormalizeAlphaNumericKey(userName);
             }
 
-            if(entity.EntityType == "Organization")
+            if (entity.EntityType == "Organization")
             {
                 token["Key"] = token["Namespace"]?.Value<string>();
             }
@@ -686,14 +691,14 @@ where c.id = @id";
             var wasUpdated = false;
             foreach (var node in nodes)
             {
-                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) && 
+                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
                     (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
                 {
                     wasUpdated = true;
                     var eh = await GetEntityHeaderForRecordAsync(node.Id);
                     if (eh != null)
                     {
-                        if(eh.Id == NOT_FOUND_ID)
+                        if (eh.Id == NOT_FOUND_ID)
                         {
                             var childNode = await _nodeLocator.TryGetAsync(eh.Id, ct);
                             if (childNode == null)
@@ -723,7 +728,7 @@ where c.id = @id";
             _logger.Trace($"{this.Tag()} - Resolved {nodes.Count} entity header nodes for entity {entity.Id} of type {entity.EntityType}. Updated: {wasUpdated}");
 
             var fkNodes = ForeignKeyEdgeFactory.FromEntityHeaderNodes(entity, nodes);
-            if(!dryRun)
+            if (!dryRun)
                 await _fkWriter.UpsertAllAsync(fkNodes);
 
             token["Sha256Hex"] = EntityHasher.CalculateHash(token.DeepClone());
@@ -743,7 +748,7 @@ where c.id = @id";
                 return InvokeResult<EhResolvedEntity>.Create(result);
             }
             else
-            { 
+            {
                 var result = new EhResolvedEntity()
                 {
                     UpdatedEntity = wasUpdated,
@@ -764,12 +769,12 @@ where c.id = @id";
             var entity = JsonConvert.DeserializeObject<EntityBase>(json);
             var token = JObject.Parse(json);
             if (entity.EntityType == null)
-                return new List<NodeLocatorEntry > ();
+                return new List<NodeLocatorEntry>();
 
             var getMs = sw.Elapsed.TotalMilliseconds;
             sw.Restart();
 
-            var nodes =  NodeLocatorWalker.ExtractNodeLocators(token, entity.OwnerOrganization?.Id ?? "SYSTEM", entity.EntityType, entity.Id, entity.Revision, entity.LastUpdatedDate);
+            var nodes = NodeLocatorWalker.ExtractNodeLocators(token, entity.OwnerOrganization?.Id ?? "SYSTEM", entity.EntityType, entity.Id, entity.Revision, entity.LastUpdatedDate);
             nodes = NodeLocatorTableWriterBatched.DeduplicateByNodeId(nodes, id);
 
             var dups = NodeLocatorTableWriterBatched.FindDuplicateNodeIds(nodes);
@@ -801,15 +806,15 @@ where c.id = @id";
             return nodes;
         }
 
-        public async Task<InvokeResult<List<EhResolvedEntity>>> ResolveEntityHeadersAsync(string entityType, string continuationToken, int pageSize = 100, int maxPagesThisRun = 10, 
+        public async Task<InvokeResult<List<EhResolvedEntity>>> ResolveEntityHeadersAsync(string entityType, string continuationToken, int pageSize = 100, int maxPagesThisRun = 10,
                                             CancellationToken ct = default, bool dryRun = false)
         {
             var results = new List<EhResolvedEntity>();
 
             await ScanContainerAsync(async (rec, ct) =>
             {
-                 var result = await ResolveEntityHeadersAsync(rec.Id, ct);
-                 results.Add(result.Result);
+                var result = await ResolveEntityHeadersAsync(rec.Id, ct);
+                results.Add(result.Result);
 
             }, continuationToken, entityType, pageSize, maxPagesThisRun);
 
@@ -848,7 +853,7 @@ where c.id = @id";
                 else
                 {
                     var sw = Stopwatch.StartNew();
-                   var deleteResult = await  _container.DeleteItemAsync<EntityBase>(rec.Id, PartitionKey.None, cancellationToken:ct);
+                    var deleteResult = await _container.DeleteItemAsync<EntityBase>(rec.Id, PartitionKey.None, cancellationToken: ct);
                     _logger.Trace($"{result.DeletedCount:0000} - Did Delete {rec.Id} - {rec.EntityType} in {sw.Elapsed.TotalMilliseconds}ms");
                     result.DeletedCount++;
                 }
@@ -859,6 +864,10 @@ where c.id = @id";
 
             return InvokeResult<EntityDeleteResult>.Create(result);
         }
+
+
+        public const string ALL_MODULES_CACHE_KEY = "NUVIOT_ALL_MODULES";
+        public const string MODULE_CACHE_KEY = "NUVIOT_MODULE_";
 
         public async Task<InvokeResult> PatchEntityAsync(PatchRequest request, EntityHeader org, EntityHeader user, CancellationToken ct = default)
         {
@@ -903,13 +912,13 @@ where c.id = @id";
             {
                 var patchResult = await _container.PatchItemAsync<JObject>(
                    id: request.Id,
-                   partitionKey:  request.PartitionKey == null ? PartitionKey.None : new PartitionKey(request.PartitionKey),
+                   partitionKey: request.PartitionKey == null ? PartitionKey.None : new PartitionKey(request.PartitionKey),
                    patchOperations: ops,
                    requestOptions: options,
                    cancellationToken: ct);
 
-                _logger.Trace($"{this.Tag()} - Status Response: {patchResult.StatusCode} - Patched entity {request.Id} of type {request.EntityType} with {request.Steps.Count} steps.", 
-                    request.Id.ToKVP("id"), 
+                _logger.Trace($"{this.Tag()} - Status Response: {patchResult.StatusCode} - Patched entity {request.Id} of type {request.EntityType} with {request.Steps.Count} steps.",
+                    request.Id.ToKVP("id"),
                     request.EntityType.ToKVP("entityType"));
 
                 if (patchResult.StatusCode == HttpStatusCode.PreconditionFailed)
@@ -920,9 +929,19 @@ where c.id = @id";
 
                 await SetEntityHashAsync(request.Id);
                 await _cacheProvider.RemoveAsync(GetCacheKey(request.EntityType, request.Id));
+                if (request.EntityType == "Module")
+                {
+                    await _cacheProvider.RemoveAsync(ALL_MODULES_CACHE_KEY);
+                    var json = await GetJsonByIdAsync(request.Id);
+                    if (!String.IsNullOrEmpty(json))
+                    {
+                        var module = JsonConvert.DeserializeObject<EntityBase>(json);
+                        await _cacheProvider.RemoveAsync($"{MODULE_CACHE_KEY}{module.Key}");
+                    }
+                }
                 return InvokeResult.Success;
             }
-            catch(CosmosException ex) when(ex.StatusCode == HttpStatusCode.PreconditionFailed)
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
             {
                 _logger.AddCustomEvent(LogLevel.Error, this.Tag(),
                     "Patch failed due to ETag mismatch (412 Precondition Failed).",

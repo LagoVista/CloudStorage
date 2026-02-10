@@ -10,7 +10,7 @@ namespace LagoVista.CloudStorage.Models
         public string Id { get; set; }
         public string EntityType { get; set; }
         
-        public string? PartitionKey { get; set; }
+        public string PartitionKey { get; set; }
         public string ETag { get; set; }
         public IReadOnlyList<PatchStep> Steps { get; set; }
     }
