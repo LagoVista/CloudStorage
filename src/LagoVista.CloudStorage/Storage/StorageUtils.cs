@@ -38,7 +38,6 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ICacheProvider _cacheProvider;
         private readonly INodeLocatorTableReader _nodeLocator;
 
-
         public StorageUtils(IAdminLogger logger, INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));    
@@ -398,7 +397,7 @@ namespace LagoVista.CloudStorage.Storage
             return null;
         }
 
-        public async Task<EntityGraph> GetEntityGraphAsync(string id, EntityHeader org, EntityHeader user)
+        public async Task<EntityGraph> GetEntityGraphAsync(string id, EntityHeader org, EntityHeader user, string name = null)
         {
             if(String.IsNullOrEmpty(id)) throw new ArgumentException("id is required.", nameof(id));
 
@@ -413,8 +412,8 @@ namespace LagoVista.CloudStorage.Storage
                     {
                         Id = id,
                         EntityType = NOT_FOUND_ENTITYTYPE,
-                        Text = NOT_FOUND_TEXT,
-                        HostEntityName = NOT_FOUND_TEXT,
+                        Text = name ?? "Uknown",
+                        HostEntityName = name ?? "Uknown",
                         HostEntityType = NOT_FOUND_ENTITYTYPE,
                         Exists = false,
                     };
@@ -427,8 +426,8 @@ namespace LagoVista.CloudStorage.Storage
                     {
                         Id = id,
                         EntityType = NOT_FOUND_ENTITYTYPE,
-                        Text = NOT_FOUND_TEXT,
-                        HostEntityName = NOT_FOUND_TEXT,
+                        Text = name ?? "Uknown",
+                        HostEntityName = name ?? "Uknown",
                         HostEntityType = NOT_FOUND_ENTITYTYPE,
                         Exists = false,
                     };
@@ -483,7 +482,7 @@ namespace LagoVista.CloudStorage.Storage
 
                 _logger.Trace($"{this.Tag()} - {node.NormalizedPath} - Requesting child node {node.Text} with {node.Id}");
 
-                var child = await GetEntityGraphAsync(node.Id, org, user);
+                var child = await GetEntityGraphAsync(node.Id, org, user, node.Text);
                 if(child != null)
                     topLevel.Children.Add(child);
             }
