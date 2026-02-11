@@ -538,12 +538,17 @@ where c.id = @id";
 
         protected async Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item, bool checkEtag = false)
         {
-            if (item is IValidateable)
+            if (item is IValidateable && !item.IsDraft)
             {
-                var result = Validator.Validate(item as IValidateable);
+                var result = Validator.Validate(item as IValidateable, Actions.Update);
                 if (!result.Successful)
                 {
-                    throw new ValidationException("Invalid Data.", result.Errors);
+                    foreach(var error in result.Errors)
+                    {
+                        _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", $"Validation Error: {error.Message}", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", item.Id));
+                    }
+
+                    throw new ValidationException("Found invalid data at storage", result.Errors);
                 }
             }
 

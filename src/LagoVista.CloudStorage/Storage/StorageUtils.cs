@@ -391,6 +391,14 @@ namespace LagoVista.CloudStorage.Storage
             return null;
         }
 
+        public List<String> SkippedNotes = new List<string>()
+        {
+            nameof(IEntityBase.PublicPromotedBy),
+            nameof(IEntityBase.OwnerOrganization),
+            nameof(IEntityBase.CreationDate),
+            nameof(IEntityBase.CreatedBy),
+        };
+
         public async Task<EntityGraph> GetEntityGraphAsync(string id, EntityHeader org, EntityHeader user, string name = null)
         {
             if(String.IsNullOrEmpty(id)) throw new ArgumentException("id is required.", nameof(id));
@@ -468,11 +476,8 @@ namespace LagoVista.CloudStorage.Storage
             var nodes = EntityHeaderJson.FindEntityHeaderNodes(token);
             foreach(var node in nodes)
             {
-                if(node.Path.EndsWith("CreatedBy") || node.Path.EndsWith("LastUpdatedBy") || node.Path.EndsWith("OwnerOrganization"))
-                {
-                    _logger.Trace($"{this.Tag()} - {node.NormalizedPath} - Skipping audit field.");
+                if (SkippedNotes.Any(skipped => node.Path.Contains(skipped)))
                     continue;
-                }
 
                 _logger.Trace($"{this.Tag()} - {node.NormalizedPath} - Requesting child node {node.Text} with {node.Id}");
 
