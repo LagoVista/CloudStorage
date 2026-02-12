@@ -9,22 +9,38 @@ using System.Linq;
 using System.Collections.Generic;
 using LagoVista.Core.Interfaces;
 using Newtonsoft.Json;
+using LagoVista.IoT.Logging.Loggers;
 
 namespace LagoVista.CloudStorage.Storage
 {
     public class CacheProvider : ICacheProvider
     {
+        private readonly IAdminLogger _logger;
         private readonly ConnectionMultiplexer _multiplexer = null;
 
         private static Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>();
 
-        public CacheProvider(ICacheProviderSettings settings)
+
+        public CacheProvider(ICacheProviderSettings settings, IAdminLogger adminlogger)
         {
+            _logger = adminlogger ?? throw new ArgumentNullException(nameof(adminlogger));
+
             if (settings == null) throw new ArgumentNullException(nameof(settings));
 
             if (settings.UseCache)
             {
-                _multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
+                try
+                {
+                    _logger.Trace($"{this.Tag()} - Initializing cache provider with settings: {JsonConvert.SerializeObject(settings.CacheSettings.Uri)}");
+                    _multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
+                    _logger.Trace($"{this.Tag()} - Established connection to REDIS: {JsonConvert.SerializeObject(settings.CacheSettings.Uri)}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.AddError(this.Tag(), $"Failed to connect to REDIS with settings: {JsonConvert.SerializeObject(settings.CacheSettings.Uri)}. Exception: {ex}.  You can disable remote cache by setting UseCache = false in AppSettings.  Or you can setup a SSH tunnel to dev cache server.");
+                    throw;
+                }
+
             }
         }
 
@@ -45,7 +61,7 @@ namespace LagoVista.CloudStorage.Storage
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-                Console.WriteLine($"[RemoteCache__AddAsync] Key: {key}");
+                _logger.Trace($"{this.Tag()} - Added Key: {key}");
 
                 return db.StringSetAsync(key, value, ttl);
             }
@@ -87,7 +103,12 @@ namespace LagoVista.CloudStorage.Storage
                 var result = await db.StringGetAsync(key);
 
                 var str = (string)result;
-                Console.WriteLine($"[RemoteCache__GetAsync] Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(str)}");
+                if(!result.HasValue)
+                {
+                    _logger.Trace($"{this.Tag()} - Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(str)}");
+                }
+                else 
+                    _logger.Trace($"{this.Tag()} - Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(str)}");
                 return str;
             }
             else
@@ -159,7 +180,6 @@ namespace LagoVista.CloudStorage.Storage
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-                Console.WriteLine($"Getting cache collection: {collectionKey} found in cache: {await db.KeyExistsAsync(collectionKey) && await db.KeyTypeAsync(collectionKey) == RedisType.Hash}");
 
                 var result = await db.HashGetAllAsync(collectionKey);
                 return result.Cast<object>();
@@ -175,10 +195,15 @@ namespace LagoVista.CloudStorage.Storage
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-                Console.WriteLine($"Getting cache collection item: {collectionKey} found in cache: {await db.HashExistsAsync(collectionKey, key)}");
 
-                var result = await db.HashGetAsync(collectionKey, key);
-                return (string)result;
+                _logger.Trace($"{this.Tag()} - Getting item with key: {key} from collection: {collectionKey}");
+
+                var value = await db.HashGetAsync(collectionKey, key);
+
+                var result = (string)value;
+
+
+                return result;
             }
 
             return null;
@@ -196,7 +221,7 @@ namespace LagoVista.CloudStorage.Storage
                     throw new ArgumentNullException("Database for cache provider is null.");
                 }
 
-                Console.WriteLine($"Removing item with key: {key}");
+                _logger.Trace($"{this.Tag()} - Removing item with key: {key}");
                 return db.KeyDeleteAsync(key);
             }
             else if (_inMemoryCache != null)
@@ -216,7 +241,7 @@ namespace LagoVista.CloudStorage.Storage
             {
                 var db = _multiplexer.GetDatabase();
 
-                Console.WriteLine($"Removing item with key: {key} from collection: {collectionKey}");
+                _logger.Trace($"{this.Tag()} - Removing item with key: {key} from collection: {collectionKey}");
                 return db.HashDeleteAsync(collectionKey, key);
             }
 
@@ -240,17 +265,25 @@ namespace LagoVista.CloudStorage.Storage
 
             if (_multiplexer != null)
             {
-                var db = _multiplexer.GetDatabase();
-                if (db == null)
-                {
-                    throw new ArgumentNullException("Database for cache provider is null.");
-                }
+                var script = @"
+local v = redis.call('GET', KEYS[1])
+if v then redis.call('DEL', KEYS[1]) end
+return v
+";
 
-                Console.WriteLine($"Removing item with key: {key}");
-                var json = await db.StringGetDeleteAsync(key);
+                var db = _multiplexer.GetDatabase() ?? throw new ArgumentNullException("Database for cache provider is null.");
+                var json = (RedisValue)await db.ScriptEvaluateAsync(
+                            script,
+                            keys: new RedisKey[] { key });
+
 
                 if (String.IsNullOrEmpty(json))
+                {
+                    _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {key} not found in cache.");  
                     return null;
+                }
+
+                _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {key} found and removed from cache.");
 
                 return JsonConvert.DeserializeObject<T>(json);
             }
