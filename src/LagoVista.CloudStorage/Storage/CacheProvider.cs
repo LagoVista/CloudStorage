@@ -63,7 +63,7 @@ namespace LagoVista.CloudStorage.Storage
                 var db = _multiplexer.GetDatabase();
                 _logger.Trace($"{this.Tag()} - Added Key: {key}");
 
-                return db.StringSetAsync(key, value, ttl);
+                return db.StringSetAsync(key, value, ttl, When.Always);
             }
             else if (_inMemoryCache != null)
             {
