@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>LagoVista.CloudStorage</id>
-    <version>3.0.3189.1100</version>
+    <version>3.0.3196.0709</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -12,11 +12,11 @@
     <copyright>Copyright Software Logistics - 2026</copyright>
     <tags>HomeAutomation IoT LagoVista</tags>
     <icon>LagoVistaIcon.png</icon>
-    <releaseNotes>Build Date: 2/8/2026 4:00:25 PM UTC</releaseNotes>
+    <releaseNotes>Build Date: 2/15/2026 12:09:06 PM UTC</releaseNotes>
     <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
       <group targetFramework="netstandard2.1">
-        <dependency id="LagoVista.IoT.Logging" version="3.0.3189.1100" />
+        <dependency id="LagoVista.IoT.Logging" version="3.0.3196.0709" />
         <dependency id="Microsoft.Azure.Cosmos" version="3.53.1" />
         <dependency id="MongoDB.Driver" version="3.5.0" />
         <dependency id="prometheus-net" version="8.2.1" />
