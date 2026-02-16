@@ -568,41 +568,43 @@ where c.id = @id";
             var container = await GetContainerAsync();
 
             var sw = Stopwatch.StartNew();
-            var timer = DocumentUpdate.WithLabels(typeof(TEntity).Name).NewTimer();
-            var ehCache = new Dictionary<string, EntityHeader>();
-            var ehCurrentNodes = item.FindEntityHeaderNodes();
-            var exisitng = await GetDocumentAsync(item.Id);
-            var ehPreviousNodes = exisitng.FindEntityHeaderNodes();
-
-            foreach (var node in ehCurrentNodes)
-            {
-                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
-                      (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
-                {
-                    if (ehCache.ContainsKey(node.Id))
-                    {
-                        var eh = ehCache[node.Id];
-                        item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                    }
-                    else
-                    {
-                        var eh = await GetEntityHeaderForRecordAsync(node.Id);
-                        if (eh.Id == NOT_FOUND_ID)
-                        {
-                            eh.Resolved = false;
-                            _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
-                        }
-                        else
-                        {
-                            ehCache.Add(node.Id, eh);
-                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                        }
-                    }
-                }
-            }
 
             if (_dependencyManager != null)
             {
+
+                var timer = DocumentUpdate.WithLabels(typeof(TEntity).Name).NewTimer();
+                var ehCache = new Dictionary<string, EntityHeader>();
+                var ehCurrentNodes = item.FindEntityHeaderNodes();
+                var exisitng = await GetDocumentAsync(item.Id);
+                var ehPreviousNodes = exisitng.FindEntityHeaderNodes();
+
+                foreach (var node in ehCurrentNodes)
+                {
+                    if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
+                          (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
+                    {
+                        if (ehCache.ContainsKey(node.Id))
+                        {
+                            var eh = ehCache[node.Id];
+                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
+                        }
+                        else
+                        {
+                            var eh = await GetEntityHeaderForRecordAsync(node.Id);
+                            if (eh.Id == NOT_FOUND_ID)
+                            {
+                                eh.Resolved = false;
+                                _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
+                            }
+                            else
+                            {
+                                ehCache.Add(node.Id, eh);
+                                item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
+                            }
+                        }
+                    }
+                }
+
                 if (exisitng.Name != item.Name)
                 {
                     var dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item);
@@ -687,26 +689,26 @@ where c.id = @id";
 
                 case System.Net.HttpStatusCode.OK:
                 case System.Net.HttpStatusCode.Created:
-                    if (_fkeyIndexWriter != null)
-                    {
-                        var previousEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehPreviousNodes);
-                        var currentEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehCurrentNodes);
+                    //if (_fkeyIndexWriter != null)
+                    //{
+                    //    var previousEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehPreviousNodes);
+                    //    var currentEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehCurrentNodes);
 
-                        var diff = FkEdgeDiff.DiffOutboundEdges(previousEdges, currentEdges);
-                        await _fkeyIndexWriter.ApplyDiffAsync(diff);
-                    }
+                    //    var diff = FkEdgeDiff.DiffOutboundEdges(previousEdges, currentEdges);
+                    //    await _fkeyIndexWriter.ApplyDiffAsync(diff);
+                    //}
 
                     _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Document Update {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {upsertResult.RequestCharge}");
                     break;
             }
 
-            timer.Dispose();
+            //timer.Dispose();
             DocumentRequestCharge.WithLabels(GetCollectionName()).Set(upsertResult.RequestCharge);
 
             if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache))
             {
                 await _cacheProvider.RemoveAsync(GetCacheKey(item.Id));
-                sw.Restart();
+              //  sw.Restart();
                 await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item));
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Added {typeof(TEntity).Name} back to cache after update in {sw.Elapsed.TotalMilliseconds}ms");
             }
