@@ -1,0 +1,30 @@
+{
+  "TypeMatchMode": "Family",
+  "FailOnWarnings": false,
+  "AssemblyPaths": [
+    "./src/YourEfProject/bin/Debug/net9.0/YourEfProject.dll"
+  ],
+  "Contexts": [
+    {
+      "ContextType": "YourCompany.Data.MetricsDbContext, YourEfProject",
+      "Targets": [
+        {
+          "Provider": "postgres",
+          "ConnectionString": "Host=localhost;Database=metrics;Username=postgres;Password=postgres"
+        }
+      ]
+    },
+    {
+      "ContextType": "YourCompany.Data.CoreDbContext, YourEfProject",
+      "Targets": [
+        {
+          "Provider": "sqlserver",
+          "ConnectionString": "Server=localhost;Database=core;User Id=sa;Password=Your_password123;TrustServerCertificate=True"
+        }
+      ]
+    }
+  ],
+  "Output": {
+    "JsonPath": "./schema-verify.report.json"
+  }
+}

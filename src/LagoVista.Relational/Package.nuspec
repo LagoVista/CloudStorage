@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <metadata>
+    <id>LagoVista.Relational</id>
+    <version>3.0.3200.1709</version>
+    <authors>Software Logistics, LLC</authors>
+    <owners>Software Logistics, LLC</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectUrl>https://www.nuviot.com</projectUrl>
+    <iconUrl>http://bytemaster.blob.core.windows.net/icons/LagoVistaIcon.png</iconUrl>
+    <description>Provides an abstact mechanism to store object graphs to cloud storage.</description>
+    <copyright>Copyright Software Logistics - 2026</copyright>
+    <tags>HomeAutomation IoT LagoVista</tags>
+    <icon>LagoVistaIcon.png</icon>
+    <releaseNotes>Build Date: 2/19/2026 10:09:51 PM UTC</releaseNotes>
+    <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
+    <dependencies>
+      <group targetFramework="net9.0">
+        <dependency id="System.ComponentModel.Annotations" version="5.0.0" />
+        <dependency id="LagoVista.Core" version="3.0.3200.1709" />
+        <dependency id="Microsoft.EntityFrameworkCore.SqlServer" version="9.0.13" />
+        <dependency id="Microsoft.Extensions.Logging.Console" version="9.0.13" />
+        <dependency id="Npgsql.EntityFrameworkCore.PostgreSQL" version="9.0.4" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="LagoVistaIcon.png" target="LagoVistaIcon.png" />
+    <file src="bin\release\net9.0\LagoVista.Relational.dll" target="lib\net9.0\LagoVista.Relational.dll" />
+    <file src="bin\release\net9.0\LagoVista.Relational.pdb" target="lib\net9.0\LagoVista.Relational.pdb" />
+  </files>
+</package>
