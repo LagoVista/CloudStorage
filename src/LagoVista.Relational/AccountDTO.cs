@@ -1,5 +1,8 @@
-﻿using LagoVista.Core.Attributes;
+﻿
+
+using LagoVista.Core.Attributes;
 using LagoVista.Core.Validation;
+using LagoVista.Models;
 using System;
 
 namespace LagoVista.Relational
@@ -13,10 +16,7 @@ namespace LagoVista.Relational
         public string AccountNumber { get; set; }
         public string RoutingNumber { get; set; }
 
-        [EncryptedField(nameof(AccountDto.EncryptedBalance), SaltProperty = nameof(AccountDto.Id))]
         public string EncryptedBalance { get; set; }
-
-        [EncryptedField(nameof(AccountDto.EncryptedOnlineBalance), SaltProperty = nameof(AccountDto.Id))]
         public string EncryptedOnlineBalance { get; set; }
         public bool IsLiability { get; set; }
         public string Description { get; set; }

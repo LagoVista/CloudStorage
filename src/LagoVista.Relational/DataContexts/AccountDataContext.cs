@@ -1,8 +1,4 @@
-// --- BEGIN CODE INDEX META (do not edit) ---
-// ContentHash: 19ae50d0c54d38710027ff3afdf7615d2da0e2100d3a1a7a3fa62b1ffb2ac2a7
-// IndexVersion: 2
-// --- END CODE INDEX META ---
-using LagoVista.IoT.Billing.Models;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace LagoVista.Relational.DataContexts

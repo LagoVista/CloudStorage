@@ -1,4 +1,5 @@
 ﻿using LagoVista.Core;
+using LagoVista.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

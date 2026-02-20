@@ -1,5 +1,6 @@
 ﻿using LagoVista.Core;
 using LagoVista.Core.Models;
+using LagoVista.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

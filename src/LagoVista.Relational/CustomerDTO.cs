@@ -1,12 +1,8 @@
-﻿using LagoVista.Core;
-using LagoVista.Core.Models;
-using LagoVista.IoT.Billing.Models;
+﻿using LagoVista.Core.Models;
+using LagoVista.Models;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace LagoVista.Relational
 {

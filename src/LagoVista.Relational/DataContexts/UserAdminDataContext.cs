@@ -1,11 +1,5 @@
-﻿using LagoVista.IoT.Billing.Models;
+﻿using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LagoVista.Relational.DataContexts
 {

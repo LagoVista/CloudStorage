@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LagoVista.Models;
+using System;
 
 namespace LagoVista.Relational
 {

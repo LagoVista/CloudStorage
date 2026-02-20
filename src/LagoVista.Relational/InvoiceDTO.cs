@@ -1,8 +1,4 @@
-// --- BEGIN CODE INDEX META (do not edit) ---
-// ContentHash: 94132eec9b16acfde12e4c3d649e4fe3ade24a669d3499c07a0780787eece107
-// IndexVersion: 2
-// --- END CODE INDEX META ---
-using LagoVista.Core.Models;
+using LagoVista.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -66,7 +62,7 @@ namespace LagoVista.Relational
        
         public AgreementDTO Agreement { get; set; }
 
-        public OrganizationDTO Organization { get; set; }
+        public OrganizationWithInvoicesDTO Organization { get; set; }
 
         public SubscriptionDTO Subscription { get; set; }
 

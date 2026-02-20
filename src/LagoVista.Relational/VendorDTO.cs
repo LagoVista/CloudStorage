@@ -1,19 +1,16 @@
-﻿using LagoVista.Core;
-using LagoVista.Core.Models;
+﻿using LagoVista.Models;
 using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LagoVista.Relational
 {
     public class VendorDTO : DbModelBase
     {
+        [Required]
         public string Name { get; set; }
 
+        [Required]
         public string Key { get; set; }
 
         public string Contact { get; set; }

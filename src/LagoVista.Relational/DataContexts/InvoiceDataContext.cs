@@ -1,9 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using LagoVista.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace LagoVista.Relational.DataContexts
 {
