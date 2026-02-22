@@ -1,13 +1,15 @@
-﻿using LagoVista.Models;
+﻿using LagoVista.Core.Attributes;
+using LagoVista.Models;
+using Microsoft.Identity.Client;
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [EncryptionKey("BUDGET_ITEM_KEY_{id}", IdProperty = nameof(OrganizationId), CreateIfMissing = false)]
     public class BudgetItemDTO : DbModelBase
     {
-        public string OrganizationId { get; set; }
-
+        
         public int Year { get; set; }
 
         public int Month { get; set; }

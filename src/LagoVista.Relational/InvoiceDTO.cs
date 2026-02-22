@@ -1,3 +1,4 @@
+using LagoVista.Core.Attributes;
 using LagoVista.Models;
 using System;
 using System.Collections.Generic;
@@ -6,6 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [EncryptionKey("Agreement-{id}", IdProperty = nameof(CustomerId), CreateIfMissing = false)]
     public class InvoiceDTO
     {
         [Key]
@@ -58,16 +60,23 @@ namespace LagoVista.Relational
         
         public DateTime StatusDate { get; set; }
 
+        [IgnoreOnMapTo]
         public CustomerDTO Customer { get; set; }
-       
+
+        [IgnoreOnMapTo]
         public AgreementDTO Agreement { get; set; }
 
-        public OrganizationWithInvoicesDTO Organization { get; set; }
+        [MapTo("OwnerOrganization")]
+        [IgnoreOnMapTo]
+        public OrganizationDTO Organization { get; set; }
 
+        [IgnoreOnMapTo]
         public SubscriptionDTO Subscription { get; set; }
 
-        public List<InvoiceLineItemsDTO> LineItems { get; set; } = new List<InvoiceLineItemsDTO>();
+        [IgnoreOnMapTo]
+        public List<InvoiceLineItemDTO> LineItems { get; set; } = new List<InvoiceLineItemDTO>();
 
+        [IgnoreOnMapTo]
         public List<InvoiceLogsDTO> Log { get; set; }
     }
 }

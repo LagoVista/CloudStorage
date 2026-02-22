@@ -10,13 +10,11 @@ namespace LagoVista.Relational.DataContexts
         {
         }
 
-
+        public DbSet<AppUserDTO> AppUser { get; set; }
         public DbSet<CustomerDTO> Customers { get; set; }
-
         public DbSet<OrganizationDTO> Organizations { get; set; }
-
         public DbSet<InvoiceDTO> Invoices { get; set; }
-        public DbSet<InvoiceLineItemsDTO> InvoiceLineItems { get; set; }
+        public DbSet<InvoiceLineItemDTO> InvoiceLineItems { get; set; }
         public DbSet<InvoiceLogsDTO> InvoiceLogs { get; set; }
 
         public DbSet<AgreementDTO> Agreements { get; set; }
@@ -25,18 +23,28 @@ namespace LagoVista.Relational.DataContexts
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<InvoiceDTO>().ToTable("invoice");
-            modelBuilder.Entity<InvoiceLineItemsDTO>().ToTable("InvoiceLineItems");
+            modelBuilder.Entity<InvoiceLineItemDTO>().ToTable("InvoiceLineItems");
             modelBuilder.Entity<InvoiceLogsDTO>().ToTable("InvoiceLogs");
             modelBuilder.Entity<OrganizationDTO>().ToTable("Org");
             modelBuilder.Entity<CustomerDTO>().ToTable("Customers");
             modelBuilder.Entity<AgreementDTO>().ToTable("Agreements");
+
+            modelBuilder.Entity<CustomerDTO>()
+                 .HasOne(ps => ps.CreatedByUser)
+                 .WithMany()
+                 .HasForeignKey(ps => ps.CreatedById);
+
+            modelBuilder.Entity<CustomerDTO>()
+                .HasOne(ps => ps.LastUpdatedByUser)
+                .WithMany()
+                .HasForeignKey(ps => ps.LastUpdatedById);
 
             modelBuilder.Entity<InvoiceDTO>()
                 .HasOne(inv => inv.Agreement)
                 .WithMany(agr => agr.Invoices)
                 .HasForeignKey(inv => inv.AgreementId);
 
-            modelBuilder.Entity<InvoiceLineItemsDTO>()
+            modelBuilder.Entity<InvoiceLineItemDTO>()
                 .HasOne(li => li.Invoice)
                 .WithMany(inv => inv.LineItems)
                 .HasForeignKey(li => li.InvoiceId);
@@ -53,8 +61,8 @@ namespace LagoVista.Relational.DataContexts
 
             modelBuilder.Entity<InvoiceDTO>()
               .HasOne(inv => inv.Organization)
-              .WithMany(cst => cst.Invoices)
-              .HasForeignKey(li => li.OrgId);
+              .WithMany()
+              .HasForeignKey(li => li.OrgId);   
 
             modelBuilder.LowerCaseNames();
         }

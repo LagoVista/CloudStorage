@@ -11,7 +11,6 @@ namespace LagoVista.Relational
 
         public string CustomerContactId { get; set; }
         public string CustomerContactName { get; set; }
-        public string OrganizationId { get; set; }
         public string Name { get; set; }
         public string Identifier { get; set; }
         public bool Locked { get; set; }

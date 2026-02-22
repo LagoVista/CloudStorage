@@ -12,8 +12,6 @@ namespace LagoVista.Relational
             Icon = "icon-fo-grow-dollar";
         }
 
-        public string OrganizationId { get; set; }
-
         [Required]
         public string Key { get; set; }
         public bool IsActive { get; set; }

@@ -1,14 +1,15 @@
-﻿using LagoVista.Core.Models;
+﻿using LagoVista.Core.Attributes;
+using LagoVista.Core.Models;
 using LagoVista.Models;
 using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
 
 namespace LagoVista.Relational
 {
     public class CustomerDTO : DbModelBase
     {
-        public string OrganizationId { get; set; }
         public string CustomerName { get; set; }
         public string BillingContactName { get; set; }
         public string BillingContactEmail { get; set; }
@@ -19,6 +20,7 @@ namespace LagoVista.Relational
         public string State { get; set; }
         public string Zip { get; set; }
 
+        [IgnoreOnMapTo]
         public IEnumerable<InvoiceDTO> Invoices { get; set; }
 
         public LagoVista.Core.Validation.ValidationResult Validate()

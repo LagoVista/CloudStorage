@@ -2,6 +2,7 @@
 // ContentHash: 036125d5de09cabcdfaecbf8fb28f0a52fb2b8f1b05c98d5d82c1947e7ac079a
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using LagoVista.Core.Attributes;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -9,7 +10,8 @@ using System.Text;
 
 namespace LagoVista.Relational
 {
-    public class InvoiceLineItemsDTO
+    [EncryptionKey("Agreement-{id}", IdProperty = nameof(Invoice.CustomerId), CreateIfMissing = false)]
+    public class InvoiceLineItemDTO
     {
         [Key]
         public Guid Id { get; set; }
@@ -33,6 +35,7 @@ namespace LagoVista.Relational
         public string Extended { get; set; }
         public string Shipping { get; set; }
 
+        [IgnoreOnMapTo()]
         public InvoiceDTO Invoice { get; set; }
 
     }
