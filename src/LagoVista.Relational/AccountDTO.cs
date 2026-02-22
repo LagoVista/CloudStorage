@@ -7,11 +7,10 @@ using System;
 
 namespace LagoVista.Relational
 {
-    [EncryptionKey("AccountKey-{id}", IdProperty = nameof(AccountDto.Id))]
+    [EncryptionKey("Account-{id}", IdProperty = nameof(AccountDto.Id), CreateIfMissing =false)]
     public class AccountDto : DbModelBase
     {
         public string Name { get; set; }
-        public string OrganizationId { get; set; }
         public string Institution { get; set; }
         public string AccountNumber { get; set; }
         public string RoutingNumber { get; set; }

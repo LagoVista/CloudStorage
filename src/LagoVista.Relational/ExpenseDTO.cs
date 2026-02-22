@@ -15,7 +15,7 @@ namespace LagoVista.Relational
 
         public Guid? PaymentId { get; set; }
         [Required]
-        public DateTime Date { get; set; }
+        public DateOnly ExpenseDate { get; set; }
         [Required]
         public string UserId { get; set; }
         public Guid ExpenseCategoryId { get; set; }
@@ -24,11 +24,6 @@ namespace LagoVista.Relational
         public string ProjectName { get; set; }
         public string WorkTaskId { get; set; }
         public string WorkTaskName { get; set; }
-
-
-
-        [Required]
-        public string OrganizationId { get; set; }
 
         public bool Approved { get; set; }
         public string ApprovedById { get; set; }

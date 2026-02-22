@@ -10,7 +10,7 @@ namespace LagoVista.Relational
         [Key]
         public Guid Id { get; set; }
         public Guid AccountId { get; set; }
-        public DateTime TransactionDate { get; set; }
+        public DateOnly TransactionDate { get; set; }
         public string EncryptedAmount { get; set; }
         public bool IsReconciled { get; set; }
         public Guid TransactionCategoryId { get; set; }
