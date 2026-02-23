@@ -1,17 +1,18 @@
-﻿using LagoVista.Core.Models;
+﻿using LagoVista.Core.Attributes;
+using LagoVista.Core.Models;
 using LagoVista.Models;
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [EncryptionKey("Rate-{id}", IdProperty = nameof(PayRateDTO.UserId), CreateIfMissing = true)]
     public class PayRateDTO : DbModelBase
     {
         public string UserId { get; set; }
         public Guid? WorkRoleId { get; set; }
-        public string OrganizationId { get; set; }
-        public DateTime Start { get; set; }
-        public DateTime? End { get; set; }
+        public DateOnly Start { get; set; }
+        public DateOnly? End { get; set; }
         public string Notes { get; set; }
 
         public bool IsFTE { get; set; }
@@ -31,24 +32,11 @@ namespace LagoVista.Relational
         public string FilingType { get; set; }
 
         [NotMapped]
+        [IgnoreOnMapTo]
         public AppUserDTO User { get; set; }
 
         [NotMapped]
-        public decimal? Salary { get; set; }
-
-        [NotMapped]
-        public int? Deductions { get; set; }
-
-        [NotMapped]
+        [IgnoreOnMapTo]
         public EntityHeader WorkRole { get; set; }
-
-        [NotMapped]
-        public decimal? BillableRate { get; set; }
-
-        [NotMapped]
-        public decimal? InternalRate { get; set; }
-
-        [NotMapped]
-        public decimal? EquityScaler { get; set; }
     }
 }
