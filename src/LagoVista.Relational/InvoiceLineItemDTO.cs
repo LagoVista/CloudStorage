@@ -18,11 +18,16 @@ namespace LagoVista.Relational
 
         public Guid InvoiceId { get; set; }
 
+        [ManualMapping]
         public string ResourceId { get; set; }
 
+        [ManualMapping]
         public string ResourceName { get; set; }
 
+        [ManualMapping]
         public string ProductName { get; set; }
+
+        [ManualMapping]
         public Guid? ProductId { get; set; }
 
         public decimal Quantity { get; set; }

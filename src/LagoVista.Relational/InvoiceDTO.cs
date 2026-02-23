@@ -29,11 +29,11 @@ namespace LagoVista.Relational
         public string ContactId { get; set; }
 
         public String OrgId { get; set; }
-        public DateTime BillingStart { get; set; }
-        public DateTime BillingEnd { get; set; }
+        public DateOnly BillingStart { get; set; }
+        public DateOnly BillingEnd { get; set; }
 
         public DateTime CreationTimeStamp { get; set; }
-        public DateTime DueDate { get; set; }
+        public DateOnly DueDate { get; set; }
         public String Total { get; set; }
         public String Discount { get; set; }
         public String Extended { get; set; }
@@ -46,7 +46,9 @@ namespace LagoVista.Relational
 
         public bool IsLocked { get; set; }
 
-        public DateTime? PaidDate { get; set; }
+        public DateOnly? PaidDate { get; set; }
+
+        public DateOnly InvoiceDate { get; set; }
 
         public int FailedAttemptCount { get; set; }
 

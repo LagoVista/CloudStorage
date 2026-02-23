@@ -29,6 +29,22 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<CustomerDTO>().ToTable("Customers");
             modelBuilder.Entity<AgreementDTO>().ToTable("Agreements");
 
+
+            modelBuilder.Entity<AgreementDTO>()
+                .HasOne(ps => ps.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(ps => ps.CreatedById);
+
+            modelBuilder.Entity<AgreementDTO>()
+                .HasOne(ps => ps.LastUpdatedByUser)
+                .WithMany()
+                .HasForeignKey(ps => ps.LastUpdatedById);
+
+            modelBuilder.Entity<AgreementDTO>()
+                .HasOne(ps => ps.Organization)
+                .WithMany()
+                .HasForeignKey(ps => ps.OrganizationId);
+
             modelBuilder.Entity<CustomerDTO>()
                  .HasOne(ps => ps.CreatedByUser)
                  .WithMany()

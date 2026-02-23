@@ -30,6 +30,7 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<VendorDTO>().ToTable("Vendor");
             modelBuilder.Entity<TransactionStagingDto>().ToTable("TransactionStaging");
 
+
             modelBuilder.Entity<AccountDto>()
                 .HasOne(ps => ps.CreatedByUser)
                 .WithMany()
