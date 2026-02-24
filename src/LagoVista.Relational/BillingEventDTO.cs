@@ -16,6 +16,8 @@ namespace LagoVista.Relational
 
         public Guid ProductId { get; set; }
 
+        public string OrganizationId { get; set; }
+
         /// <summary>
         /// When the billing event started
         /// </summary>
