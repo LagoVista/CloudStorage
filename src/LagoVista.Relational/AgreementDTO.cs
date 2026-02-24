@@ -39,37 +39,7 @@ namespace LagoVista.Relational
             return EntityHeader.Create(Id.ToString(), Name);
         }
 
-        public LagoVista.Core.Validation.ValidationResult Validate()
-        {
-            if (Id == default) Id = Guid.NewGuid();
-
-            var result = base.ValidateCommon();
-            if (CustomerId == default) result.AddSystemError("Customer id is a required field.");
-            if (String.IsNullOrEmpty(Name)) result.AddUserError("Name is a required field.");
-            if (Start == default || Start == DateTime.MinValue) result.AddUserError("Start date is a required field.");
-            if (End == default || End == DateTime.MinValue) result.AddUserError("End date is a required field.");
-            if (Start != DateTime.MinValue && Start >= End) result.AddUserError("Start Date must be prior to end date.");
-
-            if (result.Successful)
-            {
-                // if agreement is not valid don't bother checking dates on child items, since dates are probably not valid.
-                foreach (var item in LineItems)
-                {
-                    if (item.RecurringCycleTypeId == 1)
-                    {
-                        item.Start = null;
-                        item.End = null;
-                    }
-                    else
-                    {
-                        if (item.Start.HasValue && item.Start < Start) result.AddUserError($"Start date on {item.ProductName} is {item.Start} which is prior to {Start}.");
-                        if (item.End.HasValue && item.End > End) result.AddUserError($"End date on {item.ProductName} is {item.End} which is after the agreement end date of {End}.");
-                    }
-                }
-            }
-
-            return result;
-        }
+       
 
         public CustomerDTO Customer { get; set; }
 

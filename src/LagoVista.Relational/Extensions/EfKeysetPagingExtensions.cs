@@ -146,15 +146,12 @@ public static class EfListRequestDateFilters
 
 public static class EfListResponseExtensions
 {
-    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(
-        this IQueryable<TIn> query,
-        ListRequest request,
-        Func<TIn, Task<TOut>> mapAsync,
-        Func<TOut, DateTime> partitionKeySelector,
-        Func<TOut, string> rowKeySelector,
-        bool parallel = true,
-        CancellationToken ct = default)
-        where TOut : class
+    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, Func<TIn, Task<TOut>> mapAsync, Func<TOut, DateTime> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
+    {
+        return await query.ToListResponseAsync(new ListRequest { PageSize = int.MaxValue }, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
+    }
+
+    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, DateTime> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
     {
         // Materialize (EF must execute on the server first)
         var dtos = await query.ToListAsync(ct).ConfigureAwait(false);
@@ -177,15 +174,12 @@ public static class EfListResponseExtensions
         return ListResponse<TOut>.Create(mapped, request, partitionKeySelector, rowKeySelector);
     }
 
-    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(
-       this IQueryable<TIn> query,
-       ListRequest request,
-       Func<TIn, Task<TOut>> mapAsync,
-       Func<TOut, String> partitionKeySelector,
-       Func<TOut, string> rowKeySelector,
-       bool parallel = true,
-       CancellationToken ct = default)
-       where TOut : class
+    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, Func<TIn, Task<TOut>> mapAsync, Func<TOut, string> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
+    {
+        return await query.ToListResponseAsync(new ListRequest { PageSize = int.MaxValue }, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
+    }
+
+    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, string> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
     {
         // Materialize (EF must execute on the server first)
         var dtos = await query.ToListAsync(ct).ConfigureAwait(false);
@@ -207,6 +201,7 @@ public static class EfListResponseExtensions
 
         return ListResponse<TOut>.Create(mapped, request, partitionKeySelector, rowKeySelector);
     }
+
 }
 
 public static class EfSingleMapExtensions
