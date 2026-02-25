@@ -1,4 +1,5 @@
-﻿using LagoVista.Models;
+﻿using LagoVista.Core.Product;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace LagoVista.Relational.DataContexts
@@ -20,7 +21,6 @@ namespace LagoVista.Relational.DataContexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-
             modelBuilder.Entity<ProductDTO>()
                 .HasOne(tp => tp.Category)
                 .WithMany()
@@ -36,6 +36,17 @@ namespace LagoVista.Relational.DataContexts
                 .WithMany()
                 .HasForeignKey(tp => tp.LastUpdatedById);
 
+            modelBuilder.Entity<ProductDTO>()
+                .HasOne(p => p.ProductCategory)
+                .WithMany(c => c.Products)
+                .HasForeignKey(p => p.ProductCategoryId);
+            
+            modelBuilder.Entity<ProductDTO>()
+                 .HasOne(p => p.ProductCategory)
+                 .WithMany(c => c.Products)
+                 .HasForeignKey(p => p.ProductCategoryId)
+                 .IsRequired();
+
             modelBuilder.Entity<ProductPageDTO>()
                 .HasOne(tp => tp.CreatedByUser)
                 .WithMany()
@@ -50,6 +61,12 @@ namespace LagoVista.Relational.DataContexts
                 .HasMany<ProductPageProductDTO>()
                 .WithOne()
                 .HasForeignKey(ppp => ppp.ProductId);
+
+            modelBuilder.Entity<ProductOffering>(b =>
+            {
+                b.HasNoKey();
+                b.ToView("usv_ProductOfferings"); // schema overload if needed: ("usv_ProductOfferings", "dbo")
+            });
 
             //modelBuilder.Entity<Product>()
             //    .HasMany(tp => tp.SubProducts)

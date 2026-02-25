@@ -1,6 +1,7 @@
 ﻿using LagoVista.Core.Models;
 using LagoVista.Models;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
@@ -130,6 +131,7 @@ namespace LagoVista.Relational
             }
         }
 
-
+        public List<ProductDTO> Products { get; set; }
+        
     }
 }

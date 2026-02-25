@@ -121,6 +121,8 @@ namespace LagoVista.Relational
             }
         }
 
+        public ProductCategoryDTO ProductCategory { get; set; }
+
         //public List<ProductIncluded> SubProducts { get; set; }
         //public List<ProductIncluded> Packages { get; set; }
 
