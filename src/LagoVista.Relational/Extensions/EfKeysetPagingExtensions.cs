@@ -1,4 +1,5 @@
 ﻿using LagoVista.Core.Exceptions;
+using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -6,6 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -144,8 +146,66 @@ public static class EfListRequestDateFilters
     }
 }
 
-public static class EfListResponseExtensions
+public interface ICacheScope
 {
+    string Key { get; }
+    TimeSpan Ttl { get; }
+}
+
+public sealed record CacheScope(string Key, TimeSpan Ttl) : ICacheScope;
+
+public sealed record CacheSpec(string Scope, TimeSpan Ttl);
+
+public static class EfCacheScopeExtensions
+{
+    public static IQueryable<T> CacheScope<T>(this IQueryable<T> query, ICacheScope scope)
+        => query.Provider.CreateQuery<T>(
+            Expression.Call(
+                instance: null,
+                method: CacheScopeMethod.MakeGenericMethod(typeof(T)),
+                arguments: new Expression[]
+                {
+                query.Expression,
+                Expression.Constant(scope.Key),
+                Expression.Constant(scope.Ttl)
+                }));
+
+
+    private static readonly MethodInfo CacheScopeMethod =
+        typeof(EfCacheScopeExtensions)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == nameof(CacheScope) && m.IsGenericMethodDefinition);
+
+    internal static bool TryStrip<T>(this IQueryable<T> query, out IQueryable<T> stripped, out CacheSpec spec)
+    {
+        if (query.Expression is MethodCallExpression mc &&
+            mc.Method.IsGenericMethod &&
+            mc.Method.GetGenericMethodDefinition() == CacheScopeMethod)
+        {
+            var scope = (string)((ConstantExpression)mc.Arguments[1]).Value;
+            var ttl = (TimeSpan)((ConstantExpression)mc.Arguments[2]).Value;
+            spec = new CacheSpec(scope, ttl);
+
+            stripped = query.Provider.CreateQuery<T>(mc.Arguments[0]);
+            return true;
+        }
+
+        stripped = query;
+        spec = null;
+        return false;
+    }
+}
+
+public static partial class EfListResponseExtensions
+{
+    private static readonly AsyncLocal<ICacheProvider> _current = new();
+
+    public static ICacheProvider Current
+    {
+        get => _current.Value;
+        set => _current.Value = value;
+    }
+
     public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, Func<TIn, Task<TOut>> mapAsync, Func<TOut, DateTime> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
     {
         return await query.ToListResponseAsync(new ListRequest { PageSize = int.MaxValue }, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
@@ -187,6 +247,89 @@ public static class EfListResponseExtensions
         // Async map
         IReadOnlyList<TOut> mapped;
 
+        if (parallel)
+        {
+            mapped = await Task.WhenAll(dtos.Select(mapAsync)).ConfigureAwait(false);
+        }
+        else
+        {
+            var list = new List<TOut>(dtos.Count);
+            foreach (var dto in dtos)
+                list.Add(await mapAsync(dto).ConfigureAwait(false));
+            mapped = list;
+        }
+
+        return ListResponse<TOut>.Create(mapped, request, partitionKeySelector, rowKeySelector);
+    }
+
+    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, ICacheProvider cache,ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, string> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
+    {
+        // Extract/strip CacheScope marker if present
+        query.TryStrip(out var stripped, out var cacheSpec);
+
+        // If not cacheable, just run the normal path (no behavior change)
+        if (cacheSpec == null || cache == null)
+        {
+            return await stripped.ToListResponseAsync(request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct)
+                .ConfigureAwait(false);
+        }
+
+        var verKey = $"{cacheSpec.Scope}:ver";
+        var ver = await cache.GetLongAsync(verKey).ConfigureAwait(false);
+
+        var reqSig = ListRequestCacheSig.ReqSig(request);
+        var dataKey = $"{cacheSpec.Scope}:v{ver}:{reqSig}";
+
+        var cached = await cache.GetAsync<ListResponse<TOut>>(dataKey).ConfigureAwait(false);
+        if (cached != null)
+            return cached;
+
+        var result = await stripped.ToListResponseAsync(request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
+
+        await cache.AddAsync(dataKey, result, cacheSpec.Ttl).ConfigureAwait(false);
+        return result;
+    }
+
+    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, ICacheProvider cache, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, DateTime> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
+    {
+        // Extract/strip CacheScope marker if present
+        query.TryStrip(out var stripped, out var cacheSpec);
+
+        // If not cacheable, just run the normal path (no behavior change)
+        if (cacheSpec == null || cache == null)
+        {
+            return await stripped.ToListResponseAsync(request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct)
+                .ConfigureAwait(false);
+        }
+
+        var verKey = $"{cacheSpec.Scope}:ver";
+        var ver = await cache.GetLongAsync(verKey).ConfigureAwait(false);
+
+        var reqSig = ListRequestCacheSig.ReqSig(request);
+        var dataKey = $"{cacheSpec.Scope}:v{ver}:{reqSig}";
+
+        var cached = await cache.GetAsync<ListResponse<TOut>>(dataKey).ConfigureAwait(false);
+        if (cached != null)
+            return cached;
+
+        var result = await stripped.ToListResponseAsync(request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
+
+        await cache.AddAsync(dataKey, result, cacheSpec.Ttl).ConfigureAwait(false);
+        return result;
+    }
+
+    private static async Task<ListResponse<TOut>> MaterializeMapCreateAsync<TIn, TOut>(
+        IQueryable<TIn> query,
+        ListRequest request,
+        Func<TIn, Task<TOut>> mapAsync,
+        Func<TOut, string> partitionKeySelector,
+        Func<TOut, string> rowKeySelector,
+        bool parallel,
+        CancellationToken ct) where TOut : class
+    {
+        var dtos = await query.ToListAsync(ct).ConfigureAwait(false);
+
+        IReadOnlyList<TOut> mapped;
         if (parallel)
         {
             mapped = await Task.WhenAll(dtos.Select(mapAsync)).ConfigureAwait(false);

@@ -82,5 +82,15 @@ namespace LagoVista.CloudStorage.Utils
         {
             return Task.CompletedTask;
         }
+
+        public Task<long> GetLongAsync(string key)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<long> IncrementAsync(string key)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

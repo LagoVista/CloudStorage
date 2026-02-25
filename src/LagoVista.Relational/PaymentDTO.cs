@@ -10,8 +10,8 @@ namespace LagoVista.Relational
         public const string PaymentStatus_Approved = "approved";
         public const string PaymentStatus_Funded = "funded";
 
-        public DateTime PeriodStart { get; set; }
-        public DateTime PeriodEnd { get; set; }
+        public DateOnly PeriodStart { get; set; }
+        public DateOnly PeriodEnd { get; set; }
 
         public string UserId { get; set; }
 
@@ -19,10 +19,8 @@ namespace LagoVista.Relational
 
         public string Status { get; set; }
 
-        public DateTime? SubmittedDate { get; set; }
-        public DateTime? ExpectedDeliveryDate { get; set; }
-
-        public string OrganizationId { get; set; }
+        public DateOnly? SubmittedDate { get; set; }
+        public DateOnly? ExpectedDeliveryDate { get; set; }
 
         public decimal BillableHours { get; set; }
         public decimal InternalHours { get; set; }

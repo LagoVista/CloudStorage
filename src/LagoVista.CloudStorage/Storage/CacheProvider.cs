@@ -1,15 +1,13 @@
-// --- BEGIN CODE INDEX META (do not edit) ---
-// ContentHash: 99303d3fab421b6f93933bc15b8fc4b699195eb35454072b3772cebbf79f70de
-// IndexVersion: 2
-// --- END CODE INDEX META ---
-using System;
-using StackExchange.Redis;
-using System.Threading.Tasks;
-using System.Linq;
-using System.Collections.Generic;
+
 using LagoVista.Core.Interfaces;
-using Newtonsoft.Json;
 using LagoVista.IoT.Logging.Loggers;
+using Newtonsoft.Json;
+using StackExchange.Redis;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Storage
 {
@@ -300,6 +298,72 @@ return v
             }
 
             return null;
+        }
+
+        public async Task<long> GetLongAsync(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase() ?? throw new ArgumentNullException("Database for cache provider is null.");
+
+                if (string.IsNullOrWhiteSpace(key))
+                    throw new ArgumentNullException(nameof(key));
+
+                var val = await db.StringGetAsync(key).ConfigureAwait(false);
+                if (val.IsNullOrEmpty) return 0;
+
+                // Redis returns bytes/string. Be lenient: if it isn't a number, treat as 0 (cache-safe).
+                if (long.TryParse(val.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+                    return parsed;
+
+                return 0;
+            }
+            else if (_inMemoryCache != null)
+            {
+                if (_inMemoryCache.ContainsKey(key))
+                {
+                    var intValue = Convert.ToInt64(_inMemoryCache[key]);
+                    return intValue;
+                }
+
+                return 0;
+            }
+
+            return 0;
+        }
+
+        public async Task<long> IncrementAsync(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase() ?? throw new ArgumentNullException("Database for cache provider is null.");
+                if (string.IsNullOrWhiteSpace(key))
+                    throw new ArgumentNullException(nameof(key));
+
+                // Atomic INCR (creates key if missing, starting at 0 then +1)
+                return await db.StringIncrementAsync(key).ConfigureAwait(false);
+            }
+            else if (_inMemoryCache != null)
+            {
+                if (_inMemoryCache.ContainsKey(key))
+                {
+                    var intValue = Convert.ToInt64( _inMemoryCache[key]);
+                    _inMemoryCache.Remove(key);
+                    intValue++;
+                    _inMemoryCache.Add(key, intValue.ToString());
+
+                    return intValue;
+                }
+
+                _inMemoryCache.Add(key, "1");
+                return 1;
+            }
+
+            return 1;
         }
     }
 }

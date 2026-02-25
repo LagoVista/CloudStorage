@@ -89,9 +89,36 @@ namespace LagoVista.CloudStorage.Storage
             return null;
         }
 
+        public Task<long> GetLongAsync(string key)
+        {
+            if (_inMemoryCache.ContainsKey(key))
+            {
+                var intValue = Convert.ToInt64(_inMemoryCache[key]);
+                return Task.FromResult(intValue);
+            }
+
+            return Task.FromResult((long)0);
+        }
+
         public Task<IDictionary<string, string>> GetManyAsync(IEnumerable<string> keys)
         {
             return null;
+        }
+
+        public Task<long> IncrementAsync(string key)
+        {
+            if (_inMemoryCache.ContainsKey(key))
+            {
+                var intValue = Convert.ToInt64(_inMemoryCache[key]);
+                _inMemoryCache.Remove(key);
+                intValue++;
+                _inMemoryCache.Add(key, intValue.ToString());
+
+                return Task.FromResult(intValue);
+            }
+
+            _inMemoryCache.Add(key, "1");
+            return Task.FromResult((long)1);
         }
 
         public Task RemoveAsync(string key)
