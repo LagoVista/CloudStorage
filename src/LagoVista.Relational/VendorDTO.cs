@@ -1,4 +1,5 @@
-﻿using LagoVista.Models;
+﻿using LagoVista.Core.Attributes;
+using LagoVista.Models;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -35,13 +36,14 @@ namespace LagoVista.Relational
         public string PayPeriod { get; set; }
         public decimal MaxAmount { get; set; }
 
-        public string OrganizationId { get; set; }
-
         public bool IsActive { get; set; }
 
+        [IgnoreOnMapTo()]
         [NotMapped]
         public ExpenseCategoryDTO DefaultExpenseCategory { get; set; }
 
+
+        [IgnoreOnMapTo()]
         [NotMapped]
         public AccountTransactionCategoryDto DefaultAccountTransactionCategory { get; set; }
 

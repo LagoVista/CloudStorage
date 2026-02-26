@@ -2,6 +2,7 @@
 // ContentHash: d3714c8aba32044de83feac0abf2e177ef3b7e5554b20667f9d117e422826b80
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using LagoVista.Core.Attributes;
 using System;
 using System.ComponentModel.DataAnnotations;
 
@@ -19,7 +20,8 @@ namespace LagoVista.Relational
         public string EventId { get; set; }
         public string EventData { get; set; }
         public string Message { get; set; }
-   
+
+        [IgnoreOnMapTo()]
         public InvoiceDTO Invoice { get; set; }
     }
 }

@@ -15,8 +15,6 @@ namespace LagoVista.Relational
         public Guid TimePeriodId { get; set; }
         public Guid? BillingEventId { get; set; }
         public DateTime Date { get; set; }
-
-        public string OrganizationId { get; set; }
         public string ProjectId { get; set; }
         public string ProjectName { get; set; }
         public string WorkTaskId { get; set; }

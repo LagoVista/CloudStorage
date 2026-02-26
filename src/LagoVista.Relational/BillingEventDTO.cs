@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LagoVista.Core.Attributes;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.Relational
 {
-    public class BillingEventDTO
+    public class BillingEventDTO 
     {
         [Key]
         public Guid Id { get; set; }

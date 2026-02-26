@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LagoVista.Core.Attributes;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -24,8 +25,10 @@ namespace LagoVista.Relational
         public string Name { get; set; }
         public string Key { get; set; }
 
+        [IgnoreOnMapTo()]
         public ProductDTO Package { get; set; }
 
+        [IgnoreOnMapTo()]
         public ProductDTO Product { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using LagoVista.Core;
+using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
 using System;
 using System.Collections.Generic;
@@ -22,6 +23,8 @@ namespace LagoVista.Relational
         public bool Locked { get; set; }
 
         public Guid? PayrollSummaryId { get; set; }
+
+        [IgnoreOnMapTo]
         public PayrollSummaryDTO PayrollSummary { get; set; }
 
         public DateTime? LockedTimeStamp { get; set; }

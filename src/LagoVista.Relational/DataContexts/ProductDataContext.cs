@@ -22,7 +22,7 @@ namespace LagoVista.Relational.DataContexts
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ProductDTO>()
-                .HasOne(tp => tp.Category)
+                .HasOne(tp => tp.ProductCategory)
                 .WithMany()
                 .HasForeignKey(p => p.ProductCategoryId);
 
@@ -36,11 +36,7 @@ namespace LagoVista.Relational.DataContexts
                 .WithMany()
                 .HasForeignKey(tp => tp.LastUpdatedById);
 
-            modelBuilder.Entity<ProductDTO>()
-                .HasOne(p => p.ProductCategory)
-                .WithMany(c => c.Products)
-                .HasForeignKey(p => p.ProductCategoryId);
-            
+  
             modelBuilder.Entity<ProductDTO>()
                  .HasOne(p => p.ProductCategory)
                  .WithMany(c => c.Products)
