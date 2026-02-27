@@ -1,5 +1,6 @@
 ﻿using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace LagoVista.Relational.DataContexts
 {
@@ -20,14 +21,19 @@ namespace LagoVista.Relational.DataContexts
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.LowerCaseNames();
+            modelBuilder.LowerCaseNames(Database.ProviderName);
         }
     }
 
     public static class EFExtensions
     {
-        public static void LowerCaseNames(this ModelBuilder modelBuilder)
+        public static void LowerCaseNames(this ModelBuilder modelBuilder, string dbName)
         {
+            if(!dbName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             foreach (var entity in modelBuilder.Model.GetEntityTypes())
             {
                 // Table name

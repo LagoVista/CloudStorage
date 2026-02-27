@@ -98,7 +98,7 @@ namespace LagoVista.Relational.DataContexts
                 .WithMany()
                 .HasForeignKey(ps => ps.OrganizationId);
 
-            modelBuilder.LowerCaseNames();
+            modelBuilder.LowerCaseNames(Database.ProviderName);
         }
     }
 }

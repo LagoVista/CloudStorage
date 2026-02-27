@@ -68,12 +68,14 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<PayrollSummaryDTO>()
             .HasOne(ps => ps.CreatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.CreatedById);
+            .HasForeignKey(ps => ps.CreatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<PayrollSummaryDTO>()
             .HasOne(ps => ps.LastUpdatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById);
+            .HasForeignKey(ps => ps.LastUpdatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<WorkRoleDTO>()
             .HasOne(ps => ps.Organization)
@@ -83,27 +85,32 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<WorkRoleDTO>()
             .HasOne(ps => ps.CreatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.CreatedById);
+            .HasForeignKey(ps => ps.CreatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<WorkRoleDTO>()
             .HasOne(ps => ps.LastUpdatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById);
+            .HasForeignKey(ps => ps.LastUpdatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<AgreementDTO>()
             .HasOne(ps => ps.Organization)
             .WithMany()
             .HasForeignKey(ps => ps.OrganizationId);
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<AgreementDTO>()
             .HasOne(ps => ps.LastUpdatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById);
+            .HasForeignKey(ps => ps.LastUpdatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<AgreementDTO>()
             .HasOne(ps => ps.CreatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.CreatedById);
+            .HasForeignKey(ps => ps.CreatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<AgreementLineItemDTO>()
             .HasOne(li => li.Product)
@@ -153,7 +160,8 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<ExpenseDTO>()
             .HasOne(ex => ex.CreatedByUser)
             .WithMany()
-            .HasForeignKey(x => x.CreatedById);
+            .HasForeignKey(x => x.CreatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<ExpenseDTO>()
             .HasOne(ex => ex.LastUpdatedByUser)
@@ -173,12 +181,15 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<BudgetItemDTO>()
             .HasOne(ps => ps.CreatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.CreatedById);
+            .HasForeignKey(ps => ps.CreatedById)
+            .OnDelete(DeleteBehavior.NoAction);
+
 
             modelBuilder.Entity<BudgetItemDTO>()
             .HasOne(ps => ps.LastUpdatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById);
+            .HasForeignKey(ps => ps.LastUpdatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<BudgetItemDTO>()
             .HasOne(ps => ps.AccountTransactionCategory)
@@ -199,12 +210,14 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<ExpenseCategoryDTO>()
             .HasOne(ps => ps.CreatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.CreatedById);
+            .HasForeignKey(ps => ps.CreatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<ExpenseCategoryDTO>()
             .HasOne(ps => ps.LastUpdatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById);
+            .HasForeignKey(ps => ps.LastUpdatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<ExpenseCategoryDTO>()
             .HasOne(ps => ps.Organization)
@@ -219,7 +232,8 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<VendorDTO>()
             .HasOne(ps => ps.LastUpdatedByUser)
             .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById);
+            .HasForeignKey(ps => ps.LastUpdatedById)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<VendorDTO>()
             .HasOne(ps => ps.Organization)
@@ -236,7 +250,7 @@ namespace LagoVista.Relational.DataContexts
             .WithMany()
             .HasForeignKey(ps => ps.DefaultAccountTransactionCategoryId);
 
-            modelBuilder.LowerCaseNames();
+            modelBuilder.LowerCaseNames(Database.ProviderName);
         }
     }
 

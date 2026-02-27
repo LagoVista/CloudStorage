@@ -22,7 +22,7 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<SerialNumberDTO>()
                 .HasKey(a => new { a.OrgId, a.Key, a.KeyId });
 
-            modelBuilder.LowerCaseNames();
+            modelBuilder.LowerCaseNames(Database.ProviderName);
         }
     }
 }

@@ -78,7 +78,7 @@ namespace LagoVista.Relational.DataContexts
             //    .WithMany(tp => tp.SubProducts)
             //    .HasForeignKey(sp=>sp.ProductId);
 
-            modelBuilder.LowerCaseNames();
+            modelBuilder.LowerCaseNames(Database.ProviderName);
 
 
 
