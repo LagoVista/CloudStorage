@@ -30,6 +30,8 @@ public abstract class SchemaContractTestBase
     string schema,
     string table)
     {
+        EntityAttributeGuards.RequireTableAttribute(entityType);
+
         using var conn = OpenTruthConnection();
 
         var dbTruth = await SqlServerSchemaReader.ReadTableAsync(conn, schema, table).ConfigureAwait(false);
@@ -50,8 +52,12 @@ public abstract class SchemaContractTestBase
 
         var fkDiffs = ForeignKeyDiff.Compare(dbFks, efFks);
 
+        var dbDefaults = await SqlServerDefaultConstraintReader.ReadDefaultsAsync(conn, schema, table).ConfigureAwait(false);
+        var efDefaults = EfDefaultReader.ReadDefaults(designModel, entityType, schema, table);
+        var defaultDiffs = DefaultDiff.Compare(dbDefaults, efDefaults);
+
         // Green path: no output
-        if (diffs.Count == 0 && navDiffs.Count == 0 && explicitNavDiffs.Count == 0 && fkDiffs.Count == 0)
+        if (diffs.Count == 0 && navDiffs.Count == 0 && explicitNavDiffs.Count == 0 && fkDiffs.Count == 0 && defaultDiffs.Count == 0)
             return;
 
         // Only generate suggestions if we have column/order diffs.
@@ -66,6 +72,30 @@ public abstract class SchemaContractTestBase
                 .ToArray();
 
         TestContext.WriteLine($"=== {schema}.{table} ({entityType.Name}) out of sync ===");
+
+        foreach (var d in defaultDiffs)
+        {
+            TestContext.WriteLine(d);
+        }
+
+        if (defaultDiffs.Any())
+        {
+            foreach (var d in dbDefaults.Defaults.OrderBy(x => x.ColumnName))
+            {
+                TestContext.WriteLine($"// {d.ColumnName} DB default: {d.DefaultSqlNormalized}");
+            }
+
+            if (dbDefaults.Defaults.Any())
+            {
+                TestContext.WriteLine("");
+                TestContext.WriteLine("Suggested table default values");
+                TestContext.WriteLine("===============================");
+                foreach (var d in dbDefaults.Defaults.OrderBy(x => x.ColumnName))
+                {
+                    TestContext.WriteLine($" modelBuilder.Entity<{entityType.Name}>().Property(x => x.{d.ColumnName}).HasDefaultValueSql(\"{d.DefaultSqlNormalized}\");");
+                }
+            }
+        }
 
         if (diffs.Count > 0)
         {
@@ -98,6 +128,7 @@ public abstract class SchemaContractTestBase
         {
             TestContext.WriteLine("");
             TestContext.WriteLine("Suggested HasColumnOrder mappings (verify property names):");
+            TestContext.WriteLine("===============================");
             foreach (var s in suggestions) TestContext.WriteLine(s);
         }
 

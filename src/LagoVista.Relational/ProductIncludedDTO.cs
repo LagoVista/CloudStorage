@@ -1,14 +1,12 @@
 ﻿using LagoVista.Core.Attributes;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("ProductIncluded", Schema = "dbo")]
     public class ProductIncludedDTO
     {
         [Key]
@@ -57,6 +55,10 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Name).HasColumnOrder(6);
             modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Key).HasColumnOrder(7);
             modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasColumnOrder(8);
+
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasDefaultValueSql("''");
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasDefaultValueSql("1");
         }
     }
 }

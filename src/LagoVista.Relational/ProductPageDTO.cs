@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("ProductPage", Schema = "dbo")]
     public class ProductPageDTO : DbModelBase
     {
         [Required]
@@ -120,6 +121,14 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductPageDTO>().Property(x => x.IsPublic).HasColumnOrder(31);
             modelBuilder.Entity<ProductPageDTO>().Property(x => x.DescriptionHtml).HasColumnOrder(32);
             modelBuilder.Entity<ProductPageDTO>().Property(x => x.VideoUrl).HasColumnOrder(33);
+
+            modelBuilder.Entity<ProductPageDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<ProductPageDTO>().Property(x => x.DescriptionHtml).HasDefaultValueSql("''");
+            modelBuilder.Entity<ProductPageDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+            modelBuilder.Entity<ProductPageDTO>().Property(x => x.IsPublic).HasDefaultValueSql("0");
+            modelBuilder.Entity<ProductPageDTO>().Property(x => x.LastUpdateDate).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<ProductPageDTO>().Property(x => x.PageTitle).HasDefaultValueSql("'Product Page'");
+            modelBuilder.Entity<ProductPageDTO>().Property(x => x.VideoUrl).HasDefaultValueSql("''");
         }
     }
 

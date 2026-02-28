@@ -9,6 +9,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("ProductCategory", Schema = "dbo")]
     public class ProductCategoryDTO : DbModelBase
     {
 
@@ -93,7 +94,12 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeId).HasColumnOrder(17);
             modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeName).HasColumnOrder(18);
 
-
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeId).HasDefaultValueSql("'software'");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeName).HasDefaultValueSql("'Software'");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdateDate).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ShortSummaryHTML).HasDefaultValueSql("''");
         }
     }
 }

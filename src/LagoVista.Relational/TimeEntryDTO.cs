@@ -1,16 +1,12 @@
-﻿using LagoVista.Core;
-using LagoVista.Core.Models;
-using LagoVista.Models;
+﻿using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("TimeEntries", Schema = "dbo")]
     public class TimeEntryDTO : DbModelBase
     {
         [Required]
@@ -77,6 +73,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<TimeEntryDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(17);
             modelBuilder.Entity<TimeEntryDTO>().Property(x => x.CreationDate).HasColumnOrder(18);
             modelBuilder.Entity<TimeEntryDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(19);
+
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.IsEquityTime).HasDefaultValueSql("0");
         }
     }
 }

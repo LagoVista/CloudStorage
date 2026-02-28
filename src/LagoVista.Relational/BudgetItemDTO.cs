@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("BudgetItems", Schema = "dbo")]
     [EncryptionKey("BUDGET_ITEM_KEY_{id}", IdProperty = nameof(OrganizationId), CreateIfMissing = false)]
     public class BudgetItemDTO : DbModelBase
     {
@@ -94,6 +95,7 @@ namespace LagoVista.Relational
             modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(15);
             modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Description).HasColumnOrder(16);
 
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
         }
     }
 }

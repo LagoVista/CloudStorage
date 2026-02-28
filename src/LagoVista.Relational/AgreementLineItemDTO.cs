@@ -101,6 +101,11 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.LastBilledDate).HasColumnOrder(16);
             modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Taxable).HasColumnOrder(17);
             modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Shipping).HasColumnOrder(18);
+
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Shipping).HasDefaultValueSql("0");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Taxable).HasDefaultValueSql("0");
+
         }
     }
 }

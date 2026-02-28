@@ -151,9 +151,20 @@ namespace LagoVista.Relational
             modelBuilder.Entity<InvoiceDTO>().Property(x => x.IsLocked).HasColumnOrder(30);
             modelBuilder.Entity<InvoiceDTO>().Property(x => x.InvoiceDate).HasColumnOrder(31);
 
-
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.AdditionalNotes).HasDefaultValueSql("''");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.CreationTimeStamp).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.FailedAttemptCount).HasDefaultValueSql("0");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.HasChildren).HasDefaultValueSql("0");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.IsLocked).HasDefaultValueSql("0");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.IsMaster).HasDefaultValueSql("1");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Shipping).HasDefaultValueSql("''");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Status).HasDefaultValueSql("'New'");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.StatusDate).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Subtotal).HasDefaultValueSql("''");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Tax).HasDefaultValueSql("''");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.TaxPercent).HasDefaultValueSql("0");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Total).HasDefaultValueSql("0");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.TotalPaid).HasDefaultValueSql("0");
         }
-
-
     }
 }

@@ -44,6 +44,10 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasColumnOrder(4);
             modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Index).HasColumnOrder(5);
             modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasColumnOrder(6);
+
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasDefaultValueSql("0");
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasDefaultValueSql("1");
         }
     }
 

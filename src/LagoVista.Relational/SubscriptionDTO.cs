@@ -90,6 +90,10 @@ namespace LagoVista.Relational
             modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenExpires).HasColumnOrder(14);
             modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasColumnOrder(15);
             modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasColumnOrder(16);
+
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Description).HasDefaultValueSql("''");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasDefaultValueSql("'icon-ae-bill-1'");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasDefaultValueSql("'empty'");
         }
     }
 

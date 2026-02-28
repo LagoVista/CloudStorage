@@ -66,6 +66,11 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Icon).HasColumnOrder(14);
             modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.TaxCategory).HasColumnOrder(15);
 
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Description).HasDefaultValueSql("''");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Icon).HasDefaultValueSql("'icon-fo-grow-dollar'");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.IsActive).HasDefaultValueSql("1");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.RequiresApproval).HasDefaultValueSql("0");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.TaxCategory).HasDefaultValueSql("'Other'");
         }
     }
 }

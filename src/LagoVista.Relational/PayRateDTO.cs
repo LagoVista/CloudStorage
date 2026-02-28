@@ -99,6 +99,12 @@ namespace LagoVista.Relational
             modelBuilder.Entity<PayRateDTO>().Property(x => x.IsFTE).HasColumnOrder(22);
             modelBuilder.Entity<PayRateDTO>().Property(x => x.IsOfficier).HasColumnOrder(23);
 
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimated).HasDefaultValueSql("0");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimatedRate).HasDefaultValueSql("0");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.IsContractor).HasDefaultValueSql("1");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.IsFTE).HasDefaultValueSql("0");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.IsOfficier).HasDefaultValueSql("0");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.IsSalary).HasDefaultValueSql("0");
         }
     }
 }

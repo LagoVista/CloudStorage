@@ -117,6 +117,20 @@ namespace LagoVista.Relational
             modelBuilder.Entity<VendorDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(22);
             modelBuilder.Entity<VendorDTO>().Property(x => x.IsActive).HasColumnOrder(23);
             modelBuilder.Entity<VendorDTO>().Property(x => x.DefaultAccountTransactionCategoryId).HasColumnOrder(24);
+
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Address1).HasDefaultValueSql("''");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Address2).HasDefaultValueSql("''");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.City).HasDefaultValueSql("''");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Contact).HasDefaultValueSql("''");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Country).HasDefaultValueSql("''");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Description).HasDefaultValueSql("''");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.IsActive).HasDefaultValueSql("1");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.LastUpdateDate).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Notes).HasDefaultValueSql("''");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Phone).HasDefaultValueSql("''");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.PostalCode).HasDefaultValueSql("''");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.StateOrProvince).HasDefaultValueSql("''");
         }
     }
 }

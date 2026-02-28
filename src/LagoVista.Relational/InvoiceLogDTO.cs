@@ -6,9 +6,11 @@ using LagoVista.Core.Attributes;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("InvoiceLogs", Schema = "dbo")]
     public class InvoiceLogsDTO
     {
         [Key]
@@ -40,6 +42,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.EventId).HasColumnOrder(4);
             modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.EventData).HasColumnOrder(5);
             modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.Message).HasColumnOrder(6);
+
+            modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.DateStamp).HasDefaultValueSql("getdate()");
         }
     }
 }

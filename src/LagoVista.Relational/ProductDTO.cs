@@ -172,6 +172,19 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductDTO>().Property(x => x.IsPublic).HasColumnOrder(25);
             modelBuilder.Entity<ProductDTO>().Property(x => x.RecurringCycleTypeId).HasColumnOrder(26);
 
+
+            modelBuilder.Entity<ProductDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Description).HasDefaultValueSql("''");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Icon).HasDefaultValueSql("'icon-pz-product-1'");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.IsPublic).HasDefaultValueSql("1");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.IsTrialResource).HasDefaultValueSql("0");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.LastUpdateDate).HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.PhysicalProduct).HasDefaultValueSql("0");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.RecurringCycleTypeId).HasDefaultValueSql("1");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.ShortSummaryHTML).HasDefaultValueSql("''");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Status).HasDefaultValueSql("'Active'");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.UnitPrice).HasDefaultValueSql("0");
         }
     }
 }

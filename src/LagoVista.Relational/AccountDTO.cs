@@ -7,9 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("Account", Schema = "dbo")]   
     [EncryptionKey("Account-{id}", IdProperty = nameof(AccountDto.Id), CreateIfMissing = false)]
     public class AccountDto : DbModelBase
     {
@@ -98,7 +100,10 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedOnlineBalance).HasColumnOrder(24);
             modelBuilder.Entity<AccountDto>().Property(x => x.ExternalProviderid).HasColumnOrder(25);
 
-
+            modelBuilder.Entity<AccountDto>().Property(x => x.ExternalProvider).HasDefaultValueSql("'none'");
+            modelBuilder.Entity<AccountDto>().Property(x => x.IsActive).HasDefaultValueSql("1");
+            modelBuilder.Entity<AccountDto>().Property(x => x.LinkActive).HasDefaultValueSql("0");
+            modelBuilder.Entity<AccountDto>().Property(x => x.TransactionJournalOnly).HasDefaultValueSql("0");
         }
     }
 }

@@ -102,6 +102,18 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AgreementDTO>().Property(x => x.Total).HasColumnOrder(28);
             modelBuilder.Entity<AgreementDTO>().Property(x => x.TaxPercent).HasColumnOrder(29);
 
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactId).HasDefaultValueSql("'-'");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactName).HasDefaultValueSql("'-'");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.DiscountPercent).HasDefaultValueSql("0");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Hours).HasDefaultValueSql("0");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.InvoicePeriod).HasDefaultValueSql("'monthly'");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Shipping).HasDefaultValueSql("0");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Status).HasDefaultValueSql("'active'");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.SubTotal).HasDefaultValueSql("0");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Tax).HasDefaultValueSql("0");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.TaxPercent).HasDefaultValueSql("0");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Terms).HasDefaultValueSql("15");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Total).HasDefaultValueSql("0");
 
             modelBuilder.Entity<AgreementDTO>()
             .HasMany(ps => ps.InvoiceLineItems)

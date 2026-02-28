@@ -137,6 +137,9 @@ namespace LagoVista.Relational
             modelBuilder.Entity<PaymentDTO>().Property(x => x.W2Payment).HasColumnOrder(28);
             modelBuilder.Entity<PaymentDTO>().Property(x => x.OfficierPayment).HasColumnOrder(29);
 
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.ContractorPayment).HasDefaultValueSql("1");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.OfficierPayment).HasDefaultValueSql("0");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.W2Payment).HasDefaultValueSql("0");
         }
     }
 }

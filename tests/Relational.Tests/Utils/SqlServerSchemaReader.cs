@@ -5,6 +5,9 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
+public sealed record ColumnDefaultShape(string ColumnName, string DefaultSqlNormalized);
+
+public sealed record TableDefaultsShape(string Schema, string Table, IReadOnlyList<ColumnDefaultShape> Defaults);
 
 public sealed record ColumnShape(string Name, bool IsNullable, int Ordinal);
 

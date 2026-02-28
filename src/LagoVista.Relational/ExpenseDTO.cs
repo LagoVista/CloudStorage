@@ -2,9 +2,11 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("Expenses", Schema = "dbo")]
     public class ExpenseDTO : DbModelBase
     {
         public Guid? AgreementId { get; set; }

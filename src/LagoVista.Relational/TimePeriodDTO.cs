@@ -1,17 +1,13 @@
-﻿using LagoVista.Core;
-using LagoVista.Core.Attributes;
-using LagoVista.Core.Models;
+﻿using LagoVista.Core.Attributes;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("TimePeriods", Schema = "dbo")]
     public class TimePeriodDTO
     {
         [Key]

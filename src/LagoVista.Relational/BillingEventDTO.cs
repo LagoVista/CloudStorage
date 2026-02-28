@@ -150,7 +150,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<BillingEventDTO>().Property(x => x.Status).HasColumnOrder(16);
             modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitPrice).HasColumnOrder(17);
 
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceName).HasDefaultValueSql("'unknown'");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitTypeId).HasDefaultValueSql("1");
         }
-
     }
 }
