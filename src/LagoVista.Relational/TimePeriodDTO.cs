@@ -53,31 +53,34 @@ namespace LagoVista.Relational
 
 
             modelBuilder.Entity<TimePeriodDTO>()
-            .HasOne(tp => tp.PayrollSummary)    
+            .HasOne(tp => tp.PayrollSummary)
             .WithOne(ps => ps.TimePeriod)
             .HasForeignKey<TimePeriodDTO>(tp => tp.PayrollSummaryId);
 
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Year).HasColumnOrder(2);
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.OrganizationId).HasColumnOrder(3);
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Locked).HasColumnOrder(4);
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedByUserId).HasColumnOrder(5);
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedTimeStamp).HasColumnOrder(6);
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.PayrollSummaryId).HasColumnOrder(7);
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Start).HasColumnOrder(8);
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.End).HasColumnOrder(9);
+            if (modelBuilder.IsSqlServer())
+            {
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Year).HasColumnOrder(2);
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.OrganizationId).HasColumnOrder(3);
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Locked).HasColumnOrder(4);
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedByUserId).HasColumnOrder(5);
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedTimeStamp).HasColumnOrder(6);
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.PayrollSummaryId).HasColumnOrder(7);
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Start).HasColumnOrder(8);
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.End).HasColumnOrder(9);
 
-            modelBuilder.Entity<TimePeriodDTO>().HasKey(x => new { x.Id });
+                modelBuilder.Entity<TimePeriodDTO>().HasKey(x => new { x.Id });
 
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.End).HasColumnType("date");
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Locked).HasColumnType("bit");
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedByUserId).HasColumnType("varchar(32)");
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedTimeStamp).HasColumnType("datetime");
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.PayrollSummaryId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Start).HasColumnType("date");
-            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Year).HasColumnType("int");
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.End).HasColumnType("date");
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Locked).HasColumnType("bit");
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedByUserId).HasColumnType("varchar(32)");
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedTimeStamp).HasColumnType("datetime");
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.PayrollSummaryId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Start).HasColumnType("date");
+                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Year).HasColumnType("int");
+            }
         }
     }
 }

@@ -21,12 +21,13 @@ namespace LagoVista.Relational.DataContexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.SeedProviderName(Database.ProviderName);
+
             ProductCategoryDTO.Configure(modelBuilder);
             ProductDTO.Configure(modelBuilder); 
             ProductIncludedDTO.Configure(modelBuilder);
             ProductPageDTO.Configure(modelBuilder);
             ProductPageProductDTO.Configure(modelBuilder);
-
 
             modelBuilder.Entity<ProductOffering>(b =>
             {
@@ -35,6 +36,7 @@ namespace LagoVista.Relational.DataContexts
             });
             
             modelBuilder.LowerCaseNames(Database.ProviderName);
+
         }
     }
 }

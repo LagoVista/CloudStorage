@@ -44,7 +44,7 @@ namespace LagoVista.Relational
         public List<InvoiceDTO> Invoices { get; set; }
 
         [IgnoreOnMapTo]
-        public List<BillingEventDTO> BillingEvents { get; set; }    
+        public List<BillingEventDTO> BillingEvents { get; set; }
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -73,46 +73,49 @@ namespace LagoVista.Relational
             .HasOne(ps => ps.Organization)
             .WithMany()
             .HasForeignKey(ps => ps.OrganizationId);
+            
+            if (modelBuilder.IsSqlServer())
+            {
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreatedById).HasColumnOrder(2);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(3);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreationDate).HasColumnOrder(4);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(5);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.OrganizationId).HasColumnOrder(6);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Name).HasColumnOrder(7);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Key).HasColumnOrder(8);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Status).HasColumnOrder(9);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Description).HasColumnOrder(10);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CustomerId).HasColumnOrder(11);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentToken).HasColumnOrder(12);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenDate).HasColumnOrder(13);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenExpires).HasColumnOrder(14);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasColumnOrder(15);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasColumnOrder(16);
 
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreatedById).HasColumnOrder(2);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(3);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreationDate).HasColumnOrder(4);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(5);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.OrganizationId).HasColumnOrder(6);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Name).HasColumnOrder(7);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Key).HasColumnOrder(8);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Status).HasColumnOrder(9);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Description).HasColumnOrder(10);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CustomerId).HasColumnOrder(11);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentToken).HasColumnOrder(12);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenDate).HasColumnOrder(13);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenExpires).HasColumnOrder(14);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasColumnOrder(15);
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasColumnOrder(16);
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Description).HasDefaultValueSql("''");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasDefaultValueSql("'icon-ae-bill-1'");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasDefaultValueSql("'empty'");
 
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Description).HasDefaultValueSql("''");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasDefaultValueSql("'icon-ae-bill-1'");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasDefaultValueSql("'empty'");
+                modelBuilder.Entity<SubscriptionDTO>().HasKey(x => new { x.Id });
 
-            modelBuilder.Entity<SubscriptionDTO>().HasKey(x => new { x.Id });
-
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CustomerId).HasColumnType("varchar(128)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentToken).HasColumnType("varchar(128)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenDate).HasColumnType("datetime2(7)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenExpires).HasColumnType("datetime2(7)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasColumnType("varchar(50)");
-            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CustomerId).HasColumnType("varchar(128)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentToken).HasColumnType("varchar(128)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenDate).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenExpires).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasColumnType("varchar(50)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
+            }
         }
     }
 }

@@ -6,14 +6,14 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
-    [Table("DeviceOwnerUserDevices", Schema ="dbo")]
+    [Table("DeviceOwnerUserDevices", Schema = "dbo")]
     public class OwnedDeviceDTO
     {
         [Key]
         public string Id { get; set; }
         [Required]
         public string DeviceUniqueId { get; set; }
-        [Required] 
+        [Required]
         public string DeviceId { get; set; }
         [Required]
         public string DeviceName { get; set; }
@@ -42,26 +42,28 @@ namespace LagoVista.Relational
             .WithMany()
             .HasForeignKey(od => od.ProductId);
 
+            if (modelBuilder.IsSqlServer())
+            {
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceUniqueId).HasColumnOrder(2);
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceName).HasColumnOrder(3);
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceId).HasColumnOrder(4);
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceOwnerUserId).HasColumnOrder(5);
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.ProductId).HasColumnOrder(6);
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasColumnOrder(7);
 
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceUniqueId).HasColumnOrder(2);
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceName).HasColumnOrder(3);
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceId).HasColumnOrder(4);
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceOwnerUserId).HasColumnOrder(5);
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.ProductId).HasColumnOrder(6);
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasColumnOrder(7);
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasDefaultValueSql("0");
 
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasDefaultValueSql("0");
+                modelBuilder.Entity<OwnedDeviceDTO>().HasKey(x => new { x.Id });
 
-            modelBuilder.Entity<OwnedDeviceDTO>().HasKey(x => new { x.Id });
-
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceId).HasColumnType("varchar(255)");
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceName).HasColumnType("varchar(512)");
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceOwnerUserId).HasColumnType("varchar(32)");
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceUniqueId).HasColumnType("varchar(32)");
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasColumnType("decimal(5,2)");
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Id).HasColumnType("varchar(32)");
-            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceId).HasColumnType("varchar(255)");
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceName).HasColumnType("varchar(512)");
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceOwnerUserId).HasColumnType("varchar(32)");
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceUniqueId).HasColumnType("varchar(32)");
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasColumnType("decimal(5,2)");
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Id).HasColumnType("varchar(32)");
+                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
+            }
         }
     }
 }

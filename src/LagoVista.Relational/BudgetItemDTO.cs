@@ -78,43 +78,47 @@ namespace LagoVista.Relational
             .WithMany()
             .HasForeignKey(ps => ps.WorkRoleId);
 
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Name).HasColumnOrder(2);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Icon).HasColumnOrder(3);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Year).HasColumnOrder(4);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Month).HasColumnOrder(5);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.OrganizationId).HasColumnOrder(6);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.AccountTransactionCategoryId).HasColumnOrder(7);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.ExpenseCategoryId).HasColumnOrder(8);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.WorkRoleId).HasColumnOrder(9);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedAllocated).HasColumnOrder(10);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedActual).HasColumnOrder(11);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreatedById).HasColumnOrder(12);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(13);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreationDate).HasColumnOrder(14);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(15);
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Description).HasColumnOrder(16);
+            if (modelBuilder.IsSqlServer())
+            {
 
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Name).HasColumnOrder(2);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Icon).HasColumnOrder(3);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Year).HasColumnOrder(4);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Month).HasColumnOrder(5);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.OrganizationId).HasColumnOrder(6);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.AccountTransactionCategoryId).HasColumnOrder(7);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.ExpenseCategoryId).HasColumnOrder(8);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.WorkRoleId).HasColumnOrder(9);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedAllocated).HasColumnOrder(10);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedActual).HasColumnOrder(11);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreatedById).HasColumnOrder(12);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(13);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreationDate).HasColumnOrder(14);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(15);
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Description).HasColumnOrder(16);
 
-            modelBuilder.Entity<BudgetItemDTO>().HasKey(x => new { x.Id });
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
 
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.AccountTransactionCategoryId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedActual).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedAllocated).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.ExpenseCategoryId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Icon).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Month).HasColumnType("int");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.WorkRoleId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Year).HasColumnType("int");
+                modelBuilder.Entity<BudgetItemDTO>().HasKey(x => new { x.Id });
+
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.AccountTransactionCategoryId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedActual).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedAllocated).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.ExpenseCategoryId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Icon).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Month).HasColumnType("int");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.WorkRoleId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Year).HasColumnType("int");
+            }
         }
     }
 }

@@ -37,7 +37,7 @@ namespace LagoVista.Relational
         public static void Configure(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ProductIncludedDTO>()
-                .HasOne( p => p.Product)
+                .HasOne(p => p.Product)
                 .WithMany()
                 .HasForeignKey(pi => pi.ProductId);
 
@@ -46,30 +46,32 @@ namespace LagoVista.Relational
                 .WithMany()
                 .HasForeignKey(pi => pi.PackageId);
 
+            if (modelBuilder.IsSqlServer())
+            {
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.PackageId).HasColumnOrder(2);
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.ProductId).HasColumnOrder(3);
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Discount).HasColumnOrder(4);
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasColumnOrder(5);
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Name).HasColumnOrder(6);
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Key).HasColumnOrder(7);
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasColumnOrder(8);
 
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.PackageId).HasColumnOrder(2);
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.ProductId).HasColumnOrder(3);
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Discount).HasColumnOrder(4);
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasColumnOrder(5);
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Name).HasColumnOrder(6);
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Key).HasColumnOrder(7);
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasColumnOrder(8);
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasDefaultValueSql("''");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasDefaultValueSql("1");
 
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasDefaultValueSql("''");
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasDefaultValueSql("1");
+                modelBuilder.Entity<ProductIncludedDTO>().HasKey(x => new { x.Id });
 
-            modelBuilder.Entity<ProductIncludedDTO>().HasKey(x => new { x.Id });
-
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Discount).HasColumnType("decimal(4,2)");
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Key).HasColumnType("varchar(32)");
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.PackageId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasColumnType("int");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Discount).HasColumnType("decimal(4,2)");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Key).HasColumnType("varchar(32)");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.PackageId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasColumnType("int");
+            }
         }
     }
 }

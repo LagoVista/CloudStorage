@@ -20,15 +20,18 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Name).HasColumnOrder(2);
-            modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Key).HasColumnOrder(3);
+            if (modelBuilder.IsSqlServer())
+            {
+                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Name).HasColumnOrder(2);
+                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Key).HasColumnOrder(3);
 
-            modelBuilder.Entity<UnitTypeDTO>().HasKey(x => new { x.Id });
+                modelBuilder.Entity<UnitTypeDTO>().HasKey(x => new { x.Id });
 
-            modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Id).HasColumnType("int");
-            modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
-            modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Id).HasColumnType("int");
+                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
+                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+            }
         }
 
         public EntityHeader ToEntityHeader()

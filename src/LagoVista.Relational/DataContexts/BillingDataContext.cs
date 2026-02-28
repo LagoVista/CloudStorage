@@ -53,6 +53,8 @@ namespace LagoVista.Relational.DataContexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.SeedProviderName(Database.ProviderName);
+
             AgreementDTO.Configure(modelBuilder);
             AgreementLineItemDTO.Configure(modelBuilder);
 

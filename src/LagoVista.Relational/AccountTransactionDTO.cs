@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
-    [Table("AccountTransaction",Schema ="dbo")]
+    [Table("AccountTransaction", Schema = "dbo")]
     [EncryptionKey("Account-{id}", IdProperty = nameof(AccountId), CreateIfMissing = false)]
     public class AccountTransactionDto
     {
@@ -83,7 +83,7 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AccountTransactionDto>()
                 .HasOne(ps => ps.Account)
                 .WithMany(ps => ps.Transactions)
-                .HasForeignKey(ps => ps.AccountId); 
+                .HasForeignKey(ps => ps.AccountId);
 
             modelBuilder.Entity<AccountTransactionDto>()
               .HasOne(ps => ps.Vendor)
@@ -105,41 +105,45 @@ namespace LagoVista.Relational
                 .WithMany()
                 .HasForeignKey(ps => ps.LastUpdatedById);
 
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.AccountId).HasColumnOrder(2);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionDate).HasColumnOrder(3);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.EncryptedAmount).HasColumnOrder(4);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasColumnOrder(5);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionCategoryId).HasColumnOrder(6);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Name).HasColumnOrder(7);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Description).HasColumnOrder(8);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Tag).HasColumnOrder(9);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.OriginalHash).HasColumnOrder(10);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreatedById).HasColumnOrder(11);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdatedById).HasColumnOrder(12);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreationDate).HasColumnOrder(13);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdateDate).HasColumnOrder(14);
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.VendorId).HasColumnOrder(15);
+            if (modelBuilder.IsSqlServer())
+            {
 
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasDefaultValueSql("0");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.AccountId).HasColumnOrder(2);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionDate).HasColumnOrder(3);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.EncryptedAmount).HasColumnOrder(4);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasColumnOrder(5);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionCategoryId).HasColumnOrder(6);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Name).HasColumnOrder(7);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Description).HasColumnOrder(8);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Tag).HasColumnOrder(9);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.OriginalHash).HasColumnOrder(10);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreatedById).HasColumnOrder(11);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdatedById).HasColumnOrder(12);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreationDate).HasColumnOrder(13);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdateDate).HasColumnOrder(14);
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.VendorId).HasColumnOrder(15);
 
-            modelBuilder.Entity<AccountTransactionDto>().HasKey(x => new { x.Id });
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasDefaultValueSql("0");
 
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.AccountId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Description).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.EncryptedAmount).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasColumnType("bit");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Name).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.OriginalHash).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Tag).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionCategoryId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionDate).HasColumnType("date");
-            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.VendorId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<AccountTransactionDto>().HasKey(x => new { x.Id });
+
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.AccountId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Description).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.EncryptedAmount).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasColumnType("bit");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Name).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.OriginalHash).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Tag).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionCategoryId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionDate).HasColumnType("date");
+                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.VendorId).HasColumnType("uniqueidentifier");
+            }
         }
     }
 }

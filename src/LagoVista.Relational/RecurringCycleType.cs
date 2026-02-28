@@ -20,15 +20,18 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Key).HasColumnOrder(2);
-            modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Name).HasColumnOrder(3);
+            if (modelBuilder.IsSqlServer())
+            {
+                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Key).HasColumnOrder(2);
+                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Name).HasColumnOrder(3);
 
-            modelBuilder.Entity<RecurringCycleTypeDTO>().HasKey(x => new { x.Id });
+                modelBuilder.Entity<RecurringCycleTypeDTO>().HasKey(x => new { x.Id });
 
-            modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Id).HasColumnType("int");
-            modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Key).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Id).HasColumnType("int");
+                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Key).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
+            }
         }
 
         public EntityHeader ToEntityHeader()

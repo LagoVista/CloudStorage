@@ -36,7 +36,7 @@ namespace LagoVista.Relational
 
         [IgnoreOnMapTo]
         public TimePeriodDTO TimePeriod { get; set; }
-        
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<PayrollSummaryDTO>()
@@ -67,41 +67,45 @@ namespace LagoVista.Relational
             .WithOne(tp => tp.PayrollSummary)
             .HasForeignKey<TimePeriodDTO>(tp => tp.PayrollSummaryId);
 
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreatedById).HasColumnOrder(2);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(3);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreationDate).HasColumnOrder(4);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(5);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.OrganizationId).HasColumnOrder(6);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalSalary).HasColumnOrder(7);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalPayroll).HasColumnOrder(8);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalExpenses).HasColumnOrder(9);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalTaxLiability).HasColumnOrder(10);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalRevenue).HasColumnOrder(11);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTaxLiabilities).HasColumnOrder(12);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Status).HasColumnOrder(13);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Locked).HasColumnOrder(14);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedTimeStamp).HasColumnOrder(15);
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedByUserId).HasColumnOrder(16);
+            if (modelBuilder.IsSqlServer())
+            {
 
-            modelBuilder.Entity<PayrollSummaryDTO>().HasKey(x => new { x.Id });
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreatedById).HasColumnOrder(2);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(3);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreationDate).HasColumnOrder(4);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(5);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.OrganizationId).HasColumnOrder(6);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalSalary).HasColumnOrder(7);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalPayroll).HasColumnOrder(8);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalExpenses).HasColumnOrder(9);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalTaxLiability).HasColumnOrder(10);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalRevenue).HasColumnOrder(11);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTaxLiabilities).HasColumnOrder(12);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Status).HasColumnOrder(13);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Locked).HasColumnOrder(14);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedTimeStamp).HasColumnOrder(15);
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedByUserId).HasColumnOrder(16);
 
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTaxLiabilities).HasColumnType("varchar(1000)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalExpenses).HasColumnType("varchar(1000)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalPayroll).HasColumnType("varchar(1000)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalRevenue).HasColumnType("varchar(1000)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalSalary).HasColumnType("varchar(1000)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalTaxLiability).HasColumnType("varchar(1000)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Locked).HasColumnType("bit");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedByUserId).HasColumnType("varchar(32)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedTimeStamp).HasColumnType("datetime");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
+                modelBuilder.Entity<PayrollSummaryDTO>().HasKey(x => new { x.Id });
+
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTaxLiabilities).HasColumnType("varchar(1000)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalExpenses).HasColumnType("varchar(1000)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalPayroll).HasColumnType("varchar(1000)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalRevenue).HasColumnType("varchar(1000)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalSalary).HasColumnType("varchar(1000)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalTaxLiability).HasColumnType("varchar(1000)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Locked).HasColumnType("bit");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedByUserId).HasColumnType("varchar(32)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedTimeStamp).HasColumnType("datetime");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+                modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
+            }
         }
     }
 }

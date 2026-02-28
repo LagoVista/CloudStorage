@@ -26,6 +26,7 @@ namespace LagoVista.Relational.DataContexts
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
+            modelBuilder.SeedProviderName(Database.ProviderName);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
         }

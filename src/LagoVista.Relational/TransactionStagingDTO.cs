@@ -60,48 +60,51 @@ namespace LagoVista.Relational
                 .HasOne(ps => ps.Account)
                 .WithMany()
                 .HasForeignKey(ps => ps.AccountId);
+            
+            if (modelBuilder.IsSqlServer())
+            {
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.ItemId).HasColumnOrder(2);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AccountId).HasColumnOrder(3);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Name).HasColumnOrder(4);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantName).HasColumnOrder(5);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.OriginalDescription).HasColumnOrder(6);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PendingTransactionId).HasColumnOrder(7);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidAccountId).HasColumnOrder(8);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidTransactionId).HasColumnOrder(9);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.TransactionType).HasColumnOrder(10);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AuthorizationDate).HasColumnOrder(11);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.EncryptedAmount).HasColumnOrder(12);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.IsoCurrencyCode).HasColumnOrder(13);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.UnofficialCurrencyCode).HasColumnOrder(14);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Categories).HasColumnOrder(15);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.CheckNumber).HasColumnOrder(16);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.SuggestedCategory).HasColumnOrder(17);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantEntryId).HasColumnOrder(18);
 
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.ItemId).HasColumnOrder(2);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AccountId).HasColumnOrder(3);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Name).HasColumnOrder(4);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantName).HasColumnOrder(5);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.OriginalDescription).HasColumnOrder(6);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PendingTransactionId).HasColumnOrder(7);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidAccountId).HasColumnOrder(8);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidTransactionId).HasColumnOrder(9);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.TransactionType).HasColumnOrder(10);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AuthorizationDate).HasColumnOrder(11);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.EncryptedAmount).HasColumnOrder(12);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.IsoCurrencyCode).HasColumnOrder(13);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.UnofficialCurrencyCode).HasColumnOrder(14);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Categories).HasColumnOrder(15);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.CheckNumber).HasColumnOrder(16);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.SuggestedCategory).HasColumnOrder(17);
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantEntryId).HasColumnOrder(18);
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Id).HasDefaultValueSql("newid()");
 
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Id).HasDefaultValueSql("newid()");
+                modelBuilder.Entity<TransactionStagingDto>().HasKey(x => new { x.Id });
 
-            modelBuilder.Entity<TransactionStagingDto>().HasKey(x => new { x.Id });
-
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AccountId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AuthorizationDate).HasColumnType("datetime2(7)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Categories).HasColumnType("varchar(max)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.CheckNumber).HasColumnType("varchar(50)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.EncryptedAmount).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.IsoCurrencyCode).HasColumnType("varchar(128)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.ItemId).HasColumnType("varchar(255)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantEntryId).HasColumnType("varchar(255)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantName).HasColumnType("varchar(255)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Name).HasColumnType("varchar(255)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.OriginalDescription).HasColumnType("varchar(max)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PendingTransactionId).HasColumnType("varchar(255)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidAccountId).HasColumnType("varchar(255)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidTransactionId).HasColumnType("varchar(255)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.SuggestedCategory).HasColumnType("varchar(50)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.TransactionType).HasColumnType("nchar(10)");
-            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.UnofficialCurrencyCode).HasColumnType("varchar(128)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AccountId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AuthorizationDate).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Categories).HasColumnType("varchar(max)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.CheckNumber).HasColumnType("varchar(50)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.EncryptedAmount).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.IsoCurrencyCode).HasColumnType("varchar(128)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.ItemId).HasColumnType("varchar(255)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantEntryId).HasColumnType("varchar(255)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantName).HasColumnType("varchar(255)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Name).HasColumnType("varchar(255)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.OriginalDescription).HasColumnType("varchar(max)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PendingTransactionId).HasColumnType("varchar(255)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidAccountId).HasColumnType("varchar(255)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidTransactionId).HasColumnType("varchar(255)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.SuggestedCategory).HasColumnType("varchar(50)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.TransactionType).HasColumnType("nchar(10)");
+                modelBuilder.Entity<TransactionStagingDto>().Property(x => x.UnofficialCurrencyCode).HasColumnType("varchar(128)");
+            }
         }
     }
 }

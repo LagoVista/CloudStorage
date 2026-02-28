@@ -1,13 +1,14 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
+using System.Linq;
 
-namespace LagoVista.Relational.DataContexts
+namespace LagoVista
 {
     public static class EFExtensions
     {
         public static void LowerCaseNames(this ModelBuilder modelBuilder, string dbName)
         {
-            if(!dbName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+            if (!dbName.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -67,4 +68,38 @@ namespace LagoVista.Relational.DataContexts
         }
     }
 
+    public static class ModelBuilderProviderExtensions
+    {
+        private const string ProviderKey = "App:ProviderName";
+
+        private const string SqlServer = "Microsoft.EntityFrameworkCore.SqlServer";
+        private const string Sqlite = "Microsoft.EntityFrameworkCore.Sqlite";
+        private const string Postgres = "Npgsql.EntityFrameworkCore.PostgreSQL";
+        private const string PomeloMySql = "Pomelo.EntityFrameworkCore.MySql";
+        private const string OracleMySql = "MySql.EntityFrameworkCore";
+
+        public static ModelBuilder SeedProviderName(this ModelBuilder modelBuilder, string? providerName)
+        {
+            // Store it on the model so we can query it later via ModelBuilder.
+            modelBuilder.HasAnnotation(ProviderKey, providerName);
+            return modelBuilder;
+        }
+
+        public static string? GetProviderName(this ModelBuilder modelBuilder)
+            => modelBuilder.Model.FindAnnotation(ProviderKey)?.Value?.ToString()
+               ?? modelBuilder.Model.FindAnnotation("Relational:ProviderName")?.Value?.ToString();
+
+        public static bool IsSqlServer(this ModelBuilder modelBuilder)
+            => modelBuilder.GetProviderName() == SqlServer;
+
+        public static bool IsSqlite(this ModelBuilder modelBuilder)
+            => modelBuilder.GetProviderName() == Sqlite;
+
+        public static bool IsPostgres(this ModelBuilder modelBuilder)
+            => modelBuilder.GetProviderName() == Postgres;
+
+        public static bool IsMySql(this ModelBuilder modelBuilder)
+            => modelBuilder.GetProviderName() == PomeloMySql
+               || modelBuilder.GetProviderName() == OracleMySql;
+    }
 }

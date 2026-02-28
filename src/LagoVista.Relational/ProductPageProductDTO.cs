@@ -38,26 +38,29 @@ namespace LagoVista.Relational
             .WithMany(pp => pp.ProductPageProducts)
             .HasForeignKey(p => p.ProductPageId);
 
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasColumnOrder(1);
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductPageId).HasColumnOrder(2);
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductId).HasColumnOrder(3);
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasColumnOrder(4);
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Index).HasColumnOrder(5);
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasColumnOrder(6);
+            if (modelBuilder.IsSqlServer())
+            {
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasColumnOrder(1);
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductPageId).HasColumnOrder(2);
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductId).HasColumnOrder(3);
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasColumnOrder(4);
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Index).HasColumnOrder(5);
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasColumnOrder(6);
 
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasDefaultValueSql("0");
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasDefaultValueSql("1");
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasDefaultValueSql("0");
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasDefaultValueSql("1");
 
-            modelBuilder.Entity<ProductPageProductDTO>().HasKey(x => new { x.Id });
+                modelBuilder.Entity<ProductPageProductDTO>().HasKey(x => new { x.Id });
 
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasColumnType("money");
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Index).HasColumnType("int");
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductPageId).HasColumnType("uniqueidentifier");
-            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasColumnType("int");
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasColumnType("money");
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Index).HasColumnType("int");
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductPageId).HasColumnType("uniqueidentifier");
+                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasColumnType("int");
 
+            }
         }
     }
 

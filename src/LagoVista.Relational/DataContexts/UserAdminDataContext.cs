@@ -18,7 +18,7 @@ namespace LagoVista.Relational.DataContexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
+            modelBuilder.SeedProviderName(Database.ProviderName);
 
             AppUserDTOConfig.Configure(modelBuilder);
             OrganizationDTOConfig.Configure(modelBuilder);
@@ -27,6 +27,7 @@ namespace LagoVista.Relational.DataContexts
             SubscriptionDTO.Configure(modelBuilder);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
+
         }
     }
 }

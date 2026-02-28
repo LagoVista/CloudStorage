@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.Relational
 {
-    [Table("DeviceOwnerUser", Schema ="dbo")]
+    [Table("DeviceOwnerUser", Schema = "dbo")]
     public class DeviceOwnerDTO
     {
         [Key]
@@ -21,28 +21,32 @@ namespace LagoVista.Relational
         public string FullName { get; set; }
         public DateTime CreationDate { get; set; }
         public DateTime LastUpdatedDate { get; set; }
-   
-      
+
+
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.DeviceOwnerUserId).HasColumnOrder(1);
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Email).HasColumnOrder(2);
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Phone).HasColumnOrder(3);
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.FullName).HasColumnOrder(4);
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasColumnOrder(5);
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasColumnOrder(6);
+            if (modelBuilder.IsSqlServer())
+            {
 
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasDefaultValueSql("getdate()");
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.DeviceOwnerUserId).HasColumnOrder(1);
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Email).HasColumnOrder(2);
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Phone).HasColumnOrder(3);
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.FullName).HasColumnOrder(4);
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasColumnOrder(5);
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasColumnOrder(6);
 
-            modelBuilder.Entity<DeviceOwnerDTO>().HasKey(x => new { x.DeviceOwnerUserId });
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasDefaultValueSql("getdate()");
 
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.DeviceOwnerUserId).HasColumnType("varchar(32)");
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Email).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.FullName).HasColumnType("varchar(1024)");
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasColumnType("datetime2(7)");
-            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Phone).HasColumnType("varchar(50)");
+                modelBuilder.Entity<DeviceOwnerDTO>().HasKey(x => new { x.DeviceOwnerUserId });
+
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.DeviceOwnerUserId).HasColumnType("varchar(32)");
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Email).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.FullName).HasColumnType("varchar(1024)");
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Phone).HasColumnType("varchar(50)");
+            }
         }
     }
 }

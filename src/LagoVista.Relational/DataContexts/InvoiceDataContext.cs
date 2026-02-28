@@ -25,50 +25,18 @@ namespace LagoVista.Relational.DataContexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.SeedProviderName(Database.ProviderName);
 
-            modelBuilder.Entity<CustomerDTO>()
-                 .HasOne(ps => ps.CreatedByUser)
-                 .WithMany()
-                 .HasForeignKey(ps => ps.CreatedById);
-
-            modelBuilder.Entity<CustomerDTO>()
-                .HasOne(ps => ps.LastUpdatedByUser)
-                .WithMany()
-                .HasForeignKey(ps => ps.LastUpdatedById);
-
-            modelBuilder.Entity<InvoiceDTO>()
-                .HasOne(inv => inv.Agreement)
-                .WithMany(agr => agr.Invoices)
-                .HasForeignKey(inv => inv.AgreementId);
-
-            modelBuilder.Entity<InvoiceLineItemDTO>()
-                .HasOne(li => li.Invoice)
-                .WithMany(inv => inv.LineItems)
-                .HasForeignKey(li => li.InvoiceId);
-
-
-            modelBuilder.Entity<InvoiceDTO>()
-                .HasOne(inv => inv.Customer)
-                .WithMany(cst => cst.Invoices)
-                .HasForeignKey(li => li.CustomerId);
-
-            modelBuilder.Entity<InvoiceDTO>()
-              .HasOne(inv => inv.Organization)
-              .WithMany()
-              .HasForeignKey(li => li.OrgId);
-
-
-
-            modelBuilder.LowerCaseNames(Database.ProviderName);
-
+            AppUserDTOConfig.Configure(modelBuilder);
+            OrganizationDTOConfig.Configure(modelBuilder);
             AgreementDTO.Configure(modelBuilder);
             AgreementLineItemDTO.Configure(modelBuilder);
+            CustomerDTO.Configure(modelBuilder);
             InvoiceDTO.Configure(modelBuilder);
             InvoiceLineItemDTO.Configure(modelBuilder);
             InvoiceLogsDTO.Configure(modelBuilder);
 
-            CustomerDTO.Configure(modelBuilder);
-
+            modelBuilder.LowerCaseNames(Database.ProviderName);
         }
     }
 }

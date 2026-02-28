@@ -21,13 +21,14 @@ namespace LagoVista.Relational.DataContexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.LowerCaseNames(Database.ProviderName);
-
+            modelBuilder.SeedProviderName(Database.ProviderName);
 
             AccountDto.Configure(modelBuilder);
             AccountTransactionCategoryDto.Configure(modelBuilder);
             AccountTransactionDto.Configure(modelBuilder);
             TransactionStagingDto.Configure(modelBuilder);
+
+            modelBuilder.LowerCaseNames(Database.ProviderName);
         }
     }
 }
