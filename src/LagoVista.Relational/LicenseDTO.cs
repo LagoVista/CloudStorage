@@ -1,16 +1,13 @@
-﻿using System;
+﻿using LagoVista.Models;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LagoVista.Relational
 {
-    public class LicenseDTO
+    public class LicenseDTO : DbModelBase
     {
-        public Guid Id { get; set; }
         public Guid AgreementLineItemId { get; set; }
-        public AgreementLineItemDTO AgreementLineItem { get; set; }
         public bool IsActive { get; set; }
         public DateOnly ActiveDate { get; set; }
         public DateOnly RenewalDate { get; set; }
@@ -18,6 +15,15 @@ namespace LagoVista.Relational
         public decimal QuantityUsed { get; set; }
         public decimal QuantityAllocated { get; set; }
         public List<LicenseUsageDTO> Usage { get; set; }
+
+
+        public AgreementLineItemDTO AgreementLineItem { get; set; }
+
+        public static void Configure(ModelBuilder modelBuilder)
+        {
+
+        }
+
     }
 
 }

@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace LagoVista.Relational
 {
@@ -17,5 +14,12 @@ namespace LagoVista.Relational
         public string DeviceUniqueId { get; set; }
         public string DeviceId { get; set; }
         public string Notes { get; set; }
+
+        public LicenseDTO License { get; set; }
+
+        public static void Configure(ModelBuilder modelBuilder)
+        {
+
+        }
     }
 }

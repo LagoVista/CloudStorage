@@ -3,13 +3,16 @@
 // IndexVersion: 2
 // --- END CODE INDEX META ---
 using LagoVista.Core.Attributes;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 
 namespace LagoVista.Relational
 {
+    [Table("InvoiceLineItems" , Schema = "dbo")]
     [EncryptionKey("Agreement-{id}", IdProperty = nameof(Invoice.CustomerId), CreateIfMissing = false)]
     public class InvoiceLineItemDTO
     {
@@ -17,20 +20,18 @@ namespace LagoVista.Relational
         public Guid Id { get; set; }
 
         public Guid InvoiceId { get; set; }
+        public Guid? AgreementId { get; set; }
 
-        [ManualMapping]
         public string ResourceId { get; set; }
 
-        [ManualMapping]
         public string ResourceName { get; set; }
 
-        [ManualMapping]
         public string ProductName { get; set; }
 
-        [ManualMapping]
         public Guid? ProductId { get; set; }
 
         public decimal Quantity { get; set; }
+        [Required]
         public string Units { get; set; }
 
         public bool? Taxable { get; set; }
@@ -43,5 +44,30 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo()]
         public InvoiceDTO Invoice { get; set; }
 
+
+        public static void Configure(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<InvoiceLineItemDTO>()
+            .HasOne(li => li.Invoice)
+            .WithMany(inv => inv.LineItems)
+            .HasForeignKey(li => li.InvoiceId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Id).HasColumnOrder(1);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.InvoiceId).HasColumnOrder(2);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.AgreementId).HasColumnOrder(3);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ResourceId).HasColumnOrder(4);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ResourceName).HasColumnOrder(5);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ProductName).HasColumnOrder(6);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Quantity).HasColumnOrder(7);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Units).HasColumnOrder(8);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.UnitPrice).HasColumnOrder(9);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Total).HasColumnOrder(10);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Discount).HasColumnOrder(11);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Extended).HasColumnOrder(12);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Taxable).HasColumnOrder(13);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ProductId).HasColumnOrder(14);
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Shipping).HasColumnOrder(15);
+        }
     }
 }

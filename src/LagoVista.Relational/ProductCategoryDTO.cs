@@ -1,8 +1,10 @@
 ﻿using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
 using LagoVista.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
@@ -18,23 +20,27 @@ namespace LagoVista.Relational
             CategoryTypeName = "-select category type-";
         }
 
+        [Required]
         public string Key { get; set; }
 
+        [Required]
         public string Name { get; set; }
 
         public string Description { get; set; }
 
         public bool IsPublic { get; set; }
+       
+       public string Icon { get; set; }
 
-        public string OrgId { get; set; }
-        public string Icon { get; set; }
 
-
+        [Required]
         public string ShortSummaryHTML { get; set; }
 
 
+        [Required]
         public string CategoryTypeName { get; set; }
 
+        [Required]
         public string CategoryTypeId { get; set; }
 
 
@@ -44,10 +50,50 @@ namespace LagoVista.Relational
         public string ImageResourceId { get; set; }
         public string ImageResourceName { get; set; }
         public EntityHeader ToEntityHeader() => EntityHeader.Create(this.Id.ToString(), this.Key, this.Name);
-        
+
 
         [IgnoreOnMapTo()]
         public List<ProductDTO> Products { get; set; }
-        
+
+        public static void Configure(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ProductCategoryDTO>()
+           .HasOne(ps => ps.Organization)
+           .WithMany()
+           .HasForeignKey(ps => ps.OrganizationId);
+
+            modelBuilder.Entity<ProductCategoryDTO>()
+            .HasOne(ps => ps.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(ps => ps.CreatedById)
+            .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ProductCategoryDTO>()
+            .HasOne(ps => ps.LastUpdatedByUser)
+            .WithMany()
+            .HasForeignKey(ps => ps.LastUpdatedById)
+            .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Id).HasColumnOrder(1);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.OrganizationId).HasColumnOrder(2);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreatedById).HasColumnOrder(3);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(4);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreationDate).HasColumnOrder(5);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(6);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Name).HasColumnOrder(7);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Key).HasColumnOrder(8);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Description).HasColumnOrder(9);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.IsPublic).HasColumnOrder(10);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Icon).HasColumnOrder(11);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ThumbnailImageResourceId).HasColumnOrder(12);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ThumbnailImageResourceName).HasColumnOrder(13);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ImageResourceId).HasColumnOrder(14);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ImageResourceName).HasColumnOrder(15);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ShortSummaryHTML).HasColumnOrder(16);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeId).HasColumnOrder(17);
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeName).HasColumnOrder(18);
+
+
+        }
     }
 }

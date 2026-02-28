@@ -19,8 +19,9 @@ namespace LagoVista.Relational.DataContexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<SerialNumberDTO>()
-                .HasKey(a => new { a.OrgId, a.Key, a.KeyId });
+            modelBuilder.Entity<SerialNumberDTO>().HasKey(a => new { a.OrgId, a.Key, a.KeyId });
+
+            SerialNumberDTO.Configure(modelBuilder);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
         }

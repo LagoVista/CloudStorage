@@ -1,19 +1,31 @@
 ﻿using LagoVista.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace LagoVista.Relational
 {
-    [Table("ProductPage_Product")]
-    public class ProductPageProductDTO 
+    [Table("ProductPage_Product",Schema ="dbo")]
+    public class ProductPageProductDTO
     {
-        public Guid Id { get; set; }  
+        public Guid Id { get; set; }
         public Guid ProductId { get; set; }
         public Guid ProductPageId { get; set; }
         public decimal Discount { get; set; }
         public int Index { get; set; }
-        public int UnitQty { get; set; }     
+        public int UnitQty { get; set; }
+
+
+        public static void Configure(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasColumnOrder(1);
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductPageId).HasColumnOrder(2);
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductId).HasColumnOrder(3);
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasColumnOrder(4);
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Index).HasColumnOrder(5);
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasColumnOrder(6);
+        }
     }
 
     public class ProductPageProductViewDTO
@@ -40,5 +52,10 @@ namespace LagoVista.Relational
         public decimal Extended { get; set; }
         public int UnitTypeId { get; set; }
         public Guid ProductCategoryId { get; set; }
+
+        public static void Configure(ModelBuilder modelBuilder)
+        {
+            
+        }
     }
 }

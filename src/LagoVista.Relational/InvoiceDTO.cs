@@ -1,5 +1,6 @@
 using LagoVista.Core.Attributes;
 using LagoVista.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -7,6 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("Invoice", Schema = "dbo")]
     [EncryptionKey("Agreement-{id}", IdProperty = nameof(CustomerId), CreateIfMissing = false)]
     public class InvoiceDTO
     {
@@ -39,8 +41,14 @@ namespace LagoVista.Relational
         public String Extended { get; set; }
         public String TotalPaid { get; set; }
 
+        [Required]
         public string Tax { get; set; }
+        
+        [Required]
+        public decimal TaxPercent { get; set; }
+        [Required]
         public string Shipping { get; set; }
+        [Required]
         public string Subtotal { get; set; }
 
 
@@ -56,10 +64,12 @@ namespace LagoVista.Relational
 
         public string Notes { get; set; }
 
+        [Required]
         public string AdditionalNotes { get; set; }
 
+        [Required]
         public string Status { get; set; }
-        
+
         public DateTime StatusDate { get; set; }
 
         [IgnoreOnMapTo]
@@ -76,9 +86,74 @@ namespace LagoVista.Relational
         public SubscriptionDTO Subscription { get; set; }
 
         [IgnoreOnMapTo]
-        public List<InvoiceLineItemDTO> LineItems { get; set; } = new List<InvoiceLineItemDTO>();
+        public List<InvoiceLineItemDTO> LineItems { get; set; }
 
         [IgnoreOnMapTo]
-        public List<InvoiceLogsDTO> Log { get; set; }
+        public List<InvoiceLogsDTO> Logs { get; set; }
+
+
+        public static void Configure(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<InvoiceDTO>()
+            .HasOne(p => p.Subscription)
+            .WithOne()
+            .HasForeignKey<InvoiceDTO>(p => p.SubscriptionId);
+
+            modelBuilder.Entity<InvoiceDTO>()
+            .HasOne(inv => inv.Agreement)
+            .WithMany(agr => agr.Invoices)
+            .HasForeignKey(inv => inv.AgreementId);
+
+            modelBuilder.Entity<InvoiceDTO>()
+            .HasOne(inv => inv.Customer)
+            .WithMany(cst => cst.Invoices)
+            .HasForeignKey(li => li.CustomerId);
+
+            modelBuilder.Entity<InvoiceDTO>()
+            .HasOne(inv => inv.Organization)
+            .WithMany()
+            .HasForeignKey(li => li.OrgId);
+
+            modelBuilder.Entity<InvoiceDTO>()
+            .HasMany(inv => inv.Logs)
+            .WithOne(i => i.Invoice)
+            .HasForeignKey(i => i.InvoiceId);
+
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Id).HasColumnOrder(1);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.IsMaster).HasColumnOrder(2);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.MasterInvoiceId).HasColumnOrder(3);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.HasChildren).HasColumnOrder(4);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.InvoiceNumber).HasColumnOrder(5);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.SubscriptionId).HasColumnOrder(6);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.OrgId).HasColumnOrder(7);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.CustomerId).HasColumnOrder(8);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Notes).HasColumnOrder(9);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.BillingStart).HasColumnOrder(10);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.BillingEnd).HasColumnOrder(11);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.CreationTimeStamp).HasColumnOrder(12);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.DueDate).HasColumnOrder(13);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Total).HasColumnOrder(14);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Discount).HasColumnOrder(15);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Extended).HasColumnOrder(16);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.TotalPaid).HasColumnOrder(17);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.PaidDate).HasColumnOrder(18);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.ClosedTransactionId).HasColumnOrder(19);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Status).HasColumnOrder(20);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.StatusDate).HasColumnOrder(21);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.FailedAttemptCount).HasColumnOrder(22);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.AgreementId).HasColumnOrder(23);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Shipping).HasColumnOrder(24);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Tax).HasColumnOrder(25);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Subtotal).HasColumnOrder(26);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.TaxPercent).HasColumnOrder(27);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.ContactId).HasColumnOrder(28);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.AdditionalNotes).HasColumnOrder(29);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.IsLocked).HasColumnOrder(30);
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.InvoiceDate).HasColumnOrder(31);
+
+
+        }
+
+
     }
 }
