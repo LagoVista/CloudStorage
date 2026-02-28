@@ -13,8 +13,7 @@ namespace LagoVista.Relational
         public Guid? ExpenseCategoryId { get; set; }
 
 
-        public ExpenseCategoryDTO ExpenseCategory { get; set; }
-
+        
 
         [Required]
         public string Type { get; set; }
@@ -31,6 +30,9 @@ namespace LagoVista.Relational
         public bool TaxReportable { get; set; }
 
         public bool Passthrough { get; set; }
+
+        public ExpenseCategoryDTO ExpenseCategory { get; set; }
+
 
         public EntityHeader ToEntityHeader()
         {
@@ -58,12 +60,12 @@ namespace LagoVista.Relational
             .WithMany()
             .HasForeignKey(ps => ps.LastUpdatedById)
             .OnDelete(DeleteBehavior.NoAction);
-    
+
             modelBuilder.Entity<AccountTransactionCategoryDto>()
             .HasOne(ps => ps.ExpenseCategory)
             .WithMany()
             .HasForeignKey(ps => ps.ExpenseCategoryId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.OrganizationId).HasColumnOrder(2);

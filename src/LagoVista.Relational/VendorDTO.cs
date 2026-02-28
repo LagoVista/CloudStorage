@@ -84,7 +84,7 @@ namespace LagoVista.Relational
             modelBuilder.Entity<VendorDTO>()
              .HasOne(ps => ps.DefaultExpenseCategory)
              .WithMany()
-             .HasForeignKey(ps => ps.DefaultAccountTransactionCategoryId)
+             .HasForeignKey(ps => ps.DefaultExpenseCategoryId)
              .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<VendorDTO>()

@@ -28,8 +28,5 @@ namespace LagoVista.Relational.DataContexts
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
         }
-
-
     }
-
 }

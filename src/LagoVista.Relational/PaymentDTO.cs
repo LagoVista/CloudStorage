@@ -72,6 +72,9 @@ namespace LagoVista.Relational
             }
         }
 
+        [IgnoreOnMapTo]
+        public TimePeriodDTO TimePeriod { get; set; }
+
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -86,6 +89,11 @@ namespace LagoVista.Relational
             .HasForeignKey(ps => ps.CreatedById)
             .OnDelete(DeleteBehavior.NoAction);
 
+            modelBuilder.Entity<PaymentDTO>()
+            .HasOne(ps => ps.TimePeriod)
+            .WithMany()
+            .HasForeignKey(ps => ps.TimePeriodId)
+            .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<PaymentDTO>()
             .HasOne(ps => ps.LastUpdatedByUser)

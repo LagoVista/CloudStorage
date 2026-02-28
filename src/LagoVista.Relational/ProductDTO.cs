@@ -3,6 +3,7 @@ using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -99,6 +100,12 @@ namespace LagoVista.Relational
         public string ImageResourceName { get; set; }
 
 
+        [IgnoreOnMapTo]
+        public RecurringCycleTypeDTO RecurringCycleType { get; set; }
+
+        [IgnoreOnMapTo]
+        public UnitTypeDTO UnitType { get; set; }
+
         public EntityHeader ToEntityHeader()
         {
             return EntityHeader.Create(Id.ToString(), Key, Name);
@@ -107,6 +114,15 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<ProductDTO>()
+                .HasOne(tp => tp.RecurringCycleType)
+                .WithMany()
+                .HasForeignKey(p => p.RecurringCycleTypeId);
+
+            modelBuilder.Entity<ProductDTO>()
+                .HasOne(tp => tp.UnitType)
+                .WithMany()
+                .HasForeignKey(p => p.UnitTypeId);
 
             modelBuilder.Entity<ProductDTO>()
                 .HasOne(tp => tp.ProductCategory)
@@ -122,7 +138,6 @@ namespace LagoVista.Relational
                 .HasOne(tp => tp.LastUpdatedByUser)
                 .WithMany()
                 .HasForeignKey(tp => tp.LastUpdatedById);
-
 
             modelBuilder.Entity<ProductDTO>()
                  .HasOne(p => p.ProductCategory)

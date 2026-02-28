@@ -38,12 +38,17 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<PayRateDTO> PayRates { get; set; }
         public DbSet<PaymentDTO> Payments { get; set; }
 
+        public DbSet<RecurringCycleTypeDTO> RecurringCycleTypes { get; set; }
+
         public DbSet<TimeEntryDTO> TimeEntries { get; set; }
         public DbSet<TimePeriodDTO> TimePeriods { get; set; }
+
+        public DbSet<UnitTypeDTO> UnitTypes { get; set; }
 
         public DbSet<VendorDTO> Vendor { get; set; }
 
         public DbSet<WorkRoleDTO> WorkRoles { get; set; }
+
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -69,10 +74,14 @@ namespace LagoVista.Relational.DataContexts
             PayRateDTO.Configure(modelBuilder);
             PayrollSummaryDTO.Configure(modelBuilder);
 
+            RecurringCycleTypeDTO.Configure(modelBuilder); 
+
             TimeEntryDTO.Configure(modelBuilder);
             TimePeriodDTO.Configure(modelBuilder);
 
             VendorDTO.Configure(modelBuilder);
+
+            UnitTypeDTO.Configure(modelBuilder);
 
             WorkRoleDTO.Configure(modelBuilder);
 

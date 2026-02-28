@@ -96,8 +96,8 @@ namespace LagoVista.Relational
         {
             modelBuilder.Entity<InvoiceDTO>()
             .HasOne(p => p.Subscription)
-            .WithOne()
-            .HasForeignKey<InvoiceDTO>(p => p.SubscriptionId);
+            .WithMany(s => s.Invoices)
+            .HasForeignKey(p => p.SubscriptionId);
 
             modelBuilder.Entity<InvoiceDTO>()
             .HasOne(inv => inv.Agreement)

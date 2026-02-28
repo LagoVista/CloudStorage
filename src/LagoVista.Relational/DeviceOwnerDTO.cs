@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Query.Expressions.Internal;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -20,7 +21,8 @@ namespace LagoVista.Relational
         public string FullName { get; set; }
         public DateTime CreationDate { get; set; }
         public DateTime LastUpdatedDate { get; set; }
-    
+   
+      
         public static void Configure(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.DeviceOwnerUserId).HasColumnOrder(1);

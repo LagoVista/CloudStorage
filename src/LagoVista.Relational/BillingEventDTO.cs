@@ -1,4 +1,5 @@
 ﻿using LagoVista.Core.Attributes;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -95,8 +96,42 @@ namespace LagoVista.Relational
         /// </summary>
         public string Notes { get; set; }
 
+        [IgnoreOnMapTo]
+        public AppUserDTO StartedByAppUser { get; set; }
+
+        [IgnoreOnMapTo]
+        public AppUserDTO EndedByAppUser { get; set; }
+
+        [IgnoreOnMapTo]
+        public ProductDTO Product { get; set; }
+
+        [IgnoreOnMapTo]
+        public SubscriptionDTO Subscription { get; set; }   
+
         public static void Configure(ModelBuilder modelBuilder)
         {
+
+            modelBuilder.Entity<BillingEventDTO>()
+                .HasOne(ps => ps.Subscription)
+                .WithMany(s => s.BillingEvents)
+                .HasForeignKey(ps => ps.SubscriptionId);
+
+            modelBuilder.Entity<BillingEventDTO>()
+                .HasOne(ps => ps.Product)
+                .WithMany()
+                .HasForeignKey(ps => ps.ProductId);
+
+            modelBuilder.Entity<BillingEventDTO>()
+                .HasOne(ps => ps.StartedByAppUser)
+                .WithMany()
+                .HasForeignKey(ps => ps.StartedByAppUserId);
+
+            modelBuilder.Entity<BillingEventDTO>()
+                .HasOne(ps => ps.EndedByAppUser)
+                .WithMany()
+                .HasForeignKey(ps => ps.EndedByAppuserId);
+
+
             modelBuilder.Entity<BillingEventDTO>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceId).HasColumnOrder(2);
             modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceName).HasColumnOrder(3);

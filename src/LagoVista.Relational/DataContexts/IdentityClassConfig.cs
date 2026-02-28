@@ -20,6 +20,12 @@ namespace LagoVista.Relational.DataContexts
     {
         public static void Configure(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<OrganizationDTO>()
+            .HasOne(o => o.BillingContact)
+            .WithMany()
+            .HasForeignKey(o => o.OrgBillingContactId);
+
+
             modelBuilder.Entity<OrganizationDTO>().Property(x => x.OrgId).HasColumnOrder(1);
             modelBuilder.Entity<OrganizationDTO>().Property(x => x.OrgName).HasColumnOrder(2);
             modelBuilder.Entity<OrganizationDTO>().Property(x => x.OrgBillingContactId).HasColumnOrder(3);

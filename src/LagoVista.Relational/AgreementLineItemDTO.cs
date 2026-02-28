@@ -54,6 +54,12 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public AgreementDTO Agreement { get; set; }
 
+        [IgnoreOnMapTo]
+        public UnitTypeDTO UnitType { get; set; }
+
+        [IgnoreOnMapTo]
+        public RecurringCycleTypeDTO RecurringCycleType { get; set; }
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AgreementLineItemDTO>()
@@ -65,6 +71,17 @@ namespace LagoVista.Relational
                 .HasOne(ps => ps.Product)
                 .WithMany()
                 .HasForeignKey(ps => ps.ProductId);
+
+            modelBuilder.Entity<AgreementLineItemDTO>()
+                .HasOne(ps => ps.UnitType)
+                .WithMany()
+                .HasForeignKey(ps => ps.UnitTypeId);
+
+
+            modelBuilder.Entity<AgreementLineItemDTO>()
+                .HasOne(ps => ps.RecurringCycleType)
+                .WithMany()
+                .HasForeignKey(ps => ps.RecurringCycleTypeId);
 
             modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.AgreementId).HasColumnOrder(2);

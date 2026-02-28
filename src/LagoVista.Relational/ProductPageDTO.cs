@@ -20,7 +20,7 @@ namespace LagoVista.Relational
         public string Icon { get; set; } = "icon-pz-product-2";
 
         [NotMapped]
-        public List<ProductPageProductDTO> Products { get; set; } = new List<ProductPageProductDTO>();
+        public List<ProductPageProductDTO> ProductPageProducts { get; set; } = new List<ProductPageProductDTO>();
 
         [Required]
         public string ShortSummaryHTML { get; set; }
@@ -72,9 +72,9 @@ namespace LagoVista.Relational
             .HasForeignKey(ps => ps.OrganizationId);
             
             modelBuilder.Entity<ProductPageDTO>()
-            .HasMany(p => p.Products)
+            .HasMany(p => p.ProductPageProducts)
             .WithOne()
-            .HasForeignKey(ppp => ppp.ProductId);
+            .HasForeignKey(ppp => ppp.ProductPageId);
 
             modelBuilder.Entity<ProductPageDTO>()
             .HasOne(tp => tp.CreatedByUser)

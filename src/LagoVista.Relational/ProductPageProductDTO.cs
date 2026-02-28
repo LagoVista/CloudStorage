@@ -1,4 +1,5 @@
-﻿using LagoVista.Models;
+﻿using LagoVista.Core.Attributes;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -17,8 +18,26 @@ namespace LagoVista.Relational
         public int UnitQty { get; set; }
 
 
+
+        [IgnoreOnMapTo]
+        public ProductDTO Product { get; set; }
+
+        [IgnoreOnMapTo]
+        public ProductPageDTO ProductPage { get; set; }
+
+
         public static void Configure(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<ProductPageProductDTO>()
+            .HasOne(tp => tp.Product)
+            .WithMany()
+            .HasForeignKey(p => p.ProductId);
+
+            modelBuilder.Entity<ProductPageProductDTO>()
+            .HasOne(tp => tp.ProductPage)
+            .WithMany(pp => pp.ProductPageProducts)
+            .HasForeignKey(p => p.ProductPageId);
+
             modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductPageId).HasColumnOrder(2);
             modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductId).HasColumnOrder(3);

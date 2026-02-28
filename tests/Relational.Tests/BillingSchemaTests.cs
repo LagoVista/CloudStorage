@@ -17,6 +17,7 @@ namespace Relational.Tests
             return new BillingDataContext(opts);
         }
 
+
         [Test]
         public Task AccountTransactionCategories() => AssertTableMatchesModelAsync(typeof(AccountTransactionCategoryDto), "dbo", "AccountTransactionCategory");
 
@@ -60,7 +61,7 @@ namespace Relational.Tests
         [Test]
         public Task PayrollSummary() => AssertTableMatchesModelAsync(typeof(PayrollSummaryDTO), "dbo", "PayrollSummary");
 
-
+        [Test]
         public Task Vendors() => AssertTableMatchesModelAsync(typeof(VendorDTO), "dbo", "Vendor");
         [Test]
         public Task WorkRole() => AssertTableMatchesModelAsync(typeof(WorkRoleDTO), "dbo", "WorkRoles");
@@ -72,6 +73,14 @@ namespace Relational.Tests
 
         [Test]
         public Task TimePeriods() => AssertTableMatchesModelAsync(typeof(TimePeriodDTO), "dbo", "TimePeriods");
+
+        [Test]
+        public Task UnitTypes() => AssertTableMatchesModelAsync(typeof(UnitTypeDTO), "dbo", "UnitType");
+
+
+        [Test]
+        public Task RecurringCycleTypes() => AssertTableMatchesModelAsync(typeof(RecurringCycleTypeDTO), "dbo", "RecurringCycleType");
+
 
     }
 }

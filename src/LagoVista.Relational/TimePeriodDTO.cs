@@ -1,6 +1,7 @@
 ﻿using LagoVista.Core;
 using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -31,9 +32,29 @@ namespace LagoVista.Relational
 
         public DateTime? LockedTimeStamp { get; set; }
         public string LockedByUserId { get; set; }
+
+        [IgnoreOnMapTo]
+        public AppUserDTO LockedByUser { get; set; }
+
+        [IgnoreOnMapTo]
+        public OrganizationDTO Organization { get; set; }
+
+
+
         public static void Configure(ModelBuilder modelBuilder)
         {
-    
+            modelBuilder.Entity<TimePeriodDTO>()
+            .HasOne(tp => tp.LockedByUser)
+            .WithMany()
+            .HasForeignKey(tp => tp.LockedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TimePeriodDTO>()
+            .HasOne(tp => tp.Organization)
+            .WithMany()
+            .HasForeignKey(tp => tp.OrganizationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
 
             modelBuilder.Entity<TimePeriodDTO>()
             .HasOne(tp => tp.PayrollSummary)    

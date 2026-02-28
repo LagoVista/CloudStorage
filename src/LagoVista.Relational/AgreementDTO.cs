@@ -67,6 +67,9 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo()]
         public List<AgreementLineItemDTO> LineItems { get; set; } = new List<AgreementLineItemDTO>();
 
+        [IgnoreOnMapTo()]
+        public List<InvoiceLineItemDTO> InvoiceLineItems { get; set; } = new List<InvoiceLineItemDTO>();
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AgreementDTO>().Property(x => x.Id).HasColumnOrder(1);
@@ -98,6 +101,12 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AgreementDTO>().Property(x => x.Shipping).HasColumnOrder(27);
             modelBuilder.Entity<AgreementDTO>().Property(x => x.Total).HasColumnOrder(28);
             modelBuilder.Entity<AgreementDTO>().Property(x => x.TaxPercent).HasColumnOrder(29);
+
+
+            modelBuilder.Entity<AgreementDTO>()
+            .HasMany(ps => ps.InvoiceLineItems)
+            .WithOne()
+            .HasForeignKey(li => li.Id);
 
             modelBuilder.Entity<AgreementDTO>()
             .HasMany(ps => ps.LineItems)

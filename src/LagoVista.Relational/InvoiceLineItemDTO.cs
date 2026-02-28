@@ -44,6 +44,12 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo()]
         public InvoiceDTO Invoice { get; set; }
 
+        [IgnoreOnMapTo]
+        public ProductDTO Product { get; set; }
+
+        [IgnoreOnMapTo]
+        public AgreementDTO Agreement { get; set; }
+
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -52,6 +58,17 @@ namespace LagoVista.Relational
             .WithMany(inv => inv.LineItems)
             .HasForeignKey(li => li.InvoiceId)
             .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<InvoiceLineItemDTO>()
+                .HasOne(ps => ps.Agreement)
+                .WithMany(a => a.InvoiceLineItems)
+                .HasForeignKey(ps => ps.AgreementId);
+
+            modelBuilder.Entity<InvoiceLineItemDTO>()
+                .HasOne(ps => ps.Product)
+                .WithMany()
+                .HasForeignKey(ps => ps.ProductId);
+
 
             modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.InvoiceId).HasColumnOrder(2);

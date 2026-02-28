@@ -1,14 +1,16 @@
-﻿using LagoVista.Models;
+﻿using LagoVista.Core.Attributes;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("Subscription", Schema = "dbo")]
     public class SubscriptionDTO : DbModelBase
     {
-   
-
         public SubscriptionDTO()
         {
             Icon = "icon-ae-bill-1";
@@ -38,8 +40,24 @@ namespace LagoVista.Relational
 
         public string Description { get; set; }
 
+        [IgnoreOnMapTo]
+        public List<InvoiceDTO> Invoices { get; set; }
+
+        [IgnoreOnMapTo]
+        public List<BillingEventDTO> BillingEvents { get; set; }    
+
         public static void Configure(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<SubscriptionDTO>()
+              .HasMany(ps => ps.Invoices)
+              .WithOne(i => i.Subscription)
+              .HasForeignKey(i => i.SubscriptionId);
+
+            modelBuilder.Entity<SubscriptionDTO>()
+              .HasMany(ps => ps.BillingEvents)
+              .WithOne(be => be.Subscription)
+              .HasForeignKey(be => be.SubscriptionId);
+
             modelBuilder.Entity<SubscriptionDTO>()
              .HasOne(ps => ps.CreatedByUser)
              .WithMany()
