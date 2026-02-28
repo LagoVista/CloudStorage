@@ -58,9 +58,14 @@ public abstract class SchemaContractTestBase
 
         var keyDiffs = EfKeyAsserts.AssertPrimaryKeyExplicit(ctx, entityType, schema, table);
 
+        var dbTypes = await SqlServerColumnTypeReader.ReadColumnTypesAsync(conn, schema, table).ConfigureAwait(false);
+        var efTypes = EfColumnTypeReader.ReadColumnTypes(ctx, entityType, schema, table);
+        var typeDiffs = ColumnTypeDiff.CompareStrict(dbTypes, efTypes);
 
         // Green path: no output
-        if (diffs.Count == 0 && navDiffs.Count == 0 && explicitNavDiffs.Count == 0 && fkDiffs.Count == 0 && defaultDiffs.Count == 0 && keyDiffs.Count == 0)
+        if (diffs.Count == 0 && navDiffs.Count == 0 && explicitNavDiffs.Count == 0 && 
+            fkDiffs.Count == 0 && defaultDiffs.Count == 0 && keyDiffs.Count == 0 &&
+            typeDiffs.Count == 0)
             return;
 
         // Only generate suggestions if we have column/order diffs.
@@ -97,6 +102,23 @@ public abstract class SchemaContractTestBase
                 {
                     TestContext.WriteLine($" modelBuilder.Entity<{entityType.Name}>().Property(x => x.{d.ColumnName}).HasDefaultValueSql(\"{d.DefaultSqlNormalized}\");");
                 }
+            }
+        }
+
+        if (typeDiffs.Count > 0)
+        {
+            TestContext.WriteLine("");
+            TestContext.WriteLine("Type differences (strict):");
+            foreach (var d in typeDiffs) TestContext.WriteLine(d);
+
+            TestContext.WriteLine("");
+            TestContext.WriteLine("Suggested HasColumnType mappings (verify property names):");
+            var storeMap = dbTypes.ToDictionary(x => x.ColumnName, x => x.StoreType, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var col in storeMap.Keys.OrderBy(x => x))
+            {
+                var prop = GuessPropertyName(designModel, entityType, schema, table, col);
+                TestContext.WriteLine($"modelBuilder.Entity<{entityType.Name}>().Property(x => x.{prop}).HasColumnType(\"{storeMap[col]}\");");
             }
         }
 

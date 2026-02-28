@@ -22,6 +22,10 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<SerialNumberDTO>().Property(x => x.Key).HasColumnOrder(3);
             modelBuilder.Entity<SerialNumberDTO>().Property(x => x.KeyId).HasColumnOrder(4);
 
+            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.Index).HasColumnType("int");
+            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.Key).HasColumnType("varchar(50)");
+            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.KeyId).HasColumnType("varchar(50)");
+            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.OrgId).HasColumnType("varchar(32)");
         }
     }
 }

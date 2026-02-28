@@ -107,6 +107,30 @@ namespace LagoVista.Relational
             modelBuilder.Entity<PayRateDTO>().Property(x => x.IsSalary).HasDefaultValueSql("0");
 
             modelBuilder.Entity<PayRateDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimated).HasColumnType("bit");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimatedRate).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedBillableRate).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedDeductions).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedEquityScaler).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedInternalRate).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedSalary).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.End).HasColumnType("date");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.FilingType).HasColumnType("varchar(50)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.IsContractor).HasColumnType("bit");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.IsFTE).HasColumnType("bit");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.IsOfficier).HasColumnType("bit");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.IsSalary).HasColumnType("bit");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.Start).HasColumnType("date");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.UserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PayRateDTO>().Property(x => x.WorkRoleId).HasColumnType("uniqueidentifier");
         }
     }
 }

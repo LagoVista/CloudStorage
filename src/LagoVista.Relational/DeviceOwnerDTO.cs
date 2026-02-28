@@ -36,6 +36,13 @@ namespace LagoVista.Relational
             modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasDefaultValueSql("getdate()");
 
             modelBuilder.Entity<DeviceOwnerDTO>().HasKey(x => new { x.DeviceOwnerUserId });
+
+            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.DeviceOwnerUserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Email).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.FullName).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Phone).HasColumnType("varchar(50)");
         }
     }
 }

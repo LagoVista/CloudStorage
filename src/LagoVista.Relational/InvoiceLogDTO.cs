@@ -46,6 +46,13 @@ namespace LagoVista.Relational
             modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.DateStamp).HasDefaultValueSql("getdate()");
 
             modelBuilder.Entity<InvoiceLogsDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.DateStamp).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.EventData).HasColumnType("varchar(255)");
+            modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.EventId).HasColumnType("varchar(50)");
+            modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.InvoiceId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.Message).HasColumnType("varchar(255)");
         }
     }
 }

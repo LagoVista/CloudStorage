@@ -85,6 +85,23 @@ namespace LagoVista.Relational
             modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedByUserId).HasColumnOrder(16);
 
             modelBuilder.Entity<PayrollSummaryDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTaxLiabilities).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalExpenses).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalPayroll).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalRevenue).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalSalary).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.EncryptedTotalTaxLiability).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Locked).HasColumnType("bit");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedByUserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedTimeStamp).HasColumnType("datetime");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
         }
     }
 }

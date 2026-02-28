@@ -56,6 +56,18 @@ namespace LagoVista.Relational
             modelBuilder.Entity<WorkRoleDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(11);
 
             modelBuilder.Entity<WorkRoleDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Icon).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.IsActive).HasColumnType("bit");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Key).HasColumnType("varchar(128)");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<WorkRoleDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
         }
     }
 }

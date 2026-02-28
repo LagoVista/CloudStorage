@@ -73,6 +73,22 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.TaxCategory).HasDefaultValueSql("'Other'");
 
             modelBuilder.Entity<ExpenseCategoryDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.DeductiblePercent).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Icon).HasColumnType("varchar(128)");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.IsActive).HasColumnType("bit");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.ReimbursementPercent).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.RequiresApproval).HasColumnType("bit");
+            modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.TaxCategory).HasColumnType("varchar(max)");
         }
     }
 }

@@ -89,6 +89,22 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxReportable).HasDefaultValueSql("0");
 
             modelBuilder.Entity<AccountTransactionCategoryDto>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Description).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.ExpenseCategoryId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Icon).HasColumnType("varchar(128)");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.IsActive).HasColumnType("bit");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Name).HasColumnType("varchar(128)");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Passthrough).HasColumnType("bit");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxCategory).HasColumnType("varchar(50)");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxReportable).HasColumnType("bit");
+            modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Type).HasColumnType("varchar(50)");
         }
     }
 }

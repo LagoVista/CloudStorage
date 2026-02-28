@@ -89,6 +89,22 @@ namespace LagoVista.Relational
             modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Taxable).HasDefaultValueSql("0");
 
             modelBuilder.Entity<InvoiceLineItemDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.AgreementId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Discount).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Extended).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.InvoiceId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ProductName).HasColumnType("varchar(255)");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Quantity).HasColumnType("decimal(5,2)");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ResourceId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ResourceName).HasColumnType("varchar(255)");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Shipping).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Taxable).HasColumnType("bit");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Total).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.UnitPrice).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Units).HasColumnType("varchar(50)");
         }
     }
 }

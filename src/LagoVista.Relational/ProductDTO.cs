@@ -187,6 +187,33 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductDTO>().Property(x => x.UnitPrice).HasDefaultValueSql("0");
 
             modelBuilder.Entity<ProductDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<ProductDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.DetailsHTML).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Icon).HasColumnType("varchar(50)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.ImageResourceId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.ImageResourceName).HasColumnType("varchar(128)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.IsPublic).HasColumnType("bit");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.IsTrialResource).HasColumnType("bit");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.PhysicalProduct).HasColumnType("bit");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.ProductCategoryId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.RecurringCycleTypeId).HasColumnType("int");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.RemoteResourceId).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.ShortSummaryHTML).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Sku).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.ThumbnailImageResourceId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.ThumbnailImageResourceName).HasColumnType("varchar(128)");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.UnitCost).HasColumnType("money");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.UnitPrice).HasColumnType("money");
+            modelBuilder.Entity<ProductDTO>().Property(x => x.UnitTypeId).HasColumnType("int");
         }
     }
 }

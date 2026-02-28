@@ -133,6 +133,31 @@ namespace LagoVista.Relational
             modelBuilder.Entity<VendorDTO>().Property(x => x.StateOrProvince).HasDefaultValueSql("''");
 
             modelBuilder.Entity<VendorDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Address1).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Address2).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.City).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Contact).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Country).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.DefaultAccountTransactionCategoryId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.DefaultExpenseCategoryId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Icon).HasColumnType("varchar(128)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.IsActive).HasColumnType("bit");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.MaxAmount).HasColumnType("decimal(8,2)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.PayPeriod).HasColumnType("varchar(32)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.Phone).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.PostalCode).HasColumnType("varchar(max)");
+            modelBuilder.Entity<VendorDTO>().Property(x => x.StateOrProvince).HasColumnType("varchar(max)");
         }
     }
 }

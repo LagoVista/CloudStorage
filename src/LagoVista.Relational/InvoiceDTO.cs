@@ -167,6 +167,38 @@ namespace LagoVista.Relational
             modelBuilder.Entity<InvoiceDTO>().Property(x => x.TotalPaid).HasDefaultValueSql("0");
 
             modelBuilder.Entity<InvoiceDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.AdditionalNotes).HasColumnType("varchar(max)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.AgreementId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.BillingEnd).HasColumnType("date");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.BillingStart).HasColumnType("date");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.ClosedTransactionId).HasColumnType("varchar(255)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.ContactId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.CreationTimeStamp).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.CustomerId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Discount).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.DueDate).HasColumnType("date");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Extended).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.FailedAttemptCount).HasColumnType("int");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.HasChildren).HasColumnType("bit");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.InvoiceDate).HasColumnType("date");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.InvoiceNumber).HasColumnType("int");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.IsLocked).HasColumnType("bit");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.IsMaster).HasColumnType("bit");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.MasterInvoiceId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.OrgId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.PaidDate).HasColumnType("date");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Shipping).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.StatusDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.SubscriptionId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Subtotal).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Tax).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.TaxPercent).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.Total).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<InvoiceDTO>().Property(x => x.TotalPaid).HasColumnType("varchar(1024)");
         }
     }
 }

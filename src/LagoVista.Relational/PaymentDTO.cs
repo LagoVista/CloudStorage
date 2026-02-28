@@ -142,6 +142,36 @@ namespace LagoVista.Relational
             modelBuilder.Entity<PaymentDTO>().Property(x => x.W2Payment).HasDefaultValueSql("0");
 
             modelBuilder.Entity<PaymentDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.BillableHours).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.ContractorPayment).HasColumnType("bit");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.DeductionsDetail).HasColumnType("varchar(max)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.EarnedEquity).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.EquityHours).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.EstimatedDeposit).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.ExpectedDeliveryDate).HasColumnType("date");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.ExpenseDetail).HasColumnType("varchar(max)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.Expenses).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.Gross).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.InternalHours).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.Net).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.OfficierPayment).HasColumnType("bit");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.PeriodEnd).HasColumnType("date");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.PeriodStart).HasColumnType("date");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.PrimaryDeposit).HasColumnType("varchar(1000)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.PrimaryTransactionId).HasColumnType("varchar(200)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.SecondaryTransactionId).HasColumnType("varchar(200)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.SubmittedDate).HasColumnType("date");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.TimePeriodId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.UserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<PaymentDTO>().Property(x => x.W2Payment).HasColumnType("bit");
         }
     }
 }

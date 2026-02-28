@@ -68,6 +68,16 @@ namespace LagoVista.Relational
             modelBuilder.Entity<TimePeriodDTO>().Property(x => x.End).HasColumnOrder(9);
 
             modelBuilder.Entity<TimePeriodDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.End).HasColumnType("date");
+            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Locked).HasColumnType("bit");
+            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedByUserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedTimeStamp).HasColumnType("datetime");
+            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.PayrollSummaryId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Start).HasColumnType("date");
+            modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Year).HasColumnType("int");
         }
     }
 }

@@ -125,6 +125,21 @@ namespace LagoVista.Relational
 
             modelBuilder.Entity<AccountTransactionDto>().HasKey(x => new { x.Id });
 
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.AccountId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Description).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.EncryptedAmount).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasColumnType("bit");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Name).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.OriginalHash).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Tag).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionCategoryId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionDate).HasColumnType("date");
+            modelBuilder.Entity<AccountTransactionDto>().Property(x => x.VendorId).HasColumnType("uniqueidentifier");
         }
     }
 }

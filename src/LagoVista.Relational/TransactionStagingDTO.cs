@@ -83,6 +83,25 @@ namespace LagoVista.Relational
             modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Id).HasDefaultValueSql("newid()");
 
             modelBuilder.Entity<TransactionStagingDto>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AccountId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.AuthorizationDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Categories).HasColumnType("varchar(max)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.CheckNumber).HasColumnType("varchar(50)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.EncryptedAmount).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.IsoCurrencyCode).HasColumnType("varchar(128)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.ItemId).HasColumnType("varchar(255)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantEntryId).HasColumnType("varchar(255)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantName).HasColumnType("varchar(255)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Name).HasColumnType("varchar(255)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.OriginalDescription).HasColumnType("varchar(max)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PendingTransactionId).HasColumnType("varchar(255)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidAccountId).HasColumnType("varchar(255)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.PlaidTransactionId).HasColumnType("varchar(255)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.SuggestedCategory).HasColumnType("varchar(50)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.TransactionType).HasColumnType("nchar(10)");
+            modelBuilder.Entity<TransactionStagingDto>().Property(x => x.UnofficialCurrencyCode).HasColumnType("varchar(128)");
         }
     }
 }

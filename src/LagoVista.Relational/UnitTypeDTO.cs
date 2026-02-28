@@ -25,6 +25,10 @@ namespace LagoVista.Relational
             modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Key).HasColumnOrder(3);
 
             modelBuilder.Entity<UnitTypeDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Id).HasColumnType("int");
+            modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
+            modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
         }
 
         public EntityHeader ToEntityHeader()

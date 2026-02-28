@@ -102,6 +102,25 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ShortSummaryHTML).HasDefaultValueSql("''");
 
             modelBuilder.Entity<ProductCategoryDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeId).HasColumnType("varchar(128)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeName).HasColumnType("varchar(128)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Icon).HasColumnType("varchar(50)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ImageResourceId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ImageResourceName).HasColumnType("varchar(128)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.IsPublic).HasColumnType("bit");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ShortSummaryHTML).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ThumbnailImageResourceId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ThumbnailImageResourceName).HasColumnType("varchar(128)");
         }
     }
 }

@@ -107,6 +107,25 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Taxable).HasDefaultValueSql("0");
 
             modelBuilder.Entity<AgreementLineItemDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.AgreementId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.DiscountPercent).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.End).HasColumnType("datetime");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Extended).HasColumnType("money");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.IsRecurring).HasColumnType("bit");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.LastBilledDate).HasColumnType("datetime");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.NextBillingDate).HasColumnType("datetime");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.ProductName).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Quantity).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.RecurringCycleTypeId).HasColumnType("int");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Shipping).HasColumnType("money");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Start).HasColumnType("datetime");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.SubTotal).HasColumnType("money");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Taxable).HasColumnType("bit");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.UnitPrice).HasColumnType("money");
+            modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.UnitTypeId).HasColumnType("int");
         }
     }
 }

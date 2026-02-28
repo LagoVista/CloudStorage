@@ -55,6 +55,13 @@ namespace LagoVista.Relational
 
             modelBuilder.Entity<OwnedDeviceDTO>().HasKey(x => new { x.Id });
 
+            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceId).HasColumnType("varchar(255)");
+            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceName).HasColumnType("varchar(512)");
+            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceOwnerUserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceUniqueId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasColumnType("decimal(5,2)");
+            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Id).HasColumnType("varchar(32)");
+            modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
         }
     }
 }

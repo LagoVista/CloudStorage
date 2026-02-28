@@ -96,7 +96,23 @@ namespace LagoVista.Relational
             modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasDefaultValueSql("'empty'");
 
             modelBuilder.Entity<SubscriptionDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.CustomerId).HasColumnType("varchar(128)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentToken).HasColumnType("varchar(128)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenExpires).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasColumnType("varchar(50)");
+            modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
         }
     }
-
 }

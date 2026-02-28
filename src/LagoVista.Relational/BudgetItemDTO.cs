@@ -98,6 +98,23 @@ namespace LagoVista.Relational
             modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
 
             modelBuilder.Entity<BudgetItemDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.AccountTransactionCategoryId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedActual).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedAllocated).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.ExpenseCategoryId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Icon).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Month).HasColumnType("int");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.WorkRoleId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Year).HasColumnType("int");
         }
     }
 }

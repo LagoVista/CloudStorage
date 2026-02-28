@@ -106,6 +106,33 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AccountDto>().Property(x => x.TransactionJournalOnly).HasDefaultValueSql("0");
 
             modelBuilder.Entity<AccountDto>().HasKey(x => new { x.Id });
+
+
+            modelBuilder.Entity<AccountDto>().Property(x => x.AccessTokenSecretId).HasColumnType("varchar(128)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.AccountNumber).HasColumnType("varchar(128)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.Description).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedBalance).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedOnlineBalance).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.ExternalAccountId).HasColumnType("varchar(255)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.ExternalProvider).HasColumnType("varchar(50)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.ExternalProviderid).HasColumnType("varchar(255)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AccountDto>().Property(x => x.Institution).HasColumnType("varchar(128)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.IsActive).HasColumnType("bit");
+            modelBuilder.Entity<AccountDto>().Property(x => x.IsLiability).HasColumnType("bit");
+            modelBuilder.Entity<AccountDto>().Property(x => x.LastError).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.LastSyncAt).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.LinkActive).HasColumnType("bit");
+            modelBuilder.Entity<AccountDto>().Property(x => x.Name).HasColumnType("varchar(128)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.RoutingNumber).HasColumnType("varchar(128)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.SyncStatus).HasColumnType("varchar(50)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.TransactionCursor).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AccountDto>().Property(x => x.TransactionJournalOnly).HasColumnType("bit");
         }
     }
 }

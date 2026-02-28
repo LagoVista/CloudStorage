@@ -80,6 +80,22 @@ namespace LagoVista.Relational
             modelBuilder.Entity<CustomerDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(15);
 
             modelBuilder.Entity<CustomerDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.Address1).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.Address2).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.BillingContactEmail).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.BillingContactName).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.City).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.CustomerName).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.State).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<CustomerDTO>().Property(x => x.Zip).HasColumnType("varchar(30)");
         }
     }
 }

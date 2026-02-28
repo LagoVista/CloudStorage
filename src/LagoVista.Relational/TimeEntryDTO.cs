@@ -77,6 +77,26 @@ namespace LagoVista.Relational
             modelBuilder.Entity<TimeEntryDTO>().Property(x => x.IsEquityTime).HasDefaultValueSql("0");
 
             modelBuilder.Entity<TimeEntryDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.AgreementId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.BillingEventId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.Date).HasColumnType("datetime");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.Hours).HasColumnType("decimal(5,2)");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.IsEquityTime).HasColumnType("bit");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.Locked).HasColumnType("bit");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.ProjectId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.ProjectName).HasColumnType("varchar(255)");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.TimePeriodId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.UserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.WorkTaskId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<TimeEntryDTO>().Property(x => x.WorkTaskName).HasColumnType("varchar(255)");
         }
     }
 }

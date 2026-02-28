@@ -154,6 +154,24 @@ namespace LagoVista.Relational
             modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitTypeId).HasDefaultValueSql("1");
 
             modelBuilder.Entity<BillingEventDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.DiscountPercent).HasColumnType("decimal(5,2)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.EndedByAppuserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.EndTimeStamp).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.Extended).HasColumnType("decimal(10,4)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.HoursBilled).HasColumnType("decimal(18,4)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.Notes).HasColumnType("nvarchar(max)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceName).HasColumnType("varchar(255)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.StartedByAppUserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.StartTimeStamp).HasColumnType("datetime2(7)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.SubscriptionId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitCost).HasColumnType("decimal(10,4)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitPrice).HasColumnType("decimal(18,4)");
+            modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitTypeId).HasColumnType("int");
         }
     }
 }

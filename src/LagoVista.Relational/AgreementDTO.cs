@@ -72,6 +72,40 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<AgreementDTO>()
+             .HasMany(ps => ps.InvoiceLineItems)
+             .WithOne()
+             .HasForeignKey(li => li.Id);
+
+            modelBuilder.Entity<AgreementDTO>()
+            .HasMany(ps => ps.LineItems)
+            .WithOne()
+            .HasForeignKey(li => li.AgreementId);
+
+            modelBuilder.Entity<AgreementDTO>()
+            .HasOne(ps => ps.Customer)
+            .WithMany()
+            .HasForeignKey(ps => ps.CustomerId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<AgreementDTO>()
+            .HasOne(ps => ps.Organization)
+            .WithMany()
+            .HasForeignKey(ps => ps.OrganizationId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<AgreementDTO>()
+            .HasOne(ps => ps.LastUpdatedByUser)
+            .WithMany()
+            .HasForeignKey(ps => ps.LastUpdatedById)
+            .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<AgreementDTO>()
+            .HasOne(ps => ps.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(ps => ps.CreatedById)
+            .OnDelete(DeleteBehavior.NoAction);
+
             modelBuilder.Entity<AgreementDTO>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerId).HasColumnOrder(2);
             modelBuilder.Entity<AgreementDTO>().Property(x => x.OrganizationId).HasColumnOrder(3);
@@ -115,41 +149,39 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AgreementDTO>().Property(x => x.Terms).HasDefaultValueSql("15");
             modelBuilder.Entity<AgreementDTO>().Property(x => x.Total).HasDefaultValueSql("0");
 
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactId).HasColumnType("varchar(40)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactName).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.DiscountPercent).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedRate).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.End).HasColumnType("date");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Hours).HasColumnType("decimal(18,2)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Identifier).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Internal).HasColumnType("bit");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.InvoicePeriod).HasColumnType("varchar(128)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.LastInvoicedDate).HasColumnType("date");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Locked).HasColumnType("bit");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Name).HasColumnType("varchar(255)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.NextInvoiceDate).HasColumnType("date");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Shipping).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Start).HasColumnType("date");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Status).HasColumnType("varchar(128)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.SubTotal).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Tax).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.TaxPercent).HasColumnType("decimal(6,2)");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Terms).HasColumnType("int");
+            modelBuilder.Entity<AgreementDTO>().Property(x => x.Total).HasColumnType("decimal(6,2)");
+
             modelBuilder.Entity<AgreementDTO>().HasKey(x => new { x.Id });
 
-            modelBuilder.Entity<AgreementDTO>()
-            .HasMany(ps => ps.InvoiceLineItems)
-            .WithOne()
-            .HasForeignKey(li => li.Id);
-
-            modelBuilder.Entity<AgreementDTO>()
-            .HasMany(ps => ps.LineItems)
-            .WithOne()
-            .HasForeignKey(li => li.AgreementId);
-
-            modelBuilder.Entity<AgreementDTO>()
-            .HasOne(ps => ps.Customer)
-            .WithMany()
-            .HasForeignKey(ps => ps.CustomerId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder.Entity<AgreementDTO>()
-            .HasOne(ps => ps.Organization)
-            .WithMany()
-            .HasForeignKey(ps => ps.OrganizationId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder.Entity<AgreementDTO>()
-            .HasOne(ps => ps.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById)
-            .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder.Entity<AgreementDTO>()
-            .HasOne(ps => ps.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.CreatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+         
         }
     }
 }

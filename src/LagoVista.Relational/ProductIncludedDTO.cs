@@ -61,6 +61,15 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasDefaultValueSql("1");
 
             modelBuilder.Entity<ProductIncludedDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Discount).HasColumnType("decimal(4,2)");
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Key).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.PackageId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasColumnType("int");
         }
     }
 }

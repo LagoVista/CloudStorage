@@ -51,6 +51,13 @@ namespace LagoVista.Relational
 
             modelBuilder.Entity<ProductPageProductDTO>().HasKey(x => new { x.Id });
 
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasColumnType("money");
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Index).HasColumnType("int");
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductPageId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasColumnType("int");
+
         }
     }
 

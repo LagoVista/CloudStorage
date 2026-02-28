@@ -139,6 +139,34 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ExpenseDTO>().Property(x => x.VendorId).HasColumnOrder(27);
 
             modelBuilder.Entity<ExpenseDTO>().HasKey(x => new { x.Id });
+
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.AgreementId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.Approved).HasColumnType("bit");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.ApprovedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.ApprovedDate).HasColumnType("datetime");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.BillingEventId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.Date).HasColumnType("datetime");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.EncryptedAmount).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.EncryptedReimbursedAmount).HasColumnType("varchar(1024)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.ExpenseCategoryId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.ExpenseDate).HasColumnType("date");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.Locked).HasColumnType("bit");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.PaymentId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.ProjectId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.ProjectName).HasColumnType("varchar(255)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.TimePeriodId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.UserId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.VendorId).HasColumnType("uniqueidentifier");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.WorkTaskId).HasColumnType("varchar(32)");
+            modelBuilder.Entity<ExpenseDTO>().Property(x => x.WorkTaskName).HasColumnType("varchar(255)");
         }
     }
 }
