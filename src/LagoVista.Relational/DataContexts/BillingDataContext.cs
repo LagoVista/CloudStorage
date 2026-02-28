@@ -12,8 +12,8 @@ namespace LagoVista.Relational.DataContexts
         }
 
 
-        public DbSet<AppUserDTO> AppUser { get; set; }
-        public DbSet<OrganizationDTO> Org { get; set; }
+        //public DbSet<AppUserDTO> AppUser { get; set; }
+        //public DbSet<OrganizationDTO> Org { get; set; }
 
         public DbSet<AccountTransactionCategoryDto> AccountTransactionCategory { get; set; }
 

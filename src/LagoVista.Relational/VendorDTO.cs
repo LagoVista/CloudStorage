@@ -1,4 +1,5 @@
 ﻿using LagoVista.Core.Attributes;
+using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -61,6 +62,9 @@ namespace LagoVista.Relational
 
         [IgnoreOnMapTo()]
         public AccountTransactionCategoryDto DefaultAccountTransactionCategory { get; set; }
+
+
+        public EntityHeader ToEntityHeader() => EntityHeader.Create(Id.ToString(), Key, Name);
 
 
         public static void Configure(ModelBuilder modelBuilder)

@@ -1,4 +1,5 @@
-﻿using LagoVista.Models;
+﻿using LagoVista.Core.Attributes;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel.DataAnnotations;
@@ -6,6 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [EncryptionKey("UserId={id}", IdProperty ="UserId")]
     [Table("Expenses", Schema = "dbo")]
     public class ExpenseDTO : DbModelBase
     {
@@ -18,6 +20,7 @@ namespace LagoVista.Relational
 
         public Guid? PaymentId { get; set; }
 
+        [IgnoreOnMapTo]
         [Obsolete("use ExpenseDate")]
         public DateTime Date { get; set; }
 
@@ -38,14 +41,20 @@ namespace LagoVista.Relational
 
         public DateTime? ApprovedDate { get; set; }
 
+        [IgnoreOnMapTo]
         public VendorDTO Vendor { get; set; }
 
+        [IgnoreOnMapTo]
         public AgreementDTO Agreement { get; set; }
+        [IgnoreOnMapTo]
         public ExpenseCategoryDTO Category { get; set; }
+        [IgnoreOnMapTo]
         public PaymentDTO Payment { get; set; }
+        [IgnoreOnMapTo]
         public TimePeriodDTO TimePeriod { get; set; }
-
+        [IgnoreOnMapTo]
         public AppUserDTO User { get; set; }
+        [IgnoreOnMapTo]
         public AppUserDTO ApprovedUser { get; set; }
 
         public bool Locked { get; set; }
@@ -110,6 +119,7 @@ namespace LagoVista.Relational
             .WithMany()
             .HasForeignKey(x => x.OrganizationId);
 
+            if (modelBuilder.IsSqlServer())
             {
                 modelBuilder.Entity<ExpenseDTO>().Property(x => x.Id).HasColumnOrder(1);
                 modelBuilder.Entity<ExpenseDTO>().Property(x => x.TimePeriodId).HasColumnOrder(2);
