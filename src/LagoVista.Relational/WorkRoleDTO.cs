@@ -54,6 +54,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<WorkRoleDTO>().Property(x => x.CreatedById).HasColumnOrder(9);
             modelBuilder.Entity<WorkRoleDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(10);
             modelBuilder.Entity<WorkRoleDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(11);
+
+            modelBuilder.Entity<WorkRoleDTO>().HasKey(x => new { x.Id });
         }
     }
 }

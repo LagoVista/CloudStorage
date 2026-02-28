@@ -56,8 +56,11 @@ public abstract class SchemaContractTestBase
         var efDefaults = EfDefaultReader.ReadDefaults(designModel, entityType, schema, table);
         var defaultDiffs = DefaultDiff.Compare(dbDefaults, efDefaults);
 
+        var keyDiffs = EfKeyAsserts.AssertPrimaryKeyExplicit(ctx, entityType, schema, table);
+
+
         // Green path: no output
-        if (diffs.Count == 0 && navDiffs.Count == 0 && explicitNavDiffs.Count == 0 && fkDiffs.Count == 0 && defaultDiffs.Count == 0)
+        if (diffs.Count == 0 && navDiffs.Count == 0 && explicitNavDiffs.Count == 0 && fkDiffs.Count == 0 && defaultDiffs.Count == 0 && keyDiffs.Count == 0)
             return;
 
         // Only generate suggestions if we have column/order diffs.
@@ -95,6 +98,20 @@ public abstract class SchemaContractTestBase
                     TestContext.WriteLine($" modelBuilder.Entity<{entityType.Name}>().Property(x => x.{d.ColumnName}).HasDefaultValueSql(\"{d.DefaultSqlNormalized}\");");
                 }
             }
+        }
+
+        var pk = designModel.FindEntityType(entityType)?.FindPrimaryKey();
+        if (pk != null)
+        {
+            var propNames = string.Join(", ", pk.Properties.Select(p => $"x.{p.Name}"));
+            TestContext.WriteLine($"Suggested:\n modelBuilder.Entity<{entityType.Name}>().HasKey(x => new {{ {propNames} }});");
+        }
+
+        if (keyDiffs.Count > 0)
+        {
+            TestContext.WriteLine("");
+            TestContext.WriteLine("Key modeling issues:");
+            foreach (var d in keyDiffs) TestContext.WriteLine(d);
         }
 
         if (diffs.Count > 0)

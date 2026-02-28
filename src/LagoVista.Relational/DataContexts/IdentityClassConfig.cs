@@ -13,6 +13,8 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<AppUserDTO>().Property(x => x.FullName).HasColumnOrder(3);
             modelBuilder.Entity<AppUserDTO>().Property(x => x.CreationDate).HasColumnOrder(4);
             modelBuilder.Entity<AppUserDTO>().Property(x => x.LastUpdatedDate).HasColumnOrder(5);
+
+            modelBuilder.Entity<AppUserDTO>().HasKey(x => new { x.AppUserId });
         }
     }
 
@@ -32,6 +34,8 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<OrganizationDTO>().Property(x => x.Status).HasColumnOrder(4);
             modelBuilder.Entity<OrganizationDTO>().Property(x => x.CreationDate).HasColumnOrder(5);
             modelBuilder.Entity<OrganizationDTO>().Property(x => x.LastUpdatedDate).HasColumnOrder(6);
+
+            modelBuilder.Entity<OrganizationDTO>().HasKey(x => new { x.OrgId });
         }
     }
 }

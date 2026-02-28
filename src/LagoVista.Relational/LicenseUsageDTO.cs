@@ -19,6 +19,7 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<LicenseUsageDTO>().HasKey(x => new { x.Id });
 
         }
     }

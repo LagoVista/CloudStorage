@@ -84,7 +84,7 @@ namespace LagoVista.Relational
             modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedTimeStamp).HasColumnOrder(15);
             modelBuilder.Entity<PayrollSummaryDTO>().Property(x => x.LockedByUserId).HasColumnOrder(16);
 
-
+            modelBuilder.Entity<PayrollSummaryDTO>().HasKey(x => new { x.Id });
         }
     }
 }

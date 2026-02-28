@@ -81,6 +81,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<TransactionStagingDto>().Property(x => x.MerchantEntryId).HasColumnOrder(18);
 
             modelBuilder.Entity<TransactionStagingDto>().Property(x => x.Id).HasDefaultValueSql("newid()");
+
+            modelBuilder.Entity<TransactionStagingDto>().HasKey(x => new { x.Id });
         }
     }
 }

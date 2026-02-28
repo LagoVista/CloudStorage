@@ -52,6 +52,9 @@ namespace LagoVista.Relational
             modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasColumnOrder(7);
 
             modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasDefaultValueSql("0");
+
+            modelBuilder.Entity<OwnedDeviceDTO>().HasKey(x => new { x.Id });
+
         }
     }
 }

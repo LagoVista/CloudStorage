@@ -122,6 +122,9 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AccountTransactionDto>().Property(x => x.VendorId).HasColumnOrder(15);
 
             modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasDefaultValueSql("0");
+
+            modelBuilder.Entity<AccountTransactionDto>().HasKey(x => new { x.Id });
+
         }
     }
 }

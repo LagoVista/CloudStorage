@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.Relational
 {
-    [Table("DeviceOwneruser", Schema ="dbo")]
+    [Table("DeviceOwnerUser", Schema ="dbo")]
     public class DeviceOwnerDTO
     {
         [Key]
@@ -34,6 +34,8 @@ namespace LagoVista.Relational
 
             modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
             modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasDefaultValueSql("getdate()");
+
+            modelBuilder.Entity<DeviceOwnerDTO>().HasKey(x => new { x.DeviceOwnerUserId });
         }
     }
 }

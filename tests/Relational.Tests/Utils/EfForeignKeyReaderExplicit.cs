@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -65,6 +66,19 @@ public static class EfForeignKeyReaderExplicit
                 OnDelete: onDelete,
                 Source: fk.GetConfigurationSource()));
         }
+
+        var shadowFkProps = et.GetForeignKeys()
+            .SelectMany(fk => fk.Properties)
+            .Where(p => p.IsShadowProperty())
+            .ToList();
+
+                if (shadowFkProps.Count > 0)
+                {
+                    foreach (var p in shadowFkProps)
+                        TestContext.WriteLine($"Shadow FK property detected: {entityClrType.Name}.{p.Name}");
+
+                    Assert.Fail($"{entityClrType.Name} contains shadow foreign keys.");
+                }
 
         return list;
     }

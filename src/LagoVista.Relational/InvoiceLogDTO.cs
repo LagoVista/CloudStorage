@@ -44,6 +44,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.Message).HasColumnOrder(6);
 
             modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.DateStamp).HasDefaultValueSql("getdate()");
+
+            modelBuilder.Entity<InvoiceLogsDTO>().HasKey(x => new { x.Id });
         }
     }
 }

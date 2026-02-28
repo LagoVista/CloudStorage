@@ -106,6 +106,7 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Shipping).HasDefaultValueSql("0");
             modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Taxable).HasDefaultValueSql("0");
 
+            modelBuilder.Entity<AgreementLineItemDTO>().HasKey(x => new { x.Id });
         }
     }
 }

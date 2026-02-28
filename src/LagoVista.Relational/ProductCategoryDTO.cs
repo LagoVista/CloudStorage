@@ -100,6 +100,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
             modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdateDate).HasDefaultValueSql("getdate()");
             modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ShortSummaryHTML).HasDefaultValueSql("''");
+
+            modelBuilder.Entity<ProductCategoryDTO>().HasKey(x => new { x.Id });
         }
     }
 }

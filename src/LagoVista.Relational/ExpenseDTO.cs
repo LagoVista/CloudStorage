@@ -138,6 +138,7 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ExpenseDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(26);
             modelBuilder.Entity<ExpenseDTO>().Property(x => x.VendorId).HasColumnOrder(27);
 
+            modelBuilder.Entity<ExpenseDTO>().HasKey(x => new { x.Id });
         }
     }
 }

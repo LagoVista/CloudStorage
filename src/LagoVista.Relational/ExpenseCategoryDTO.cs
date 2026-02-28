@@ -71,6 +71,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.IsActive).HasDefaultValueSql("1");
             modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.RequiresApproval).HasDefaultValueSql("0");
             modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.TaxCategory).HasDefaultValueSql("'Other'");
+
+            modelBuilder.Entity<ExpenseCategoryDTO>().HasKey(x => new { x.Id });
         }
     }
 }

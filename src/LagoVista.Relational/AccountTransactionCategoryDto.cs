@@ -83,11 +83,12 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxReportable).HasColumnOrder(14);
             modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Passthrough).HasColumnOrder(15);
 
-
             modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Icon).HasDefaultValueSql("'icon-ae-checklist-2'");
             modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.IsActive).HasDefaultValueSql("1");
             modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Passthrough).HasDefaultValueSql("0");
             modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxReportable).HasDefaultValueSql("0");
+
+            modelBuilder.Entity<AccountTransactionCategoryDto>().HasKey(x => new { x.Id });
         }
     }
 }

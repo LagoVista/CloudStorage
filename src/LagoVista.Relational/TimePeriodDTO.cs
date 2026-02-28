@@ -66,7 +66,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<TimePeriodDTO>().Property(x => x.PayrollSummaryId).HasColumnOrder(7);
             modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Start).HasColumnOrder(8);
             modelBuilder.Entity<TimePeriodDTO>().Property(x => x.End).HasColumnOrder(9);
+
+            modelBuilder.Entity<TimePeriodDTO>().HasKey(x => new { x.Id });
         }
     }
-
 }

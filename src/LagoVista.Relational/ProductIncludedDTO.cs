@@ -59,6 +59,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
             modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasDefaultValueSql("''");
             modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasDefaultValueSql("1");
+
+            modelBuilder.Entity<ProductIncludedDTO>().HasKey(x => new { x.Id });
         }
     }
 }

@@ -96,6 +96,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Description).HasColumnOrder(16);
 
             modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
+
+            modelBuilder.Entity<BudgetItemDTO>().HasKey(x => new { x.Id });
         }
     }
 }

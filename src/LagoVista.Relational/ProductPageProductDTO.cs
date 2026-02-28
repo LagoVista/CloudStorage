@@ -48,6 +48,9 @@ namespace LagoVista.Relational
             modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasDefaultValueSql("0");
             modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
             modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasDefaultValueSql("1");
+
+            modelBuilder.Entity<ProductPageProductDTO>().HasKey(x => new { x.Id });
+
         }
     }
 

@@ -105,6 +105,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<PayRateDTO>().Property(x => x.IsFTE).HasDefaultValueSql("0");
             modelBuilder.Entity<PayRateDTO>().Property(x => x.IsOfficier).HasDefaultValueSql("0");
             modelBuilder.Entity<PayRateDTO>().Property(x => x.IsSalary).HasDefaultValueSql("0");
+
+            modelBuilder.Entity<PayRateDTO>().HasKey(x => new { x.Id });
         }
     }
 }

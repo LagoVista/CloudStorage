@@ -104,6 +104,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AccountDto>().Property(x => x.IsActive).HasDefaultValueSql("1");
             modelBuilder.Entity<AccountDto>().Property(x => x.LinkActive).HasDefaultValueSql("0");
             modelBuilder.Entity<AccountDto>().Property(x => x.TransactionJournalOnly).HasDefaultValueSql("0");
+
+            modelBuilder.Entity<AccountDto>().HasKey(x => new { x.Id });
         }
     }
 }

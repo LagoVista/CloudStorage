@@ -115,6 +115,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AgreementDTO>().Property(x => x.Terms).HasDefaultValueSql("15");
             modelBuilder.Entity<AgreementDTO>().Property(x => x.Total).HasDefaultValueSql("0");
 
+            modelBuilder.Entity<AgreementDTO>().HasKey(x => new { x.Id });
+
             modelBuilder.Entity<AgreementDTO>()
             .HasMany(ps => ps.InvoiceLineItems)
             .WithOne()

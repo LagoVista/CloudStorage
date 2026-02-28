@@ -87,6 +87,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Shipping).HasColumnOrder(15);
 
             modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Taxable).HasDefaultValueSql("0");
+
+            modelBuilder.Entity<InvoiceLineItemDTO>().HasKey(x => new { x.Id });
         }
     }
 }

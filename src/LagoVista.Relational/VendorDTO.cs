@@ -131,6 +131,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<VendorDTO>().Property(x => x.Phone).HasDefaultValueSql("''");
             modelBuilder.Entity<VendorDTO>().Property(x => x.PostalCode).HasDefaultValueSql("''");
             modelBuilder.Entity<VendorDTO>().Property(x => x.StateOrProvince).HasDefaultValueSql("''");
+
+            modelBuilder.Entity<VendorDTO>().HasKey(x => new { x.Id });
         }
     }
 }

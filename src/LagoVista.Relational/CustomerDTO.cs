@@ -63,7 +63,6 @@ namespace LagoVista.Relational
                 .WithOne(i => i.Customer)
                 .HasForeignKey(i => i.CustomerId);
 
-
             modelBuilder.Entity<CustomerDTO>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<CustomerDTO>().Property(x => x.OrganizationId).HasColumnOrder(2);
             modelBuilder.Entity<CustomerDTO>().Property(x => x.CustomerName).HasColumnOrder(3);
@@ -79,6 +78,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<CustomerDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(13);
             modelBuilder.Entity<CustomerDTO>().Property(x => x.CreationDate).HasColumnOrder(14);
             modelBuilder.Entity<CustomerDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(15);
+
+            modelBuilder.Entity<CustomerDTO>().HasKey(x => new { x.Id });
         }
     }
 }

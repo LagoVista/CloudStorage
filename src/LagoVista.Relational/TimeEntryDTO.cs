@@ -75,6 +75,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<TimeEntryDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(19);
 
             modelBuilder.Entity<TimeEntryDTO>().Property(x => x.IsEquityTime).HasDefaultValueSql("0");
+
+            modelBuilder.Entity<TimeEntryDTO>().HasKey(x => new { x.Id });
         }
     }
 }

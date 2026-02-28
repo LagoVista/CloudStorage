@@ -152,6 +152,8 @@ namespace LagoVista.Relational
 
             modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceName).HasDefaultValueSql("'unknown'");
             modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitTypeId).HasDefaultValueSql("1");
+
+            modelBuilder.Entity<BillingEventDTO>().HasKey(x => new { x.Id });
         }
     }
 }

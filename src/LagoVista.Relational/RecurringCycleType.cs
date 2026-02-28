@@ -23,6 +23,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Key).HasColumnOrder(2);
             modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Name).HasColumnOrder(3);
+
+            modelBuilder.Entity<RecurringCycleTypeDTO>().HasKey(x => new { x.Id });
         }
 
         public EntityHeader ToEntityHeader()

@@ -165,6 +165,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<InvoiceDTO>().Property(x => x.TaxPercent).HasDefaultValueSql("0");
             modelBuilder.Entity<InvoiceDTO>().Property(x => x.Total).HasDefaultValueSql("0");
             modelBuilder.Entity<InvoiceDTO>().Property(x => x.TotalPaid).HasDefaultValueSql("0");
+
+            modelBuilder.Entity<InvoiceDTO>().HasKey(x => new { x.Id });
         }
     }
 }

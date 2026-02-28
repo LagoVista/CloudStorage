@@ -94,6 +94,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Description).HasDefaultValueSql("''");
             modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Icon).HasDefaultValueSql("'icon-ae-bill-1'");
             modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasDefaultValueSql("'empty'");
+
+            modelBuilder.Entity<SubscriptionDTO>().HasKey(x => new { x.Id });
         }
     }
 

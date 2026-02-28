@@ -23,6 +23,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Name).HasColumnOrder(2);
             modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Key).HasColumnOrder(3);
+
+            modelBuilder.Entity<UnitTypeDTO>().HasKey(x => new { x.Id });
         }
 
         public EntityHeader ToEntityHeader()
