@@ -37,6 +37,7 @@ namespace LagoVista.Relational.DataContexts
             InvoiceLogsDTO.Configure(modelBuilder);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
+            modelBuilder.ApplyUtcDateTimeConvention();
         }
     }
 }

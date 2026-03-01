@@ -18,7 +18,6 @@ namespace LagoVista.Relational
         public DateOnly PeriodStart { get; set; }
         public DateOnly PeriodEnd { get; set; }
 
-        [IgnoreOnMapTo]
         [Required]
         public string UserId { get; set; }
 
@@ -61,16 +60,8 @@ namespace LagoVista.Relational
         public bool W2Payment { get; set; }
         public bool OfficierPayment { get; set; }
 
-        private AppUserDTO _user;
-        public AppUserDTO User
-        {
-            get => _user;
-            set
-            {
-                _user = value;
-                UserId = _user?.AppUserId;
-            }
-        }
+        [IgnoreOnMapTo]
+        public AppUserDTO User { get; set; }
 
         [IgnoreOnMapTo]
         public TimePeriodDTO TimePeriod { get; set; }

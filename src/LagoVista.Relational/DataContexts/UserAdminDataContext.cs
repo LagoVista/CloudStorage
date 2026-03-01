@@ -27,7 +27,7 @@ namespace LagoVista.Relational.DataContexts
             SubscriptionDTO.Configure(modelBuilder);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
-
+            modelBuilder.ApplyUtcDateTimeConvention();
         }
     }
 }

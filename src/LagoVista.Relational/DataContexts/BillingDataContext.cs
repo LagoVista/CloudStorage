@@ -88,6 +88,7 @@ namespace LagoVista.Relational.DataContexts
             WorkRoleDTO.Configure(modelBuilder);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
+            modelBuilder.ApplyUtcDateTimeConvention();
         }
     }
 }

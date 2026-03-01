@@ -23,12 +23,12 @@ namespace LagoVista.Relational
         [Required]
         public string ProductName { get; set; }
 
-        public DateTime? Start { get; set; }
+        public DateOnly? Start { get; set; }
 
-        public DateTime? End { get; set; }
+        public DateOnly? End { get; set; }
 
-        public DateTime? NextBillingDate { get; set; }
-        public DateTime? LastBilledDate { get; set; }
+        public DateOnly? NextBillingDate { get; set; }
+        public DateOnly? LastBilledDate { get; set; }
 
         public decimal UnitPrice { get; set; }
         public decimal DiscountPercent { get; set; }

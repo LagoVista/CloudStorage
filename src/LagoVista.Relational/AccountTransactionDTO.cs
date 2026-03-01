@@ -32,11 +32,11 @@ namespace LagoVista.Relational
 
 
         [MapTo("CreatedBy")]
-        [NotMapped]
+        [IgnoreOnMapTo]
         public AppUserDTO CreatedByUser { get; set; }
 
         [MapTo("LastUpdatedBy")]
-        [NotMapped]
+        [IgnoreOnMapTo]
         public AppUserDTO LastUpdatedByUser { get; set; }
 
 
@@ -68,7 +68,6 @@ namespace LagoVista.Relational
 
 
         [IgnoreOnMapTo]
-        [NotMapped]
         public VendorDTO Vendor { get; set; }
 
 

@@ -29,6 +29,7 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.SeedProviderName(Database.ProviderName);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
+            modelBuilder.ApplyUtcDateTimeConvention();
         }
 
     }
