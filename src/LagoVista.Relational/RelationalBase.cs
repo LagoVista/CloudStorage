@@ -31,8 +31,6 @@ namespace LagoVista.Relational
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _adminlogger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
-            _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
             _secureStorage = secureStorage ?? throw new ArgumentNullException(nameof(secureStorage));
         }
 
