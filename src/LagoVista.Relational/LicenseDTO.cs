@@ -9,9 +9,9 @@ namespace LagoVista.Relational
     {
         public Guid AgreementLineItemId { get; set; }
         public bool IsActive { get; set; }
+ 
         public DateOnly ActiveDate { get; set; }
         public DateOnly RenewalDate { get; set; }
-        public AgreementDTO Agreement { get; set; }
         public decimal QuantityUsed { get; set; }
         public decimal QuantityAllocated { get; set; }
         public List<LicenseUsageDTO> Usage { get; set; }
@@ -19,12 +19,21 @@ namespace LagoVista.Relational
 
         public AgreementLineItemDTO AgreementLineItem { get; set; }
 
-        public static void Configure(ModelBuilder modelBuilder)
+        public static void Configure(ModelBuilder m)
         {
+           m.Entity<LicenseDTO>()
+                .HasMany(l => l.Usage)
+                .WithOne(a => a.License)
+                .HasForeignKey(l => l.LicenseId)
+                .OnDelete(DeleteBehavior.Cascade);  
 
-            modelBuilder.Entity<LicenseDTO>().HasKey(x => new { x.Id });
+            m.Entity<LicenseDTO>()
+                .HasOne(l => l.AgreementLineItem)
+                .WithOne(a => a.License)
+                .HasForeignKey<LicenseDTO>(li => li.AgreementLineItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            m.Entity<LicenseDTO>().HasKey(x => new { x.Id });
         }
-
     }
-
 }

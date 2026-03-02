@@ -1,9 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LagoVista.Relational.DataContexts
 {
@@ -22,15 +17,16 @@ namespace LagoVista.Relational.DataContexts
         {
         }
 
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            AgreementDTO.Configure(modelBuilder);
+            AgreementLineItemDTO.Configure(modelBuilder);
+            LicenseDTO.Configure(modelBuilder);
+            LicenseUsageDTO.Configure(modelBuilder);
 
             modelBuilder.SeedProviderName(Database.ProviderName);
-
             modelBuilder.LowerCaseNames(Database.ProviderName);
             modelBuilder.ApplyUtcDateTimeConvention();
         }
-
     }
 }

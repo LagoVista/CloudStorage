@@ -81,7 +81,7 @@ ORDER BY s.name, o.name;";
         var result = new List<DbTableRef>();
 
         await using var cmd = new SqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@schema", (object?)schema ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@schema", (object)schema ?? DBNull.Value);
 
         await using var rdr = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
         while (await rdr.ReadAsync().ConfigureAwait(false))
@@ -95,7 +95,7 @@ ORDER BY s.name, o.name;";
     }
 
     // Convenience wrapper if you want it
-    public static IReadOnlyList<DbTableRef> ReadAllTables(SqlConnection conn, string? schema = "dbo", bool includeViews = false)
+    public static IReadOnlyList<DbTableRef> ReadAllTables(SqlConnection conn, string schema = "dbo", bool includeViews = false)
         => ReadAllTablesAsync(conn, schema, includeViews).GetAwaiter().GetResult();
 
     /// <summary>
@@ -104,7 +104,7 @@ ORDER BY s.name, o.name;";
     /// </summary>
     public static async Task<IReadOnlyList<TableShape>> ReadAllTableShapesAsync(
         SqlConnection conn,
-        string? schema = "dbo",
+        string schema = "dbo",
         bool includeViews = false)
     {
         var tables = await ReadAllTablesAsync(conn, schema, includeViews).ConfigureAwait(false);

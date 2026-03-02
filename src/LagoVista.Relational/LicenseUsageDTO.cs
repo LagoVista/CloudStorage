@@ -7,7 +7,6 @@ namespace LagoVista.Relational
     {
         public Guid Id { get; set; }
         public Guid LicenseId { get; set; }
-        public LicenseDTO Licene { get; set; }
         public DateTime TimeStamp { get; set; }
         public decimal QtyAdded { get; set; }
         public decimal QtyRemoved { get; set; }
@@ -17,9 +16,10 @@ namespace LagoVista.Relational
 
         public LicenseDTO License { get; set; }
 
-        public static void Configure(ModelBuilder modelBuilder)
+        public static void Configure(ModelBuilder m)
         {
-            modelBuilder.Entity<LicenseUsageDTO>().HasKey(x => new { x.Id });
+            m.Entity<LicenseUsageDTO>().HasOne(x => x.License).WithMany().HasForeignKey(x => x.LicenseId);
+            m.Entity<LicenseUsageDTO>().HasKey(x => new { x.Id });
 
         }
     }

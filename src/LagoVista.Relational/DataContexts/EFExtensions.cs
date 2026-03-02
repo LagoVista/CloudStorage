@@ -109,14 +109,14 @@ namespace LagoVista
         private const string PomeloMySql = "Pomelo.EntityFrameworkCore.MySql";
         private const string OracleMySql = "MySql.EntityFrameworkCore";
 
-        public static ModelBuilder SeedProviderName(this ModelBuilder modelBuilder, string? providerName)
+        public static ModelBuilder SeedProviderName(this ModelBuilder modelBuilder, string providerName)
         {
             // Store it on the model so we can query it later via ModelBuilder.
             modelBuilder.HasAnnotation(ProviderKey, providerName);
             return modelBuilder;
         }
 
-        public static string? GetProviderName(this ModelBuilder modelBuilder)
+        public static string GetProviderName(this ModelBuilder modelBuilder)
             => modelBuilder.Model.FindAnnotation(ProviderKey)?.Value?.ToString()
                ?? modelBuilder.Model.FindAnnotation("Relational:ProviderName")?.Value?.ToString();
 

@@ -56,6 +56,6 @@ public static class EfModelReader
         return new TableShape(expectedSchema, expectedTable, cols);
     }
 
-    private static string NormalizeSchema(string? schema)
+    private static string NormalizeSchema(string schema)
         => string.IsNullOrWhiteSpace(schema) ? "dbo" : schema;
 }

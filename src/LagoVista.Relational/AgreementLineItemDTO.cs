@@ -49,6 +49,9 @@ namespace LagoVista.Relational
         public int? RecurringCycleTypeId { get; set; }
 
         [IgnoreOnMapTo]
+        public LicenseDTO License { get; set; }
+
+        [IgnoreOnMapTo]
         public ProductDTO Product { get; set; }
 
         [IgnoreOnMapTo]
@@ -62,6 +65,11 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<AgreementLineItemDTO>()
+                .HasOne<LicenseDTO>(a => a.License)
+                .WithOne(l => l.AgreementLineItem)
+                .HasForeignKey<LicenseDTO>(l => l.AgreementLineItemId);
+
             modelBuilder.Entity<AgreementLineItemDTO>()
                 .HasOne(ps => ps.Agreement)
                 .WithMany(a => a.LineItems)
