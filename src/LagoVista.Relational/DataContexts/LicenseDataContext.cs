@@ -17,7 +17,7 @@ namespace LagoVista.Relational.DataContexts
 
         public DbSet<LicenseUsageDTO> LicenseUsage { get; set; }
 
-        public LicenseDataContext(DbContextOptions<InvoiceDataContext> optionsContext) :
+        public LicenseDataContext(DbContextOptions<LicenseDataContext> optionsContext) :
             base(optionsContext)
         {
         }
