@@ -1,4 +1,5 @@
-﻿using LagoVista.Core.Attributes;
+﻿using LagoVista.Core;
+using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,7 @@ using System.Text.RegularExpressions;
 namespace LagoVista.Relational
 {
     [Table("Customers", Schema = "dbo")]
-    public class CustomerDTO : DbModelBase
+    public class CustomerDTO : DbModelBase, IEntityHeaderFactory
     {
         [Required]
         public string CustomerName { get; set; }
@@ -29,7 +30,10 @@ namespace LagoVista.Relational
         public string Zip { get; set; }
 
         [IgnoreOnMapTo]
-        public IEnumerable<InvoiceDTO> Invoices { get; set; }
+        public List<InvoiceDTO> Invoices { get; set; }
+
+        [IgnoreOnMapTo]
+        public List<SubscriptionDTO> Subscriptions { get; set; }
 
         public EntityHeader ToEntityHeader()
         {
@@ -45,19 +49,24 @@ namespace LagoVista.Relational
              .HasForeignKey(ps => ps.OrganizationId);
 
             modelBuilder.Entity<CustomerDTO>()
+             .HasMany(ps => ps.Subscriptions)
+             .WithOne(s => s.Customer)
+             .HasForeignKey(s => s.CustomerId);
+
+            modelBuilder.Entity<CustomerDTO>()
             .HasOne(ps => ps.CreatedByUser)
             .WithMany()
             .HasForeignKey(ps => ps.CreatedById)
+            .HasPrincipalKey(u => u.AppUserId)
             .OnDelete(DeleteBehavior.NoAction);
-
 
             modelBuilder.Entity<CustomerDTO>()
             .HasOne(ps => ps.LastUpdatedByUser)
             .WithMany()
             .HasForeignKey(ps => ps.LastUpdatedById)
+            .HasPrincipalKey(u => u.AppUserId)
             .OnDelete(DeleteBehavior.NoAction);
-
-
+            
             modelBuilder.Entity<CustomerDTO>()
                 .HasMany(c => c.Invoices)
                 .WithOne(i => i.Customer)

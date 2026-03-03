@@ -1,4 +1,5 @@
 ﻿using LagoVista.Core;
+using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -12,7 +13,7 @@ using System.Threading.Tasks;
 namespace LagoVista.Relational
 {
     [Table("WorkRoles", Schema = "dbo")]
-    public class WorkRoleDTO : DbModelBase
+    public class WorkRoleDTO : DbModelBase, IEntityHeaderFactory
     {
         [Required]
         public string Name { get; set; }
@@ -71,6 +72,11 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
                 modelBuilder.Entity<WorkRoleDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
             }
+        }
+
+        public EntityHeader ToEntityHeader()
+        {
+            return EntityHeader.Create(Id.ToString(), Key, Name);
         }
     }
 }

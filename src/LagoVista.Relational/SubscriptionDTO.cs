@@ -1,4 +1,6 @@
-﻿using LagoVista.Core.Attributes;
+﻿using LagoVista.Core;
+using LagoVista.Core.Attributes;
+using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -8,25 +10,45 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [EncryptionKey("SUBS_KEY_{id}", IdProperty = nameof(OrganizationId), CreateIfMissing = false)]
     [Table("Subscription", Schema = "dbo")]
-    public class SubscriptionDTO : DbModelBase
+    public class SubscriptionDTO : DbModelBase, IEntityHeaderFactory
     {
+        public const string SubscriptionKey_Trial = "trial";
+
         public SubscriptionDTO()
         {
-            Icon = "icon-ae-bill-1";
-            Id = Guid.NewGuid();
         }
 
-        public string CustomerId { get; set; }
+        public Guid? CustomerId { get; set; }
+
+        public string PaymentAccountId { get; set; }
+
+        public string PaymentAccountType { get; set; }
 
         public string PaymentToken { get; set; }
+        
+        public bool IsActive { get; set; }
+
+        public bool IsTrial { get; set; }
+
+        public DateOnly? ActiveDate { get; set; }
+
+        public DateOnly? InactiveDate { get; set; }
+        public DateOnly? TrialStartDate { get; set; }
+
+        public DateOnly? TrialExpirationDate { get; set; }
+
         [Required]
         public string Icon { get; set; }
 
+        public DateOnly? PaymentTokenDate { get; set; }
 
-        public DateTime? PaymentTokenDate { get; set; }
+        public DateOnly? PaymentTokenExpires { get; set; }
 
-        public DateTime? PaymentTokenExpires { get; set; }
+        public DateOnly Start { get; set; }
+
+        public DateOnly? End { get; set; }
 
         [Required]
         public string PaymentTokenStatus { get; set; }
@@ -39,6 +61,9 @@ namespace LagoVista.Relational
         public string Name { get; set; }
 
         public string Description { get; set; }
+
+        [IgnoreOnMapTo]
+        public CustomerDTO Customer { get; set; }
 
         [IgnoreOnMapTo]
         public List<InvoiceDTO> Invoices { get; set; }
@@ -73,7 +98,12 @@ namespace LagoVista.Relational
             .HasOne(ps => ps.Organization)
             .WithMany()
             .HasForeignKey(ps => ps.OrganizationId);
-            
+
+            modelBuilder.Entity<SubscriptionDTO>()
+             .HasOne(ps => ps.Customer)
+             .WithMany(ps => ps.Subscriptions)
+             .HasForeignKey(ps => ps.CustomerId);   
+
             if (modelBuilder.IsSqlServer())
             {
                 modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Id).HasColumnOrder(1);
@@ -116,6 +146,11 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasColumnType("varchar(50)");
                 modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
             }
+        }
+
+        public EntityHeader ToEntityHeader()
+        {
+            return EntityHeader.Create(Id.ToString(), Name);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using LagoVista.Core.Attributes;
+﻿using LagoVista.Core;
+using LagoVista.Core.Attributes;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;

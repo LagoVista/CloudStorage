@@ -1,4 +1,6 @@
-﻿using LagoVista.Core.Attributes;
+﻿using LagoVista.Core;
+using LagoVista.Core.Attributes;
+using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -9,7 +11,7 @@ namespace LagoVista.Relational
 {
     [Table("Payments", Schema = "dbo")]
     [EncryptionKey("PAYROLL_KEY")]
-    public class PaymentDTO : DbModelBase
+    public class PaymentDTO : DbModelBase, IEntityHeaderFactory
     {
         public const string PaymentStatus_New = "new";
         public const string PaymentStatus_Approved = "approved";
@@ -166,6 +168,11 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<PaymentDTO>().Property(x => x.UserId).HasColumnType("varchar(32)");
                 modelBuilder.Entity<PaymentDTO>().Property(x => x.W2Payment).HasColumnType("bit");
             }
+        }
+
+        public EntityHeader ToEntityHeader()
+        {
+            return EntityHeader.Create(Id.ToString(), $"{User?.FullName} - {PeriodStart:MM/dd/yyyy} to {PeriodEnd:MM/dd/yyyy}");
         }
     }
 }

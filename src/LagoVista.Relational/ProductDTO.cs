@@ -1,4 +1,5 @@
-﻿using LagoVista.Core.Attributes;
+﻿using LagoVista.Core;
+using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LagoVista.Relational
 {
     [Table("Product", Schema = "dbo")]
-    public class ProductDTO
+    public class ProductDTO: IEntityHeaderFactory
     {
         [Key]
         public Guid Id { get; set; }

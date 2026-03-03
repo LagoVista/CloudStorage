@@ -1,4 +1,6 @@
-﻿using LagoVista.Models;
+﻿using LagoVista.Core;
+using LagoVista.Core.Models;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -6,7 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LagoVista.Relational
 {
     [Table("ExpenseCategory", Schema = "dbo")]
-    public class ExpenseCategoryDTO : DbModelBase
+    public class ExpenseCategoryDTO : DbModelBase, IEntityHeaderFactory
     {
         public ExpenseCategoryDTO()
         {
@@ -31,6 +33,8 @@ namespace LagoVista.Relational
 
         [Required]
         public string TaxCategory { get; set; }
+
+        public EntityHeader ToEntityHeader() => EntityHeader.Create(Id.ToString(), Key, Name);
 
         public static void Configure(ModelBuilder modelBuilder)
         {

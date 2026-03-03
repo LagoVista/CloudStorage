@@ -1,4 +1,5 @@
-﻿using LagoVista.Core.Models;
+﻿using LagoVista.Core;
+using LagoVista.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -6,7 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LagoVista.Relational
 {
     [Table("RecurringCycleType", Schema = "dbo")]
-    public class RecurringCycleTypeDTO
+    public class RecurringCycleTypeDTO : IEntityHeaderFactory
     {
         [Key]
         public int Id { get; set; }

@@ -10,6 +10,7 @@ namespace LagoVista.Relational.DataContexts
 
         }
 
+        public DbSet<CustomerDTO> Customers { get; set; }
         public DbSet<OrganizationDTO> Org { get; set; }
         public DbSet<AppUserDTO> AppUser { get; set; }
         public DbSet<SubscriptionDTO> Subscription { get; set; }
@@ -25,6 +26,7 @@ namespace LagoVista.Relational.DataContexts
             OwnedDeviceDTO.Configure(modelBuilder);
             DeviceOwnerDTO.Configure(modelBuilder);
             SubscriptionDTO.Configure(modelBuilder);
+            CustomerDTO.Configure(modelBuilder);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
             modelBuilder.ApplyUtcDateTimeConvention();

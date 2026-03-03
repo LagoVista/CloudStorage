@@ -1,6 +1,9 @@
-﻿using LagoVista.Core.Attributes;
+﻿using LagoVista.Core;
+using LagoVista.Core.Attributes;
+using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -8,7 +11,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LagoVista.Relational
 {
     [Table("TimePeriods", Schema = "dbo")]
-    public class TimePeriodDTO
+    public class TimePeriodDTO : IEntityHeaderFactory
     {
         [Key]
         public Guid Id { get; set; }
@@ -35,7 +38,7 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public OrganizationDTO Organization { get; set; }
 
-
+        public EntityHeader ToEntityHeader() => EntityHeader.Create(Id.ToString(), $"{Start} to {End}");
 
         public static void Configure(ModelBuilder modelBuilder)
         {

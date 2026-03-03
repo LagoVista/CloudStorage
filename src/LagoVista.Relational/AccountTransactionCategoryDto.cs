@@ -1,6 +1,8 @@
-﻿using LagoVista.Core.Models;
+﻿using LagoVista.Core;
+using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -8,7 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LagoVista.Relational
 {
     [Table("AccountTransactionCategory", Schema = "dbo")]
-    public class AccountTransactionCategoryDto : DbModelBase
+    public class AccountTransactionCategoryDto : DbModelBase, IEntityHeaderFactory
     {
         public Guid? ExpenseCategoryId { get; set; }
 
@@ -32,8 +34,6 @@ namespace LagoVista.Relational
         public bool Passthrough { get; set; }
 
         public ExpenseCategoryDTO ExpenseCategory { get; set; }
-
-
         public EntityHeader ToEntityHeader()
         {
             return new EntityHeader()

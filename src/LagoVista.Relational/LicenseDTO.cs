@@ -1,12 +1,18 @@
-﻿using LagoVista.Models;
+﻿using LagoVista.Core;
+using LagoVista.Core.Models;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 
 namespace LagoVista.Relational
 {
-    public class LicenseDTO : DbModelBase
+    public class LicenseDTO : DbModelBase, IEntityHeaderFactory
     {
+        public string Name { get; set; }
+
+        public EntityHeader Customer { get; set; }
+
         public Guid AgreementLineItemId { get; set; }
         public bool IsActive { get; set; }
  
@@ -34,6 +40,11 @@ namespace LagoVista.Relational
                 .OnDelete(DeleteBehavior.Cascade);
 
             m.Entity<LicenseDTO>().HasKey(x => new { x.Id });
+        }
+
+        public EntityHeader ToEntityHeader()
+        {
+            return EntityHeader.Create(Id.ToString(),Name);
         }
     }
 }

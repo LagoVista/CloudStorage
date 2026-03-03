@@ -1,4 +1,5 @@
-﻿using LagoVista.Core.Attributes;
+﻿using LagoVista.Core;
+using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ namespace LagoVista.Relational
 {
     [Table("PayRates", Schema = "dbo")]
     [EncryptionKey("Rate-{id}", IdProperty = nameof(PayRateDTO.UserId), CreateIfMissing = true)]
-    public class PayRateDTO : DbModelBase
+    public class PayRateDTO : DbModelBase, IEntityHeaderFactory
     {
         [Required]
         public string UserId { get; set; }
@@ -134,6 +135,11 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<PayRateDTO>().Property(x => x.UserId).HasColumnType("varchar(32)");
                 modelBuilder.Entity<PayRateDTO>().Property(x => x.WorkRoleId).HasColumnType("uniqueidentifier");
             }
+        }
+
+        public EntityHeader ToEntityHeader()
+        {
+            return EntityHeader.Create(Id.ToString(), $"{User.Text} {Start}" );
         }
     }
 }

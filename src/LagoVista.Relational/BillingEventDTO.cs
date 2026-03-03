@@ -55,6 +55,11 @@ namespace LagoVista.Relational
         public decimal? HoursBilled { get; set; }
 
         /// <summary>
+        /// Number of tokens consumed
+        /// </summary>
+        public long? Tokens { get; set; }
+
+        /// <summary>
         /// Cost Per Unit
         /// </summary>
         public decimal? UnitPrice { get; set; }

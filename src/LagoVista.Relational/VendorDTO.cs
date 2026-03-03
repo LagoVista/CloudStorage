@@ -1,4 +1,5 @@
-﻿using LagoVista.Core.Attributes;
+﻿using LagoVista.Core;
+using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LagoVista.Relational
 {
     [Table("Vendor", Schema = "dbo")]
-    public class VendorDTO : DbModelBase
+    public class VendorDTO : DbModelBase, IEntityHeaderFactory
     {
         [Required]
         public string Name { get; set; }

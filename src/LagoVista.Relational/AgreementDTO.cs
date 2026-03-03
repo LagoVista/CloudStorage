@@ -1,3 +1,4 @@
+using LagoVista.Core;
 using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
 using LagoVista.Models;
@@ -12,16 +13,14 @@ namespace LagoVista.Relational
 {
     [Table("Agreements",Schema ="dbo")]
     [EncryptionKey("Agreement-{id}", IdProperty = nameof(AgreementDTO.CustomerId), CreateIfMissing = false)]
-    public class AgreementDTO : DbModelBase
+    public class AgreementDTO : DbModelBase, IEntityHeaderFactory
     {
         public Guid CustomerId { get; set; }
 
         [Required]
-        [IgnoreOnMapTo()]
         public string CustomerContactId { get; set; }
 
         [Required]
-        [IgnoreOnMapTo()]
         public string CustomerContactName { get; set; }
 
         [Required]
@@ -43,8 +42,7 @@ namespace LagoVista.Relational
         [Required]
         public string Status { get; set; }
 
-        [Required]
-        public decimal Hours { get; set; }
+        public decimal? Hours { get; set; }
         public string EncryptedRate { get; set; }
 
         [Required]
@@ -56,6 +54,8 @@ namespace LagoVista.Relational
         public decimal Tax { get; set; }
         public decimal Shipping { get; set; }
         public decimal Total { get; set; }
+
+
 
 
         [IgnoreOnMapTo()]

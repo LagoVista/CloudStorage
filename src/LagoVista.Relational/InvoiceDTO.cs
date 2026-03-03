@@ -1,4 +1,6 @@
+using LagoVista.Core;
 using LagoVista.Core.Attributes;
+using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -10,7 +12,7 @@ namespace LagoVista.Relational
 {
     [Table("Invoice", Schema = "dbo")]
     [EncryptionKey("Agreement-{id}", IdProperty = nameof(CustomerId), CreateIfMissing = false)]
-    public class InvoiceDTO
+    public class InvoiceDTO : IEntityHeaderFactory
     {
         [Key]
         public Guid Id { get; set; }
@@ -202,6 +204,11 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<InvoiceDTO>().Property(x => x.Total).HasColumnType("varchar(1024)");
                 modelBuilder.Entity<InvoiceDTO>().Property(x => x.TotalPaid).HasColumnType("varchar(1024)");
             }
+        }
+
+        public EntityHeader ToEntityHeader()
+        {
+            return EntityHeader.Create(Id.ToString(), InvoiceNumber.ToString());
         }
     }
 }
