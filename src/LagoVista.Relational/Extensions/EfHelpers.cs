@@ -40,6 +40,21 @@ namespace LagoVista.Core.EF
         }
 
         public static IQueryable<T> WhereEqualsIfNotEmpty<T>(
+this IQueryable<T> query,
+Expression<Func<T, Guid>> selector,
+Guid? guid)
+        {
+            if(!guid.HasValue)
+                return query;
+
+            var p = selector.Parameters[0];
+            var body = Expression.Equal(selector.Body, Expression.Constant(guid.Value));
+            var lambda = Expression.Lambda<Func<T, bool>>(body, p);
+
+            return query.Where(lambda);
+        }
+
+        public static IQueryable<T> WhereEqualsIfNotEmpty<T>(
     this IQueryable<T> query,
     Expression<Func<T, Guid>> selector,
     string value)

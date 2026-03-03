@@ -17,6 +17,8 @@ namespace LagoVista.Relational.DataContexts
 
         public static void Configure(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<SerialNumberDTO>().HasKey(a => new { a.OrgId, a.Key, a.KeyId });
+
             modelBuilder.Entity<SerialNumberDTO>().Property(x => x.Index).HasColumnOrder(1);
             modelBuilder.Entity<SerialNumberDTO>().Property(x => x.OrgId).HasColumnOrder(2);
             modelBuilder.Entity<SerialNumberDTO>().Property(x => x.Key).HasColumnOrder(3);

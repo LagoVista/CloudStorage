@@ -13,12 +13,12 @@ namespace Relational.Tests
     {
         protected override DbContext CreateContextForTruthDb(string sqlServerConnectionString)
         {
-            var opts = new DbContextOptionsBuilder<SerialNumberDataContext>()
+            var opts = new DbContextOptionsBuilder<BillingDataContext>()
                 .UseSqlServer(sqlServerConnectionString)
                 .EnableSensitiveDataLogging()
                 .Options;
 
-            return new SerialNumberDataContext(opts);
+            return new BillingDataContext(opts);
         }
 
 
