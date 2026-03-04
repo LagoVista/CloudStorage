@@ -274,7 +274,7 @@ namespace LagoVista.CloudStorage.Tests
             {
                 Id = Guid.NewGuid().ToId(),
                 Name = idx.HasValue ? $"Index {idx.Value}" : Guid.NewGuid().ToString(),
-                Key = Guid.NewGuid().ToId().ToLower().Substring(0, 20),
+                Key = Guid.NewGuid().ToId().Value.ToLower().Substring(0, 20),
                 OwnerOrganization = EntityHeader.Create(orgId ?? ORGID, "TEST ORDER")
             };
         }

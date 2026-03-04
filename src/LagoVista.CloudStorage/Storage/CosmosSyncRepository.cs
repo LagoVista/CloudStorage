@@ -374,7 +374,7 @@ where c.id = @id";
             if (string.IsNullOrWhiteSpace(key))
             {
                 if (entityType == "VerificationResults" || entityType == "CalendarEvent" || entityType == "UserFavorites" || entityType == "MostRecentlyUsed" || entityType == "Meeting")
-                    doc["key"] = Guid.NewGuid().ToId().ToLower();
+                    doc["key"] = Guid.NewGuid().ToId().Value.ToLower();
                 else
                 {
                     Debugger.Break();
@@ -642,7 +642,7 @@ where c.id = @id";
             var key = token["Key"]?.Value<string>();
             if (key == null)
             {
-                token["Key"] = Guid.NewGuid().ToId().ToLowerInvariant();
+                token["Key"] = Guid.NewGuid().ToId().Value.ToLowerInvariant();
             }
 
             token["Sha256Hex"] = EntityHasher.CalculateHash(token.DeepClone());

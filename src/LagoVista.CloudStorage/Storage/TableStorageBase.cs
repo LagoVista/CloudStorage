@@ -898,15 +898,15 @@ namespace LagoVista.CloudStorage.Storage
 
             var query = (filters.Length > 0) ? $"{GetFilter(filters.ToList())} and PartitionKey eq '{partitionKey}'" : $"?$filter=(PartitionKey eq '{partitionKey}')";
 
-            if (!String.IsNullOrEmpty(listRequest.StartDate))
+            if (listRequest.StartDate.HasValue)
             {
-                var startTime = listRequest.StartDate.ToDateTime();
+                var startTime = listRequest.StartDate.Value.ToDateTime();
                 query += $" and RowKey lt '{startTime.ToInverseTicksRowKey()}'";
             }
 
-            if (!String.IsNullOrEmpty(listRequest.EndDate))
+            if (listRequest.EndDate.HasValue)
             {
-                var endTime = listRequest.EndDate.ToDateTime();
+                var endTime = listRequest.EndDate.Value.ToDateTime();
                 query += $" and RowKey gt '{endTime.ToInverseTicksRowKey()}'";
             }
 
@@ -999,15 +999,15 @@ namespace LagoVista.CloudStorage.Storage
 
             var query = GetFilter(filters.ToList()) ; //Just seed this with something so we can use 
 
-            if (!String.IsNullOrEmpty(listRequest.StartDate))
+            if (listRequest.StartDate.HasValue)
             {
-                var startTime = listRequest.StartDate.ToDateTime();
+                var startTime = listRequest.StartDate.Value.ToDateTime();
                 query += $"?$filter=RowKey lt '{startTime.ToInverseTicksRowKey()}'";
             }
 
-            if (!String.IsNullOrEmpty(listRequest.EndDate))
+            if (listRequest.EndDate.HasValue)
             {
-                var endTime = listRequest.EndDate.ToDateTime();
+                var endTime = listRequest.EndDate.Value.ToDateTime();
                 if (query == String.Empty)
                     query += $"?$filter=RowKey gt '{endTime.ToInverseTicksRowKey()}'";
                 else
