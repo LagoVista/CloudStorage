@@ -34,7 +34,7 @@ namespace LagoVista.Relational
             _secureStorage = secureStorage ?? throw new ArgumentNullException(nameof(secureStorage));
         }
 
-        public async Task AddWithContextAsync(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task> work)
+        protected async Task AddWithContextAsync(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task> work)
         {
             var encryptionServices = new EncryptionServices(_secureStorage, _adminlogger, secretId, org, user);
             var svc = new EncryptedRepoContext<TContext>(_context, encryptionServices);
@@ -42,7 +42,7 @@ namespace LagoVista.Relational
             await work(svc);
         }
 
-        public async Task UpdateWithContextAsync(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task> work)
+        protected async Task UpdateWithContextAsync(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task> work)
         {
             var encryptionServices = new EncryptionServices(_secureStorage, _adminlogger, secretId, org, user);
             var svc = new EncryptedRepoContext<TContext>(_context, encryptionServices);
@@ -51,46 +51,132 @@ namespace LagoVista.Relational
         }
 
 
-        public async Task AddWithContextAsync(EntityHeader org, EntityHeader user, Func<TContext, Task> work)
+        protected async Task AddWithContextAsync(EntityHeader org, EntityHeader user, Func<TContext, Task> work)
         {
             await work(_context);
         }
 
-        public async Task UpdateWithContextAsync(EntityHeader org, EntityHeader user, Func<TContext, Task> work)
+        protected async Task UpdateWithContextAsync(EntityHeader org, EntityHeader user, Func<TContext, Task> work)
         {
             await work(_context);
         }
 
-        public async Task DeleteWithContextAsync(EntityHeader org, EntityHeader user, Func<TContext, Task> work)
+        protected async Task DeleteWithContextAsync(EntityHeader org, EntityHeader user, Func<TContext, Task> work)
         {
             await work(_context);
         }
 
-        public async Task<TResult> WithContextAsync<TResult>(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task<TResult>> work)
+        protected async Task<TResult> WithContextTransactionAsync<TResult>(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task<TResult>> work)
         {
             var encryptionServices = new EncryptionServices(_secureStorage, _adminlogger, secretId, org, user);
             var svc = new EncryptedRepoContext<TContext>(_context, encryptionServices);
-            await svc.EncryptionServices.SetAccountEncryptionString();
+
+            await using var tx = await _context.Database.BeginTransactionAsync();
             try
             {
+                await svc.EncryptionServices.SetAccountEncryptionString();
+                var result = await work(svc);
+                await tx.CommitAsync();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    await tx.RollbackAsync().ConfigureAwait(false);
+                }
+                catch (Exception rollbackEx)
+                {
+                    _adminlogger.AddException(this.Tag(), rollbackEx);
+                }
+
+                if (ex.InnerException != null)
+                    _adminlogger.AddException(this.Tag(), ex.InnerException);
+
+                _adminlogger.AddException(this.Tag(), ex);
+                throw;
+            }
+        }
+
+        protected async Task<TResult> RetryOnConcurrencyAsync<TResult>(Func<Task<TResult>> work, int maxAttempts = 3)
+        {
+            if (work == null) throw new ArgumentNullException(nameof(work));
+            if (maxAttempts <= 0) throw new ArgumentOutOfRangeException(nameof(maxAttempts));
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    return await work().ConfigureAwait(false);
+                }
+                catch (DbUpdateConcurrencyException) when (attempt < maxAttempts)
+                {
+                    // Clear all tracked entities so the next attempt reloads fresh data
+                    _context.ChangeTracker.Clear();
+
+                    // Small backoff helps reduce repeated collisions
+                    await Task.Delay(Random.Shared.Next(5, 25) * attempt);
+                }
+            }
+
+            // Last attempt throws the original exception
+            return await work().ConfigureAwait(false);
+        }
+
+        protected async Task<TResult> WithContextTransactionAsync<TResult>(EntityHeader org, EntityHeader user, Func<TContext, Task<TResult>> work)
+        {
+
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var result = await work(_context);
+                await tx.CommitAsync();
+                return result;
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    await tx.RollbackAsync().ConfigureAwait(false);
+                }
+                catch (Exception rollbackEx)
+                {
+                    _adminlogger.AddException(this.Tag(), rollbackEx);
+                }
+
+                if (ex.InnerException != null)
+                    _adminlogger.AddException(this.Tag(), ex.InnerException);
+
+                _adminlogger.AddException(this.Tag(), ex);
+                throw;
+            }
+        }
+
+        protected async Task<TResult> WithContextAsync<TResult>(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task<TResult>> work)
+        {
+            var encryptionServices = new EncryptionServices(_secureStorage, _adminlogger, secretId, org, user);
+            var svc = new EncryptedRepoContext<TContext>(_context, encryptionServices);
+            try
+            {
+                await svc.EncryptionServices.SetAccountEncryptionString();
                 return await work(svc);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                if(ex.InnerException != null)
-                    _adminlogger.AddException(this.Tag(), ex);
+                if (ex.InnerException != null)
+                    _adminlogger.AddException(this.Tag(), ex.InnerException);
                 _adminlogger.AddException(this.Tag(), ex);
 
                 throw;
             }
         }
 
-        public async Task<TResult> WithContextAsync<TResult>(EntityHeader org, EntityHeader user, Func<TContext, Task<TResult>> work)
+        protected async Task<TResult> WithContextAsync<TResult>(EntityHeader org, EntityHeader user, Func<TContext, Task<TResult>> work)
         {
             return await work(_context);
         }
 
-        public async Task CommitAsync()
+        protected async Task CommitAsync()
         {
             _context.SaveChanges();
         }

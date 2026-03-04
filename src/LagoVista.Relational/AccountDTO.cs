@@ -52,6 +52,8 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo()]
         public List<AccountTransactionDto> Transactions { get; set; }
 
+        public long Version { get; set; }
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AccountDto>()
@@ -73,6 +75,8 @@ namespace LagoVista.Relational
                 .HasOne(ps => ps.Organization)
                 .WithMany()
                 .HasForeignKey(ps => ps.OrganizationId);
+
+            modelBuilder.Entity<AccountDto>().Property( a => a.Version).HasDefaultValue(0L).IsConcurrencyToken();
 
             modelBuilder.Entity<AccountDto>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<AccountDto>().Property(x => x.Name).HasColumnOrder(2);

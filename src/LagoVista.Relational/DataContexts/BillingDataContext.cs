@@ -1,6 +1,9 @@
-﻿using LagoVista.Core.Product;
+﻿using LagoVista.Core;
+using LagoVista.Core.Product;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using System;
 
 namespace LagoVista.Relational.DataContexts
 {
@@ -124,12 +127,11 @@ namespace LagoVista.Relational.DataContexts
 
             OrganizationDTOConfig.Configure(modelBuilder);
 
-            modelBuilder.Entity<ProductOffering>(b =>
+            modelBuilder.Entity<ProductOfferingViewDTO>(b =>
             {
                 b.HasNoKey();
-                b.ToView("usv_ProductOfferings"); // schema overload if needed: ("usv_ProductOfferings", "dbo")
+                b.ToView("usv_ProductOfferings");
             });
-
 
             RecurringCycleTypeDTO.Configure(modelBuilder);
 
