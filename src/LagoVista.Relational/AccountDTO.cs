@@ -52,6 +52,7 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo()]
         public List<AccountTransactionDto> Transactions { get; set; }
 
+        [IgnoreOnMapTo()]
         public long Version { get; set; }
 
         public static void Configure(ModelBuilder modelBuilder)

@@ -114,13 +114,16 @@ namespace LagoVista.Relational
                     // Clear all tracked entities so the next attempt reloads fresh data
                     _context.ChangeTracker.Clear();
 
+                    _adminlogger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Concurrency conflict detected on attempt {attempt}. Retrying...");
+
                     // Small backoff helps reduce repeated collisions
                     await Task.Delay(Random.Shared.Next(5, 25) * attempt);
                 }
             }
 
             // Last attempt throws the original exception
-            return await work().ConfigureAwait(false);
+
+            throw new InvalidOperationException("Unreachable.");
         }
 
         protected async Task<TResult> WithContextTransactionAsync<TResult>(EntityHeader org, EntityHeader user, Func<TContext, Task<TResult>> work)
