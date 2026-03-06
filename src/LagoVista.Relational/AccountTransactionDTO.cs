@@ -28,7 +28,7 @@ namespace LagoVista.Relational
 
         [MapFrom("LastUpdatedDate")]
         [Required]
-        public DateTime LastUpdateDate { get; set; }
+        public DateTime LastUpdatedDate { get; set; }
 
 
         [MapTo("CreatedBy")]
@@ -93,9 +93,6 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.IsReconciled).HasDefaultValueSql(StandardDbDefaults.False(provider));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.AccountId).HasColumnOrder(2);
@@ -110,7 +107,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnOrder(11);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(12);
             entity.Property(x => x.CreationDate).HasColumnOrder(13);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(14);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(14);
             entity.Property(x => x.VendorId).HasColumnOrder(15);
 
             // Storage types
@@ -120,14 +117,14 @@ namespace LagoVista.Relational
             entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.IsReconciled).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.TransactionCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.Tag).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.Tag).HasColumnType(StandardDBTypes.TextLong(provider));
             entity.Property(x => x.OriginalHash).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.VendorId).HasColumnType(StandardDBTypes.UuidStorage(provider));
         }
     }

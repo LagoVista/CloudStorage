@@ -50,10 +50,6 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.IsEquityTime).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.Locked).HasDefaultValueSql(StandardDbDefaults.False(provider));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.AgreementId).HasColumnOrder(2);
@@ -73,7 +69,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnOrder(16);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(17);
             entity.Property(x => x.CreationDate).HasColumnOrder(18);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(19);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(19);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -94,7 +90,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
     }
 }

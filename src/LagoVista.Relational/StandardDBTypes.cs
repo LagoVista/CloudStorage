@@ -13,11 +13,13 @@ namespace LagoVista.Relational
         public static string UtcTimestampStorage(string provider) => "datetime2(7)";
         public static string UuidStorage(string provider) => "uniqueidentifier";
         public static string CalendarDateStorage(string provider) => "date";
-        public static string TextMax(string provider) => "varchar(max)";
-        public static string TextLong(string provider) => "varchar(2048)";
-        public static string TextMedium(string provider) => "varchar(1024)";
-        public static string TextShort(string provider) => "varchar(128)";
-        public static string TextTiny(string provider) => "varchar(50)";
+        public static string TextMax(string provider) => "nvarchar(max)";
+        public static string UrlStorage(string provider) => "nvarchar(max)";
+        public static string HtmlStorage(string provider) => "nvarchar(max)";
+        public static string TextLong(string provider) => "nvarchar(2048)";
+        public static string TextMedium(string provider) => "nvarchar(1024)";
+        public static string TextShort(string provider) => "nvarchar(128)";
+        public static string TextTiny(string provider) => "nvarchar(50)";
         public static string FlagStorage(string provider) => "bit";
         public static string IntStorage(string provider) => "int";
         public static string DecimalStorage(string provider) => "decimal(18,2)";
@@ -25,9 +27,11 @@ namespace LagoVista.Relational
         public static string DecimalSmall(string provider) => "decimal(5,2)";
         public static string LongStorage(string provider) => "bigint";
         public static string IconStorage(string provider) => "varchar(1024)";
-        public static string NameStorage(string provider) => "varchar(255)";
+        public static string NameStorage(string provider) => "nvarchar(255)";
         public static string KeyStorage(string provider) => "varchar(64)";
         public static string MoneyStorage(string provider) => "decimal(18,2)";
+        public static string StatusStorage(string provider) => "nvarchar(50)";
+        public static string CategoryStorage(string provider) => "nvarchar(50)";
     }
 
     public static class StandardDbDefaults

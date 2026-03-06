@@ -1,8 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using LagoVista.Core.Attributes;
+using Microsoft.EntityFrameworkCore;
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("LicenseUsage", Schema = "dbo")] 
     public class LicenseUsageDTO
     {
         public Guid Id { get; set; }
@@ -14,13 +17,40 @@ namespace LagoVista.Relational
         public string DeviceId { get; set; }
         public string Notes { get; set; }
 
+        [IgnoreOnMapTo]
         public LicenseDTO License { get; set; }
 
-        public static void Configure(ModelBuilder m)
+        public static void Configure(ModelBuilder modelBuilder)
         {
-            m.Entity<LicenseUsageDTO>().HasOne(x => x.License).WithMany().HasForeignKey(x => x.LicenseId);
-            m.Entity<LicenseUsageDTO>().HasKey(x => new { x.Id });
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<LicenseUsageDTO>();
 
+            // Relationships
+            entity.HasOne(x => x.License).WithMany(x => x.Usage).HasForeignKey(x => x.LicenseId);
+
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
+
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.LicenseId).HasColumnOrder(2);
+            entity.Property(x => x.TimeStamp).HasColumnOrder(3);
+            entity.Property(x => x.QtyAdded).HasColumnOrder(4);
+            entity.Property(x => x.QtyRemoved).HasColumnOrder(5);
+            entity.Property(x => x.DeviceUniqueId).HasColumnOrder(6);
+            entity.Property(x => x.DeviceId).HasColumnOrder(7);
+            entity.Property(x => x.Notes).HasColumnOrder(8);
+
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.LicenseId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.TimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.QtyAdded).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.QtyRemoved).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.DeviceUniqueId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.DeviceId).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
         }
     }
 }

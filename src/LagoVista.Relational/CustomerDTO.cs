@@ -72,24 +72,24 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnOrder(12);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(13);
             entity.Property(x => x.CreationDate).HasColumnOrder(14);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(15);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(15);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.CustomerName).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.BillingContactName).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.BillingContactEmail).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.Address1).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.Address2).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.City).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.State).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.CustomerName).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.BillingContactName).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.BillingContactEmail).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Address1).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Address2).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.City).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.State).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Zip).HasColumnType(StandardDBTypes.TextShort(provider));
             entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
     }
 }

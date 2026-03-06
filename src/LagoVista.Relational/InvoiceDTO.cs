@@ -32,26 +32,27 @@ namespace LagoVista.Relational
 
         public string ContactId { get; set; }
 
-        public String OrgId { get; set; }
+        [Required]
+        public String OrganizationId { get; set; }
         public DateOnly BillingStart { get; set; }
         public DateOnly BillingEnd { get; set; }
 
-        public DateTime CreationTimeStamp { get; set; }
+        public DateTime CreationTimestamp { get; set; }
         public DateOnly DueDate { get; set; }
-        public String Total { get; set; }
-        public String Discount { get; set; }
-        public String Extended { get; set; }
-        public String TotalPaid { get; set; }
+        public String EncryptedTotal { get; set; }
+        public String EncryptedDiscount { get; set; }
+        public String EncryptedExtended { get; set; }
+        public String EncryptedTotalPaid { get; set; }
 
         [Required]
-        public string Tax { get; set; }
+        public string EncryptedTax { get; set; }
 
         [Required]
         public decimal TaxPercent { get; set; }
         [Required]
-        public string Shipping { get; set; }
+        public string EncryptedShipping { get; set; }
         [Required]
-        public string Subtotal { get; set; }
+        public string EncryptedSubtotal { get; set; }
 
 
         public bool IsLocked { get; set; }
@@ -104,25 +105,11 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Subscription).WithMany(x => x.Invoices).HasForeignKey(x => x.SubscriptionId);
             entity.HasOne(x => x.Agreement).WithMany(x => x.Invoices).HasForeignKey(x => x.AgreementId);
             entity.HasOne(x => x.Customer).WithMany(x => x.Invoices).HasForeignKey(x => x.CustomerId);
-            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrgId);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
             entity.HasMany(x => x.Logs).WithOne(x => x.Invoice).HasForeignKey(x => x.InvoiceId);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
-
-            // Defaults
-            entity.Property(x => x.AdditionalNotes).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-            entity.Property(x => x.FailedAttemptCount).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
-            entity.Property(x => x.HasChildren).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.IsLocked).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.IsMaster).HasDefaultValueSql(StandardDbDefaults.True(provider));
-            entity.Property(x => x.Shipping).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-            entity.Property(x => x.Status).HasDefaultValueSql(StandardDbDefaults.Text(provider, "New"));
-            entity.Property(x => x.Subtotal).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-            entity.Property(x => x.Tax).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-            entity.Property(x => x.TaxPercent).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
-            entity.Property(x => x.Total).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
-            entity.Property(x => x.TotalPaid).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
 
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
@@ -131,26 +118,26 @@ namespace LagoVista.Relational
             entity.Property(x => x.HasChildren).HasColumnOrder(4);
             entity.Property(x => x.InvoiceNumber).HasColumnOrder(5);
             entity.Property(x => x.SubscriptionId).HasColumnOrder(6);
-            entity.Property(x => x.OrgId).HasColumnOrder(7);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(7);
             entity.Property(x => x.CustomerId).HasColumnOrder(8);
             entity.Property(x => x.Notes).HasColumnOrder(9);
             entity.Property(x => x.BillingStart).HasColumnOrder(10);
             entity.Property(x => x.BillingEnd).HasColumnOrder(11);
-            entity.Property(x => x.CreationTimeStamp).HasColumnOrder(12);
+            entity.Property(x => x.CreationTimestamp).HasColumnOrder(12);
             entity.Property(x => x.DueDate).HasColumnOrder(13);
-            entity.Property(x => x.Total).HasColumnOrder(14);
-            entity.Property(x => x.Discount).HasColumnOrder(15);
-            entity.Property(x => x.Extended).HasColumnOrder(16);
-            entity.Property(x => x.TotalPaid).HasColumnOrder(17);
+            entity.Property(x => x.EncryptedTotal).HasColumnOrder(14);
+            entity.Property(x => x.EncryptedDiscount).HasColumnOrder(15);
+            entity.Property(x => x.EncryptedExtended).HasColumnOrder(16);
+            entity.Property(x => x.EncryptedTotalPaid).HasColumnOrder(17);
             entity.Property(x => x.PaidDate).HasColumnOrder(18);
             entity.Property(x => x.ClosedTransactionId).HasColumnOrder(19);
             entity.Property(x => x.Status).HasColumnOrder(20);
             entity.Property(x => x.StatusDate).HasColumnOrder(21);
             entity.Property(x => x.FailedAttemptCount).HasColumnOrder(22);
             entity.Property(x => x.AgreementId).HasColumnOrder(23);
-            entity.Property(x => x.Shipping).HasColumnOrder(24);
-            entity.Property(x => x.Tax).HasColumnOrder(25);
-            entity.Property(x => x.Subtotal).HasColumnOrder(26);
+            entity.Property(x => x.EncryptedShipping).HasColumnOrder(24);
+            entity.Property(x => x.EncryptedTax).HasColumnOrder(25);
+            entity.Property(x => x.EncryptedSubtotal).HasColumnOrder(26);
             entity.Property(x => x.TaxPercent).HasColumnOrder(27);
             entity.Property(x => x.ContactId).HasColumnOrder(28);
             entity.Property(x => x.AdditionalNotes).HasColumnOrder(29);
@@ -164,33 +151,32 @@ namespace LagoVista.Relational
             entity.Property(x => x.HasChildren).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.InvoiceNumber).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.SubscriptionId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.OrgId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CustomerId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.BillingStart).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.BillingEnd).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
-            entity.Property(x => x.CreationTimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.CreationTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.DueDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
-            entity.Property(x => x.Total).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.Discount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.TotalPaid).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedTotal).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedDiscount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedExtended).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedTotalPaid).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.PaidDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.ClosedTransactionId).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.StatusDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.FailedAttemptCount).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.AgreementId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.Shipping).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.Tax).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.Subtotal).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedShipping).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedTax).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedSubtotal).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.TaxPercent).HasColumnType(StandardDBTypes.DecimalSmall(provider));
             entity.Property(x => x.ContactId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.AdditionalNotes).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.IsLocked).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.InvoiceDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
         }
-
         public EntityHeader ToEntityHeader()
         {
             return EntityHeader.Create(Id.ToString(), InvoiceNumber.ToString());

@@ -24,7 +24,7 @@ namespace LagoVista.Relational
         /// <summary>
         /// When the billing event started
         /// </summary>
-        public DateTime StartTimeStamp { get; set; }
+        public DateTime StartTimestamp { get; set; }
 
         /// <summary>
         /// User Id of the user that initiated the billing event
@@ -35,12 +35,12 @@ namespace LagoVista.Relational
         /// <summary>
         /// When the billing event ended
         /// </summary>
-        public DateTime? EndTimeStamp { get; set; }
+        public DateTime? EndTimestamp { get; set; }
 
         /// <summary>
         /// User Id of the User that Terminated the Billing Event.
         /// </summary>
-        public string EndedByAppuserId { get; set; }
+        public string EndedByAppUserId { get; set; }
 
         /// <summary>
         /// Current Status for Billing Event, -Open, Completed, Invoiced, Error
@@ -49,7 +49,7 @@ namespace LagoVista.Relational
         public string Status { get; set; }
 
         /// <summary>
-        /// When the EndTimeStamp is assigned we will calculate the number of hours the resource has been
+        /// When the EndTimestamp is assigned we will calculate the number of hours the resource has been
         /// used, this will be used to calculate the price/cost
         /// </summary>
         public decimal? HoursBilled { get; set; }
@@ -123,14 +123,10 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Subscription).WithMany(x => x.BillingEvents).HasForeignKey(x => x.SubscriptionId);
             entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
             entity.HasOne(x => x.StartedByAppUser).WithMany().HasForeignKey(x => x.StartedByAppUserId);
-            entity.HasOne(x => x.EndedByAppUser).WithMany().HasForeignKey(x => x.EndedByAppuserId);
+            entity.HasOne(x => x.EndedByAppUser).WithMany().HasForeignKey(x => x.EndedByAppUserId);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
-
-            // Defaults
-            entity.Property(x => x.ResourceName).HasDefaultValueSql(StandardDbDefaults.Text(provider, "unknown"));
-            entity.Property(x => x.UnitTypeId).HasDefaultValueSql(StandardDbDefaults.One(provider));
 
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
@@ -138,10 +134,10 @@ namespace LagoVista.Relational
             entity.Property(x => x.ResourceName).HasColumnOrder(3);
             entity.Property(x => x.SubscriptionId).HasColumnOrder(4);
             entity.Property(x => x.ProductId).HasColumnOrder(5);
-            entity.Property(x => x.StartTimeStamp).HasColumnOrder(6);
+            entity.Property(x => x.StartTimestamp).HasColumnOrder(6);
             entity.Property(x => x.StartedByAppUserId).HasColumnOrder(7);
-            entity.Property(x => x.EndTimeStamp).HasColumnOrder(8);
-            entity.Property(x => x.EndedByAppuserId).HasColumnOrder(9);
+            entity.Property(x => x.EndTimestamp).HasColumnOrder(8);
+            entity.Property(x => x.EndedByAppUserId).HasColumnOrder(9);
             entity.Property(x => x.HoursBilled).HasColumnOrder(10);
             entity.Property(x => x.UnitCost).HasColumnOrder(11);
             entity.Property(x => x.DiscountPercent).HasColumnOrder(12);
@@ -155,20 +151,20 @@ namespace LagoVista.Relational
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.ResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ResourceName).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.ResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.SubscriptionId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.StartTimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.StartTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.StartedByAppUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.EndTimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.EndedByAppuserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.EndTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.EndedByAppUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.HoursBilled).HasColumnType(StandardDBTypes.DecimalMedium(provider));
             entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.MoneyStorage(provider));
             entity.Property(x => x.DiscountPercent).HasColumnType(StandardDBTypes.DecimalSmall(provider));
             entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.MoneyStorage(provider));
             entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
-            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.MoneyStorage(provider));
             entity.Property(x => x.Tokens).HasColumnType(StandardDBTypes.LongStorage(provider));
         }

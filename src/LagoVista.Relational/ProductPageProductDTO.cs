@@ -39,11 +39,6 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.Discount).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
-            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
-            entity.Property(x => x.UnitQty).HasDefaultValueSql(StandardDbDefaults.One(provider));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.ProductPageId).HasColumnOrder(2);

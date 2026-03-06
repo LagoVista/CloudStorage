@@ -23,7 +23,7 @@ namespace LagoVista.Relational
 
         public bool IsFTE { get; set; }
         public bool IsContractor { get; set; }
-        public bool IsOfficier { get; set; }
+        public bool IsOfficer { get; set; }
 
 
         public bool IsSalary { get; set; }
@@ -59,14 +59,6 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.DeductEstimated).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.DeductEstimatedRate).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
-            entity.Property(x => x.IsContractor).HasDefaultValueSql(StandardDbDefaults.True(provider));
-            entity.Property(x => x.IsFTE).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.IsOfficier).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.IsSalary).HasDefaultValueSql(StandardDbDefaults.False(provider));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.OrganizationId).HasColumnOrder(2);
@@ -86,11 +78,11 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnOrder(16);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(17);
             entity.Property(x => x.CreationDate).HasColumnOrder(18);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(19);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(19);
             entity.Property(x => x.WorkRoleId).HasColumnOrder(20);
             entity.Property(x => x.IsContractor).HasColumnOrder(21);
             entity.Property(x => x.IsFTE).HasColumnOrder(22);
-            entity.Property(x => x.IsOfficier).HasColumnOrder(23);
+            entity.Property(x => x.IsOfficer).HasColumnOrder(23);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -99,7 +91,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Start).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.End).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.IsSalary).HasColumnType(StandardDBTypes.FlagStorage(provider));
-            entity.Property(x => x.FilingType).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.FilingType).HasColumnType(StandardDBTypes.CategoryStorage(provider));
             entity.Property(x => x.DeductEstimated).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.DeductEstimatedRate).HasColumnType(StandardDBTypes.DecimalSmall(provider));
             entity.Property(x => x.EncryptedBillableRate).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
@@ -111,16 +103,16 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.WorkRoleId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.IsContractor).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.IsFTE).HasColumnType(StandardDBTypes.FlagStorage(provider));
-            entity.Property(x => x.IsOfficier).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.IsOfficer).HasColumnType(StandardDBTypes.FlagStorage(provider));
         }
 
         public EntityHeader ToEntityHeader()
         {
-            return EntityHeader.Create(Id.ToString(), $"{User.Text} {Start}" );
+            return EntityHeader.Create(Id.ToString(), $"{User.FullName} {Start}" );
         }
     }
 }

@@ -83,13 +83,6 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.DescriptionHtml).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
-            entity.Property(x => x.IsPublic).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.PageTitle).HasDefaultValueSql(StandardDbDefaults.Text(provider, "Product Page"));
-            entity.Property(x => x.VideoUrl).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.OrganizationId).HasColumnOrder(2);
@@ -120,7 +113,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnOrder(27);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(28);
             entity.Property(x => x.CreationDate).HasColumnOrder(29);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(30);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(30);
             entity.Property(x => x.IsPublic).HasColumnOrder(31);
             entity.Property(x => x.DescriptionHtml).HasColumnOrder(32);
             entity.Property(x => x.VideoUrl).HasColumnOrder(33);
@@ -131,34 +124,34 @@ namespace LagoVista.Relational
             entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
             entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
-            entity.Property(x => x.PageTitle).HasColumnType(StandardDBTypes.TextMax(provider));
-            entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.PageTitle).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.HtmlStorage(provider));
             entity.Property(x => x.ThumbnailImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ThumbnailImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ThumbnailImageResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.ImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.HeroImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.HeroImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.HeroTitle).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.HeroImageResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.HeroTitle).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.HeroTagLine1).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.HeroTagLine2).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.TopLeftMenuId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.TopLeftMenuName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.TopLeftMenuName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.TopRightMenuId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.TopRightMenuName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.TopRightMenuName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.BottomMenuId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.BottomMenuName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.BottomMenuName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.ColorPaletteId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ColorPaletteName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.ColorPaletteName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.ProductPageLayoutId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ProductPageLayoutName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.ProductPageLayoutName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.IsPublic).HasColumnType(StandardDBTypes.FlagStorage(provider));
-            entity.Property(x => x.DescriptionHtml).HasColumnType(StandardDBTypes.TextMax(provider));
-            entity.Property(x => x.VideoUrl).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.DescriptionHtml).HasColumnType(StandardDBTypes.HtmlStorage(provider));
+            entity.Property(x => x.VideoUrl).HasColumnType(StandardDBTypes.UrlStorage(provider));
         }
     }
 }

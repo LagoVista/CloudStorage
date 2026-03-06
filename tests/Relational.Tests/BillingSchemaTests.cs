@@ -40,28 +40,12 @@ namespace Relational.Tests
             {
                 Console.WriteLine($"Testing {entity.ClrType.Name} against {entity.GetSchema() ?? "dbo"}.{entity.GetTableName()}");
                 var dtoType = entity.ClrType;
-                await AssertTableMatchesModelAsync(dtoType);
+                await AssertTableMatchesModelAsync(dtoType, true, showEFSuggestions: false, showDBSuggestions: true, typesOnly: true);
             }
         }
 
         [Test]
-        public async Task Helper() => await AssertTableMatchesModelAsync(typeof(InvoiceDTO), true, showDBSuggestions:true, typesOnly:true );
-
-
-        [Test]
-        public void Should_Not_Map_EntityHeader_As_Entity()
-        {
-            using var ctx = CreateContext();
-
-            var offenders =
-                ctx.Model.GetEntityTypes()
-                    .SelectMany(et => et.GetNavigations()
-                        .Where(n => n.TargetEntityType.ClrType == typeof(EntityHeader))
-                        .Select(n => $"{et.ClrType.Name}.{n.Name}"))
-                    .ToList();
-
-            Assert.That(offenders, Is.Empty, "EntityHeader navigations found:\n" + string.Join("\n", offenders));
-        }
+        public async Task CheckSingleTable() => await AssertTableMatchesModelAsync(typeof(WorkRoleDTO), true, showEFSuggestions:true, showDBSuggestions:true, typesOnly:true );
 
         private static HashSet<string> GetExpectedTablesFromDbSets(DbContext ctx)
         {

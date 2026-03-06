@@ -66,9 +66,6 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.ItemId).HasColumnOrder(2);
@@ -93,20 +90,20 @@ namespace LagoVista.Relational
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.ItemId).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.AccountId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.MerchantName).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.MerchantName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.OriginalDescription).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.PendingTransactionId).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.PlaidAccountId).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.PlaidTransactionId).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.TransactionType).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.TransactionType).HasColumnType(StandardDBTypes.CategoryStorage(provider));
             entity.Property(x => x.AuthorizationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.IsoCurrencyCode).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.UnofficialCurrencyCode).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.IsoCurrencyCode).HasColumnType(StandardDBTypes.CategoryStorage(provider));
+            entity.Property(x => x.UnofficialCurrencyCode).HasColumnType(StandardDBTypes.CategoryStorage(provider));
             entity.Property(x => x.Categories).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.CheckNumber).HasColumnType(StandardDBTypes.TextTiny(provider));
-            entity.Property(x => x.SuggestedCategory).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.SuggestedCategory).HasColumnType(StandardDBTypes.CategoryStorage(provider));
             entity.Property(x => x.MerchantEntryId).HasColumnType(StandardDBTypes.TextMedium(provider));
         }
     }

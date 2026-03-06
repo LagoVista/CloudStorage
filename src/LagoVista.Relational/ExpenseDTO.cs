@@ -20,10 +20,6 @@ namespace LagoVista.Relational
 
         public Guid? PaymentId { get; set; }
 
-        [IgnoreOnMapTo]
-        [Obsolete("use ExpenseDate")]
-        public DateTime Date { get; set; }
-
         [Required]
         public DateOnly ExpenseDate { get; set; }
         [Required]
@@ -94,27 +90,26 @@ namespace LagoVista.Relational
             entity.Property(x => x.AgreementId).HasColumnOrder(4);
             entity.Property(x => x.BillingEventId).HasColumnOrder(5);
             entity.Property(x => x.PaymentId).HasColumnOrder(6);
-            entity.Property(x => x.Date).HasColumnOrder(7);
-            entity.Property(x => x.ExpenseDate).HasColumnOrder(8);
-            entity.Property(x => x.ProjectId).HasColumnOrder(9);
-            entity.Property(x => x.ProjectName).HasColumnOrder(10);
-            entity.Property(x => x.WorkTaskId).HasColumnOrder(11);
-            entity.Property(x => x.WorkTaskName).HasColumnOrder(12);
-            entity.Property(x => x.UserId).HasColumnOrder(13);
-            entity.Property(x => x.OrganizationId).HasColumnOrder(14);
-            entity.Property(x => x.Approved).HasColumnOrder(15);
-            entity.Property(x => x.ApprovedById).HasColumnOrder(16);
-            entity.Property(x => x.ApprovedDate).HasColumnOrder(17);
-            entity.Property(x => x.Locked).HasColumnOrder(18);
-            entity.Property(x => x.EncryptedAmount).HasColumnOrder(19);
-            entity.Property(x => x.EncryptedReimbursedAmount).HasColumnOrder(20);
-            entity.Property(x => x.Notes).HasColumnOrder(21);
-            entity.Property(x => x.Description).HasColumnOrder(22);
-            entity.Property(x => x.CreatedById).HasColumnOrder(23);
-            entity.Property(x => x.LastUpdatedById).HasColumnOrder(24);
-            entity.Property(x => x.CreationDate).HasColumnOrder(25);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(26);
-            entity.Property(x => x.VendorId).HasColumnOrder(27);
+            entity.Property(x => x.ExpenseDate).HasColumnOrder(7);
+            entity.Property(x => x.ProjectId).HasColumnOrder(8);
+            entity.Property(x => x.ProjectName).HasColumnOrder(9);
+            entity.Property(x => x.WorkTaskId).HasColumnOrder(10);
+            entity.Property(x => x.WorkTaskName).HasColumnOrder(11);
+            entity.Property(x => x.UserId).HasColumnOrder(12);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(13);
+            entity.Property(x => x.Approved).HasColumnOrder(14);
+            entity.Property(x => x.ApprovedById).HasColumnOrder(15);
+            entity.Property(x => x.ApprovedDate).HasColumnOrder(16);
+            entity.Property(x => x.Locked).HasColumnOrder(17);
+            entity.Property(x => x.EncryptedAmount).HasColumnOrder(18);
+            entity.Property(x => x.EncryptedReimbursedAmount).HasColumnOrder(19);
+            entity.Property(x => x.Notes).HasColumnOrder(20);
+            entity.Property(x => x.Description).HasColumnOrder(21);
+            entity.Property(x => x.CreatedById).HasColumnOrder(22);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(23);
+            entity.Property(x => x.CreationDate).HasColumnOrder(24);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(25);
+            entity.Property(x => x.VendorId).HasColumnOrder(26);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -123,7 +118,6 @@ namespace LagoVista.Relational
             entity.Property(x => x.AgreementId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.BillingEventId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.PaymentId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.Date).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.ExpenseDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.ProjectId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.ProjectName).HasColumnType(StandardDBTypes.NameStorage(provider));
@@ -142,7 +136,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.VendorId).HasColumnType(StandardDBTypes.UuidStorage(provider));
         }
     }

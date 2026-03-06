@@ -29,7 +29,7 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public PayrollSummaryDTO PayrollSummary { get; set; }
 
-        public DateTime? LockedTimeStamp { get; set; }
+        public DateTime? LockedTimestamp { get; set; }
         public string LockedByUserId { get; set; }
 
         [IgnoreOnMapTo]
@@ -39,7 +39,6 @@ namespace LagoVista.Relational
         public OrganizationDTO Organization { get; set; }
 
         public EntityHeader ToEntityHeader() => EntityHeader.Create(Id.ToString(), $"{Start} to {End}");
-
         public static void Configure(ModelBuilder modelBuilder)
         {
             var mb = modelBuilder;
@@ -60,7 +59,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.OrganizationId).HasColumnOrder(3);
             entity.Property(x => x.Locked).HasColumnOrder(4);
             entity.Property(x => x.LockedByUserId).HasColumnOrder(5);
-            entity.Property(x => x.LockedTimeStamp).HasColumnOrder(6);
+            entity.Property(x => x.LockedTimestamp).HasColumnOrder(6);
             entity.Property(x => x.PayrollSummaryId).HasColumnOrder(7);
             entity.Property(x => x.Start).HasColumnOrder(8);
             entity.Property(x => x.End).HasColumnOrder(9);
@@ -71,7 +70,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.Locked).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.LockedByUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.LockedTimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LockedTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.PayrollSummaryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.Start).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.End).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));

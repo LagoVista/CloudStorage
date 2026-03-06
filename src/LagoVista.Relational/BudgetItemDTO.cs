@@ -44,6 +44,7 @@ namespace LagoVista.Relational
         public string EncryptedAllocated { get; set; }
         [Required]
         public string EncryptedActual { get; set; }
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             var mb = modelBuilder;
@@ -61,9 +62,6 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.Name).HasColumnOrder(2);
@@ -79,12 +77,12 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnOrder(12);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(13);
             entity.Property(x => x.CreationDate).HasColumnOrder(14);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(15);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(15);
             entity.Property(x => x.Description).HasColumnOrder(16);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
             entity.Property(x => x.Year).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.Month).HasColumnType(StandardDBTypes.IntStorage(provider));
@@ -97,7 +95,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
         }
     }

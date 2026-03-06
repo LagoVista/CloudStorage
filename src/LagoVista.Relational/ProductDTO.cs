@@ -29,9 +29,8 @@ namespace LagoVista.Relational
         [Required]
         public DateTime CreationDate { get; set; }
 
-        [MapTo("LastUpdatedDate")]
         [Required]
-        public DateTime LastUpdateDate { get; set; }
+        public DateTime LastUpdatedDate { get; set; }
 
         [MapTo("CreatedBy")]
         [IgnoreOnMapTo]
@@ -112,7 +111,6 @@ namespace LagoVista.Relational
             return EntityHeader.Create(Id.ToString(), Key, Name);
         }
 
-
         public static void Configure(ModelBuilder modelBuilder)
         {
             var mb = modelBuilder;
@@ -129,25 +127,13 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.Description).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-            entity.Property(x => x.Icon).HasDefaultValueSql(StandardDbDefaults.Text(provider, "icon-pz-product-1"));
-            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
-            entity.Property(x => x.IsPublic).HasDefaultValueSql(StandardDbDefaults.True(provider));
-            entity.Property(x => x.IsTrialResource).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.PhysicalProduct).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.RecurringCycleTypeId).HasDefaultValueSql(StandardDbDefaults.One(provider));
-            entity.Property(x => x.ShortSummaryHTML).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-            entity.Property(x => x.Status).HasDefaultValueSql(StandardDbDefaults.Text(provider, "Active"));
-            entity.Property(x => x.UnitPrice).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.ProductCategoryId).HasColumnOrder(2);
             entity.Property(x => x.CreatedById).HasColumnOrder(3);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(4);
             entity.Property(x => x.CreationDate).HasColumnOrder(5);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(6);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(6);
             entity.Property(x => x.Key).HasColumnOrder(7);
             entity.Property(x => x.Name).HasColumnOrder(8);
             entity.Property(x => x.Sku).HasColumnOrder(9);
@@ -175,24 +161,24 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
             entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
-            entity.Property(x => x.Sku).HasColumnType(StandardDBTypes.TextMax(provider));
-            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.Sku).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.MoneyStorage(provider));
             entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
-            entity.Property(x => x.DetailsHTML).HasColumnType(StandardDBTypes.TextMax(provider));
-            entity.Property(x => x.RemoteResourceId).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.DetailsHTML).HasColumnType(StandardDBTypes.HtmlStorage(provider));
+            entity.Property(x => x.RemoteResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.IsTrialResource).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
             entity.Property(x => x.ThumbnailImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ThumbnailImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ThumbnailImageResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.ImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.PhysicalProduct).HasColumnType(StandardDBTypes.FlagStorage(provider));
-            entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.HtmlStorage(provider));
             entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.MoneyStorage(provider));
             entity.Property(x => x.IsPublic).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.RecurringCycleTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));

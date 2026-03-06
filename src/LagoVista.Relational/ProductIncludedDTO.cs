@@ -16,7 +16,7 @@ namespace LagoVista.Relational
         [Required]
         public Guid ProductId { get; set; }
         [Required]
-        public decimal Discount { get; set; }
+        public decimal DiscountPercent { get; set; }
         [Required]
         public string Notes { get; set; }
 
@@ -47,16 +47,12 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
-            entity.Property(x => x.Notes).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-            entity.Property(x => x.Quantity).HasDefaultValueSql(StandardDbDefaults.One(provider));
 
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.PackageId).HasColumnOrder(2);
             entity.Property(x => x.ProductId).HasColumnOrder(3);
-            entity.Property(x => x.Discount).HasColumnOrder(4);
+            entity.Property(x => x.DiscountPercent).HasColumnOrder(4);
             entity.Property(x => x.Notes).HasColumnOrder(5);
             entity.Property(x => x.Name).HasColumnOrder(6);
             entity.Property(x => x.Key).HasColumnOrder(7);
@@ -66,7 +62,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.PackageId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.Discount).HasColumnType(StandardDBTypes.DecimalSmall(provider));
+            entity.Property(x => x.DiscountPercent).HasColumnType(StandardDBTypes.DecimalSmall(provider));
             entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));

@@ -50,7 +50,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Description).HasColumnOrder(7);
             entity.Property(x => x.CreationDate).HasColumnOrder(8);
             entity.Property(x => x.CreatedById).HasColumnOrder(9);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(10);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(10);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(11);
 
             // Storage types
@@ -63,7 +63,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
         }
 

@@ -29,6 +29,7 @@ namespace LagoVista.Relational
 
         [IgnoreOnMapTo()]
         public InvoiceDTO Invoice { get; set; }
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             var mb = modelBuilder;
@@ -48,14 +49,16 @@ namespace LagoVista.Relational
             entity.Property(x => x.EventId).HasColumnOrder(4);
             entity.Property(x => x.EventData).HasColumnOrder(5);
             entity.Property(x => x.Message).HasColumnOrder(6);
+            entity.Property(x => x.EncryptedAmount).HasColumnOrder(7);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.InvoiceId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.DateStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.EventId).HasColumnType(StandardDBTypes.TextTiny(provider));
-            entity.Property(x => x.EventData).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.Message).HasColumnType(StandardDBTypes.TextLong(provider));
+            entity.Property(x => x.EventId).HasColumnType(StandardDBTypes.CategoryStorage(provider));
+            entity.Property(x => x.EventData).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.Message).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
         }
     }
 }

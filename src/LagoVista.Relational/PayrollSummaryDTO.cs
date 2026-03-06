@@ -27,7 +27,7 @@ namespace LagoVista.Relational
         [Required]
         public string Status { get; set; }
         public bool Locked { get; set; }
-        public DateTime? LockedTimeStamp { get; set; }
+        public DateTime? LockedTimestamp { get; set; }
         public string LockedByUserId { get; set; }
 
         [IgnoreOnMapTo]
@@ -58,7 +58,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnOrder(2);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(3);
             entity.Property(x => x.CreationDate).HasColumnOrder(4);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(5);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(5);
             entity.Property(x => x.OrganizationId).HasColumnOrder(6);
             entity.Property(x => x.EncryptedTotalSalary).HasColumnOrder(7);
             entity.Property(x => x.EncryptedTotalPayroll).HasColumnOrder(8);
@@ -68,7 +68,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.EncryptedTaxLiabilities).HasColumnOrder(12);
             entity.Property(x => x.Status).HasColumnOrder(13);
             entity.Property(x => x.Locked).HasColumnOrder(14);
-            entity.Property(x => x.LockedTimeStamp).HasColumnOrder(15);
+            entity.Property(x => x.LockedTimestamp).HasColumnOrder(15);
             entity.Property(x => x.LockedByUserId).HasColumnOrder(16);
 
             // Storage types
@@ -76,7 +76,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.EncryptedTotalSalary).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotalPayroll).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
@@ -84,9 +84,9 @@ namespace LagoVista.Relational
             entity.Property(x => x.EncryptedTotalTaxLiability).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotalRevenue).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTaxLiabilities).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.Locked).HasColumnType(StandardDBTypes.FlagStorage(provider));
-            entity.Property(x => x.LockedTimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LockedTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.LockedByUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
         }
     }

@@ -70,19 +70,13 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.CategoryTypeId).HasDefaultValueSql(StandardDbDefaults.Text(provider, "software"));
-            entity.Property(x => x.CategoryTypeName).HasDefaultValueSql(StandardDbDefaults.Text(provider, "Software"));
-            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
-            entity.Property(x => x.ShortSummaryHTML).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.OrganizationId).HasColumnOrder(2);
             entity.Property(x => x.CreatedById).HasColumnOrder(3);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(4);
             entity.Property(x => x.CreationDate).HasColumnOrder(5);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(6);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(6);
             entity.Property(x => x.Name).HasColumnOrder(7);
             entity.Property(x => x.Key).HasColumnOrder(8);
             entity.Property(x => x.Description).HasColumnOrder(9);
@@ -102,19 +96,19 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
             entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.IsPublic).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
             entity.Property(x => x.ThumbnailImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ThumbnailImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ThumbnailImageResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.ImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.TextMax(provider));
-            entity.Property(x => x.CategoryTypeId).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.CategoryTypeName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.HtmlStorage(provider));
+            entity.Property(x => x.CategoryTypeId).HasColumnType(StandardDBTypes.CategoryStorage(provider));
+            entity.Property(x => x.CategoryTypeName).HasColumnType(StandardDBTypes.NameStorage(provider));
         }
     }
 }

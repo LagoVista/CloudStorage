@@ -14,9 +14,6 @@ namespace LagoVista.Relational
     {
         public Guid? ExpenseCategoryId { get; set; }
 
-
-
-
         [Required]
         public string Type { get; set; }
         [Required]
@@ -58,12 +55,6 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Defaults
-            entity.Property(x => x.Icon).HasDefaultValueSql(StandardDbDefaults.Text(provider, "icon-ae-checklist-2"));
-            entity.Property(x => x.IsActive).HasDefaultValueSql(StandardDbDefaults.True(provider));
-            entity.Property(x => x.Passthrough).HasDefaultValueSql(StandardDbDefaults.False(provider));
-            entity.Property(x => x.TaxReportable).HasDefaultValueSql(StandardDbDefaults.False(provider));
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.OrganizationId).HasColumnOrder(2);
@@ -73,7 +64,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreatedById).HasColumnOrder(6);
             entity.Property(x => x.LastUpdatedById).HasColumnOrder(7);
             entity.Property(x => x.CreationDate).HasColumnOrder(8);
-            entity.Property(x => x.LastUpdateDate).HasColumnOrder(9);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(9);
             entity.Property(x => x.IsActive).HasColumnOrder(10);
             entity.Property(x => x.Icon).HasColumnOrder(11);
             entity.Property(x => x.ExpenseCategoryId).HasColumnOrder(12);
@@ -84,17 +75,17 @@ namespace LagoVista.Relational
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.Type).HasColumnType(StandardDBTypes.TextTiny(provider));
-            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Type).HasColumnType(StandardDBTypes.CategoryStorage(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.IsActive).HasColumnType(StandardDBTypes.FlagStorage(provider));
-            entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
             entity.Property(x => x.ExpenseCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.TaxCategory).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.TaxCategory).HasColumnType(StandardDBTypes.CategoryStorage(provider));
             entity.Property(x => x.TaxReportable).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.Passthrough).HasColumnType(StandardDBTypes.FlagStorage(provider));
         }

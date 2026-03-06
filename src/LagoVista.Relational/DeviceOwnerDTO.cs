@@ -41,9 +41,9 @@ namespace LagoVista.Relational
 
             // Storage types
             entity.Property(x => x.DeviceOwnerUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.Email).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.Phone).HasColumnType(StandardDBTypes.TextTiny(provider));
-            entity.Property(x => x.FullName).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Email).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Phone).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.FullName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
