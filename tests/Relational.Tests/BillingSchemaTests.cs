@@ -1,86 +1,137 @@
-﻿using LagoVista.Relational;
+﻿using LagoVista.CloudStorage.Utils;
+using LagoVista.Core.Models;
+using LagoVista.Models;
+using LagoVista.Relational;
 using LagoVista.Relational.DataContexts;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel.Utilities;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Relational.Tests
 {
-    public sealed class BillingSchemaTests : SchemaContractTestBase
-    {
-        protected override DbContext CreateContextForTruthDb(string sqlServerConnectionString)
-        {
-            var opts = new DbContextOptionsBuilder<BillingDataContext>()
-                .UseSqlServer(sqlServerConnectionString)
-                .EnableSensitiveDataLogging()
-                .Options;
+    public sealed class BillingSchemaTests : SchemaContractTestBase {
+        private static readonly ImmutableHashSet<string> IgnoredTables = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase,
+        "__EFMigrationsHistory", "sysdiagrams" // add others if you have them
+    );
 
-            return new BillingDataContext(opts);
+
+        [Test]
+        public async Task AllEntitiesMatchDatabaseSchema()
+        {
+
+            using var ctx = CreateContext();
+
+            var entities = ctx.Model.GetEntityTypes()
+                .Where(e =>
+                    e.ClrType != null &&
+                    !e.IsOwned() &&
+                    e.FindPrimaryKey() != null &&
+                    e.GetTableName() != null &&
+                    e.GetViewName() == null);
+
+
+            foreach (var entity in entities.OrderBy(e => e.ClrType.Name))
+            {
+                Console.WriteLine($"Testing {entity.ClrType.Name} against {entity.GetSchema() ?? "dbo"}.{entity.GetTableName()}");
+                var dtoType = entity.ClrType;
+                await AssertTableMatchesModelAsync(dtoType);
+            }
         }
 
-
         [Test]
-        public Task AccountTransactionCategories() => AssertTableMatchesModelAsync(typeof(AccountTransactionCategoryDto), "dbo", "AccountTransactionCategory");
-
-
-        [Test]
-        public Task Agreements() => AssertTableMatchesModelAsync(typeof(AgreementDTO), "dbo", "Agreements");
-      
-        [Test]
-        public Task AgreementLineItems() => AssertTableMatchesModelAsync(typeof(AgreementLineItemDTO), "dbo", "AgreementLineItems");
-
-        
-        [Test]
-        public Task BillingEvents() => AssertTableMatchesModelAsync(typeof(BillingEventDTO), "dbo", "BillingEvents");
+        public async Task Helper() => await AssertTableMatchesModelAsync(typeof(AgreementDTO));
 
 
         [Test]
-        public Task BudgetItems() => AssertTableMatchesModelAsync(typeof(BudgetItemDTO), "dbo", "BudgetItems");
+        public void Should_Not_Map_EntityHeader_As_Entity()
+        {
+            using var ctx = CreateContext();
 
+            var offenders =
+                ctx.Model.GetEntityTypes()
+                    .SelectMany(et => et.GetNavigations()
+                        .Where(n => n.TargetEntityType.ClrType == typeof(EntityHeader))
+                        .Select(n => $"{et.ClrType.Name}.{n.Name}"))
+                    .ToList();
 
-        [Test]
-        public Task Customers() => AssertTableMatchesModelAsync(typeof(CustomerDTO), "dbo", "Customers");
+            Assert.That(offenders, Is.Empty, "EntityHeader navigations found:\n" + string.Join("\n", offenders));
+        }
 
-        
+        private static HashSet<string> GetExpectedTablesFromDbSets(DbContext ctx)
+        {
+            var expected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        [Test]
-        public Task Expenses() => AssertTableMatchesModelAsync(typeof(ExpenseDTO), "dbo", "Expenses");
+            var dbSetEntityTypes = ctx.GetType()
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .Where(p => p.PropertyType.IsGenericType &&
+                            p.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>))
+                .Select(p => p.PropertyType.GetGenericArguments()[0]);
 
-        [Test]
-        public Task ExpenseCategory() => AssertTableMatchesModelAsync(typeof(ExpenseCategoryDTO), "dbo", "ExpenseCategory");
+            foreach (var clrType in dbSetEntityTypes)
+            {
+                var et = ctx.Model.FindEntityType(clrType);
+                if (et == null) continue;
 
-        [Test]
-        public Task Invoices() => AssertTableMatchesModelAsync(typeof(InvoiceDTO), "dbo", "Invoice");
+                // Skip views / keyless / owned / anything not mapped to a table
+                if (et.GetTableName() == null) continue;
+                if (et.GetViewName() != null) continue;
+                if (et.IsOwned()) continue;
+                if (et.FindPrimaryKey() == null) continue;
 
-        [Test]
-        public Task InvoiceLineItems() => AssertTableMatchesModelAsync(typeof(InvoiceLineItemDTO), "dbo", "InvoiceLineItems");
+                var schema = et.GetSchema() ?? "dbo";
+                expected.Add($"{schema}.{et.GetTableName()}");
+            }
 
-        [Test]
-        public Task Payments() => AssertTableMatchesModelAsync(typeof(PaymentDTO), "dbo", "Payments");
-        [Test]
-        public Task PayRate() => AssertTableMatchesModelAsync(typeof(PayRateDTO), "dbo", "PayRates");
-        [Test]
-        public Task PayrollSummary() => AssertTableMatchesModelAsync(typeof(PayrollSummaryDTO), "dbo", "PayrollSummary");
-
-        [Test]
-        public Task Vendors() => AssertTableMatchesModelAsync(typeof(VendorDTO), "dbo", "Vendor");
-        [Test]
-        public Task WorkRole() => AssertTableMatchesModelAsync(typeof(WorkRoleDTO), "dbo", "WorkRoles");
-
-
-        [Test]
-        public Task TimeEntries() => AssertTableMatchesModelAsync(typeof(TimeEntryDTO), "dbo", "TimeEntries");
-
-
-        [Test]
-        public Task TimePeriods() => AssertTableMatchesModelAsync(typeof(TimePeriodDTO), "dbo", "TimePeriods");
-
-        [Test]
-        public Task UnitTypes() => AssertTableMatchesModelAsync(typeof(UnitTypeDTO), "dbo", "UnitType");
-
+            return expected;
+        }
 
         [Test]
-        public Task RecurringCycleTypes() => AssertTableMatchesModelAsync(typeof(RecurringCycleTypeDTO), "dbo", "RecurringCycleType");
+        public async Task Should_Have_A_Contract_Test_For_Every_Dbo_Table()
+        {
+            using var ctx = CreateContext();
 
+            var dbTables = await ctx.Database
+                .SqlQueryRaw<string>(@"
+            SELECT CONCAT(s.name, '.', t.name) AS [Value]
+            FROM sys.tables t
+            JOIN sys.schemas s ON s.schema_id = t.schema_id
+            WHERE t.is_ms_shipped = 0
+            ORDER BY s.name, t.name;
+        ")
+                .ToListAsync();
 
+            var expected = GetExpectedTablesFromDbSets(ctx);
+
+            var actual = dbTables
+            .Where(x =>
+            {
+                var name = x.Split('.').Last();
+                if (IgnoredTables.Contains(name))
+                {
+                    Console.WriteLine($"Ignoring table {x}");
+                    return false;
+                }
+                return true;
+            })
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var missingInContracts = actual.Except(expected).OrderBy(x => x).ToList();
+            var mappedButMissingInDb = expected.Except(actual).OrderBy(x => x).ToList();
+
+            if (missingInContracts.Count > 0 || mappedButMissingInDb.Count > 0)
+            {
+                var msg =
+                    "Schema contract coverage mismatch:\n" +
+                    (missingInContracts.Count > 0 ? "\nTables in DB with NO contract mapping:\n  - " + string.Join("\n  - ", missingInContracts) + "\n" : "") +
+                    (mappedButMissingInDb.Count > 0 ? "\nMapped tables missing in DB:\n  - " + string.Join("\n  - ", mappedButMissingInDb) + "\n" : "");
+                Assert.Fail(msg);
+            }
+        }
     }
 }

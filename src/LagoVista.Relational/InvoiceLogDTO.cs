@@ -23,6 +23,8 @@ namespace LagoVista.Relational
         [Required]
         public string EventId { get; set; }
         public string EventData { get; set; }
+
+        public string EncryptedAmount { get; set; }
         public string Message { get; set; }
 
         [IgnoreOnMapTo()]

@@ -48,12 +48,12 @@ namespace LagoVista.Relational
         [Required]
         public string Notes { get; set; }
 
-        public decimal SubTotal { get; set; }
-        public decimal DiscountPercent { get; set; }
+        public string EncryptedSubTotal { get; set; }
+        public string EncryptedDiscountPercent { get; set; }
         public decimal TaxPercent { get; set; }
-        public decimal Tax { get; set; }
-        public decimal Shipping { get; set; }
-        public decimal Total { get; set; }
+        public string EncryptedTax { get; set; }
+        public string EncryptedShipping { get; set; }
+        public string EncryptedTotal { get; set; }
 
 
 
@@ -135,55 +135,55 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.NextInvoiceDate).HasColumnOrder(21);
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactId).HasColumnOrder(22);
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactName).HasColumnOrder(23);
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.SubTotal).HasColumnOrder(24);
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.DiscountPercent).HasColumnOrder(25);
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Tax).HasColumnOrder(26);
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Shipping).HasColumnOrder(27);
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Total).HasColumnOrder(28);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedSubTotal).HasColumnOrder(24);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedDiscountPercent).HasColumnOrder(25);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedTax).HasColumnOrder(26);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedShipping).HasColumnOrder(27);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedTotal).HasColumnOrder(28);
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.TaxPercent).HasColumnOrder(29);
 
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactId).HasDefaultValueSql("'-'");
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactName).HasDefaultValueSql("'-'");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.DiscountPercent).HasDefaultValueSql("0");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedDiscountPercent).HasDefaultValueSql("0");
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.Hours).HasDefaultValueSql("0");
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.InvoicePeriod).HasDefaultValueSql("'monthly'");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Shipping).HasDefaultValueSql("0");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedShipping).HasDefaultValueSql("0");
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.Status).HasDefaultValueSql("'active'");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.SubTotal).HasDefaultValueSql("0");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Tax).HasDefaultValueSql("0");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedSubTotal).HasDefaultValueSql("0");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedTax).HasDefaultValueSql("0");
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.TaxPercent).HasDefaultValueSql("0");
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.Terms).HasDefaultValueSql("15");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Total).HasDefaultValueSql("0");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedTotal).HasDefaultValueSql("0");
 
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactId).HasColumnType("varchar(40)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactName).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.DiscountPercent).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedRate).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.End).HasColumnType("date");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactId).HasColumnType(StandardDBTypes.NormalizedId32Storage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerContactName).HasColumnType(StandardDBTypes.TextLong);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.CustomerId).HasColumnType(StandardDBTypes.UuidStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedDiscountPercent).HasColumnType(StandardDBTypes.EncryptionStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedRate).HasColumnType(StandardDBTypes.EncryptionStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.End).HasColumnType(StandardDBTypes.CalendarDateStorage);
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.Hours).HasColumnType("decimal(18,2)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Identifier).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Internal).HasColumnType("bit");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.InvoicePeriod).HasColumnType("varchar(128)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.LastInvoicedDate).HasColumnType("date");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Locked).HasColumnType("bit");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.Identifier).HasColumnType(StandardDBTypes.UuidStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.Internal).HasColumnType(StandardDBTypes.FlagStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.InvoicePeriod).HasColumnType(StandardDBTypes.TextShort);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.LastInvoicedDate).HasColumnType(StandardDBTypes.CalendarDateStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.Locked).HasColumnType(StandardDBTypes.FlagStorage);
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.Name).HasColumnType("varchar(255)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.NextInvoiceDate).HasColumnType("date");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Shipping).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Start).HasColumnType("date");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.NextInvoiceDate).HasColumnType(StandardDBTypes.CalendarDateStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedShipping).HasColumnType(StandardDBTypes.EncryptionStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.Start).HasColumnType(StandardDBTypes.CalendarDateStorage);
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.Status).HasColumnType("varchar(128)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.SubTotal).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Tax).HasColumnType("decimal(6,2)");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedSubTotal).HasColumnType(StandardDBTypes.EncryptionStorage);
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedTax).HasColumnType(StandardDBTypes.EncryptionStorage);
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.TaxPercent).HasColumnType("decimal(6,2)");
                 modelBuilder.Entity<AgreementDTO>().Property(x => x.Terms).HasColumnType("int");
-                modelBuilder.Entity<AgreementDTO>().Property(x => x.Total).HasColumnType("decimal(6,2)");
+                modelBuilder.Entity<AgreementDTO>().Property(x => x.EncryptedTotal).HasColumnType(StandardDBTypes.EncryptionStorage);
 
                 modelBuilder.Entity<AgreementDTO>().HasKey(x => new { x.Id });
             }

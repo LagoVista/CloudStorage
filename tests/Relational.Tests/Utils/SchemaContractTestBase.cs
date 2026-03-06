@@ -1,9 +1,12 @@
 ﻿using LagoVista.CloudStorage.Utils;
 using LagoVista.Relational;
+using LagoVista.Relational.DataContexts;
+using Microsoft.Azure.Cosmos.Serialization.HybridRow.Schemas;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
@@ -22,24 +25,40 @@ public abstract class SchemaContractTestBase
         return conn;
     }
 
-    protected abstract DbContext CreateContextForTruthDb(string sqlServerConnectionString);
 
+    public BillingDataContext CreateContext()
+    {
 
-    protected async Task AssertTableMatchesModelAsync(
-    Type entityType,
-    string schema,
-    string table)
+        var settings = TestConnections.DevSQLServer;
+        var cs = SqlServerConnectionStringBuilderEx.Build(settings);
+
+        var opts = new DbContextOptionsBuilder<BillingDataContext>()
+               .UseSqlServer(cs)
+               .EnableSensitiveDataLogging()
+               .Options;
+
+        return new BillingDataContext(opts);
+    }
+
+    protected async Task AssertTableMatchesModelAsync(Type entityType)
     {
         EntityAttributeGuards.RequireTableAttribute(entityType);
 
         using var conn = OpenTruthConnection();
 
-        var dbTruth = await SqlServerSchemaReader.ReadTableAsync(conn, schema, table).ConfigureAwait(false);
+        var ctx = CreateContext();
 
-        await using var ctx = CreateContextForTruthDb(conn.ConnectionString);
+
 
         // Use design-time model so ColumnOrder + relational metadata is available
         var designModel = ctx.GetService<IDesignTimeModel>().Model;
+
+        var et = ctx.Model.FindEntityType(entityType) ?? throw new Exception($"Entity not mapped: {entityType.Name}");
+        var table = et.GetTableName();
+        var schema = et.GetSchema() ?? "dbo";
+
+        var dbTruth = await SqlServerSchemaReader.ReadTableAsync(conn, schema, table).ConfigureAwait(false);
+
 
         var efShape = EfModelReader.ReadEntityTableShape(ctx, entityType, schema, table);
         var diffs = SchemaDiff.CompareColumnsStrictOrder(dbTruth, efShape);
@@ -88,9 +107,12 @@ public abstract class SchemaContractTestBase
 
         if (defaultDiffs.Any())
         {
-            foreach (var d in dbDefaults.Defaults.OrderBy(x => x.ColumnName))
+            TestContext.WriteLine("===============================");
+            TestContext.WriteLine("Has Default Differences");
+
+            foreach (var d in defaultDiffs)
             {
-                TestContext.WriteLine($"// {d.ColumnName} DB default: {d.DefaultSqlNormalized}");
+                TestContext.WriteLine(d);
             }
 
             if (dbDefaults.Defaults.Any())
@@ -103,12 +125,15 @@ public abstract class SchemaContractTestBase
                     TestContext.WriteLine($" modelBuilder.Entity<{entityType.Name}>().Property(x => x.{d.ColumnName}).HasDefaultValueSql(\"{d.DefaultSqlNormalized}\");");
                 }
             }
+
+            TestContext.WriteLine("===============================");
+            TestContext.WriteLine();
         }
 
         if (typeDiffs.Count > 0)
         {
-            TestContext.WriteLine("");
-            TestContext.WriteLine("Type differences (strict):");
+            TestContext.WriteLine("===============================");
+            TestContext.WriteLine($"Type differences (strict): {typeDiffs.Count}");
             foreach (var d in typeDiffs) TestContext.WriteLine(d);
 
             TestContext.WriteLine("");
@@ -120,6 +145,10 @@ public abstract class SchemaContractTestBase
                 var prop = GuessPropertyName(designModel, entityType, schema, table, col);
                 TestContext.WriteLine($"modelBuilder.Entity<{entityType.Name}>().Property(x => x.{prop}).HasColumnType(\"{storeMap[col]}\");");
             }
+
+
+            TestContext.WriteLine("===============================");
+            TestContext.WriteLine();
         }
 
         var pk = designModel.FindEntityType(entityType)?.FindPrimaryKey();
@@ -171,9 +200,12 @@ public abstract class SchemaContractTestBase
             foreach (var s in suggestions) TestContext.WriteLine(s);
         }
 
-        var total = diffs.Count + fkDiffs.Count + explicitNavDiffs.Count + navDiffs.Count;
-        Assert.Fail($"{schema}.{table}: {total} schema differences");
+        var total = diffs.Count + fkDiffs.Count + explicitNavDiffs.Count + navDiffs.Count + keyDiffs.Count + typeDiffs.Count + defaultDiffs.Count;
+        Assert.Fail($"{schema}.{table}: {total} schema differences");  
     }
+
+  
+   
 
 
     private static string GuessPropertyName(IModel designModel, Type entityType, string schema, string table, string columnName)

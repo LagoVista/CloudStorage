@@ -20,9 +20,9 @@ namespace LagoVista.Relational
         [Required]
         public string Institution { get; set; }
         [Required]
-        public string AccountNumber { get; set; }
+        public string EncryptedAccountNumber { get; set; }
         [Required]
-        public string RoutingNumber { get; set; }
+        public string EncryptedRoutingNumber { get; set; }
 
         [Required]
         public string EncryptedBalance { get; set; }
@@ -81,8 +81,8 @@ namespace LagoVista.Relational
 
             modelBuilder.Entity<AccountDto>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<AccountDto>().Property(x => x.Name).HasColumnOrder(2);
-            modelBuilder.Entity<AccountDto>().Property(x => x.RoutingNumber).HasColumnOrder(3);
-            modelBuilder.Entity<AccountDto>().Property(x => x.AccountNumber).HasColumnOrder(4);
+            modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedRoutingNumber).HasColumnOrder(3);
+            modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedAccountNumber).HasColumnOrder(4);
             modelBuilder.Entity<AccountDto>().Property(x => x.Institution).HasColumnOrder(5);
             modelBuilder.Entity<AccountDto>().Property(x => x.IsLiability).HasColumnOrder(6);
             modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedBalance).HasColumnOrder(7);
@@ -104,6 +104,7 @@ namespace LagoVista.Relational
             modelBuilder.Entity<AccountDto>().Property(x => x.LastError).HasColumnOrder(23);
             modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedOnlineBalance).HasColumnOrder(24);
             modelBuilder.Entity<AccountDto>().Property(x => x.ExternalProviderid).HasColumnOrder(25);
+            modelBuilder.Entity<AccountDto>().Property(x => x.Version).HasColumnOrder(26);
 
             if (modelBuilder.IsSqlServer())
             {
@@ -115,7 +116,7 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<AccountDto>().HasKey(x => new { x.Id });
 
                 modelBuilder.Entity<AccountDto>().Property(x => x.AccessTokenSecretId).HasColumnType("varchar(128)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.AccountNumber).HasColumnType("varchar(128)");
+                modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedAccountNumber).HasColumnType("varchar(1024)");
                 modelBuilder.Entity<AccountDto>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
                 modelBuilder.Entity<AccountDto>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
                 modelBuilder.Entity<AccountDto>().Property(x => x.Description).HasColumnType("varchar(1024)");
@@ -135,10 +136,11 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<AccountDto>().Property(x => x.LinkActive).HasColumnType("bit");
                 modelBuilder.Entity<AccountDto>().Property(x => x.Name).HasColumnType("varchar(128)");
                 modelBuilder.Entity<AccountDto>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.RoutingNumber).HasColumnType("varchar(128)");
+                modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedRoutingNumber).HasColumnType("varchar(1024)");
                 modelBuilder.Entity<AccountDto>().Property(x => x.SyncStatus).HasColumnType("varchar(50)");
                 modelBuilder.Entity<AccountDto>().Property(x => x.TransactionCursor).HasColumnType("varchar(1024)");
                 modelBuilder.Entity<AccountDto>().Property(x => x.TransactionJournalOnly).HasColumnType("bit");
+                modelBuilder.Entity<AccountDto>().Property(x => x.Version).HasColumnType("bigint");
             }
         }
     }

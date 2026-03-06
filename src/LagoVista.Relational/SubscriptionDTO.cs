@@ -141,8 +141,8 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
                 modelBuilder.Entity<SubscriptionDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
                 modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentToken).HasColumnType("varchar(128)");
-                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenExpires).HasColumnType("datetime2(7)");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenDate).HasColumnType("date");
+                modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenExpires).HasColumnType("date");
                 modelBuilder.Entity<SubscriptionDTO>().Property(x => x.PaymentTokenStatus).HasColumnType("varchar(50)");
                 modelBuilder.Entity<SubscriptionDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
             }

@@ -46,9 +46,6 @@ public static class EfForeignKeyReaderExplicit
                 .Select(p => p.GetColumnName(toStore) ?? p.Name)
                 .ToArray();
 
-            TestContext.WriteLine(
-                $"EF FK: ({string.Join(",", fromCols)}) -> {toSchema}.{toTable}({string.Join(",", toCols)}) Delete={fk.DeleteBehavior} Nav={fk.DependentToPrincipal?.Name ?? "(none)"}");
-
             var onDelete = fk.DeleteBehavior switch
             {
                 DeleteBehavior.Cascade => "CASCADE",

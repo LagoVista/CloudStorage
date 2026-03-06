@@ -137,10 +137,10 @@ namespace LagoVista.Relational.DataContexts
 
             SerialNumberDTO.Configure(modelBuilder);
 
-            SubscriptionDTO.Configure(modelBuilder);
+           SubscriptionDTO.Configure(modelBuilder);
 
-            TimeEntryDTO.Configure(modelBuilder);
-            TimePeriodDTO.Configure(modelBuilder);
+           TimeEntryDTO.Configure(modelBuilder);
+           TimePeriodDTO.Configure(modelBuilder);
 
             TransactionStagingDto.Configure(modelBuilder);
 

@@ -4,14 +4,16 @@ using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [Table("Licenses", Schema = "dbo")]
     public class LicenseDTO : DbModelBase, IEntityHeaderFactory
     {
         public string Name { get; set; }
 
-        public EntityHeader Customer { get; set; }
+        public Guid CustomerId { get; set; }
 
         public Guid AgreementLineItemId { get; set; }
         public bool IsActive { get; set; }

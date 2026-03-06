@@ -26,7 +26,7 @@ namespace LagoVista.Relational
 
         public Guid? SubscriptionId { get; set; }
         public Guid? AgreementId { get; set; }
-        public Guid? CustomerId { get; set; }
+        public Guid CustomerId { get; set; }
 
         public Guid? MasterInvoiceId { get; set; }
 

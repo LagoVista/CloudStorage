@@ -84,7 +84,7 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<TimeEntryDTO>().Property(x => x.BillingEventId).HasColumnType("uniqueidentifier");
                 modelBuilder.Entity<TimeEntryDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
                 modelBuilder.Entity<TimeEntryDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<TimeEntryDTO>().Property(x => x.Date).HasColumnType("datetime");
+                modelBuilder.Entity<TimeEntryDTO>().Property(x => x.Date).HasColumnType("date");
                 modelBuilder.Entity<TimeEntryDTO>().Property(x => x.Hours).HasColumnType("decimal(5,2)");
                 modelBuilder.Entity<TimeEntryDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
                 modelBuilder.Entity<TimeEntryDTO>().Property(x => x.IsEquityTime).HasColumnType("bit");
