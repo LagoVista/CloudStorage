@@ -68,117 +68,82 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.Agreement)
-            .WithMany()
-            .HasForeignKey(x => x.AgreementId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<ExpenseDTO>();
 
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.Category)
-            .WithMany()
-            .HasForeignKey(x => x.ExpenseCategoryId);
+            // Relationships
+            entity.HasOne(x => x.Agreement).WithMany().HasForeignKey(x => x.AgreementId);
+            entity.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.ExpenseCategoryId);
+            entity.HasOne(x => x.Payment).WithMany().HasForeignKey(x => x.PaymentId);
+            entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId);
+            entity.HasOne(x => x.TimePeriod).WithMany().HasForeignKey(x => x.TimePeriodId);
+            entity.HasOne(x => x.ApprovedUser).WithMany().HasForeignKey(x => x.ApprovedById);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
 
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.Payment)
-            .WithMany()
-            .HasForeignKey(x => x.PaymentId);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.Vendor)
-            .WithMany()
-            .HasForeignKey(ex => ex.VendorId);
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.TimePeriodId).HasColumnOrder(2);
+            entity.Property(x => x.ExpenseCategoryId).HasColumnOrder(3);
+            entity.Property(x => x.AgreementId).HasColumnOrder(4);
+            entity.Property(x => x.BillingEventId).HasColumnOrder(5);
+            entity.Property(x => x.PaymentId).HasColumnOrder(6);
+            entity.Property(x => x.Date).HasColumnOrder(7);
+            entity.Property(x => x.ExpenseDate).HasColumnOrder(8);
+            entity.Property(x => x.ProjectId).HasColumnOrder(9);
+            entity.Property(x => x.ProjectName).HasColumnOrder(10);
+            entity.Property(x => x.WorkTaskId).HasColumnOrder(11);
+            entity.Property(x => x.WorkTaskName).HasColumnOrder(12);
+            entity.Property(x => x.UserId).HasColumnOrder(13);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(14);
+            entity.Property(x => x.Approved).HasColumnOrder(15);
+            entity.Property(x => x.ApprovedById).HasColumnOrder(16);
+            entity.Property(x => x.ApprovedDate).HasColumnOrder(17);
+            entity.Property(x => x.Locked).HasColumnOrder(18);
+            entity.Property(x => x.EncryptedAmount).HasColumnOrder(19);
+            entity.Property(x => x.EncryptedReimbursedAmount).HasColumnOrder(20);
+            entity.Property(x => x.Notes).HasColumnOrder(21);
+            entity.Property(x => x.Description).HasColumnOrder(22);
+            entity.Property(x => x.CreatedById).HasColumnOrder(23);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(24);
+            entity.Property(x => x.CreationDate).HasColumnOrder(25);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(26);
+            entity.Property(x => x.VendorId).HasColumnOrder(27);
 
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.TimePeriod)
-            .WithMany()
-            .HasForeignKey(x => x.TimePeriodId);
-
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.ApprovedUser)
-            .WithMany()
-            .HasForeignKey(x => x.ApprovedById);
-
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.User)
-            .WithMany()
-            .HasForeignKey(x => x.UserId);
-
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(x => x.CreatedById)
-            .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(x => x.LastUpdatedById);
-
-            modelBuilder.Entity<ExpenseDTO>()
-            .HasOne(ex => ex.Organization)
-            .WithMany()
-            .HasForeignKey(x => x.OrganizationId);
-
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.TimePeriodId).HasColumnOrder(2);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ExpenseCategoryId).HasColumnOrder(3);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.AgreementId).HasColumnOrder(4);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.BillingEventId).HasColumnOrder(5);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.PaymentId).HasColumnOrder(6);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Date).HasColumnOrder(7);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ExpenseDate).HasColumnOrder(8);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ProjectId).HasColumnOrder(9);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ProjectName).HasColumnOrder(10);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.WorkTaskId).HasColumnOrder(11);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.WorkTaskName).HasColumnOrder(12);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.UserId).HasColumnOrder(13);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.OrganizationId).HasColumnOrder(14);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Approved).HasColumnOrder(15);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ApprovedById).HasColumnOrder(16);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ApprovedDate).HasColumnOrder(17);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Locked).HasColumnOrder(18);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.EncryptedAmount).HasColumnOrder(19);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.EncryptedReimbursedAmount).HasColumnOrder(20);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Notes).HasColumnOrder(21);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Description).HasColumnOrder(22);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.CreatedById).HasColumnOrder(23);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(24);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.CreationDate).HasColumnOrder(25);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(26);
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.VendorId).HasColumnOrder(27);
-
-                modelBuilder.Entity<ExpenseDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.AgreementId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Approved).HasColumnType("bit");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ApprovedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ApprovedDate).HasColumnType("datetime");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.BillingEventId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Date).HasColumnType("datetime");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.EncryptedAmount).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.EncryptedReimbursedAmount).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ExpenseCategoryId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ExpenseDate).HasColumnType("date");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Locked).HasColumnType("bit");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.PaymentId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ProjectId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.ProjectName).HasColumnType("varchar(255)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.TimePeriodId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.UserId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.VendorId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.WorkTaskId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseDTO>().Property(x => x.WorkTaskName).HasColumnType("varchar(255)");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.TimePeriodId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ExpenseCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.AgreementId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.BillingEventId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.PaymentId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.Date).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.ExpenseDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.ProjectId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ProjectName).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.WorkTaskId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.WorkTaskName).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.UserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.Approved).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.ApprovedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ApprovedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.Locked).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedReimbursedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.VendorId).HasColumnType(StandardDBTypes.UuidStorage(provider));
         }
     }
 }

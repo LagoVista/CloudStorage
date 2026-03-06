@@ -45,7 +45,7 @@ namespace Relational.Tests
         }
 
         [Test]
-        public async Task Helper() => await AssertTableMatchesModelAsync(typeof(AgreementDTO));
+        public async Task Helper() => await AssertTableMatchesModelAsync(typeof(AgreementLineItemDTO));
 
 
         [Test]

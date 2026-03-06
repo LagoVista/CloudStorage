@@ -18,21 +18,24 @@ namespace LagoVista.Relational
 
         [Required]
         public string Key { get; set; }
-
         public static void Configure(ModelBuilder modelBuilder)
         {
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Key).HasColumnOrder(2);
-                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Name).HasColumnOrder(3);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<RecurringCycleTypeDTO>();
 
-                modelBuilder.Entity<RecurringCycleTypeDTO>().HasKey(x => new { x.Id });
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Id).HasColumnType("int");
-                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Key).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<RecurringCycleTypeDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
-            }
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.Key).HasColumnOrder(2);
+            entity.Property(x => x.Name).HasColumnOrder(3);
+
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
         }
 
         public EntityHeader ToEntityHeader()

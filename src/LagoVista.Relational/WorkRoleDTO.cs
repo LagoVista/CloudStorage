@@ -28,50 +28,43 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<WorkRoleDTO>()
-            .HasOne(ps => ps.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.CreatedById);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<WorkRoleDTO>();
 
-            modelBuilder.Entity<WorkRoleDTO>()
-            .HasOne(ps => ps.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Relationships
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
 
-            modelBuilder.Entity<WorkRoleDTO>()
-            .HasOne(ps => ps.Organization)
-            .WithMany()
-            .HasForeignKey(ps => ps.OrganizationId);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.OrganizationId).HasColumnOrder(2);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Key).HasColumnOrder(3);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Name).HasColumnOrder(4);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Icon).HasColumnOrder(5);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.IsActive).HasColumnOrder(6);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Description).HasColumnOrder(7);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.CreationDate).HasColumnOrder(8);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.CreatedById).HasColumnOrder(9);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(10);
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(11);
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(2);
+            entity.Property(x => x.Key).HasColumnOrder(3);
+            entity.Property(x => x.Name).HasColumnOrder(4);
+            entity.Property(x => x.Icon).HasColumnOrder(5);
+            entity.Property(x => x.IsActive).HasColumnOrder(6);
+            entity.Property(x => x.Description).HasColumnOrder(7);
+            entity.Property(x => x.CreationDate).HasColumnOrder(8);
+            entity.Property(x => x.CreatedById).HasColumnOrder(9);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(10);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(11);
 
-                modelBuilder.Entity<WorkRoleDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Icon).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.IsActive).HasColumnType("bit");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Key).HasColumnType("varchar(128)");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<WorkRoleDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
+            entity.Property(x => x.IsActive).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
         }
 
         public EntityHeader ToEntityHeader()

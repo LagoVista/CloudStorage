@@ -46,80 +46,59 @@ namespace LagoVista.Relational
         public string EncryptedActual { get; set; }
         public static void Configure(ModelBuilder modelBuilder)
         {
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<BudgetItemDTO>();
 
-            modelBuilder.Entity<BudgetItemDTO>()
-            .HasOne(ps => ps.Organization)
-            .WithMany()
-            .HasForeignKey(ps => ps.OrganizationId);
+            // Relationships
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.AccountTransactionCategory).WithMany().HasForeignKey(x => x.AccountTransactionCategoryId);
+            entity.HasOne(x => x.ExpenseCategory).WithMany().HasForeignKey(x => x.ExpenseCategoryId);
+            entity.HasOne(x => x.WorkRole).WithMany().HasForeignKey(x => x.WorkRoleId);
 
-            modelBuilder.Entity<BudgetItemDTO>()
-            .HasOne(ps => ps.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.CreatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<BudgetItemDTO>()
-            .HasOne(ps => ps.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Defaults
+            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
 
-            modelBuilder.Entity<BudgetItemDTO>()
-            .HasOne(ps => ps.AccountTransactionCategory)
-            .WithMany()
-            .HasForeignKey(ps => ps.AccountTransactionCategoryId);
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.Name).HasColumnOrder(2);
+            entity.Property(x => x.Icon).HasColumnOrder(3);
+            entity.Property(x => x.Year).HasColumnOrder(4);
+            entity.Property(x => x.Month).HasColumnOrder(5);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(6);
+            entity.Property(x => x.AccountTransactionCategoryId).HasColumnOrder(7);
+            entity.Property(x => x.ExpenseCategoryId).HasColumnOrder(8);
+            entity.Property(x => x.WorkRoleId).HasColumnOrder(9);
+            entity.Property(x => x.EncryptedAllocated).HasColumnOrder(10);
+            entity.Property(x => x.EncryptedActual).HasColumnOrder(11);
+            entity.Property(x => x.CreatedById).HasColumnOrder(12);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(13);
+            entity.Property(x => x.CreationDate).HasColumnOrder(14);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(15);
+            entity.Property(x => x.Description).HasColumnOrder(16);
 
-            modelBuilder.Entity<BudgetItemDTO>()
-            .HasOne(ps => ps.ExpenseCategory)
-            .WithMany()
-            .HasForeignKey(ps => ps.ExpenseCategoryId);
-
-            modelBuilder.Entity<BudgetItemDTO>()
-            .HasOne(ps => ps.WorkRole)
-            .WithMany()
-            .HasForeignKey(ps => ps.WorkRoleId);
-
-            if (modelBuilder.IsSqlServer())
-            {
-
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Name).HasColumnOrder(2);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Icon).HasColumnOrder(3);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Year).HasColumnOrder(4);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Month).HasColumnOrder(5);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.OrganizationId).HasColumnOrder(6);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.AccountTransactionCategoryId).HasColumnOrder(7);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.ExpenseCategoryId).HasColumnOrder(8);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.WorkRoleId).HasColumnOrder(9);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedAllocated).HasColumnOrder(10);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedActual).HasColumnOrder(11);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreatedById).HasColumnOrder(12);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(13);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreationDate).HasColumnOrder(14);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(15);
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Description).HasColumnOrder(16);
-
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
-
-                modelBuilder.Entity<BudgetItemDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.AccountTransactionCategoryId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedActual).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.EncryptedAllocated).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.ExpenseCategoryId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Icon).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Month).HasColumnType("int");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Name).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.WorkRoleId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<BudgetItemDTO>().Property(x => x.Year).HasColumnType("int");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
+            entity.Property(x => x.Year).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.Month).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.AccountTransactionCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ExpenseCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.WorkRoleId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.EncryptedAllocated).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedActual).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
         }
     }
 }

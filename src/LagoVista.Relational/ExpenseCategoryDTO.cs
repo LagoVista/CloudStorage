@@ -38,63 +38,58 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<ExpenseCategoryDTO>()
-            .HasOne(ps => ps.Organization)
-            .WithMany()
-            .HasForeignKey(ps => ps.OrganizationId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<ExpenseCategoryDTO>();
 
-            modelBuilder.Entity<ExpenseCategoryDTO>()
-            .HasOne(ps => ps.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.CreatedById);
+            // Relationships
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
 
-            modelBuilder.Entity<ExpenseCategoryDTO>()
-            .HasOne(ps => ps.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById)
-            .OnDelete(DeleteBehavior.NoAction);
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.CreatedById).HasColumnOrder(2);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.CreationDate).HasColumnOrder(3);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(4);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(5);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.OrganizationId).HasColumnOrder(6);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Key).HasColumnOrder(7);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Name).HasColumnOrder(8);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Description).HasColumnOrder(9);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.ReimbursementPercent).HasColumnOrder(10);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.DeductiblePercent).HasColumnOrder(11);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.IsActive).HasColumnOrder(12);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.RequiresApproval).HasColumnOrder(13);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Icon).HasColumnOrder(14);
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.TaxCategory).HasColumnOrder(15);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Description).HasDefaultValueSql("''");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Icon).HasDefaultValueSql("'icon-fo-grow-dollar'");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.IsActive).HasDefaultValueSql("1");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.RequiresApproval).HasDefaultValueSql("0");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.TaxCategory).HasDefaultValueSql("'Other'");
+            // Defaults
+            entity.Property(x => x.Description).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
+            entity.Property(x => x.Icon).HasDefaultValueSql(StandardDbDefaults.Text(provider, "icon-fo-grow-dollar"));
+            entity.Property(x => x.IsActive).HasDefaultValueSql(StandardDbDefaults.True(provider));
+            entity.Property(x => x.RequiresApproval).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.TaxCategory).HasDefaultValueSql(StandardDbDefaults.Text(provider, "Other"));
 
-                modelBuilder.Entity<ExpenseCategoryDTO>().HasKey(x => new { x.Id });
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.CreatedById).HasColumnOrder(2);
+            entity.Property(x => x.CreationDate).HasColumnOrder(3);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(4);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(5);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(6);
+            entity.Property(x => x.Key).HasColumnOrder(7);
+            entity.Property(x => x.Name).HasColumnOrder(8);
+            entity.Property(x => x.Description).HasColumnOrder(9);
+            entity.Property(x => x.ReimbursementPercent).HasColumnOrder(10);
+            entity.Property(x => x.DeductiblePercent).HasColumnOrder(11);
+            entity.Property(x => x.IsActive).HasColumnOrder(12);
+            entity.Property(x => x.RequiresApproval).HasColumnOrder(13);
+            entity.Property(x => x.Icon).HasColumnOrder(14);
+            entity.Property(x => x.TaxCategory).HasColumnOrder(15);
 
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.DeductiblePercent).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Icon).HasColumnType("varchar(128)");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.IsActive).HasColumnType("bit");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.ReimbursementPercent).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.RequiresApproval).HasColumnType("bit");
-                modelBuilder.Entity<ExpenseCategoryDTO>().Property(x => x.TaxCategory).HasColumnType("varchar(max)");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.ReimbursementPercent).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.DeductiblePercent).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.IsActive).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.RequiresApproval).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
+            entity.Property(x => x.TaxCategory).HasColumnType(StandardDBTypes.TextMax(provider));
         }
     }
 }

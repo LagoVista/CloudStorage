@@ -54,61 +54,54 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<InvoiceLineItemDTO>()
-            .HasOne(li => li.Invoice)
-            .WithMany(inv => inv.LineItems)
-            .HasForeignKey(li => li.InvoiceId)
-            .OnDelete(DeleteBehavior.NoAction);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<InvoiceLineItemDTO>();
 
-            modelBuilder.Entity<InvoiceLineItemDTO>()
-                .HasOne(ps => ps.Agreement)
-                .WithMany(a => a.InvoiceLineItems)
-                .HasForeignKey(ps => ps.AgreementId);
+            // Relationships
+            entity.HasOne(x => x.Invoice).WithMany(x => x.LineItems).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.Agreement).WithMany(x => x.InvoiceLineItems).HasForeignKey(x => x.AgreementId);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
 
-            modelBuilder.Entity<InvoiceLineItemDTO>()
-                .HasOne(ps => ps.Product)
-                .WithMany()
-                .HasForeignKey(ps => ps.ProductId);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            if (modelBuilder.IsSqlServer())
-            {
+            // Defaults
+            entity.Property(x => x.Taxable).HasDefaultValueSql(StandardDbDefaults.False(provider));
 
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.InvoiceId).HasColumnOrder(2);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.AgreementId).HasColumnOrder(3);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ResourceId).HasColumnOrder(4);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ResourceName).HasColumnOrder(5);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ProductName).HasColumnOrder(6);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Quantity).HasColumnOrder(7);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Units).HasColumnOrder(8);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.UnitPrice).HasColumnOrder(9);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Total).HasColumnOrder(10);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Discount).HasColumnOrder(11);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Extended).HasColumnOrder(12);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Taxable).HasColumnOrder(13);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ProductId).HasColumnOrder(14);
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Shipping).HasColumnOrder(15);
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.InvoiceId).HasColumnOrder(2);
+            entity.Property(x => x.AgreementId).HasColumnOrder(3);
+            entity.Property(x => x.ResourceId).HasColumnOrder(4);
+            entity.Property(x => x.ResourceName).HasColumnOrder(5);
+            entity.Property(x => x.ProductName).HasColumnOrder(6);
+            entity.Property(x => x.Quantity).HasColumnOrder(7);
+            entity.Property(x => x.Units).HasColumnOrder(8);
+            entity.Property(x => x.UnitPrice).HasColumnOrder(9);
+            entity.Property(x => x.Total).HasColumnOrder(10);
+            entity.Property(x => x.Discount).HasColumnOrder(11);
+            entity.Property(x => x.Extended).HasColumnOrder(12);
+            entity.Property(x => x.Taxable).HasColumnOrder(13);
+            entity.Property(x => x.ProductId).HasColumnOrder(14);
+            entity.Property(x => x.Shipping).HasColumnOrder(15);
 
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Taxable).HasDefaultValueSql("0");
-
-                modelBuilder.Entity<InvoiceLineItemDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.AgreementId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Discount).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Extended).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.InvoiceId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ProductName).HasColumnType("varchar(255)");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Quantity).HasColumnType("decimal(5,2)");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ResourceId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.ResourceName).HasColumnType("varchar(255)");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Shipping).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Taxable).HasColumnType("bit");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Total).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.UnitPrice).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<InvoiceLineItemDTO>().Property(x => x.Units).HasColumnType("varchar(50)");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.InvoiceId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.AgreementId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.ProductName).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Quantity).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.Units).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.Total).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.Discount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.Taxable).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.Shipping).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
         }
     }
 }

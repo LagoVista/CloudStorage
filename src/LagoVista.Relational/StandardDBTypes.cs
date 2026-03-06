@@ -8,15 +8,37 @@ namespace LagoVista.Relational
 {
     public static class StandardDBTypes
     {
-        public const string EncryptionStorage = "varchar(1024)";
-        public const string NormalizedId32Storage = "varchar(32)";
-        public const string UtcTimestampStorage = "datetime7(2)";
-        public const string UuidStorage = "uniqueidentifier";
-        public const string CalendarDateStorage = "date";
-        public const string TextMax = "varchar(max)";
-        public const string TextLong = "varchar(2048)";
-        public const string TextMedium = "varchar(2048)";
-        public const string TextShort = "varchar(128)";
-        public const string FlagStorage = "bit";    
+        public static string EncryptionStorage(string provider) => "varchar(1024)";
+        public static string NormalizedId32Storage(string provider) => "varchar(32)";
+        public static string UtcTimestampStorage(string provider) => "datetime2(7)";
+        public static string UuidStorage(string provider) => "uniqueidentifier";
+        public static string CalendarDateStorage(string provider) => "date";
+        public static string TextMax(string provider) => "varchar(max)";
+        public static string TextLong(string provider) => "varchar(2048)";
+        public static string TextMedium(string provider) => "varchar(1024)";
+        public static string TextShort(string provider) => "varchar(128)";
+        public static string TextTiny(string provider) => "varchar(50)";
+        public static string FlagStorage(string provider) => "bit";
+        public static string IntStorage(string provider) => "int";
+        public static string DecimalStorage(string provider) => "decimal(18,2)";
+        public static string DecimalSmall(string provider) => "decimal(5,2)";
+        public static string LongStorage(string provider) => "bigint";
+        public static string IconStorage(string provider) => "varchar(1024)";
+        public static string NameStorage(string provider) => "varchar(255)";
+        public static string KeyStorage(string provider) => "varchar(64)";
+        public static string MoneyStorage(string provider) => "decimal(18,2)";
+    }
+
+    public static class StandardDbDefaults
+    {
+        public static string False(string provider) => "0";
+        public static string True(string provider) => "1";
+        public static string NewGuid(string provider) => "NEWID()"; 
+        public static string Text(string provider, string value) => $"'{value}'";
+
+        public static string None(string provider) => "none";
+
+        public static string Zero(string provider) => "0";
+        public static string One(string provider) => "1";
     }
 }

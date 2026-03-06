@@ -28,39 +28,37 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<ProductPageProductDTO>()
-            .HasOne(tp => tp.Product)
-            .WithMany()
-            .HasForeignKey(p => p.ProductId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<ProductPageProductDTO>();
 
-            modelBuilder.Entity<ProductPageProductDTO>()
-            .HasOne(tp => tp.ProductPage)
-            .WithMany(pp => pp.ProductPageProducts)
-            .HasForeignKey(p => p.ProductPageId);
+            // Relationships
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
+            entity.HasOne(x => x.ProductPage).WithMany(x => x.ProductPageProducts).HasForeignKey(x => x.ProductPageId);
 
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductPageId).HasColumnOrder(2);
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductId).HasColumnOrder(3);
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasColumnOrder(4);
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Index).HasColumnOrder(5);
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasColumnOrder(6);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasDefaultValueSql("0");
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasDefaultValueSql("1");
+            // Defaults
+            entity.Property(x => x.Discount).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
+            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
+            entity.Property(x => x.UnitQty).HasDefaultValueSql(StandardDbDefaults.One(provider));
 
-                modelBuilder.Entity<ProductPageProductDTO>().HasKey(x => new { x.Id });
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.ProductPageId).HasColumnOrder(2);
+            entity.Property(x => x.ProductId).HasColumnOrder(3);
+            entity.Property(x => x.Discount).HasColumnOrder(4);
+            entity.Property(x => x.Index).HasColumnOrder(5);
+            entity.Property(x => x.UnitQty).HasColumnOrder(6);
 
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Discount).HasColumnType("money");
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.Index).HasColumnType("int");
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.ProductPageId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductPageProductDTO>().Property(x => x.UnitQty).HasColumnType("int");
-
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ProductPageId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.Discount).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.Index).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.UnitQty).HasColumnType(StandardDBTypes.IntStorage(provider));
         }
     }
 

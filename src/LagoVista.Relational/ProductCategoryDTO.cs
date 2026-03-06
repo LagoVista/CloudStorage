@@ -58,72 +58,63 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<ProductCategoryDTO>()
-           .HasOne(ps => ps.Organization)
-           .WithMany()
-           .HasForeignKey(ps => ps.OrganizationId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<ProductCategoryDTO>();
 
-            modelBuilder.Entity<ProductCategoryDTO>()
-            .HasOne(ps => ps.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.CreatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Relationships
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
 
-            modelBuilder.Entity<ProductCategoryDTO>()
-            .HasOne(ps => ps.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.OrganizationId).HasColumnOrder(2);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreatedById).HasColumnOrder(3);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(4);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreationDate).HasColumnOrder(5);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(6);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Name).HasColumnOrder(7);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Key).HasColumnOrder(8);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Description).HasColumnOrder(9);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.IsPublic).HasColumnOrder(10);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Icon).HasColumnOrder(11);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ThumbnailImageResourceId).HasColumnOrder(12);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ThumbnailImageResourceName).HasColumnOrder(13);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ImageResourceId).HasColumnOrder(14);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ImageResourceName).HasColumnOrder(15);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ShortSummaryHTML).HasColumnOrder(16);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeId).HasColumnOrder(17);
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeName).HasColumnOrder(18);
+            // Defaults
+            entity.Property(x => x.CategoryTypeId).HasDefaultValueSql(StandardDbDefaults.Text(provider, "software"));
+            entity.Property(x => x.CategoryTypeName).HasDefaultValueSql(StandardDbDefaults.Text(provider, "Software"));
+            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
+            entity.Property(x => x.ShortSummaryHTML).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
 
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeId).HasDefaultValueSql("'software'");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeName).HasDefaultValueSql("'Software'");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdateDate).HasDefaultValueSql("getdate()");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ShortSummaryHTML).HasDefaultValueSql("''");
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(2);
+            entity.Property(x => x.CreatedById).HasColumnOrder(3);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(4);
+            entity.Property(x => x.CreationDate).HasColumnOrder(5);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(6);
+            entity.Property(x => x.Name).HasColumnOrder(7);
+            entity.Property(x => x.Key).HasColumnOrder(8);
+            entity.Property(x => x.Description).HasColumnOrder(9);
+            entity.Property(x => x.IsPublic).HasColumnOrder(10);
+            entity.Property(x => x.Icon).HasColumnOrder(11);
+            entity.Property(x => x.ThumbnailImageResourceId).HasColumnOrder(12);
+            entity.Property(x => x.ThumbnailImageResourceName).HasColumnOrder(13);
+            entity.Property(x => x.ImageResourceId).HasColumnOrder(14);
+            entity.Property(x => x.ImageResourceName).HasColumnOrder(15);
+            entity.Property(x => x.ShortSummaryHTML).HasColumnOrder(16);
+            entity.Property(x => x.CategoryTypeId).HasColumnOrder(17);
+            entity.Property(x => x.CategoryTypeName).HasColumnOrder(18);
 
-                modelBuilder.Entity<ProductCategoryDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeId).HasColumnType("varchar(128)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CategoryTypeName).HasColumnType("varchar(128)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Icon).HasColumnType("varchar(50)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ImageResourceId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ImageResourceName).HasColumnType("varchar(128)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.IsPublic).HasColumnType("bit");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ShortSummaryHTML).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ThumbnailImageResourceId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductCategoryDTO>().Property(x => x.ThumbnailImageResourceName).HasColumnType("varchar(128)");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.IsPublic).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
+            entity.Property(x => x.ThumbnailImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ThumbnailImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.CategoryTypeId).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.CategoryTypeName).HasColumnType(StandardDBTypes.TextShort(provider));
         }
     }
 }

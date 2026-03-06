@@ -21,20 +21,23 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Name).HasColumnOrder(2);
-                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Key).HasColumnOrder(3);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<UnitTypeDTO>();
 
-                modelBuilder.Entity<UnitTypeDTO>().HasKey(x => new { x.Id });
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Id).HasColumnType("int");
-                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
-                modelBuilder.Entity<UnitTypeDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
-            }
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.Name).HasColumnOrder(2);
+            entity.Property(x => x.Key).HasColumnOrder(3);
+
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
         }
-
         public EntityHeader ToEntityHeader()
         {
             return new EntityHeader()

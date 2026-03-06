@@ -70,107 +70,95 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<ProductPageDTO>()
-            .HasOne(ps => ps.Organization)
-            .WithMany()
-            .HasForeignKey(ps => ps.OrganizationId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<ProductPageDTO>();
 
-            modelBuilder.Entity<ProductPageDTO>()
-            .HasMany(p => p.ProductPageProducts)
-            .WithOne()
-            .HasForeignKey(ppp => ppp.ProductPageId);
+            // Relationships
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasMany(x => x.ProductPageProducts).WithOne().HasForeignKey(x => x.ProductPageId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById);
 
-            modelBuilder.Entity<ProductPageDTO>()
-            .HasOne(tp => tp.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(tp => tp.CreatedById);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<ProductPageDTO>()
-            .HasOne(tp => tp.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(tp => tp.LastUpdatedById);
+            // Defaults
+            entity.Property(x => x.DescriptionHtml).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
+            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
+            entity.Property(x => x.IsPublic).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.PageTitle).HasDefaultValueSql(StandardDbDefaults.Text(provider, "Product Page"));
+            entity.Property(x => x.VideoUrl).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
 
-            if (modelBuilder.IsSqlServer())
-            {
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(2);
+            entity.Property(x => x.Name).HasColumnOrder(3);
+            entity.Property(x => x.Key).HasColumnOrder(4);
+            entity.Property(x => x.Icon).HasColumnOrder(5);
+            entity.Property(x => x.PageTitle).HasColumnOrder(6);
+            entity.Property(x => x.ShortSummaryHTML).HasColumnOrder(7);
+            entity.Property(x => x.ThumbnailImageResourceId).HasColumnOrder(8);
+            entity.Property(x => x.ThumbnailImageResourceName).HasColumnOrder(9);
+            entity.Property(x => x.ImageResourceId).HasColumnOrder(10);
+            entity.Property(x => x.ImageResourceName).HasColumnOrder(11);
+            entity.Property(x => x.HeroImageResourceId).HasColumnOrder(12);
+            entity.Property(x => x.HeroImageResourceName).HasColumnOrder(13);
+            entity.Property(x => x.HeroTitle).HasColumnOrder(14);
+            entity.Property(x => x.HeroTagLine1).HasColumnOrder(15);
+            entity.Property(x => x.HeroTagLine2).HasColumnOrder(16);
+            entity.Property(x => x.TopLeftMenuId).HasColumnOrder(17);
+            entity.Property(x => x.TopLeftMenuName).HasColumnOrder(18);
+            entity.Property(x => x.TopRightMenuId).HasColumnOrder(19);
+            entity.Property(x => x.TopRightMenuName).HasColumnOrder(20);
+            entity.Property(x => x.BottomMenuId).HasColumnOrder(21);
+            entity.Property(x => x.BottomMenuName).HasColumnOrder(22);
+            entity.Property(x => x.ColorPaletteId).HasColumnOrder(23);
+            entity.Property(x => x.ColorPaletteName).HasColumnOrder(24);
+            entity.Property(x => x.ProductPageLayoutId).HasColumnOrder(25);
+            entity.Property(x => x.ProductPageLayoutName).HasColumnOrder(26);
+            entity.Property(x => x.CreatedById).HasColumnOrder(27);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(28);
+            entity.Property(x => x.CreationDate).HasColumnOrder(29);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(30);
+            entity.Property(x => x.IsPublic).HasColumnOrder(31);
+            entity.Property(x => x.DescriptionHtml).HasColumnOrder(32);
+            entity.Property(x => x.VideoUrl).HasColumnOrder(33);
 
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.OrganizationId).HasColumnOrder(2);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.Name).HasColumnOrder(3);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.Key).HasColumnOrder(4);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.Icon).HasColumnOrder(5);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.PageTitle).HasColumnOrder(6);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ShortSummaryHTML).HasColumnOrder(7);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ThumbnailImageResourceId).HasColumnOrder(8);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ThumbnailImageResourceName).HasColumnOrder(9);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ImageResourceId).HasColumnOrder(10);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ImageResourceName).HasColumnOrder(11);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroImageResourceId).HasColumnOrder(12);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroImageResourceName).HasColumnOrder(13);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroTitle).HasColumnOrder(14);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroTagLine1).HasColumnOrder(15);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroTagLine2).HasColumnOrder(16);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.TopLeftMenuId).HasColumnOrder(17);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.TopLeftMenuName).HasColumnOrder(18);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.TopRightMenuId).HasColumnOrder(19);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.TopRightMenuName).HasColumnOrder(20);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.BottomMenuId).HasColumnOrder(21);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.BottomMenuName).HasColumnOrder(22);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ColorPaletteId).HasColumnOrder(23);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ColorPaletteName).HasColumnOrder(24);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ProductPageLayoutId).HasColumnOrder(25);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ProductPageLayoutName).HasColumnOrder(26);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.CreatedById).HasColumnOrder(27);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(28);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.CreationDate).HasColumnOrder(29);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(30);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.IsPublic).HasColumnOrder(31);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.DescriptionHtml).HasColumnOrder(32);
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.VideoUrl).HasColumnOrder(33);
-
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.DescriptionHtml).HasDefaultValueSql("''");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.IsPublic).HasDefaultValueSql("0");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.LastUpdateDate).HasDefaultValueSql("getdate()");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.PageTitle).HasDefaultValueSql("'Product Page'");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.VideoUrl).HasDefaultValueSql("''");
-
-                modelBuilder.Entity<ProductPageDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.BottomMenuId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.BottomMenuName).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ColorPaletteId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ColorPaletteName).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.DescriptionHtml).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroImageResourceId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroImageResourceName).HasColumnType("varchar(128)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroTagLine1).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroTagLine2).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.HeroTitle).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.Icon).HasColumnType("varchar(50)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ImageResourceId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ImageResourceName).HasColumnType("varchar(128)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.IsPublic).HasColumnType("bit");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.PageTitle).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ProductPageLayoutId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ProductPageLayoutName).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ShortSummaryHTML).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ThumbnailImageResourceId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.ThumbnailImageResourceName).HasColumnType("varchar(128)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.TopLeftMenuId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.TopLeftMenuName).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.TopRightMenuId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.TopRightMenuName).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductPageDTO>().Property(x => x.VideoUrl).HasColumnType("varchar(max)");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
+            entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
+            entity.Property(x => x.PageTitle).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.ThumbnailImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ThumbnailImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.HeroImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.HeroImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.HeroTitle).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.HeroTagLine1).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.HeroTagLine2).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.TopLeftMenuId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.TopLeftMenuName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.TopRightMenuId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.TopRightMenuName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.BottomMenuId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.BottomMenuName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.ColorPaletteId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ColorPaletteName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.ProductPageLayoutId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ProductPageLayoutName).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.IsPublic).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.DescriptionHtml).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.VideoUrl).HasColumnType(StandardDBTypes.TextMax(provider));
         }
     }
 }

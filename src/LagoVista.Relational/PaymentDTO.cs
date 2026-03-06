@@ -60,7 +60,7 @@ namespace LagoVista.Relational
 
         public bool ContractorPayment { get; set; }
         public bool W2Payment { get; set; }
-        public bool OfficierPayment { get; set; }
+        public bool OfficerPayment { get; set; }
 
         [IgnoreOnMapTo]
         public AppUserDTO User { get; set; }
@@ -71,103 +71,86 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<PaymentDTO>()
-             .HasOne(ps => ps.Organization)
-             .WithMany()
-             .HasForeignKey(ps => ps.OrganizationId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<PaymentDTO>();
 
-            modelBuilder.Entity<PaymentDTO>()
-            .HasOne(ps => ps.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.CreatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Relationships
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.TimePeriod).WithMany().HasForeignKey(x => x.TimePeriodId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
 
-            modelBuilder.Entity<PaymentDTO>()
-            .HasOne(ps => ps.TimePeriod)
-            .WithMany()
-            .HasForeignKey(ps => ps.TimePeriodId)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<PaymentDTO>()
-            .HasOne(ps => ps.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Defaults
+            entity.Property(x => x.ContractorPayment).HasDefaultValueSql(StandardDbDefaults.True(provider));
+            entity.Property(x => x.OfficerPayment).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.W2Payment).HasDefaultValueSql(StandardDbDefaults.False(provider));
 
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.CreatedById).HasColumnOrder(2);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(3);
+            entity.Property(x => x.CreationDate).HasColumnOrder(4);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(5);
+            entity.Property(x => x.UserId).HasColumnOrder(6);
+            entity.Property(x => x.TimePeriodId).HasColumnOrder(7);
+            entity.Property(x => x.PeriodStart).HasColumnOrder(8);
+            entity.Property(x => x.PeriodEnd).HasColumnOrder(9);
+            entity.Property(x => x.Status).HasColumnOrder(10);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(11);
+            entity.Property(x => x.SubmittedDate).HasColumnOrder(12);
+            entity.Property(x => x.ExpectedDeliveryDate).HasColumnOrder(13);
+            entity.Property(x => x.BillableHours).HasColumnOrder(14);
+            entity.Property(x => x.InternalHours).HasColumnOrder(15);
+            entity.Property(x => x.EquityHours).HasColumnOrder(16);
+            entity.Property(x => x.Gross).HasColumnOrder(17);
+            entity.Property(x => x.Net).HasColumnOrder(18);
+            entity.Property(x => x.Expenses).HasColumnOrder(19);
+            entity.Property(x => x.PrimaryTransactionId).HasColumnOrder(20);
+            entity.Property(x => x.SecondaryTransactionId).HasColumnOrder(21);
+            entity.Property(x => x.PrimaryDeposit).HasColumnOrder(22);
+            entity.Property(x => x.EstimatedDeposit).HasColumnOrder(23);
+            entity.Property(x => x.ExpenseDetail).HasColumnOrder(24);
+            entity.Property(x => x.DeductionsDetail).HasColumnOrder(25);
+            entity.Property(x => x.EarnedEquity).HasColumnOrder(26);
+            entity.Property(x => x.ContractorPayment).HasColumnOrder(27);
+            entity.Property(x => x.W2Payment).HasColumnOrder(28);
+            entity.Property(x => x.OfficerPayment).HasColumnOrder(29);
 
-            modelBuilder.Entity<PaymentDTO>()
-            .HasOne(py => py.User)
-            .WithMany()
-            .HasForeignKey(tp => tp.UserId);
-
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.CreatedById).HasColumnOrder(2);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(3);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.CreationDate).HasColumnOrder(4);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(5);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.UserId).HasColumnOrder(6);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.TimePeriodId).HasColumnOrder(7);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.PeriodStart).HasColumnOrder(8);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.PeriodEnd).HasColumnOrder(9);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Status).HasColumnOrder(10);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.OrganizationId).HasColumnOrder(11);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.SubmittedDate).HasColumnOrder(12);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.ExpectedDeliveryDate).HasColumnOrder(13);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.BillableHours).HasColumnOrder(14);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.InternalHours).HasColumnOrder(15);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.EquityHours).HasColumnOrder(16);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Gross).HasColumnOrder(17);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Net).HasColumnOrder(18);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Expenses).HasColumnOrder(19);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.PrimaryTransactionId).HasColumnOrder(20);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.SecondaryTransactionId).HasColumnOrder(21);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.PrimaryDeposit).HasColumnOrder(22);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.EstimatedDeposit).HasColumnOrder(23);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.ExpenseDetail).HasColumnOrder(24);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.DeductionsDetail).HasColumnOrder(25);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.EarnedEquity).HasColumnOrder(26);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.ContractorPayment).HasColumnOrder(27);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.W2Payment).HasColumnOrder(28);
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.OfficierPayment).HasColumnOrder(29);
-
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.ContractorPayment).HasDefaultValueSql("1");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.OfficierPayment).HasDefaultValueSql("0");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.W2Payment).HasDefaultValueSql("0");
-
-                modelBuilder.Entity<PaymentDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.BillableHours).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.ContractorPayment).HasColumnType("bit");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.DeductionsDetail).HasColumnType("varchar(max)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.EarnedEquity).HasColumnType("varchar(1000)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.EquityHours).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.EstimatedDeposit).HasColumnType("varchar(1000)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.ExpectedDeliveryDate).HasColumnType("date");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.ExpenseDetail).HasColumnType("varchar(max)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Expenses).HasColumnType("varchar(1000)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Gross).HasColumnType("varchar(1000)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.InternalHours).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Net).HasColumnType("varchar(1000)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.OfficierPayment).HasColumnType("bit");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.PeriodEnd).HasColumnType("date");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.PeriodStart).HasColumnType("date");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.PrimaryDeposit).HasColumnType("varchar(1000)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.PrimaryTransactionId).HasColumnType("varchar(200)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.SecondaryTransactionId).HasColumnType("varchar(200)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.SubmittedDate).HasColumnType("date");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.TimePeriodId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.UserId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<PaymentDTO>().Property(x => x.W2Payment).HasColumnType("bit");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.UserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.TimePeriodId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.PeriodStart).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.PeriodEnd).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.SubmittedDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.ExpectedDeliveryDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.BillableHours).HasColumnType(StandardDBTypes.DecimalSmall(provider));
+            entity.Property(x => x.InternalHours).HasColumnType(StandardDBTypes.DecimalSmall(provider));
+            entity.Property(x => x.EquityHours).HasColumnType(StandardDBTypes.DecimalSmall(provider));
+            entity.Property(x => x.Gross).HasColumnType(StandardDBTypes.TextLong(provider));
+            entity.Property(x => x.Net).HasColumnType(StandardDBTypes.TextLong(provider));
+            entity.Property(x => x.Expenses).HasColumnType(StandardDBTypes.TextLong(provider));
+            entity.Property(x => x.PrimaryTransactionId).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.SecondaryTransactionId).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.PrimaryDeposit).HasColumnType(StandardDBTypes.TextLong(provider));
+            entity.Property(x => x.EstimatedDeposit).HasColumnType(StandardDBTypes.TextLong(provider));
+            entity.Property(x => x.ExpenseDetail).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.DeductionsDetail).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.EarnedEquity).HasColumnType(StandardDBTypes.TextLong(provider));
+            entity.Property(x => x.ContractorPayment).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.W2Payment).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.OfficerPayment).HasColumnType(StandardDBTypes.FlagStorage(provider));
         }
 
         public EntityHeader ToEntityHeader()

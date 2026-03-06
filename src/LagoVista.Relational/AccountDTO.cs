@@ -114,34 +114,36 @@ namespace LagoVista.Relational
                 modelBuilder.Entity<AccountDto>().Property(x => x.TransactionJournalOnly).HasDefaultValueSql("0");
 
                 modelBuilder.Entity<AccountDto>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<AccountDto>().Property(x => x.AccessTokenSecretId).HasColumnType("varchar(128)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedAccountNumber).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.Description).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedBalance).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedOnlineBalance).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.ExternalAccountId).HasColumnType("varchar(255)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.ExternalProvider).HasColumnType("varchar(50)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.ExternalProviderid).HasColumnType("varchar(255)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AccountDto>().Property(x => x.Institution).HasColumnType("varchar(128)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.IsActive).HasColumnType("bit");
-                modelBuilder.Entity<AccountDto>().Property(x => x.IsLiability).HasColumnType("bit");
-                modelBuilder.Entity<AccountDto>().Property(x => x.LastError).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.LastSyncAt).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.LinkActive).HasColumnType("bit");
-                modelBuilder.Entity<AccountDto>().Property(x => x.Name).HasColumnType("varchar(128)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedRoutingNumber).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.SyncStatus).HasColumnType("varchar(50)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.TransactionCursor).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountDto>().Property(x => x.TransactionJournalOnly).HasColumnType("bit");
-                modelBuilder.Entity<AccountDto>().Property(x => x.Version).HasColumnType("bigint");
             }
+         
+            var provider = modelBuilder.GetProviderName();
+
+            modelBuilder.Entity<AccountDto>().Property(x => x.AccessTokenSecretId).HasColumnType(StandardDBTypes.TextShort(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedAccountNumber).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.Description).HasColumnType(StandardDBTypes.TextMedium(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedBalance).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedOnlineBalance).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.ExternalAccountId).HasColumnType(StandardDBTypes.TextMedium(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.ExternalProvider).HasColumnType(StandardDBTypes.TextTiny(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.ExternalProviderid).HasColumnType(StandardDBTypes.TextMedium(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.Institution).HasColumnType(StandardDBTypes.TextShort(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.IsActive).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.IsLiability).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.LastError).HasColumnType(StandardDBTypes.TextMedium(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.LastSyncAt).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.LinkActive).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.Name).HasColumnType(StandardDBTypes.TextShort(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.EncryptedRoutingNumber).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.SyncStatus).HasColumnType(StandardDBTypes.TextTiny(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.TransactionCursor).HasColumnType(StandardDBTypes.TextMedium(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.TransactionJournalOnly).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            modelBuilder.Entity<AccountDto>().Property(x => x.Version).HasColumnType(StandardDBTypes.LongStorage(provider));
         }
     }
 }

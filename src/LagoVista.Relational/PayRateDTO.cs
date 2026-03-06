@@ -45,96 +45,77 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<PayRateDTO>()
-            .HasOne(ps => ps.Organization)
-            .WithMany()
-            .HasForeignKey(ps => ps.OrganizationId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<PayRateDTO>();
 
-            modelBuilder.Entity<PayRateDTO>()
-            .HasOne(ps => ps.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.CreatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Relationships
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.WorkRole).WithMany().HasForeignKey(x => x.WorkRoleId).OnDelete(DeleteBehavior.NoAction);
 
-            modelBuilder.Entity<PayRateDTO>()
-            .HasOne(ps => ps.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
+            // Defaults
+            entity.Property(x => x.DeductEstimated).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.DeductEstimatedRate).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
+            entity.Property(x => x.IsContractor).HasDefaultValueSql(StandardDbDefaults.True(provider));
+            entity.Property(x => x.IsFTE).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.IsOfficier).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.IsSalary).HasDefaultValueSql(StandardDbDefaults.False(provider));
 
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(2);
+            entity.Property(x => x.UserId).HasColumnOrder(3);
+            entity.Property(x => x.Start).HasColumnOrder(4);
+            entity.Property(x => x.End).HasColumnOrder(5);
+            entity.Property(x => x.IsSalary).HasColumnOrder(6);
+            entity.Property(x => x.FilingType).HasColumnOrder(7);
+            entity.Property(x => x.DeductEstimated).HasColumnOrder(8);
+            entity.Property(x => x.DeductEstimatedRate).HasColumnOrder(9);
+            entity.Property(x => x.EncryptedBillableRate).HasColumnOrder(10);
+            entity.Property(x => x.EncryptedInternalRate).HasColumnOrder(11);
+            entity.Property(x => x.EncryptedSalary).HasColumnOrder(12);
+            entity.Property(x => x.EncryptedDeductions).HasColumnOrder(13);
+            entity.Property(x => x.EncryptedEquityScaler).HasColumnOrder(14);
+            entity.Property(x => x.Notes).HasColumnOrder(15);
+            entity.Property(x => x.CreatedById).HasColumnOrder(16);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(17);
+            entity.Property(x => x.CreationDate).HasColumnOrder(18);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(19);
+            entity.Property(x => x.WorkRoleId).HasColumnOrder(20);
+            entity.Property(x => x.IsContractor).HasColumnOrder(21);
+            entity.Property(x => x.IsFTE).HasColumnOrder(22);
+            entity.Property(x => x.IsOfficier).HasColumnOrder(23);
 
-            modelBuilder.Entity<PayRateDTO>()
-            .HasOne(ps => ps.User)
-            .WithMany()
-            .HasForeignKey(ps => ps.UserId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder.Entity<PayRateDTO>()
-            .HasOne(ps => ps.WorkRole)
-            .WithMany()
-            .HasForeignKey(ps => ps.WorkRoleId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.OrganizationId).HasColumnOrder(2);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.UserId).HasColumnOrder(3);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.Start).HasColumnOrder(4);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.End).HasColumnOrder(5);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsSalary).HasColumnOrder(6);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.FilingType).HasColumnOrder(7);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimated).HasColumnOrder(8);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimatedRate).HasColumnOrder(9);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedBillableRate).HasColumnOrder(10);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedInternalRate).HasColumnOrder(11);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedSalary).HasColumnOrder(12);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedDeductions).HasColumnOrder(13);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedEquityScaler).HasColumnOrder(14);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.Notes).HasColumnOrder(15);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.CreatedById).HasColumnOrder(16);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(17);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.CreationDate).HasColumnOrder(18);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(19);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.WorkRoleId).HasColumnOrder(20);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsContractor).HasColumnOrder(21);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsFTE).HasColumnOrder(22);
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsOfficier).HasColumnOrder(23);
-
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimated).HasDefaultValueSql("0");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimatedRate).HasDefaultValueSql("0");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsContractor).HasDefaultValueSql("1");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsFTE).HasDefaultValueSql("0");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsOfficier).HasDefaultValueSql("0");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsSalary).HasDefaultValueSql("0");
-
-                modelBuilder.Entity<PayRateDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimated).HasColumnType("bit");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.DeductEstimatedRate).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedBillableRate).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedDeductions).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedEquityScaler).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedInternalRate).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.EncryptedSalary).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.End).HasColumnType("date");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.FilingType).HasColumnType("varchar(50)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsContractor).HasColumnType("bit");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsFTE).HasColumnType("bit");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsOfficier).HasColumnType("bit");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.IsSalary).HasColumnType("bit");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.Start).HasColumnType("date");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.UserId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<PayRateDTO>().Property(x => x.WorkRoleId).HasColumnType("uniqueidentifier");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.UserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.Start).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.End).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.IsSalary).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.FilingType).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.DeductEstimated).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.DeductEstimatedRate).HasColumnType(StandardDBTypes.DecimalSmall(provider));
+            entity.Property(x => x.EncryptedBillableRate).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedInternalRate).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedSalary).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedDeductions).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedEquityScaler).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.WorkRoleId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.IsContractor).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.IsFTE).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.IsOfficier).HasColumnType(StandardDBTypes.FlagStorage(provider));
         }
 
         public EntityHeader ToEntityHeader()

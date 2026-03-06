@@ -43,71 +43,53 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<CustomerDTO>()
-             .HasOne(ps => ps.Organization)
-             .WithMany()
-             .HasForeignKey(ps => ps.OrganizationId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<CustomerDTO>();
 
-            modelBuilder.Entity<CustomerDTO>()
-             .HasMany(ps => ps.Subscriptions)
-             .WithOne(s => s.Customer)
-             .HasForeignKey(s => s.CustomerId);
+            // Relationships
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasMany(x => x.Subscriptions).WithOne(x => x.Customer).HasForeignKey(x => x.CustomerId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).HasPrincipalKey(x => x.AppUserId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).HasPrincipalKey(x => x.AppUserId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasMany(x => x.Invoices).WithOne(x => x.Customer).HasForeignKey(x => x.CustomerId);
 
-            modelBuilder.Entity<CustomerDTO>()
-            .HasOne(ps => ps.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.CreatedById)
-            .HasPrincipalKey(u => u.AppUserId)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<CustomerDTO>()
-            .HasOne(ps => ps.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById)
-            .HasPrincipalKey(u => u.AppUserId)
-            .OnDelete(DeleteBehavior.NoAction);
-            
-            modelBuilder.Entity<CustomerDTO>()
-                .HasMany(c => c.Invoices)
-                .WithOne(i => i.Customer)
-                .HasForeignKey(i => i.CustomerId);
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(2);
+            entity.Property(x => x.CustomerName).HasColumnOrder(3);
+            entity.Property(x => x.BillingContactName).HasColumnOrder(4);
+            entity.Property(x => x.BillingContactEmail).HasColumnOrder(5);
+            entity.Property(x => x.Address1).HasColumnOrder(6);
+            entity.Property(x => x.Address2).HasColumnOrder(7);
+            entity.Property(x => x.City).HasColumnOrder(8);
+            entity.Property(x => x.State).HasColumnOrder(9);
+            entity.Property(x => x.Zip).HasColumnOrder(10);
+            entity.Property(x => x.Notes).HasColumnOrder(11);
+            entity.Property(x => x.CreatedById).HasColumnOrder(12);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(13);
+            entity.Property(x => x.CreationDate).HasColumnOrder(14);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(15);
 
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.OrganizationId).HasColumnOrder(2);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.CustomerName).HasColumnOrder(3);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.BillingContactName).HasColumnOrder(4);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.BillingContactEmail).HasColumnOrder(5);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Address1).HasColumnOrder(6);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Address2).HasColumnOrder(7);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.City).HasColumnOrder(8);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.State).HasColumnOrder(9);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Zip).HasColumnOrder(10);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Notes).HasColumnOrder(11);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.CreatedById).HasColumnOrder(12);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(13);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.CreationDate).HasColumnOrder(14);
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(15);
-
-                modelBuilder.Entity<CustomerDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Address1).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Address2).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.BillingContactEmail).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.BillingContactName).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.City).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.CustomerName).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.State).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<CustomerDTO>().Property(x => x.Zip).HasColumnType("varchar(30)");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CustomerName).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.BillingContactName).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.BillingContactEmail).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Address1).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Address2).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.City).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.State).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Zip).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
     }
 }

@@ -36,42 +36,41 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<ProductIncludedDTO>()
-                .HasOne(p => p.Product)
-                .WithMany()
-                .HasForeignKey(pi => pi.ProductId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<ProductIncludedDTO>();
 
-            modelBuilder.Entity<ProductIncludedDTO>()
-                .HasOne(p => p.Package)
-                .WithMany()
-                .HasForeignKey(pi => pi.PackageId);
+            // Relationships
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
+            entity.HasOne(x => x.Package).WithMany().HasForeignKey(x => x.PackageId);
 
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.PackageId).HasColumnOrder(2);
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.ProductId).HasColumnOrder(3);
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Discount).HasColumnOrder(4);
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasColumnOrder(5);
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Name).HasColumnOrder(6);
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Key).HasColumnOrder(7);
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasColumnOrder(8);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasDefaultValueSql("''");
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasDefaultValueSql("1");
+            // Defaults
+            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
+            entity.Property(x => x.Notes).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
+            entity.Property(x => x.Quantity).HasDefaultValueSql(StandardDbDefaults.One(provider));
 
-                modelBuilder.Entity<ProductIncludedDTO>().HasKey(x => new { x.Id });
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.PackageId).HasColumnOrder(2);
+            entity.Property(x => x.ProductId).HasColumnOrder(3);
+            entity.Property(x => x.Discount).HasColumnOrder(4);
+            entity.Property(x => x.Notes).HasColumnOrder(5);
+            entity.Property(x => x.Name).HasColumnOrder(6);
+            entity.Property(x => x.Key).HasColumnOrder(7);
+            entity.Property(x => x.Quantity).HasColumnOrder(8);
 
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Discount).HasColumnType("decimal(4,2)");
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Key).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Notes).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.PackageId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductIncludedDTO>().Property(x => x.Quantity).HasColumnType("int");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.PackageId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.Discount).HasColumnType(StandardDBTypes.DecimalSmall(provider));
+            entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
+            entity.Property(x => x.Quantity).HasColumnType(StandardDBTypes.IntStorage(provider));
         }
     }
 }

@@ -79,70 +79,56 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<AccountTransactionDto>()
-                .HasOne(ps => ps.Account)
-                .WithMany(ps => ps.Transactions)
-                .HasForeignKey(ps => ps.AccountId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<AccountTransactionDto>();
 
-            modelBuilder.Entity<AccountTransactionDto>()
-              .HasOne(ps => ps.Vendor)
-              .WithMany()
-              .HasForeignKey(ps => ps.VendorId);
+            // Relationships
+            entity.HasOne(x => x.Account).WithMany(x => x.Transactions).HasForeignKey(x => x.AccountId);
+            entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId);
+            entity.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.TransactionCategoryId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById);
 
-            modelBuilder.Entity<AccountTransactionDto>()
-                .HasOne(ps => ps.Category)
-                .WithMany()
-                .HasForeignKey(ps => ps.TransactionCategoryId);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<AccountTransactionDto>()
-                 .HasOne(ps => ps.CreatedByUser)
-                 .WithMany()
-                 .HasForeignKey(ps => ps.CreatedById);
+            // Defaults
+            entity.Property(x => x.IsReconciled).HasDefaultValueSql(StandardDbDefaults.False(provider));
 
-            modelBuilder.Entity<AccountTransactionDto>()
-                .HasOne(ps => ps.LastUpdatedByUser)
-                .WithMany()
-                .HasForeignKey(ps => ps.LastUpdatedById);
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.AccountId).HasColumnOrder(2);
+            entity.Property(x => x.TransactionDate).HasColumnOrder(3);
+            entity.Property(x => x.EncryptedAmount).HasColumnOrder(4);
+            entity.Property(x => x.IsReconciled).HasColumnOrder(5);
+            entity.Property(x => x.TransactionCategoryId).HasColumnOrder(6);
+            entity.Property(x => x.Name).HasColumnOrder(7);
+            entity.Property(x => x.Description).HasColumnOrder(8);
+            entity.Property(x => x.Tag).HasColumnOrder(9);
+            entity.Property(x => x.OriginalHash).HasColumnOrder(10);
+            entity.Property(x => x.CreatedById).HasColumnOrder(11);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(12);
+            entity.Property(x => x.CreationDate).HasColumnOrder(13);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(14);
+            entity.Property(x => x.VendorId).HasColumnOrder(15);
 
-            if (modelBuilder.IsSqlServer())
-            {
-
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.AccountId).HasColumnOrder(2);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionDate).HasColumnOrder(3);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.EncryptedAmount).HasColumnOrder(4);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasColumnOrder(5);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionCategoryId).HasColumnOrder(6);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Name).HasColumnOrder(7);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Description).HasColumnOrder(8);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Tag).HasColumnOrder(9);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.OriginalHash).HasColumnOrder(10);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreatedById).HasColumnOrder(11);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdatedById).HasColumnOrder(12);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreationDate).HasColumnOrder(13);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdateDate).HasColumnOrder(14);
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.VendorId).HasColumnOrder(15);
-
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasDefaultValueSql("0");
-
-                modelBuilder.Entity<AccountTransactionDto>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.AccountId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Description).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.EncryptedAmount).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.IsReconciled).HasColumnType("bit");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Name).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.OriginalHash).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.Tag).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionCategoryId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.TransactionDate).HasColumnType("date");
-                modelBuilder.Entity<AccountTransactionDto>().Property(x => x.VendorId).HasColumnType("uniqueidentifier");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.AccountId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.TransactionDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.IsReconciled).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.TransactionCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Tag).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.OriginalHash).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.VendorId).HasColumnType(StandardDBTypes.UuidStorage(provider));
         }
     }
 }

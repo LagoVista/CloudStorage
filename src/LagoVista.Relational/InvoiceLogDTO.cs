@@ -29,35 +29,33 @@ namespace LagoVista.Relational
 
         [IgnoreOnMapTo()]
         public InvoiceDTO Invoice { get; set; }
-
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<InvoiceLogsDTO>()
-                .HasOne(l => l.Invoice)
-                .WithMany(inv => inv.Logs)
-                .HasForeignKey(l => l.InvoiceId)
-                .OnDelete(DeleteBehavior.NoAction);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<InvoiceLogsDTO>();
 
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.InvoiceId).HasColumnOrder(2);
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.DateStamp).HasColumnOrder(3);
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.EventId).HasColumnOrder(4);
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.EventData).HasColumnOrder(5);
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.Message).HasColumnOrder(6);
+            // Relationships
+            entity.HasOne(x => x.Invoice).WithMany(x => x.Logs).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.NoAction);
 
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.DateStamp).HasDefaultValueSql("getdate()");
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-                modelBuilder.Entity<InvoiceLogsDTO>().HasKey(x => new { x.Id });
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.InvoiceId).HasColumnOrder(2);
+            entity.Property(x => x.DateStamp).HasColumnOrder(3);
+            entity.Property(x => x.EventId).HasColumnOrder(4);
+            entity.Property(x => x.EventData).HasColumnOrder(5);
+            entity.Property(x => x.Message).HasColumnOrder(6);
 
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.DateStamp).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.EventData).HasColumnType("varchar(255)");
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.EventId).HasColumnType("varchar(50)");
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.InvoiceId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<InvoiceLogsDTO>().Property(x => x.Message).HasColumnType("varchar(255)");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.InvoiceId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.DateStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.EventId).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.EventData).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Message).HasColumnType(StandardDBTypes.TextLong(provider));
         }
     }
 }

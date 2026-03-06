@@ -32,38 +32,37 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<OwnedDeviceDTO>()
-            .HasOne(od => od.Owner)
-            .WithMany()
-            .HasForeignKey(od => od.DeviceOwnerUserId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<OwnedDeviceDTO>();
 
-            modelBuilder.Entity<OwnedDeviceDTO>()
-            .HasOne(od => od.Product)
-            .WithMany()
-            .HasForeignKey(od => od.ProductId);
+            // Relationships
+            entity.HasOne(x => x.Owner).WithMany().HasForeignKey(x => x.DeviceOwnerUserId);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
 
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceUniqueId).HasColumnOrder(2);
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceName).HasColumnOrder(3);
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceId).HasColumnOrder(4);
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceOwnerUserId).HasColumnOrder(5);
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.ProductId).HasColumnOrder(6);
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasColumnOrder(7);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasDefaultValueSql("0");
+            // Defaults
+            entity.Property(x => x.Discount).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
 
-                modelBuilder.Entity<OwnedDeviceDTO>().HasKey(x => new { x.Id });
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.DeviceUniqueId).HasColumnOrder(2);
+            entity.Property(x => x.DeviceName).HasColumnOrder(3);
+            entity.Property(x => x.DeviceId).HasColumnOrder(4);
+            entity.Property(x => x.DeviceOwnerUserId).HasColumnOrder(5);
+            entity.Property(x => x.ProductId).HasColumnOrder(6);
+            entity.Property(x => x.Discount).HasColumnOrder(7);
 
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceId).HasColumnType("varchar(255)");
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceName).HasColumnType("varchar(512)");
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceOwnerUserId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.DeviceUniqueId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Discount).HasColumnType("decimal(5,2)");
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.Id).HasColumnType("varchar(32)");
-                modelBuilder.Entity<OwnedDeviceDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.DeviceUniqueId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.DeviceName).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.DeviceId).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.DeviceOwnerUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.Discount).HasColumnType(StandardDBTypes.DecimalSmall(provider));
         }
     }
 }

@@ -42,48 +42,39 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<TimePeriodDTO>()
-            .HasOne(tp => tp.LockedByUser)
-            .WithMany()
-            .HasForeignKey(tp => tp.LockedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<TimePeriodDTO>();
 
-            modelBuilder.Entity<TimePeriodDTO>()
-            .HasOne(tp => tp.Organization)
-            .WithMany()
-            .HasForeignKey(tp => tp.OrganizationId)
-            .OnDelete(DeleteBehavior.Restrict);
+            // Relationships
+            entity.HasOne(x => x.LockedByUser).WithMany().HasForeignKey(x => x.LockedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.PayrollSummary).WithOne(x => x.TimePeriod).HasForeignKey<TimePeriodDTO>(x => x.PayrollSummaryId);
 
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<TimePeriodDTO>()
-            .HasOne(tp => tp.PayrollSummary)
-            .WithOne(ps => ps.TimePeriod)
-            .HasForeignKey<TimePeriodDTO>(tp => tp.PayrollSummaryId);
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.Year).HasColumnOrder(2);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(3);
+            entity.Property(x => x.Locked).HasColumnOrder(4);
+            entity.Property(x => x.LockedByUserId).HasColumnOrder(5);
+            entity.Property(x => x.LockedTimeStamp).HasColumnOrder(6);
+            entity.Property(x => x.PayrollSummaryId).HasColumnOrder(7);
+            entity.Property(x => x.Start).HasColumnOrder(8);
+            entity.Property(x => x.End).HasColumnOrder(9);
 
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Year).HasColumnOrder(2);
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.OrganizationId).HasColumnOrder(3);
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Locked).HasColumnOrder(4);
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedByUserId).HasColumnOrder(5);
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedTimeStamp).HasColumnOrder(6);
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.PayrollSummaryId).HasColumnOrder(7);
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Start).HasColumnOrder(8);
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.End).HasColumnOrder(9);
-
-                modelBuilder.Entity<TimePeriodDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.End).HasColumnType("date");
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Locked).HasColumnType("bit");
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedByUserId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.LockedTimeStamp).HasColumnType("datetime");
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.PayrollSummaryId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Start).HasColumnType("date");
-                modelBuilder.Entity<TimePeriodDTO>().Property(x => x.Year).HasColumnType("int");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.Year).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.Locked).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.LockedByUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LockedTimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.PayrollSummaryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.Start).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.End).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
         }
     }
 }

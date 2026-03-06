@@ -22,31 +22,30 @@ namespace LagoVista.Relational
         public DateTime CreationDate { get; set; }
         public DateTime LastUpdatedDate { get; set; }
 
-
         public static void Configure(ModelBuilder modelBuilder)
         {
-            if (modelBuilder.IsSqlServer())
-            {
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<DeviceOwnerDTO>();
 
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.DeviceOwnerUserId).HasColumnOrder(1);
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Email).HasColumnOrder(2);
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Phone).HasColumnOrder(3);
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.FullName).HasColumnOrder(4);
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasColumnOrder(5);
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasColumnOrder(6);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.DeviceOwnerUserId);
 
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasDefaultValueSql("getdate()");
+            // Column order
+            entity.Property(x => x.DeviceOwnerUserId).HasColumnOrder(1);
+            entity.Property(x => x.Email).HasColumnOrder(2);
+            entity.Property(x => x.Phone).HasColumnOrder(3);
+            entity.Property(x => x.FullName).HasColumnOrder(4);
+            entity.Property(x => x.CreationDate).HasColumnOrder(5);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(6);
 
-                modelBuilder.Entity<DeviceOwnerDTO>().HasKey(x => new { x.DeviceOwnerUserId });
-
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.DeviceOwnerUserId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Email).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.FullName).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.LastUpdatedDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<DeviceOwnerDTO>().Property(x => x.Phone).HasColumnType("varchar(50)");
-            }
+            // Storage types
+            entity.Property(x => x.DeviceOwnerUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.Email).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Phone).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.FullName).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
     }
 }

@@ -45,70 +45,58 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<AccountTransactionCategoryDto>()
-            .HasOne(ps => ps.Organization)
-            .WithMany()
-            .HasForeignKey(ps => ps.OrganizationId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<AccountTransactionCategoryDto>();
 
-            modelBuilder.Entity<AccountTransactionCategoryDto>()
-            .HasOne(ps => ps.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.CreatedById);
+            // Relationships
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.ExpenseCategory).WithMany().HasForeignKey(x => x.ExpenseCategoryId).OnDelete(DeleteBehavior.SetNull);
 
-            modelBuilder.Entity<AccountTransactionCategoryDto>()
-            .HasOne(ps => ps.LastUpdatedByUser)
-            .WithMany()
-            .HasForeignKey(ps => ps.LastUpdatedById)
-            .OnDelete(DeleteBehavior.NoAction);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<AccountTransactionCategoryDto>()
-            .HasOne(ps => ps.ExpenseCategory)
-            .WithMany()
-            .HasForeignKey(ps => ps.ExpenseCategoryId)
-            .OnDelete(DeleteBehavior.SetNull);
+            // Defaults
+            entity.Property(x => x.Icon).HasDefaultValueSql(StandardDbDefaults.Text(provider, "icon-ae-checklist-2"));
+            entity.Property(x => x.IsActive).HasDefaultValueSql(StandardDbDefaults.True(provider));
+            entity.Property(x => x.Passthrough).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.TaxReportable).HasDefaultValueSql(StandardDbDefaults.False(provider));
 
-            if (modelBuilder.IsSqlServer())
-            {
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(2);
+            entity.Property(x => x.Name).HasColumnOrder(3);
+            entity.Property(x => x.Type).HasColumnOrder(4);
+            entity.Property(x => x.Description).HasColumnOrder(5);
+            entity.Property(x => x.CreatedById).HasColumnOrder(6);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(7);
+            entity.Property(x => x.CreationDate).HasColumnOrder(8);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(9);
+            entity.Property(x => x.IsActive).HasColumnOrder(10);
+            entity.Property(x => x.Icon).HasColumnOrder(11);
+            entity.Property(x => x.ExpenseCategoryId).HasColumnOrder(12);
+            entity.Property(x => x.TaxCategory).HasColumnOrder(13);
+            entity.Property(x => x.TaxReportable).HasColumnOrder(14);
+            entity.Property(x => x.Passthrough).HasColumnOrder(15);
 
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.OrganizationId).HasColumnOrder(2);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Name).HasColumnOrder(3);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Type).HasColumnOrder(4);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Description).HasColumnOrder(5);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.CreatedById).HasColumnOrder(6);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.LastUpdatedById).HasColumnOrder(7);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.CreationDate).HasColumnOrder(8);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.LastUpdateDate).HasColumnOrder(9);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.IsActive).HasColumnOrder(10);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Icon).HasColumnOrder(11);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.ExpenseCategoryId).HasColumnOrder(12);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxCategory).HasColumnOrder(13);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxReportable).HasColumnOrder(14);
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Passthrough).HasColumnOrder(15);
-
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Icon).HasDefaultValueSql("'icon-ae-checklist-2'");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.IsActive).HasDefaultValueSql("1");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Passthrough).HasDefaultValueSql("0");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxReportable).HasDefaultValueSql("0");
-
-                modelBuilder.Entity<AccountTransactionCategoryDto>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.CreationDate).HasColumnType("datetime");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Description).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.ExpenseCategoryId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Icon).HasColumnType("varchar(128)");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.IsActive).HasColumnType("bit");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.LastUpdateDate).HasColumnType("datetime");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Name).HasColumnType("varchar(128)");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.OrganizationId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Passthrough).HasColumnType("bit");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxCategory).HasColumnType("varchar(50)");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.TaxReportable).HasColumnType("bit");
-                modelBuilder.Entity<AccountTransactionCategoryDto>().Property(x => x.Type).HasColumnType("varchar(50)");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Type).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.IsActive).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ExpenseCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.TaxCategory).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.TaxReportable).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.Passthrough).HasColumnType(StandardDBTypes.FlagStorage(provider));
         }
     }
 }

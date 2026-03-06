@@ -65,78 +65,64 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<AgreementLineItemDTO>()
-                .HasOne<LicenseDTO>(a => a.License)
-                .WithOne(l => l.AgreementLineItem)
-                .HasForeignKey<LicenseDTO>(l => l.AgreementLineItemId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<AgreementLineItemDTO>();
 
-            modelBuilder.Entity<AgreementLineItemDTO>()
-                .HasOne(ps => ps.Agreement)
-                .WithMany(a => a.LineItems)
-                .HasForeignKey(ps => ps.AgreementId);
+            // Relationships
+            entity.HasOne(x => x.License).WithOne(x => x.AgreementLineItem).HasForeignKey<LicenseDTO>(x => x.AgreementLineItemId);
+            entity.HasOne(x => x.Agreement).WithMany(x => x.LineItems).HasForeignKey(x => x.AgreementId);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
+            entity.HasOne(x => x.UnitType).WithMany().HasForeignKey(x => x.UnitTypeId);
+            entity.HasOne(x => x.RecurringCycleType).WithMany().HasForeignKey(x => x.RecurringCycleTypeId);
 
-            modelBuilder.Entity<AgreementLineItemDTO>()
-                .HasOne(ps => ps.Product)
-                .WithMany()
-                .HasForeignKey(ps => ps.ProductId);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<AgreementLineItemDTO>()
-                .HasOne(ps => ps.UnitType)
-                .WithMany()
-                .HasForeignKey(ps => ps.UnitTypeId);
+            // Defaults
+            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
+            entity.Property(x => x.Shipping).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.Taxable).HasDefaultValueSql(StandardDbDefaults.False(provider));
 
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.AgreementId).HasColumnOrder(2);
+            entity.Property(x => x.ProductId).HasColumnOrder(3);
+            entity.Property(x => x.ProductName).HasColumnOrder(4);
+            entity.Property(x => x.Start).HasColumnOrder(5);
+            entity.Property(x => x.End).HasColumnOrder(6);
+            entity.Property(x => x.UnitPrice).HasColumnOrder(7);
+            entity.Property(x => x.DiscountPercent).HasColumnOrder(8);
+            entity.Property(x => x.Extended).HasColumnOrder(9);
+            entity.Property(x => x.SubTotal).HasColumnOrder(10);
+            entity.Property(x => x.Quantity).HasColumnOrder(11);
+            entity.Property(x => x.UnitTypeId).HasColumnOrder(12);
+            entity.Property(x => x.IsRecurring).HasColumnOrder(13);
+            entity.Property(x => x.RecurringCycleTypeId).HasColumnOrder(14);
+            entity.Property(x => x.NextBillingDate).HasColumnOrder(15);
+            entity.Property(x => x.LastBilledDate).HasColumnOrder(16);
+            entity.Property(x => x.Taxable).HasColumnOrder(17);
+            entity.Property(x => x.Shipping).HasColumnOrder(18);
 
-            modelBuilder.Entity<AgreementLineItemDTO>()
-                .HasOne(ps => ps.RecurringCycleType)
-                .WithMany()
-                .HasForeignKey(ps => ps.RecurringCycleTypeId);
-            
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.AgreementId).HasColumnOrder(2);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.ProductId).HasColumnOrder(3);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.ProductName).HasColumnOrder(4);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Start).HasColumnOrder(5);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.End).HasColumnOrder(6);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.UnitPrice).HasColumnOrder(7);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.DiscountPercent).HasColumnOrder(8);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Extended).HasColumnOrder(9);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.SubTotal).HasColumnOrder(10);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Quantity).HasColumnOrder(11);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.UnitTypeId).HasColumnOrder(12);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.IsRecurring).HasColumnOrder(13);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.RecurringCycleTypeId).HasColumnOrder(14);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.NextBillingDate).HasColumnOrder(15);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.LastBilledDate).HasColumnOrder(16);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Taxable).HasColumnOrder(17);
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Shipping).HasColumnOrder(18);
-
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Shipping).HasDefaultValueSql("0");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Taxable).HasDefaultValueSql("0");
-
-                modelBuilder.Entity<AgreementLineItemDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.AgreementId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.DiscountPercent).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.End).HasColumnType("date");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Extended).HasColumnType("money");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.IsRecurring).HasColumnType("bit");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.LastBilledDate).HasColumnType("date");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.NextBillingDate).HasColumnType("date");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.ProductName).HasColumnType("varchar(1024)");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Quantity).HasColumnType("decimal(6,2)");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.RecurringCycleTypeId).HasColumnType("int");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Shipping).HasColumnType("money");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Start).HasColumnType("date");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.SubTotal).HasColumnType("money");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.Taxable).HasColumnType("bit");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.UnitPrice).HasColumnType("money");
-                modelBuilder.Entity<AgreementLineItemDTO>().Property(x => x.UnitTypeId).HasColumnType("int");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.AgreementId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ProductName).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Start).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.End).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.DiscountPercent).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.SubTotal).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.Quantity).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.IsRecurring).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.RecurringCycleTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.NextBillingDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.LastBilledDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.Taxable).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.Shipping).HasColumnType(StandardDBTypes.DecimalStorage(provider));
         }
     }
 }

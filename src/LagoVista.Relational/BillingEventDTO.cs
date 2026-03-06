@@ -115,71 +115,60 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<BillingEventDTO>();
 
-            modelBuilder.Entity<BillingEventDTO>()
-                .HasOne(ps => ps.Subscription)
-                .WithMany(s => s.BillingEvents)
-                .HasForeignKey(ps => ps.SubscriptionId);
+            // Relationships
+            entity.HasOne(x => x.Subscription).WithMany(x => x.BillingEvents).HasForeignKey(x => x.SubscriptionId);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
+            entity.HasOne(x => x.StartedByAppUser).WithMany().HasForeignKey(x => x.StartedByAppUserId);
+            entity.HasOne(x => x.EndedByAppUser).WithMany().HasForeignKey(x => x.EndedByAppuserId);
 
-            modelBuilder.Entity<BillingEventDTO>()
-                .HasOne(ps => ps.Product)
-                .WithMany()
-                .HasForeignKey(ps => ps.ProductId);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<BillingEventDTO>()
-                .HasOne(ps => ps.StartedByAppUser)
-                .WithMany()
-                .HasForeignKey(ps => ps.StartedByAppUserId);
+            // Defaults
+            entity.Property(x => x.ResourceName).HasDefaultValueSql(StandardDbDefaults.Text(provider, "unknown"));
+            entity.Property(x => x.UnitTypeId).HasDefaultValueSql(StandardDbDefaults.One(provider));
 
-            modelBuilder.Entity<BillingEventDTO>()
-                .HasOne(ps => ps.EndedByAppUser)
-                .WithMany()
-                .HasForeignKey(ps => ps.EndedByAppuserId);
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.ResourceId).HasColumnOrder(2);
+            entity.Property(x => x.ResourceName).HasColumnOrder(3);
+            entity.Property(x => x.SubscriptionId).HasColumnOrder(4);
+            entity.Property(x => x.ProductId).HasColumnOrder(5);
+            entity.Property(x => x.StartTimeStamp).HasColumnOrder(6);
+            entity.Property(x => x.StartedByAppUserId).HasColumnOrder(7);
+            entity.Property(x => x.EndTimeStamp).HasColumnOrder(8);
+            entity.Property(x => x.EndedByAppuserId).HasColumnOrder(9);
+            entity.Property(x => x.HoursBilled).HasColumnOrder(10);
+            entity.Property(x => x.UnitCost).HasColumnOrder(11);
+            entity.Property(x => x.DiscountPercent).HasColumnOrder(12);
+            entity.Property(x => x.Extended).HasColumnOrder(13);
+            entity.Property(x => x.UnitTypeId).HasColumnOrder(14);
+            entity.Property(x => x.Notes).HasColumnOrder(15);
+            entity.Property(x => x.Status).HasColumnOrder(16);
+            entity.Property(x => x.UnitPrice).HasColumnOrder(17);
 
-            if (modelBuilder.IsSqlServer())
-            {
-
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceId).HasColumnOrder(2);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceName).HasColumnOrder(3);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.SubscriptionId).HasColumnOrder(4);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.ProductId).HasColumnOrder(5);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.StartTimeStamp).HasColumnOrder(6);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.StartedByAppUserId).HasColumnOrder(7);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.EndTimeStamp).HasColumnOrder(8);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.EndedByAppuserId).HasColumnOrder(9);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.HoursBilled).HasColumnOrder(10);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitCost).HasColumnOrder(11);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.DiscountPercent).HasColumnOrder(12);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.Extended).HasColumnOrder(13);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitTypeId).HasColumnOrder(14);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.Notes).HasColumnOrder(15);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.Status).HasColumnOrder(16);
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitPrice).HasColumnOrder(17);
-
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceName).HasDefaultValueSql("'unknown'");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitTypeId).HasDefaultValueSql("1");
-
-                modelBuilder.Entity<BillingEventDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.DiscountPercent).HasColumnType("decimal(5,2)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.EndedByAppuserId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.EndTimeStamp).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.Extended).HasColumnType("decimal(10,4)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.HoursBilled).HasColumnType("decimal(18,4)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.Notes).HasColumnType("nvarchar(max)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.ProductId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.ResourceName).HasColumnType("varchar(255)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.StartedByAppUserId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.StartTimeStamp).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.SubscriptionId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitCost).HasColumnType("decimal(10,4)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitPrice).HasColumnType("decimal(18,4)");
-                modelBuilder.Entity<BillingEventDTO>().Property(x => x.UnitTypeId).HasColumnType("int");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ResourceName).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.SubscriptionId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.StartTimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.StartedByAppUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.EndTimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.EndedByAppuserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.HoursBilled).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.DiscountPercent).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.DecimalStorage(provider));
         }
     }
 }

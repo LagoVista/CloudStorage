@@ -115,109 +115,87 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<ProductDTO>()
-                .HasOne(tp => tp.RecurringCycleType)
-                .WithMany()
-                .HasForeignKey(p => p.RecurringCycleTypeId);
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<ProductDTO>();
 
-            modelBuilder.Entity<ProductDTO>()
-                .HasOne(tp => tp.UnitType)
-                .WithMany()
-                .HasForeignKey(p => p.UnitTypeId);
+            // Relationships
+            entity.HasOne(x => x.RecurringCycleType).WithMany().HasForeignKey(x => x.RecurringCycleTypeId);
+            entity.HasOne(x => x.UnitType).WithMany().HasForeignKey(x => x.UnitTypeId);
+            entity.HasOne(x => x.ProductCategory).WithMany(x => x.Products).HasForeignKey(x => x.ProductCategoryId).IsRequired();
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById);
 
-            modelBuilder.Entity<ProductDTO>()
-                .HasOne(tp => tp.ProductCategory)
-                .WithMany()
-                .HasForeignKey(p => p.ProductCategoryId);
+            // Key / indexes / concurrency
+            entity.HasKey(x => x.Id);
 
-            modelBuilder.Entity<ProductDTO>()
-                .HasOne(tp => tp.CreatedByUser)
-                .WithMany()
-                .HasForeignKey(tp => tp.CreatedById);
+            // Defaults
+            entity.Property(x => x.Description).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
+            entity.Property(x => x.Icon).HasDefaultValueSql(StandardDbDefaults.Text(provider, "icon-pz-product-1"));
+            entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
+            entity.Property(x => x.IsPublic).HasDefaultValueSql(StandardDbDefaults.True(provider));
+            entity.Property(x => x.IsTrialResource).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.PhysicalProduct).HasDefaultValueSql(StandardDbDefaults.False(provider));
+            entity.Property(x => x.RecurringCycleTypeId).HasDefaultValueSql(StandardDbDefaults.One(provider));
+            entity.Property(x => x.ShortSummaryHTML).HasDefaultValueSql(StandardDbDefaults.Text(provider, ""));
+            entity.Property(x => x.Status).HasDefaultValueSql(StandardDbDefaults.Text(provider, "Active"));
+            entity.Property(x => x.UnitPrice).HasDefaultValueSql(StandardDbDefaults.Zero(provider));
 
-            modelBuilder.Entity<ProductDTO>()
-                .HasOne(tp => tp.LastUpdatedByUser)
-                .WithMany()
-                .HasForeignKey(tp => tp.LastUpdatedById);
+            // Column order
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.ProductCategoryId).HasColumnOrder(2);
+            entity.Property(x => x.CreatedById).HasColumnOrder(3);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(4);
+            entity.Property(x => x.CreationDate).HasColumnOrder(5);
+            entity.Property(x => x.LastUpdateDate).HasColumnOrder(6);
+            entity.Property(x => x.Key).HasColumnOrder(7);
+            entity.Property(x => x.Name).HasColumnOrder(8);
+            entity.Property(x => x.Sku).HasColumnOrder(9);
+            entity.Property(x => x.Status).HasColumnOrder(10);
+            entity.Property(x => x.UnitCost).HasColumnOrder(11);
+            entity.Property(x => x.UnitTypeId).HasColumnOrder(12);
+            entity.Property(x => x.Description).HasColumnOrder(13);
+            entity.Property(x => x.DetailsHTML).HasColumnOrder(14);
+            entity.Property(x => x.RemoteResourceId).HasColumnOrder(15);
+            entity.Property(x => x.IsTrialResource).HasColumnOrder(16);
+            entity.Property(x => x.Icon).HasColumnOrder(17);
+            entity.Property(x => x.ThumbnailImageResourceId).HasColumnOrder(18);
+            entity.Property(x => x.ThumbnailImageResourceName).HasColumnOrder(19);
+            entity.Property(x => x.ImageResourceId).HasColumnOrder(20);
+            entity.Property(x => x.ImageResourceName).HasColumnOrder(21);
+            entity.Property(x => x.PhysicalProduct).HasColumnOrder(22);
+            entity.Property(x => x.ShortSummaryHTML).HasColumnOrder(23);
+            entity.Property(x => x.UnitPrice).HasColumnOrder(24);
+            entity.Property(x => x.IsPublic).HasColumnOrder(25);
+            entity.Property(x => x.RecurringCycleTypeId).HasColumnOrder(26);
 
-            modelBuilder.Entity<ProductDTO>()
-                 .HasOne(p => p.ProductCategory)
-                 .WithMany(c => c.Products)
-                 .HasForeignKey(p => p.ProductCategoryId)
-                 .IsRequired();
-
-            if (modelBuilder.IsSqlServer())
-            {
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Id).HasColumnOrder(1);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ProductCategoryId).HasColumnOrder(2);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.CreatedById).HasColumnOrder(3);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.LastUpdatedById).HasColumnOrder(4);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.CreationDate).HasColumnOrder(5);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.LastUpdateDate).HasColumnOrder(6);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Key).HasColumnOrder(7);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Name).HasColumnOrder(8);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Sku).HasColumnOrder(9);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Status).HasColumnOrder(10);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.UnitCost).HasColumnOrder(11);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.UnitTypeId).HasColumnOrder(12);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Description).HasColumnOrder(13);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.DetailsHTML).HasColumnOrder(14);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.RemoteResourceId).HasColumnOrder(15);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.IsTrialResource).HasColumnOrder(16);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Icon).HasColumnOrder(17);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ThumbnailImageResourceId).HasColumnOrder(18);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ThumbnailImageResourceName).HasColumnOrder(19);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ImageResourceId).HasColumnOrder(20);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ImageResourceName).HasColumnOrder(21);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.PhysicalProduct).HasColumnOrder(22);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ShortSummaryHTML).HasColumnOrder(23);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.UnitPrice).HasColumnOrder(24);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.IsPublic).HasColumnOrder(25);
-                modelBuilder.Entity<ProductDTO>().Property(x => x.RecurringCycleTypeId).HasColumnOrder(26);
-
-
-                modelBuilder.Entity<ProductDTO>().Property(x => x.CreationDate).HasDefaultValueSql("getdate()");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Description).HasDefaultValueSql("''");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Icon).HasDefaultValueSql("'icon-pz-product-1'");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Id).HasDefaultValueSql("newid()");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.IsPublic).HasDefaultValueSql("1");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.IsTrialResource).HasDefaultValueSql("0");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.LastUpdateDate).HasDefaultValueSql("getdate()");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.PhysicalProduct).HasDefaultValueSql("0");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.RecurringCycleTypeId).HasDefaultValueSql("1");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ShortSummaryHTML).HasDefaultValueSql("''");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Status).HasDefaultValueSql("'Active'");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.UnitPrice).HasDefaultValueSql("0");
-
-                modelBuilder.Entity<ProductDTO>().HasKey(x => new { x.Id });
-
-                modelBuilder.Entity<ProductDTO>().Property(x => x.CreatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.CreationDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Description).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.DetailsHTML).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Icon).HasColumnType("varchar(50)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Id).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ImageResourceId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ImageResourceName).HasColumnType("varchar(128)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.IsPublic).HasColumnType("bit");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.IsTrialResource).HasColumnType("bit");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Key).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.LastUpdateDate).HasColumnType("datetime2(7)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.LastUpdatedById).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Name).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.PhysicalProduct).HasColumnType("bit");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ProductCategoryId).HasColumnType("uniqueidentifier");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.RecurringCycleTypeId).HasColumnType("int");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.RemoteResourceId).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ShortSummaryHTML).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Sku).HasColumnType("varchar(max)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.Status).HasColumnType("varchar(50)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ThumbnailImageResourceId).HasColumnType("varchar(32)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.ThumbnailImageResourceName).HasColumnType("varchar(128)");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.UnitCost).HasColumnType("money");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.UnitPrice).HasColumnType("money");
-                modelBuilder.Entity<ProductDTO>().Property(x => x.UnitTypeId).HasColumnType("int");
-            }
+            // Storage types
+            entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.ProductCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.CreatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.LastUpdatedById).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdateDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.Key).HasColumnType(StandardDBTypes.KeyStorage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Sku).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.DetailsHTML).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.RemoteResourceId).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.IsTrialResource).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.Icon).HasColumnType(StandardDBTypes.IconStorage(provider));
+            entity.Property(x => x.ThumbnailImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ThumbnailImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ImageResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.PhysicalProduct).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.IsPublic).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.RecurringCycleTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
         }
     }
 }
