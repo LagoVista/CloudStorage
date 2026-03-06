@@ -17,6 +17,7 @@ public sealed class DiffItem
     public string? Provider { get; init; }
     public string? Table { get; init; }
     public string? Column { get; init; }
+    public string? DbSuggestion { get; init; }
 }
 
 public sealed class DiffReport

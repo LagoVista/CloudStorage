@@ -22,6 +22,9 @@ public static class EfColumnTypeReader
 
         var list = new List<ColumnTypeShape>();
 
+        var idx = 1;
+        
+
         foreach (var p in et.GetProperties())
         {
             // Skip properties not mapped to this store object (prevents the exception you hit earlier)
@@ -37,8 +40,9 @@ public static class EfColumnTypeReader
 
             var storeType = (configured ?? inferred ?? string.Empty).Trim().ToLowerInvariant().Replace(" ", string.Empty);
 
+
             if (!string.IsNullOrWhiteSpace(storeType))
-                list.Add(new ColumnTypeShape(colName, storeType));
+                list.Add(new ColumnTypeShape(colName, storeType,p.GetColumnOrder() ?? -1,p.IsNullable));
         }
 
         return list;

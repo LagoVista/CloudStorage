@@ -30,13 +30,13 @@ namespace LagoVista.Relational
         public DateOnly? NextBillingDate { get; set; }
         public DateOnly? LastBilledDate { get; set; }
 
-        public decimal UnitPrice { get; set; }
-        public decimal DiscountPercent { get; set; }
-        public decimal Extended { get; set; }
+        public string EncryptedUnitPrice { get; set; }
+        public string EncryptedDiscountPercent { get; set; }
+        public string EncryptedExtended { get; set; }
 
-        public decimal SubTotal { get; set; }
+        public string EncryptedSubTotal { get; set; }
 
-        public decimal Shipping { get; set; }
+        public string EncryptedShipping { get; set; }
 
         public decimal Quantity { get; set; }
 
@@ -81,7 +81,6 @@ namespace LagoVista.Relational
 
             // Defaults
             entity.Property(x => x.Id).HasDefaultValueSql(StandardDbDefaults.NewGuid(provider));
-            entity.Property(x => x.Shipping).HasDefaultValueSql(StandardDbDefaults.False(provider));
             entity.Property(x => x.Taxable).HasDefaultValueSql(StandardDbDefaults.False(provider));
 
             // Column order
@@ -91,10 +90,10 @@ namespace LagoVista.Relational
             entity.Property(x => x.ProductName).HasColumnOrder(4);
             entity.Property(x => x.Start).HasColumnOrder(5);
             entity.Property(x => x.End).HasColumnOrder(6);
-            entity.Property(x => x.UnitPrice).HasColumnOrder(7);
-            entity.Property(x => x.DiscountPercent).HasColumnOrder(8);
-            entity.Property(x => x.Extended).HasColumnOrder(9);
-            entity.Property(x => x.SubTotal).HasColumnOrder(10);
+            entity.Property(x => x.EncryptedUnitPrice).HasColumnOrder(7);
+            entity.Property(x => x.EncryptedDiscountPercent).HasColumnOrder(8);
+            entity.Property(x => x.EncryptedExtended).HasColumnOrder(9);
+            entity.Property(x => x.EncryptedSubTotal).HasColumnOrder(10);
             entity.Property(x => x.Quantity).HasColumnOrder(11);
             entity.Property(x => x.UnitTypeId).HasColumnOrder(12);
             entity.Property(x => x.IsRecurring).HasColumnOrder(13);
@@ -102,7 +101,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.NextBillingDate).HasColumnOrder(15);
             entity.Property(x => x.LastBilledDate).HasColumnOrder(16);
             entity.Property(x => x.Taxable).HasColumnOrder(17);
-            entity.Property(x => x.Shipping).HasColumnOrder(18);
+            entity.Property(x => x.EncryptedShipping).HasColumnOrder(18);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -111,18 +110,18 @@ namespace LagoVista.Relational
             entity.Property(x => x.ProductName).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.Start).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.End).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
-            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.DecimalStorage(provider));
-            entity.Property(x => x.DiscountPercent).HasColumnType(StandardDBTypes.DecimalStorage(provider));
-            entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.DecimalStorage(provider));
-            entity.Property(x => x.SubTotal).HasColumnType(StandardDBTypes.DecimalStorage(provider));
-            entity.Property(x => x.Quantity).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.EncryptedUnitPrice).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedDiscountPercent).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedExtended).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedSubTotal).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.Quantity).HasColumnType(StandardDBTypes.DecimalSmall(provider));
             entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.IsRecurring).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.RecurringCycleTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.NextBillingDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.LastBilledDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.Taxable).HasColumnType(StandardDBTypes.FlagStorage(provider));
-            entity.Property(x => x.Shipping).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.EncryptedShipping).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
         }
     }
 }

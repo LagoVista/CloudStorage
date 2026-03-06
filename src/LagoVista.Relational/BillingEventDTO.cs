@@ -80,7 +80,7 @@ namespace LagoVista.Relational
         public decimal? DiscountPercent { get; set; }
 
         /// <summary>
-        /// Extended price for this billing period
+        /// EncryptedExtended price for this billing period
         /// </summary>
         public decimal? Extended { get; set; }
 
@@ -150,6 +150,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Notes).HasColumnOrder(15);
             entity.Property(x => x.Status).HasColumnOrder(16);
             entity.Property(x => x.UnitPrice).HasColumnOrder(17);
+            entity.Property(x => x.Tokens).HasColumnOrder(18);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -161,14 +162,15 @@ namespace LagoVista.Relational
             entity.Property(x => x.StartedByAppUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.EndTimeStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.EndedByAppuserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.HoursBilled).HasColumnType(StandardDBTypes.DecimalStorage(provider));
-            entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.DecimalStorage(provider));
-            entity.Property(x => x.DiscountPercent).HasColumnType(StandardDBTypes.DecimalStorage(provider));
-            entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.HoursBilled).HasColumnType(StandardDBTypes.DecimalMedium(provider));
+            entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.DiscountPercent).HasColumnType(StandardDBTypes.DecimalSmall(provider));
+            entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.MoneyStorage(provider));
             entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.Status).HasColumnType(StandardDBTypes.TextTiny(provider));
-            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.DecimalStorage(provider));
+            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.Tokens).HasColumnType(StandardDBTypes.LongStorage(provider));
         }
     }
 }

@@ -64,7 +64,8 @@ public sealed class SchemaDiffer : ISchemaDiffer
                         ContextType = contextType,
                         Provider = provider,
                         Table = $"{efTable.Schema}.{efTable.Name}",
-                        Column = efCol.Name
+                        Column = efCol.Name,
+                        DbSuggestion = $"ALTER TABLE {efTable.Schema}.{efTable.Name} ALTER COLUMN {efCol.Name} {efCol.StoreType} {(efCol.IsNullable ? "Make column nullable" : "Make column NOT NULL")}"
                     });
                 }
 

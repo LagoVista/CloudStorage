@@ -11,7 +11,7 @@ public sealed record TableDefaultsShape(string Schema, string Table, IReadOnlyLi
 
 public sealed record ColumnShape(string Name, bool IsNullable, int Ordinal);
 
-public sealed record TableShape(string Schema, string Name, IReadOnlyList<ColumnShape> Columns);
+public sealed record TableShape(string Schema,  string Name, IReadOnlyList<ColumnShape> Columns);
 public sealed record DbTableRef(string Schema, string Table);
 
 public static class SqlServerSchemaReader
@@ -52,7 +52,7 @@ ORDER BY ORDINAL_POSITION;";
             throw new InvalidOperationException($"SQL Server table not found or has no columns: {schema}.{table}");
         }
 
-        return new TableShape(schema, table, cols);
+        return new TableShape(schema,  table, cols);
     }
     public static async Task<IReadOnlyList<DbTableRef>> ReadAllTablesAsync(
           SqlConnection conn,

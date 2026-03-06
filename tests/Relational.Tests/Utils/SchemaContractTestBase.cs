@@ -40,15 +40,22 @@ public abstract class SchemaContractTestBase
         return new BillingDataContext(opts);
     }
 
-    protected async Task AssertTableMatchesModelAsync(Type entityType)
+    protected async Task AssertTableMatchesModelAsync(Type entityType,
+        bool all = true,
+        bool namesOnly = false,
+        bool typesOnly = false,
+        bool defaultsOnly = false,
+        bool fkKeysOnly = false,
+        bool pkOnly = false,
+        bool showEFSuggestions = false,
+        bool showDBSuggestions = false, 
+        bool orderOnly = false)
     {
         EntityAttributeGuards.RequireTableAttribute(entityType);
 
         using var conn = OpenTruthConnection();
 
         var ctx = CreateContext();
-
-
 
         // Use design-time model so ColumnOrder + relational metadata is available
         var designModel = ctx.GetService<IDesignTimeModel>().Model;
@@ -58,10 +65,11 @@ public abstract class SchemaContractTestBase
         var schema = et.GetSchema() ?? "dbo";
 
         var dbTruth = await SqlServerSchemaReader.ReadTableAsync(conn, schema, table).ConfigureAwait(false);
+        var dbTypes = await SqlServerColumnTypeReader.ReadColumnTypesAsync(conn, schema, table).ConfigureAwait(false);
 
 
         var efShape = EfModelReader.ReadEntityTableShape(ctx, entityType, schema, table);
-        var diffs = SchemaDiff.CompareColumnsStrictOrder(dbTruth, efShape);
+        var diffs = SchemaDiff.CompareColumnsStrictOrder(dbTypes, efShape, schema, table);
 
         var navDiffs = EfNavigationAsserts.AssertAllReferenceAndCollectionPropertiesAreNavigations(ctx, entityType);
         var explicitNavDiffs = ExplicitRelationshipAsserts.AssertDtoNavPropertiesAreExplicit(ctx, entityType);
@@ -77,12 +85,11 @@ public abstract class SchemaContractTestBase
 
         var keyDiffs = EfKeyAsserts.AssertPrimaryKeyExplicit(ctx, entityType, schema, table);
 
-        var dbTypes = await SqlServerColumnTypeReader.ReadColumnTypesAsync(conn, schema, table).ConfigureAwait(false);
         var efTypes = EfColumnTypeReader.ReadColumnTypes(ctx, entityType, schema, table);
         var typeDiffs = ColumnTypeDiff.CompareStrict(dbTypes, efTypes);
 
         // Green path: no output
-        if (diffs.Count == 0 && navDiffs.Count == 0 && explicitNavDiffs.Count == 0 && 
+        if (diffs.Count == 0 && navDiffs.Count == 0 && explicitNavDiffs.Count == 0 &&
             fkDiffs.Count == 0 && defaultDiffs.Count == 0 && keyDiffs.Count == 0 &&
             typeDiffs.Count == 0)
             return;
@@ -100,99 +107,130 @@ public abstract class SchemaContractTestBase
 
         TestContext.WriteLine($"=== {schema}.{table} ({entityType.Name}) out of sync ===");
 
-        foreach (var d in defaultDiffs)
+
+        if (all || defaultsOnly)
         {
-            TestContext.WriteLine(d);
+            if (defaultDiffs.Any())
+            {
+                TestContext.WriteLine("===============================");
+                TestContext.WriteLine("Has Default Differences");
+
+                foreach (var d in defaultDiffs)
+                {
+                    TestContext.WriteLine(d);
+                }
+
+                if (dbDefaults.Defaults.Any())
+                {
+                    TestContext.WriteLine("");
+                    TestContext.WriteLine("Suggested table default values");
+                    TestContext.WriteLine("===============================");
+                    foreach (var d in dbDefaults.Defaults.OrderBy(x => x.ColumnName))
+                    {
+                        TestContext.WriteLine($" modelBuilder.Entity<{entityType.Name}>().Property(x => x.{d.ColumnName}).HasDefaultValueSql(\"{d.DefaultSqlNormalized}\");");
+                    }
+                }
+
+                TestContext.WriteLine("===============================");
+                TestContext.WriteLine();
+            }
         }
 
-        if (defaultDiffs.Any())
+        if (all || typesOnly)
         {
-            TestContext.WriteLine("===============================");
-            TestContext.WriteLine("Has Default Differences");
-
-            foreach (var d in defaultDiffs)
+            if (typeDiffs.Count > 0)
             {
-                TestContext.WriteLine(d);
-            }
+                TestContext.WriteLine("===============================");
+                TestContext.WriteLine($"Type differences (strict): {typeDiffs.Count}");
+                foreach (var d in typeDiffs) TestContext.WriteLine(d);
 
-            if (dbDefaults.Defaults.Any())
+                if (showEFSuggestions)
+                {
+                    TestContext.WriteLine("");
+                    TestContext.WriteLine("Suggested HasColumnType mappings (verify property names):");
+                    var storeMap = dbTypes.ToDictionary(x => x.ColumnName, x => x.StoreType, StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var col in storeMap.Keys.OrderBy(x => x))
+                    {
+                        var prop = GuessPropertyName(designModel, entityType, schema, table, col);
+                        TestContext.WriteLine($"modelBuilder.Entity<{entityType.Name}>().Property(x => x.{prop}).HasColumnType(\"{storeMap[col]}\");");
+                    }
+                }
+
+                if(showDBSuggestions)
+                {
+                    foreach(var t in typeDiffs)
+                    {
+                         TestContext.WriteLine($"ALTER TABLE [{schema}].[{table}] ALTER COLUMN [{t.ColumnName}] {t.EfType} {(t.IsNullable ? "NULL" : "NOT NULL")};");
+                    }
+                }
+
+                TestContext.WriteLine("===============================");
+                TestContext.WriteLine();
+            }
+        }
+
+
+        if (all || pkOnly)
+        {
+            var pk = designModel.FindEntityType(entityType)?.FindPrimaryKey();
+            if (pk != null)
+            {
+                var propNames = string.Join(", ", pk.Properties.Select(p => $"x.{p.Name}"));
+                TestContext.WriteLine($"Suggested:\n modelBuilder.Entity<{entityType.Name}>().HasKey(x => new {{ {propNames} }});");
+            }
+        }
+
+        if (all || fkKeysOnly)
+        {
+            if (keyDiffs.Count > 0)
             {
                 TestContext.WriteLine("");
-                TestContext.WriteLine("Suggested table default values");
-                TestContext.WriteLine("===============================");
-                foreach (var d in dbDefaults.Defaults.OrderBy(x => x.ColumnName))
-                {
-                    TestContext.WriteLine($" modelBuilder.Entity<{entityType.Name}>().Property(x => x.{d.ColumnName}).HasDefaultValueSql(\"{d.DefaultSqlNormalized}\");");
-                }
+                TestContext.WriteLine("Key modeling issues:");
+                foreach (var d in keyDiffs) TestContext.WriteLine(d);
             }
-
-            TestContext.WriteLine("===============================");
-            TestContext.WriteLine();
-        }
-
-        if (typeDiffs.Count > 0)
-        {
-            TestContext.WriteLine("===============================");
-            TestContext.WriteLine($"Type differences (strict): {typeDiffs.Count}");
-            foreach (var d in typeDiffs) TestContext.WriteLine(d);
-
-            TestContext.WriteLine("");
-            TestContext.WriteLine("Suggested HasColumnType mappings (verify property names):");
-            var storeMap = dbTypes.ToDictionary(x => x.ColumnName, x => x.StoreType, StringComparer.OrdinalIgnoreCase);
-
-            foreach (var col in storeMap.Keys.OrderBy(x => x))
-            {
-                var prop = GuessPropertyName(designModel, entityType, schema, table, col);
-                TestContext.WriteLine($"modelBuilder.Entity<{entityType.Name}>().Property(x => x.{prop}).HasColumnType(\"{storeMap[col]}\");");
-            }
-
-
-            TestContext.WriteLine("===============================");
-            TestContext.WriteLine();
-        }
-
-        var pk = designModel.FindEntityType(entityType)?.FindPrimaryKey();
-        if (pk != null)
-        {
-            var propNames = string.Join(", ", pk.Properties.Select(p => $"x.{p.Name}"));
-            TestContext.WriteLine($"Suggested:\n modelBuilder.Entity<{entityType.Name}>().HasKey(x => new {{ {propNames} }});");
-        }
-
-        if (keyDiffs.Count > 0)
-        {
-            TestContext.WriteLine("");
-            TestContext.WriteLine("Key modeling issues:");
-            foreach (var d in keyDiffs) TestContext.WriteLine(d);
         }
 
         if (diffs.Count > 0)
         {
             TestContext.WriteLine("Column differences (strict order):");
-            foreach (var d in diffs) TestContext.WriteLine(d);
+            foreach (var d in diffs)
+            {
+                TestContext.WriteLine(d);
+            }
+
+            foreach (var d in diffs)
+            {
+                if (!String.IsNullOrEmpty(d.DbSuggestion)) TestContext.WriteLine($"{d.DbSuggestion}");
+            }
         }
 
-        if (fkDiffs.Count > 0)
+        if (all || fkKeysOnly)
         {
-            TestContext.WriteLine("");
-            TestContext.WriteLine("Foreign key differences (includes ON DELETE mismatches):");
-            foreach (var d in fkDiffs) TestContext.WriteLine(d);
+            if (fkDiffs.Count > 0)
+            {
+                TestContext.WriteLine("");
+                TestContext.WriteLine("Foreign key differences (includes ON DELETE mismatches):");
+                foreach (var d in fkDiffs) TestContext.WriteLine(d);
+            }
+
+            if (explicitNavDiffs.Count > 0)
+            {
+                TestContext.WriteLine("");
+                TestContext.WriteLine("Explicit navigation configuration issues:");
+                foreach (var d in explicitNavDiffs) TestContext.WriteLine(d);
+            }
+
+
+            if (navDiffs.Count > 0)
+            {
+                TestContext.WriteLine("");
+                TestContext.WriteLine("Navigation modeling issues:");
+                foreach (var d in navDiffs) TestContext.WriteLine(d);
+            }
         }
 
-        if (explicitNavDiffs.Count > 0)
-        {
-            TestContext.WriteLine("");
-            TestContext.WriteLine("Explicit navigation configuration issues:");
-            foreach (var d in explicitNavDiffs) TestContext.WriteLine(d);
-        }
-
-        if (navDiffs.Count > 0)
-        {
-            TestContext.WriteLine("");
-            TestContext.WriteLine("Navigation modeling issues:");
-            foreach (var d in navDiffs) TestContext.WriteLine(d);
-        }
-
-        if (suggestions.Length > 0)
+        if (suggestions.Length > 0 && showEFSuggestions)
         {
             TestContext.WriteLine("");
             TestContext.WriteLine("Suggested HasColumnOrder mappings (verify property names):");

@@ -21,6 +21,7 @@ namespace LagoVista.Relational
         public static string FlagStorage(string provider) => "bit";
         public static string IntStorage(string provider) => "int";
         public static string DecimalStorage(string provider) => "decimal(18,2)";
+        public static string DecimalMedium(string provider) => "decimal(9,2)";
         public static string DecimalSmall(string provider) => "decimal(5,2)";
         public static string LongStorage(string provider) => "bigint";
         public static string IconStorage(string provider) => "varchar(1024)";

@@ -5,7 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
-public sealed record ColumnTypeShape(string ColumnName, string StoreType);
+public sealed record ColumnTypeShape(string ColumnName, string StoreType, int Ordinal, bool IsNullable);
 
 public static class SqlServerColumnTypeReader
 {
@@ -20,12 +20,18 @@ SELECT
     ty.name AS TypeName,
     c.max_length,
     c.precision,
-    c.scale
+    c.scale,  
+    ic.ORDINAL_POSITION,
+    c.is_nullable
 FROM sys.tables t
 JOIN sys.schemas s ON s.schema_id = t.schema_id
 JOIN sys.columns c ON c.object_id = t.object_id
 JOIN sys.types ty ON ty.user_type_id = c.user_type_id
-WHERE s.name = @schema
+JOIN INFORMATION_SCHEMA.COLUMNS ic
+    ON ic.TABLE_SCHEMA = OBJECT_SCHEMA_NAME(c.object_id)
+   AND ic.TABLE_NAME = OBJECT_NAME(c.object_id)
+   AND ic.COLUMN_NAME = c.name
+  WHERE s.name = @schema
   AND t.name = @table
 ORDER BY c.column_id;";
 
@@ -43,9 +49,10 @@ ORDER BY c.column_id;";
             var maxLen = rdr.GetInt16(2);     // sys.columns.max_length is smallint
             var precision = rdr.GetByte(3);   // tinyint
             var scale = rdr.GetByte(4);       // tinyint
-
+            var ordinal = rdr.GetInt32(5);
+            var nullable = rdr.GetBoolean(6);
             var storeType = SqlServerTypeFormatter.Format(typeName, maxLen, precision, scale);
-            list.Add(new ColumnTypeShape(col, storeType));
+            list.Add(new ColumnTypeShape(col, storeType, ordinal, nullable));
         }
 
         return list;
