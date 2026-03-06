@@ -70,6 +70,7 @@ namespace LagoVista.Relational
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Version).IsConcurrencyToken();
+            entity.Property(x => x.Id).ValueGeneratedNever();
 
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);

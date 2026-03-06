@@ -103,11 +103,11 @@ namespace LagoVista
     {
         private const string ProviderKey = "App:ProviderName";
 
-        private const string SqlServer = "Microsoft.EntityFrameworkCore.SqlServer";
-        private const string Sqlite = "Microsoft.EntityFrameworkCore.Sqlite";
-        private const string Postgres = "Npgsql.EntityFrameworkCore.PostgreSQL";
-        private const string PomeloMySql = "Pomelo.EntityFrameworkCore.MySql";
-        private const string OracleMySql = "MySql.EntityFrameworkCore";
+        public const string SqlServer = "Microsoft.EntityFrameworkCore.SqlServer";
+        public const string Sqlite = "Microsoft.EntityFrameworkCore.Sqlite";
+        public const string Postgres = "Npgsql.EntityFrameworkCore.PostgreSQL";
+        public const string PomeloMySql = "Pomelo.EntityFrameworkCore.MySql";
+        public const string OracleMySql = "MySql.EntityFrameworkCore";
 
         public static ModelBuilder SeedProviderName(this ModelBuilder modelBuilder, string providerName)
         {

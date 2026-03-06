@@ -10,6 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [EncryptionKey("customer-{id}")]
     [Table("InvoiceLogs", Schema = "dbo")]
     public class InvoiceLogsDTO
     {

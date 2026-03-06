@@ -14,6 +14,8 @@ namespace LagoVista.Relational.DataContexts
         {
 
         }
+       
+        public string GetBersion => this.GetType().Assembly.GetName().Version.ToString();
 
         public DbSet<AppUserDTO> AppUser { get; set; }
         public DbSet<OrganizationDTO> Org { get; set; }

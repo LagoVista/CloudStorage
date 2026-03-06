@@ -26,7 +26,6 @@ namespace LagoVista.Relational
         [Required]
         public DateTime CreationDate { get; set; }
 
-        [MapFrom("LastUpdatedDate")]
         [Required]
         public DateTime LastUpdatedDate { get; set; }
 

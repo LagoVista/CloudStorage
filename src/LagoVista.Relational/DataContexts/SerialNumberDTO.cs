@@ -17,17 +17,22 @@ namespace LagoVista.Relational.DataContexts
 
         public static void Configure(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<SerialNumberDTO>().HasKey(a => new { a.OrgId, a.Key, a.KeyId });
+            var mb = modelBuilder;
+            var provider = mb.GetProviderName();
+            var entity = mb.Entity<SerialNumberDTO>();
 
-            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.Index).HasColumnOrder(1);
-            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.OrgId).HasColumnOrder(2);
-            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.Key).HasColumnOrder(3);
-            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.KeyId).HasColumnOrder(4);
 
-            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.Index).HasColumnType("int");
-            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.Key).HasColumnType("varchar(50)");
-            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.KeyId).HasColumnType("varchar(50)");
-            modelBuilder.Entity<SerialNumberDTO>().Property(x => x.OrgId).HasColumnType("varchar(32)");
+            entity.HasKey(a => new { a.OrgId, a.Key, a.KeyId });
+
+            entity.Property(x => x.Index).HasColumnOrder(1);
+            entity.Property(x => x.OrgId).HasColumnOrder(2);
+            entity.Property(x => x.Key).HasColumnOrder(3);
+            entity.Property(x => x.KeyId).HasColumnOrder(4);
+
+            entity.Property(x => x.Index).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.Key).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.KeyId).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.OrgId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
         }
     }
 }

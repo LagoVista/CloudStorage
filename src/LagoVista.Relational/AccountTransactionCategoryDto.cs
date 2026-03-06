@@ -54,9 +54,9 @@ namespace LagoVista.Relational
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
-
+           
             // Column order
-            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.Id).ValueGeneratedNever();
             entity.Property(x => x.OrganizationId).HasColumnOrder(2);
             entity.Property(x => x.Name).HasColumnOrder(3);
             entity.Property(x => x.Type).HasColumnOrder(4);
