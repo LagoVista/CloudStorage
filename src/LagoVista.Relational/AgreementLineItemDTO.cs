@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 
 namespace LagoVista.Relational
 {
+    [ModernKeyId("customer-{id}",IdPath = "Account.CustomerId",FallbackFkProperty = "customerid")]
+    [EncryptionKey("customer-{id}", IdProperty = nameof(AgreementDTO.CustomerId), CreateIfMissing = false)]
     [Table("AgreementLineItems", Schema = "dbo")]
     public class AgreementLineItemDTO
     {
