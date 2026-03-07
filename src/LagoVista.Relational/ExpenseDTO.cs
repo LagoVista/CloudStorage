@@ -7,6 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [ModernKeyId("user-{id}", IdPath = "UserId")]
     [EncryptionKey("UserId={id}", IdProperty ="UserId")]
     [Table("Expenses", Schema = "dbo")]
     public class ExpenseDTO : DbModelBase

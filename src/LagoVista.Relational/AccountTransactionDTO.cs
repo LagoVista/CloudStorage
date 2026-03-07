@@ -7,6 +7,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+
+    [ModernKeyId("account-{id}", IdPath = "AccountId")]
     [Table("AccountTransaction", Schema = "dbo")]
     [EncryptionKey("Account-{id}", IdProperty = nameof(AccountId), CreateIfMissing = false)]
     public class AccountTransactionDto

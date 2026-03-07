@@ -11,6 +11,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [ModernKeyId("account-{id}",IdPath ="Id")]
     [Table("Account", Schema = "dbo")]
     [EncryptionKey("Account-{id}", IdProperty = nameof(AccountDto.Id), CreateIfMissing = false)]
     public class AccountDto : DbModelBase

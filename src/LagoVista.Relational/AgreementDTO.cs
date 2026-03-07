@@ -11,6 +11,7 @@ using System.Reflection.Emit;
 
 namespace LagoVista.Relational
 {
+    [ModernKeyId("agreement-{id}", IdPath = "CustomerId")]
     [Table("Agreements",Schema ="dbo")]
     [EncryptionKey("Agreement-{id}", IdProperty = nameof(AgreementDTO.CustomerId), CreateIfMissing = false)]
     public class AgreementDTO : DbModelBase, IEntityHeaderFactory

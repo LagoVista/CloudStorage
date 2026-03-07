@@ -10,6 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [ModernKeyId("customer-{id}", IdPath = "CustomerId")]
     [Table("Invoice", Schema = "dbo")]
     [EncryptionKey("Agreement-{id}", IdProperty = nameof(CustomerId), CreateIfMissing = false)]
     public class InvoiceDTO : IEntityHeaderFactory
@@ -17,8 +18,6 @@ namespace LagoVista.Relational
         [Key]
         public Guid Id { get; set; }
 
-
-        [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public int InvoiceNumber { get; set; }
 
         public bool IsMaster { get; set; }
@@ -31,6 +30,8 @@ namespace LagoVista.Relational
         public Guid? MasterInvoiceId { get; set; }
 
         public string ContactId { get; set; }
+
+        public string ContactName { get; set; } 
 
         [Required]
         public String OrganizationId { get; set; }
@@ -140,9 +141,10 @@ namespace LagoVista.Relational
             entity.Property(x => x.EncryptedSubtotal).HasColumnOrder(26);
             entity.Property(x => x.TaxPercent).HasColumnOrder(27);
             entity.Property(x => x.ContactId).HasColumnOrder(28);
-            entity.Property(x => x.AdditionalNotes).HasColumnOrder(29);
-            entity.Property(x => x.IsLocked).HasColumnOrder(30);
-            entity.Property(x => x.InvoiceDate).HasColumnOrder(31);
+            entity.Property(x => x.ContactName).HasColumnOrder(29);
+            entity.Property(x => x.AdditionalNotes).HasColumnOrder(30);
+            entity.Property(x => x.IsLocked).HasColumnOrder(31);
+            entity.Property(x => x.InvoiceDate).HasColumnOrder(32);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -173,6 +175,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.EncryptedSubtotal).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.TaxPercent).HasColumnType(StandardDBTypes.DecimalSmall(provider));
             entity.Property(x => x.ContactId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ContactName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.AdditionalNotes).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.IsLocked).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.InvoiceDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));

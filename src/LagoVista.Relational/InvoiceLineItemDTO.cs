@@ -12,6 +12,8 @@ using System.Text;
 
 namespace LagoVista.Relational
 {
+
+    [ModernKeyId("customer-{id}", IdPath = "Invoice.CustomerId", FallbackTargetPath = "Invoice.CustomerId", FallbackFkProperty = "InvoiceId")]
     [Table("InvoiceLineItems", Schema = "dbo")]
     [EncryptionKey("Agreement-{id}", IdProperty = nameof(Invoice.CustomerId), CreateIfMissing = false)]
     public class InvoiceLineItemDTO
