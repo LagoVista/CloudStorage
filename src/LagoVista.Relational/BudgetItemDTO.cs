@@ -9,6 +9,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [ModernKeyId("budgetitem-{id}", IdPath = "OrganizationId", CreateIfMissing = true)]
     [Table("BudgetItems", Schema = "dbo")]
     [EncryptionKey("BUDGET_ITEM_KEY_{id}", IdProperty = nameof(OrganizationId), CreateIfMissing = false)]
     public class BudgetItemDTO : DbModelBase
@@ -30,6 +31,11 @@ namespace LagoVista.Relational
 
         public Guid? WorkRoleId { get; set; }
 
+        [Required]
+        public string EncryptedAllocated { get; set; }
+        [Required]
+        public string EncryptedActual { get; set; }
+
         [NotMapped]
         public AccountTransactionCategoryDto AccountTransactionCategory { get; set; }
 
@@ -38,12 +44,6 @@ namespace LagoVista.Relational
 
         [NotMapped]
         public WorkRoleDTO WorkRole { get; set; }
-
-
-        [Required]
-        public string EncryptedAllocated { get; set; }
-        [Required]
-        public string EncryptedActual { get; set; }
 
         public static void Configure(ModelBuilder modelBuilder)
         {

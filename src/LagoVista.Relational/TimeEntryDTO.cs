@@ -1,4 +1,5 @@
-﻿using LagoVista.Models;
+﻿using LagoVista.Core.Attributes;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel.DataAnnotations;
@@ -33,6 +34,16 @@ namespace LagoVista.Relational
         public bool IsEquityTime { get; set; }
         public decimal Hours { get; set; }
 
+        [IgnoreOnMapTo]
+        public TimePeriodDTO TimePeriod { get; set; }
+
+        [IgnoreOnMapTo]
+        public AgreementDTO Agreement { get; set; }
+        [IgnoreOnMapTo]
+        public AppUserDTO User { get; set; }
+        [IgnoreOnMapTo]
+        public BillingEventDTO BillingEvent { get; set; }
+
         [Required]
         public string Notes { get; set; }
 
@@ -44,8 +55,12 @@ namespace LagoVista.Relational
 
             // Relationships
             entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
+            entity.HasOne(x => x.Agreement).WithMany(x => x.TimeEntries).HasForeignKey(x => x.AgreementId);
+            entity.HasOne(x => x.BillingEvent).WithMany().HasForeignKey(x => x.BillingEventId);
+            entity.HasOne(x => x.TimePeriod).WithMany(x => x.TimeEntries).HasForeignKey(x => x.TimePeriodId);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

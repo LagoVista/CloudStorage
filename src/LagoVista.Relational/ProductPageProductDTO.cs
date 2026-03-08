@@ -17,12 +17,10 @@ namespace LagoVista.Relational
         public int Index { get; set; }
         public int UnitQty { get; set; }
 
-
-
-        [IgnoreOnMapTo]
+        [NotMapped]
         public ProductDTO Product { get; set; }
 
-        [IgnoreOnMapTo]
+        [NotMapped]
         public ProductPageDTO ProductPage { get; set; }
 
 

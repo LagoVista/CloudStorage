@@ -24,7 +24,6 @@ namespace LagoVista.Relational
         public string EncryptedTotalTaxLiability { get; set; }
         [Required]
         public string EncryptedTotalRevenue { get; set; }
-        [Required]
         public string EncryptedTaxLiabilities { get; set; }
         [Required]
         public string Status { get; set; }
@@ -89,7 +88,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.EncryptedTotalExpenses).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotalTaxLiability).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotalRevenue).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.EncryptedTaxLiabilities).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedTaxLiabilities).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.Locked).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.LockedTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));

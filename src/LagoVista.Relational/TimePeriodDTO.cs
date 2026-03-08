@@ -5,6 +5,7 @@ using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -38,6 +39,11 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public OrganizationDTO Organization { get; set; }
 
+        [IgnoreOnMapTo]
+        public List<TimeEntryDTO> TimeEntries { get; set; }
+
+
+
         public EntityHeader ToEntityHeader() => EntityHeader.Create(Id.ToString(), $"{Start} to {End}");
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -49,6 +55,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.LockedByUser).WithMany().HasForeignKey(x => x.LockedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.PayrollSummary).WithOne(x => x.TimePeriod).HasForeignKey<TimePeriodDTO>(x => x.PayrollSummaryId);
+            entity.HasMany(x => x.TimeEntries).WithOne(x => x.TimePeriod).HasForeignKey(x => x.TimePeriodId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

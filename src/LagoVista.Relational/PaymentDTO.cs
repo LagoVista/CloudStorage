@@ -10,6 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [ModernKeyId("user-{id}", IdPath = "UserId", CreateIfMissing =true)]
     [Table("Payments", Schema = "dbo")]
     [EncryptionKey("PAYROLL_KEY")]
     public class PaymentDTO : DbModelBase, IEntityHeaderFactory
@@ -26,7 +27,7 @@ namespace LagoVista.Relational
 
         public Guid TimePeriodId { get; set; }
         [Required]
-        public string Status { get; set; }
+        public string PaymentStatus { get; set; }
 
         public DateOnly? SubmittedDate { get; set; }
         public DateOnly? ExpectedDeliveryDate { get; set; }
@@ -53,12 +54,13 @@ namespace LagoVista.Relational
         public string EncryptedSecondaryDeposit { get; set; }
 
         [Required]
-        public string ExpenseDetail { get; set; }
-        [Required]
-        public string DeductionsDetail { get; set; }
-        [Required]
         public string EncryptedEarnedEquity { get; set; }
 
+
+        public string ExpenseDetail { get; set; }
+        public string DeductionsDetail { get; set; }
+
+        
         public bool ContractorPayment { get; set; }
         public bool W2Payment { get; set; }
         public bool OfficerPayment { get; set; }
@@ -102,7 +104,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.TimePeriodId).HasColumnOrder(7);
             entity.Property(x => x.PeriodStart).HasColumnOrder(8);
             entity.Property(x => x.PeriodEnd).HasColumnOrder(9);
-            entity.Property(x => x.Status).HasColumnOrder(10);
+            entity.Property(x => x.PaymentStatus).HasColumnOrder(10);
             entity.Property(x => x.OrganizationId).HasColumnOrder(11);
             entity.Property(x => x.SubmittedDate).HasColumnOrder(12);
             entity.Property(x => x.ExpectedDeliveryDate).HasColumnOrder(13);
@@ -134,7 +136,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.TimePeriodId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.PeriodStart).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.PeriodEnd).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
-            entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
+            entity.Property(x => x.PaymentStatus).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.SubmittedDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.ExpectedDeliveryDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));

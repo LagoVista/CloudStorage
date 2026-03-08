@@ -57,7 +57,8 @@ namespace LagoVista.Relational
         public string EncryptedTotal { get; set; }
 
 
-
+        [IgnoreOnMapTo()]
+        public List<TimeEntryDTO> TimeEntries { get; set; }
 
         [IgnoreOnMapTo()]
         public CustomerDTO Customer { get; set; }
@@ -87,6 +88,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasMany(x => x.TimeEntries).WithOne(te => te.Agreement).HasForeignKey(te => te.AgreementId);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

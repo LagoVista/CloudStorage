@@ -155,6 +155,33 @@ namespace LagoVista.Relational
             }
         }
 
+        protected async Task WithContextTransactionAsync(EntityHeader org, EntityHeader user, Func<TContext, Task> work)
+        {
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                await work(_context);
+                await tx.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    await tx.RollbackAsync().ConfigureAwait(false);
+                }
+                catch (Exception rollbackEx)
+                {
+                    _adminlogger.AddException(this.Tag(), rollbackEx);
+                }
+
+                if (ex.InnerException != null)
+                    _adminlogger.AddException(this.Tag(), ex.InnerException);
+
+                _adminlogger.AddException(this.Tag(), ex);
+                throw;
+            }
+        }
+
         protected async Task<TResult> WithContextAsync<TResult>(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task<TResult>> work)
         {
             var encryptionServices = new EncryptionServices(_secureStorage, _adminlogger, secretId, org, user);
