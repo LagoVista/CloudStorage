@@ -4,6 +4,7 @@ using LagoVista.Core.Models;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -58,10 +59,15 @@ namespace LagoVista.Relational
         [Required]
         public string EncryptedEarnedEquity { get; set; }
 
-
         public bool ContractorPayment { get; set; }
         public bool W2Payment { get; set; }
         public bool OfficerPayment { get; set; }
+
+        [IgnoreOnMapTo]
+        public List<ExpenseReimbursementDTO>  ExpenseReimbursements { get; set; }
+
+        [IgnoreOnMapTo]
+        public List<PaymentDeductionDTO> Deductions { get; set; }
 
         [IgnoreOnMapTo]
         public AppUserDTO User { get; set; }
@@ -80,6 +86,8 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.TimePeriod).WithMany().HasForeignKey(x => x.TimePeriodId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+            entity.HasMany(x => x.Deductions).WithOne(x => x.Payment).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.ExpenseReimbursements).WithOne(x => x.Payment).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

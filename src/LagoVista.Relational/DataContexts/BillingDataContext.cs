@@ -64,8 +64,13 @@ namespace LagoVista.Relational.DataContexts
 
 
         public DbSet<PaymentDTO> Payments { get; set; }
+        public DbSet<PaymentDeductionDTO> PaymentDeductions { get; set; }
+        public DbSet<ExpenseReimbursementDTO> ReimbursedDeductions { get; set; }
+
         public DbSet<PayRateDTO> PayRates { get; set; }
         public DbSet<PayrollSummaryDTO> PayrollSummary { get; set; }
+        public DbSet<PayrollSummaryDeductionDTO> PayrollSummaryDeductions { get; set; }
+
 
         public DbSet<RecurringCycleTypeDTO> RecurringCycleTypes { get; set; }
 
@@ -118,8 +123,13 @@ namespace LagoVista.Relational.DataContexts
             LicenseUsageDTO.Configure(modelBuilder);
 
             PaymentDTO.Configure(modelBuilder);
+            PaymentDeductionDTO.Configure(modelBuilder);
+
             PayRateDTO.Configure(modelBuilder);
+
             PayrollSummaryDTO.Configure(modelBuilder);
+            PayrollSummaryDeductionDTO.Configure(modelBuilder);
+            ExpenseReimbursementDTO.Configure(modelBuilder);
 
             ProductCategoryDTO.Configure(modelBuilder);
             ProductDTO.Configure(modelBuilder);
