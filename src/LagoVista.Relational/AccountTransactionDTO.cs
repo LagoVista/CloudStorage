@@ -15,7 +15,7 @@ namespace LagoVista.Relational
     {
         [Key]
         public Guid Id { get; set; }
-
+        
 
         [MapFrom("CreatedBy")]
         [Required]

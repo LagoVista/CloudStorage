@@ -10,8 +10,8 @@ using System.Threading.Tasks;
 
 namespace LagoVista.Relational
 {
-    [ModernKeyId("customer-{id}",IdPath = "Account.CustomerId", FallbackTargetPath = "Account.CustomerId", FallbackFkProperty = "AgreementId")]
-    [EncryptionKey("customer-{id}", IdProperty = nameof(AgreementDTO.CustomerId), CreateIfMissing = false)]
+    [ModernKeyId("customer-{id}", IdPath = "CustomerId")]
+    [EncryptionKey("AgreementLineItem-{id}", IdProperty = nameof(AgreementId), CreateIfMissing = false)]
     [Table("AgreementLineItems", Schema = "dbo")]
     public class AgreementLineItemDTO
     {
@@ -19,7 +19,8 @@ namespace LagoVista.Relational
         public Guid Id { get; set; }
         [Required]
         public Guid AgreementId { get; set; }
-
+        [Required]
+        public Guid CustomerId { get; set; }
         [Required]
         public Guid ProductId { get; set; }
         [Required]
@@ -64,6 +65,8 @@ namespace LagoVista.Relational
 
         [IgnoreOnMapTo]
         public RecurringCycleTypeDTO RecurringCycleType { get; set; }
+        [IgnoreOnMapTo]
+        public CustomerDTO Customer { get; set; }
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -77,6 +80,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
             entity.HasOne(x => x.UnitType).WithMany().HasForeignKey(x => x.UnitTypeId);
             entity.HasOne(x => x.RecurringCycleType).WithMany().HasForeignKey(x => x.RecurringCycleTypeId);
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
@@ -85,26 +89,28 @@ namespace LagoVista.Relational
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.AgreementId).HasColumnOrder(2);
             entity.Property(x => x.ProductId).HasColumnOrder(3);
-            entity.Property(x => x.ProductName).HasColumnOrder(4);
-            entity.Property(x => x.Start).HasColumnOrder(5);
-            entity.Property(x => x.End).HasColumnOrder(6);
-            entity.Property(x => x.EncryptedUnitPrice).HasColumnOrder(7);
-            entity.Property(x => x.EncryptedDiscountPercent).HasColumnOrder(8);
-            entity.Property(x => x.EncryptedExtended).HasColumnOrder(9);
-            entity.Property(x => x.EncryptedSubTotal).HasColumnOrder(10);
-            entity.Property(x => x.Quantity).HasColumnOrder(11);
-            entity.Property(x => x.UnitTypeId).HasColumnOrder(12);
-            entity.Property(x => x.IsRecurring).HasColumnOrder(13);
-            entity.Property(x => x.RecurringCycleTypeId).HasColumnOrder(14);
-            entity.Property(x => x.NextBillingDate).HasColumnOrder(15);
-            entity.Property(x => x.LastBilledDate).HasColumnOrder(16);
-            entity.Property(x => x.Taxable).HasColumnOrder(17);
-            entity.Property(x => x.EncryptedShipping).HasColumnOrder(18);
+            entity.Property(x => x.CustomerId).HasColumnOrder(4);
+            entity.Property(x => x.ProductName).HasColumnOrder(5);
+            entity.Property(x => x.Start).HasColumnOrder(6);
+            entity.Property(x => x.End).HasColumnOrder(7);
+            entity.Property(x => x.EncryptedUnitPrice).HasColumnOrder(8);
+            entity.Property(x => x.EncryptedDiscountPercent).HasColumnOrder(9);
+            entity.Property(x => x.EncryptedExtended).HasColumnOrder(10);
+            entity.Property(x => x.EncryptedSubTotal).HasColumnOrder(11);
+            entity.Property(x => x.Quantity).HasColumnOrder(12);
+            entity.Property(x => x.UnitTypeId).HasColumnOrder(13);
+            entity.Property(x => x.IsRecurring).HasColumnOrder(14);
+            entity.Property(x => x.RecurringCycleTypeId).HasColumnOrder(15);
+            entity.Property(x => x.NextBillingDate).HasColumnOrder(16);
+            entity.Property(x => x.LastBilledDate).HasColumnOrder(17);
+            entity.Property(x => x.Taxable).HasColumnOrder(18);
+            entity.Property(x => x.EncryptedShipping).HasColumnOrder(19);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.AgreementId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.CustomerId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.ProductName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Start).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.End).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));

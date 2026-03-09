@@ -13,7 +13,7 @@ using System.Text;
 namespace LagoVista.Relational
 {
 
-    [ModernKeyId("customer-{id}", IdPath = "Invoice.CustomerId", FallbackTargetPath = "Invoice.CustomerId", FallbackFkProperty = "InvoiceId")]
+    [ModernKeyId("customer-{id}", IdPath = "CustomerId")]
     [Table("InvoiceLineItems", Schema = "dbo")]
     [EncryptionKey("Agreement-{id}", IdProperty = nameof(Invoice.CustomerId), CreateIfMissing = false)]
     public class InvoiceLineItemDTO
@@ -21,8 +21,11 @@ namespace LagoVista.Relational
         [Key]
         public Guid Id { get; set; }
 
+        [Required]
         public Guid InvoiceId { get; set; }
 
+        [Required] 
+        public Guid CustomerId { get; set; }
         public Guid? AgreementId { get; set; }
 
         public string ResourceId { get; set; }
@@ -53,6 +56,9 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public AgreementDTO Agreement { get; set; }
 
+        [IgnoreOnMapTo]
+        public CustomerDTO Customer { get; set; }
+
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -63,6 +69,7 @@ namespace LagoVista.Relational
             // Relationships
             entity.HasOne(x => x.Invoice).WithMany(x => x.LineItems).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.Agreement).WithMany(x => x.InvoiceLineItems).HasForeignKey(x => x.AgreementId);
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId);
             entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
 
             // Key / indexes / concurrency
@@ -71,24 +78,26 @@ namespace LagoVista.Relational
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.InvoiceId).HasColumnOrder(2);
-            entity.Property(x => x.AgreementId).HasColumnOrder(3);
-            entity.Property(x => x.ResourceId).HasColumnOrder(4);
-            entity.Property(x => x.ResourceName).HasColumnOrder(5);
-            entity.Property(x => x.ProductName).HasColumnOrder(6);
-            entity.Property(x => x.Quantity).HasColumnOrder(7);
-            entity.Property(x => x.Units).HasColumnOrder(8);
-            entity.Property(x => x.EncryptedUnitPrice).HasColumnOrder(9);
-            entity.Property(x => x.EncryptedTotal).HasColumnOrder(10);
-            entity.Property(x => x.EncryptedDiscount).HasColumnOrder(11);
-            entity.Property(x => x.EncryptedExtended).HasColumnOrder(12);
-            entity.Property(x => x.Taxable).HasColumnOrder(13);
-            entity.Property(x => x.ProductId).HasColumnOrder(14);
-            entity.Property(x => x.EncryptedShipping).HasColumnOrder(15);
+            entity.Property(x => x.InvoiceId).HasColumnOrder(3);
+            entity.Property(x => x.AgreementId).HasColumnOrder(4);
+            entity.Property(x => x.ResourceId).HasColumnOrder(5);
+            entity.Property(x => x.ResourceName).HasColumnOrder(6);
+            entity.Property(x => x.ProductName).HasColumnOrder(7);
+            entity.Property(x => x.Quantity).HasColumnOrder(8);
+            entity.Property(x => x.Units).HasColumnOrder(9);
+            entity.Property(x => x.EncryptedUnitPrice).HasColumnOrder(10);
+            entity.Property(x => x.EncryptedTotal).HasColumnOrder(11);
+            entity.Property(x => x.EncryptedDiscount).HasColumnOrder(12);
+            entity.Property(x => x.EncryptedExtended).HasColumnOrder(13);
+            entity.Property(x => x.Taxable).HasColumnOrder(14);
+            entity.Property(x => x.ProductId).HasColumnOrder(15);
+            entity.Property(x => x.EncryptedShipping).HasColumnOrder(16);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.InvoiceId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.AgreementId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.CustomerId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.ResourceId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.ResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.ProductName).HasColumnType(StandardDBTypes.NameStorage(provider));
