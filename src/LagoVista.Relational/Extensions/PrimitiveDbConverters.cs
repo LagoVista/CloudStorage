@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LagoVista.Core;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -52,5 +53,10 @@ public static class DateParsingExtensions
         }
 
         return false;
+    }
+
+    public static DateOnly ToDateOnly(this CalendarDate calendarDate)
+    {
+        return new DateOnly(calendarDate.Year, calendarDate.Month, calendarDate.Day);
     }
 }
