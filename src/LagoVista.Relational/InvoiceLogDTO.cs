@@ -10,6 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace LagoVista.Relational
 {
+    [ModernKeyId("customer-{id}", IdPath ="CustomerId")]
     [EncryptionKey("customer-{id}")]
     [Table("InvoiceLogs", Schema = "dbo")]
     public class InvoiceLogsDTO
@@ -18,6 +19,8 @@ namespace LagoVista.Relational
         public Guid Id { get; set; }
 
         public Guid InvoiceId { get; set; }
+
+        public Guid CustomerId { get; set; }
 
         public DateTime DateStamp { get; set; }
 
@@ -31,6 +34,9 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo()]
         public InvoiceDTO Invoice { get; set; }
 
+        [IgnoreOnMapTo]
+        public CustomerDTO Customer { get; set; }
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             var mb = modelBuilder;
@@ -39,6 +45,7 @@ namespace LagoVista.Relational
 
             // Relationships
             entity.HasOne(x => x.Invoice).WithMany(x => x.Logs).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.NoAction);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
@@ -46,15 +53,17 @@ namespace LagoVista.Relational
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.InvoiceId).HasColumnOrder(2);
-            entity.Property(x => x.DateStamp).HasColumnOrder(3);
-            entity.Property(x => x.EventId).HasColumnOrder(4);
-            entity.Property(x => x.EventData).HasColumnOrder(5);
-            entity.Property(x => x.Message).HasColumnOrder(6);
+            entity.Property(x => x.CustomerId).HasColumnOrder(3);
+            entity.Property(x => x.DateStamp).HasColumnOrder(4);
+            entity.Property(x => x.EventId).HasColumnOrder(5);
+            entity.Property(x => x.EventData).HasColumnOrder(6);
+            entity.Property(x => x.Message).HasColumnOrder(7);
             entity.Property(x => x.EncryptedAmount).HasColumnOrder(7);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.InvoiceId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.CustomerId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.DateStamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.EventId).HasColumnType(StandardDBTypes.CategoryStorage(provider));
             entity.Property(x => x.EventData).HasColumnType(StandardDBTypes.TextMax(provider));
