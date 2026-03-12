@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>LagoVista.CloudStorage</id>
-    <version>3.0.3221.1747</version>
+    <version>3.0.3221.1846</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -12,7 +12,7 @@
     <copyright>Copyright Software Logistics - 2026</copyright>
     <tags>HomeAutomation IoT LagoVista</tags>
     <icon>LagoVistaIcon.png</icon>
-    <releaseNotes>Build Date: 3/12/2026 9:47:16 PM UTC</releaseNotes>
+    <releaseNotes>Build Date: 3/12/2026 10:46:37 PM UTC</releaseNotes>
     <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
       <group targetFramework="netstandard2.1">

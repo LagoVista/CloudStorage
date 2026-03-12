@@ -47,17 +47,14 @@ namespace Relational.Tests
             _interceptor.IsReady = true;
         }
 
-
-        private async Task Assert_First_Two_Pages_Are_Correct<TSort>(
-            Expression<Func<SimpleRecord, TSort>> sortKey,
-            Func<IQueryable<SimpleRecord>, IQueryable<SimpleRecord>> expectedOrder)
+        private async Task Assert_First_Two_Pages_Are_Correct<TSort>(Expression<Func<SimpleRecord, TSort>> sortKey, Func<IQueryable<SimpleRecord>, IQueryable<SimpleRecord>> expectedOrder, EfKeysetPagingExtensions.KeysetPagingDirection direction = EfKeysetPagingExtensions.KeysetPagingDirection.Ascending)
             where TSort : IComparable<TSort>
         {
             var partitionSelector = sortKey.Compile();
 
             var firstRequest = ListRequest.Create(1, 50);
             var firstPage = await _ctx.Records
-                .ApplyKeysetPaging(firstRequest, sortKey, x => x.Id)
+                .ApplyKeysetPaging(firstRequest, sortKey, x => x.Id, direction)
                 .ToListResponseAsync(firstRequest, x => Map(x), partitionSelector, x => x.Id);
 
             Assert.That(firstPage.Model.Count, Is.EqualTo(50));
@@ -70,7 +67,7 @@ namespace Relational.Tests
             secondRequest.NextRowKey = firstPage.NextRowKey;
 
             var secondPage = await _ctx.Records
-                .ApplyKeysetPaging(secondRequest, sortKey, x => x.Id)
+                .ApplyKeysetPaging(secondRequest, sortKey, x => x.Id, direction)
                 .ToListResponseAsync(secondRequest, x => Map(x), partitionSelector, x => x.Id);
 
             Assert.That(secondPage.Model.Count, Is.EqualTo(50));
@@ -93,13 +90,12 @@ namespace Relational.Tests
             Assert.That(actualFirst100, Is.EqualTo(expectedFirst100.Select(x => x.Id)));
         }
 
-
         [Test]
         public async Task Should_Page_By_Name_Then_Id()
         {
             await Assert_First_Two_Pages_Are_Correct(
                 x => x.Name,
-                q => q.OrderByDescending(x => x.Name).ThenByDescending(x => x.Id));
+                q => q.OrderBy(x => x.Name).ThenBy(x => x.Id));
         }
 
         [Test]
@@ -107,7 +103,7 @@ namespace Relational.Tests
         {
             await Assert_First_Two_Pages_Are_Correct(
                 x => x.Timestamp,
-                q => q.OrderByDescending(x => x.Timestamp).ThenByDescending(x => x.Id));
+                q => q.OrderBy(x => x.Timestamp).ThenBy(x => x.Id));
         }
 
         [Test]
@@ -115,7 +111,7 @@ namespace Relational.Tests
         {
             await Assert_First_Two_Pages_Are_Correct(
                 x => x.IntValue,
-                q => q.OrderByDescending(x => x.IntValue).ThenByDescending(x => x.Id));
+                q => q.OrderBy(x => x.IntValue).ThenBy(x => x.Id));
         }
 
         [Test]
@@ -123,9 +119,44 @@ namespace Relational.Tests
         {
             await Assert_First_Two_Pages_Are_Correct(
                 x => x.DecimalValue,
-                q => q.OrderByDescending(x => (double)x.DecimalValue).ThenByDescending(x => x.Id));
+                q => q.OrderBy(x => (double)x.DecimalValue).ThenBy(x => x.Id));
         }
 
+        [Test]
+        public async Task Should_Page_By_Name_Then_Id_In_Descending_Order_When_Requested()
+        {
+            await Assert_First_Two_Pages_Are_Correct(
+                x => x.Name,
+                q => q.OrderByDescending(x => x.Name).ThenByDescending(x => x.Id),
+                EfKeysetPagingExtensions.KeysetPagingDirection.Descending);
+        }
+
+        [Test]
+        public async Task Should_Page_By_Timestamp_Then_Id_In_Descending_Order_When_Requested()
+        {
+            await Assert_First_Two_Pages_Are_Correct(
+                x => x.Timestamp,
+                q => q.OrderByDescending(x => x.Timestamp).ThenByDescending(x => x.Id),
+                EfKeysetPagingExtensions.KeysetPagingDirection.Descending);
+        }
+
+        [Test]
+        public async Task Should_Page_By_IntValue_Then_Id_In_Descending_Order_When_Requested()
+        {
+            await Assert_First_Two_Pages_Are_Correct(
+                x => x.IntValue,
+                q => q.OrderByDescending(x => x.IntValue).ThenByDescending(x => x.Id),
+                EfKeysetPagingExtensions.KeysetPagingDirection.Descending);
+        }
+
+        [Test]
+        public async Task Should_Page_By_DecimalValue_Then_Id_In_Descending_Order_When_Requested()
+        {
+            await Assert_First_Two_Pages_Are_Correct(
+                x => x.DecimalValue,
+                q => q.OrderByDescending(x => (double)x.DecimalValue).ThenByDescending(x => x.Id),
+                EfKeysetPagingExtensions.KeysetPagingDirection.Descending);
+        }
 
         private async Task PopulateList()
         {
@@ -191,6 +222,21 @@ namespace Relational.Tests
                     x => x.Id);
         }
 
+        private async Task<ListResponse<SimpleRecord>> GetPage(ListRequest request, EfKeysetPagingExtensions.KeysetPagingDirection direction)
+        {
+            return await _ctx.Records
+                .ApplyKeysetPaging(
+                    request,
+                    x => x.Date,
+                    x => x.Id,
+                    direction)
+                .ToListResponseAsync(
+                    request,
+                    x => Map(x),
+                    x => x.Date,
+                    x => x.Id);
+        }
+
         [Test]
         public async Task Should_Have_All_500_Records()
         {
@@ -209,7 +255,7 @@ namespace Relational.Tests
         }
 
         [Test]
-        public async Task First_Page_Should_Be_In_Descending_Date_Then_Id_Order()
+        public async Task First_Page_Should_Be_In_Ascending_Date_Then_Id_Order()
         {
             var listRequest = ListRequest.Create(1, 50);
 
@@ -218,8 +264,8 @@ namespace Relational.Tests
             Assert.That(page.Model.Count, Is.EqualTo(50));
 
             var expected = await _ctx.Records
-                .OrderByDescending(x => x.Date)
-                .ThenByDescending(x => x.Id)
+                .OrderBy(x => x.Date)
+                .ThenBy(x => x.Id)
                 .Take(50)
                 .ToListAsync();
 
@@ -255,8 +301,8 @@ namespace Relational.Tests
             Assert.That(overlap, Is.Empty);
 
             var expectedFirst100 = await _ctx.Records
-                .OrderByDescending(x => x.Date)
-                .ThenByDescending(x => x.Id)
+                .OrderBy(x => x.Date)
+                .ThenBy(x => x.Id)
                 .Take(100)
                 .ToListAsync();
 
@@ -267,7 +313,6 @@ namespace Relational.Tests
 
             Assert.That(actualFirst100, Is.EqualTo(expectedFirst100.Select(x => x.Id)));
         }
-  
 
         [Test]
         public async Task Should_Page_Through_All_Records_Without_Duplicates_Or_Gaps()
@@ -303,8 +348,8 @@ namespace Relational.Tests
             Assert.That(seen.Distinct().Count(), Is.EqualTo(500));
 
             var expected = await _ctx.Records
-                .OrderByDescending(x => x.Date)
-                .ThenByDescending(x => x.Id)
+                .OrderBy(x => x.Date)
+                .ThenBy(x => x.Id)
                 .Select(x => x.Id)
                 .ToListAsync();
 
@@ -346,8 +391,6 @@ namespace Relational.Tests
             string nextRowKey = null;
             ListResponse<SimpleRecord> lastPage = null;
 
-            var loopIdx = 0;
-
             while (true)
             {
                 var request = ListRequest.Create(1, 64);
@@ -357,7 +400,7 @@ namespace Relational.Tests
                 var page = await GetPage(request);
                 lastPage = page;
 
-                 if (!page.HasMoreRecords )
+                if (!page.HasMoreRecords)
                     break;
 
                 nextPartitionKey = page.NextPartitionKey;
@@ -383,6 +426,50 @@ namespace Relational.Tests
             var secondPage = await GetPage(request);
 
             var fullyOrdered = await _ctx.Records
+                .OrderBy(x => x.Date)
+                .ThenBy(x => x.Id)
+                .Take(50)
+                .ToListAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(firstPage.Model.Select(x => x.Id), Is.EqualTo(fullyOrdered.Take(25).Select(x => x.Id)));
+                Assert.That(secondPage.Model.Select(x => x.Id), Is.EqualTo(fullyOrdered.Skip(25).Take(25).Select(x => x.Id)));
+            });
+        }
+
+        [Test]
+        public async Task First_Page_Should_Be_In_Descending_Date_Then_Id_Order_When_Requested()
+        {
+            var listRequest = ListRequest.Create(1, 50);
+
+            var page = await GetPage(listRequest, EfKeysetPagingExtensions.KeysetPagingDirection.Descending);
+
+            Assert.That(page.Model.Count, Is.EqualTo(50));
+
+            var expected = await _ctx.Records
+                .OrderByDescending(x => x.Date)
+                .ThenByDescending(x => x.Id)
+                .Take(50)
+                .ToListAsync();
+
+            Assert.That(page.Model.Select(x => x.Id), Is.EqualTo(expected.Select(x => x.Id)));
+        }
+
+        [Test]
+        public async Task Descending_Cursor_Should_Resume_Exactly_After_Last_Item_Of_Previous_Page_When_Requested()
+        {
+            var firstPage = await GetPage(ListRequest.Create(1, 25), EfKeysetPagingExtensions.KeysetPagingDirection.Descending);
+            Assert.That(firstPage.Model.Count, Is.EqualTo(25));
+            Assert.That(firstPage.HasMoreRecords, Is.True);
+
+            var request = ListRequest.Create(1, 25);
+            request.NextPartitionKey = firstPage.NextPartitionKey;
+            request.NextRowKey = firstPage.NextRowKey;
+
+            var secondPage = await GetPage(request, EfKeysetPagingExtensions.KeysetPagingDirection.Descending);
+
+            var fullyOrdered = await _ctx.Records
                 .OrderByDescending(x => x.Date)
                 .ThenByDescending(x => x.Id)
                 .Take(50)
@@ -395,6 +482,43 @@ namespace Relational.Tests
             });
         }
 
-      
+        [Test]
+        public async Task Should_Page_Through_All_Records_Without_Duplicates_Or_Gaps_In_Descending_Order_When_Requested()
+        {
+            var seen = new List<Guid>();
+            string nextPartitionKey = null;
+            string nextRowKey = null;
+
+            while (true)
+            {
+                var request = ListRequest.Create(1, 50);
+                request.NextPartitionKey = nextPartitionKey;
+                request.NextRowKey = nextRowKey;
+
+                var page = await GetPage(request, EfKeysetPagingExtensions.KeysetPagingDirection.Descending);
+
+                seen.AddRange(page.Model.Select(x => x.Id));
+
+                if (!page.HasMoreRecords)
+                    break;
+
+                nextPartitionKey = page.NextPartitionKey;
+                nextRowKey = page.NextRowKey;
+
+                Assert.That(nextPartitionKey, Is.Not.Null.And.Not.Empty);
+                Assert.That(nextRowKey, Is.Not.Null.And.Not.Empty);
+            }
+
+            Assert.That(seen.Count, Is.EqualTo(500));
+            Assert.That(seen.Distinct().Count(), Is.EqualTo(500));
+
+            var expected = await _ctx.Records
+                .OrderByDescending(x => x.Date)
+                .ThenByDescending(x => x.Id)
+                .Select(x => x.Id)
+                .ToListAsync();
+
+            Assert.That(seen, Is.EqualTo(expected));
+        }
     }
 }
