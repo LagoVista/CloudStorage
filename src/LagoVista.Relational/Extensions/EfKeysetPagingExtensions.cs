@@ -10,32 +10,27 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-
 public static class EfKeysetPagingExtensions
 {
-    public static IQueryable<T> ApplyKeysetPaging<T, TSort, TRow>(
-       this IQueryable<T> query,
-       ListRequest req,
-       Expression<Func<T, TSort>> sortKey,
-       Expression<Func<T, TRow>> rowKey)
-       where TSort : IComparable<TSort>
-       where TRow : IComparable<TRow>
+    public static IQueryable<T> ApplyKeysetPaging<T, TSort, TRow>(this IQueryable<T> query, ListRequest req, Expression<Func<T, TSort>> sortKey, Expression<Func<T, TRow>> rowKey)
+        where TSort : IComparable<TSort>
+        where TRow : IComparable<TRow>
     {
+        var param = sortKey.Parameters[0];
+
+        var sortBody = NormalizeSortExpression(RebindParameter(sortKey.Body, sortKey.Parameters[0], param));
+        var rowBody = RebindParameter(rowKey.Body, rowKey.Parameters[0], param);
+
         if (req?.HasCursor == true)
         {
             var lastSort = Parse<TSort>(req.NextPartitionKey);
             var lastRow = Parse<TRow>(req.NextRowKey);
 
-            var param = sortKey.Parameters[0];
-
-            var sortBody = RebindParameter(sortKey.Body, sortKey.Parameters[0], param);
-            var rowBody = RebindParameter(rowKey.Body, rowKey.Parameters[0], param);
-
-            var lastSortConst = Expression.Constant(lastSort, typeof(TSort));
+            var lastSortConst = Expression.Constant(NormalizeSortValue(lastSort), sortBody.Type);
             var lastRowConst = Expression.Constant(lastRow, typeof(TRow));
 
-            var sortLess = BuildLessThan(sortBody, lastSortConst, typeof(TSort));
-            var sortEq = Expression.Equal(sortBody, lastSortConst);
+            var sortLess = BuildLessThan(sortBody, lastSortConst, sortBody.Type);
+            var sortEq = BuildEqual(sortBody, lastSortConst, sortBody.Type);
             var rowLess = BuildLessThan(rowBody, lastRowConst, typeof(TRow));
 
             var predicateBody = Expression.OrElse(sortLess, Expression.AndAlso(sortEq, rowLess));
@@ -44,10 +39,47 @@ public static class EfKeysetPagingExtensions
             query = query.Where(predicate);
         }
 
-        return query
-            .OrderByDescending(sortKey)
-            .ThenByDescending(rowKey)
-            .Take(req.PageSize + 1);
+        var ordered = ApplyOrderByDescending(query, sortBody, param);
+        return ordered.ThenByDescending(rowKey).Take(req.PageSize + 1);
+    }
+
+    private static IOrderedQueryable<T> ApplyOrderByDescending<T>(IQueryable<T> query, Expression sortBody, ParameterExpression param)
+    {
+        var lambdaType = typeof(Func<,>).MakeGenericType(typeof(T), sortBody.Type);
+        var lambda = Expression.Lambda(lambdaType, sortBody, param);
+
+        var method = typeof(Queryable).GetMethods()
+            .Single(m => m.Name == nameof(Queryable.OrderByDescending)
+                && m.IsGenericMethodDefinition
+                && m.GetParameters().Length == 2);
+
+        var generic = method.MakeGenericMethod(typeof(T), sortBody.Type);
+        return (IOrderedQueryable<T>)generic.Invoke(null, new object[] { query, lambda });
+    }
+
+    private static Expression NormalizeSortExpression(Expression body)
+    {
+        var nonNullableType = Nullable.GetUnderlyingType(body.Type) ?? body.Type;
+
+        if (nonNullableType == typeof(decimal))
+            return Expression.Convert(body, typeof(double));
+
+        return body;
+    }
+
+
+
+    private static object NormalizeSortValue<T>(T value)
+    {
+        if (value == null)
+            return null;
+
+        var nonNullableType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+
+        if (nonNullableType == typeof(decimal))
+            return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+
+        return value;
     }
 
     private static Expression BuildLessThan(Expression left, Expression right, Type type)
@@ -70,12 +102,23 @@ public static class EfKeysetPagingExtensions
             var leftValue = Expression.Property(left, nameof(Nullable<DateOnly>.Value));
             var rightValue = Expression.Property(right, nameof(Nullable<DateOnly>.Value));
 
-            return Expression.AndAlso(
-                Expression.AndAlso(leftHasValue, rightHasValue),
-                Expression.LessThan(leftValue, rightValue));
+            return Expression.AndAlso(Expression.AndAlso(leftHasValue, rightHasValue), Expression.LessThan(leftValue, rightValue));
         }
 
         return Expression.LessThan(left, right);
+    }
+
+    private static Expression BuildEqual(Expression left, Expression right, Type type)
+    {
+        var nonNullableType = Nullable.GetUnderlyingType(type) ?? type;
+
+        if (nonNullableType == typeof(string))
+            return BuildCompareToEqual(left, right, typeof(string));
+
+        if (nonNullableType == typeof(Guid))
+            return BuildCompareToEqual(left, right, typeof(Guid));
+
+        return Expression.Equal(left, right);
     }
 
     private static Expression BuildCompareToLessThan(Expression left, Expression right, Type type)
@@ -90,11 +133,28 @@ public static class EfKeysetPagingExtensions
             var rightValue = Expression.Property(right, "Value");
 
             var compare = BuildNonNullableCompareToLessThan(leftValue, rightValue, nullableUnderlying);
-
             return Expression.AndAlso(Expression.AndAlso(leftHasValue, rightHasValue), compare);
         }
 
         return BuildNonNullableCompareToLessThan(left, right, type);
+    }
+
+    private static Expression BuildCompareToEqual(Expression left, Expression right, Type type)
+    {
+        var nullableUnderlying = Nullable.GetUnderlyingType(left.Type);
+
+        if (nullableUnderlying != null)
+        {
+            var leftHasValue = Expression.Property(left, "HasValue");
+            var rightHasValue = Expression.Property(right, "HasValue");
+            var leftValue = Expression.Property(left, "Value");
+            var rightValue = Expression.Property(right, "Value");
+
+            var compare = BuildNonNullableCompareToEqual(leftValue, rightValue, nullableUnderlying);
+            return Expression.AndAlso(Expression.AndAlso(leftHasValue, rightHasValue), compare);
+        }
+
+        return BuildNonNullableCompareToEqual(left, right, type);
     }
 
     private static Expression BuildNonNullableCompareToLessThan(Expression left, Expression right, Type type)
@@ -105,6 +165,16 @@ public static class EfKeysetPagingExtensions
 
         var compareCall = Expression.Call(left, compareTo, right);
         return Expression.LessThan(compareCall, Expression.Constant(0));
+    }
+
+    private static Expression BuildNonNullableCompareToEqual(Expression left, Expression right, Type type)
+    {
+        var compareTo = type.GetMethod(nameof(IComparable.CompareTo), new[] { type });
+        if (compareTo == null)
+            throw new InvalidOperationException($"Could not find CompareTo({type.Name}) on {type.Name}.");
+
+        var compareCall = Expression.Call(left, compareTo, right);
+        return Expression.Equal(compareCall, Expression.Constant(0));
     }
 
     private static Expression RebindParameter(Expression body, ParameterExpression from, ParameterExpression to)
@@ -146,6 +216,10 @@ public static class EfKeysetPagingExtensions
         else if (nonNullableType == typeof(Guid))
         {
             parsed = Guid.Parse(value);
+        }
+        else if (nonNullableType == typeof(DateTime))
+        {
+            parsed = DateTime.ParseExact(value, "O", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         }
         else if (nonNullableType == typeof(DateOnly))
         {

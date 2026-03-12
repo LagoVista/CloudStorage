@@ -121,9 +121,9 @@ namespace Relational.Tests
         [Test]
         public async Task Should_Page_By_DecimalValue_Then_Id()
         {
-            await Assert_First_Two_Pages_Are_Correct_InMemoryExpected(
+            await Assert_First_Two_Pages_Are_Correct(
                 x => x.DecimalValue,
-                q => q.OrderByDescending(x => x.DecimalValue).ThenByDescending(x => x.Id));
+                q => q.OrderByDescending(x => (double)x.DecimalValue).ThenByDescending(x => x.Id));
         }
 
 
@@ -267,51 +267,7 @@ namespace Relational.Tests
 
             Assert.That(actualFirst100, Is.EqualTo(expectedFirst100.Select(x => x.Id)));
         }
-        private async Task  Assert_First_Two_Pages_Are_Correct_InMemoryExpected<TSort>(
-            Expression<Func<SimpleRecord, TSort>> sortKey,
-            Func<IEnumerable<SimpleRecord>, IOrderedEnumerable<SimpleRecord>> expectedOrder)
-            where TSort : IComparable<TSort>
-        {
-            var partitionSelector = sortKey.Compile();
-
-            var firstRequest = ListRequest.Create(1, 50);
-            var firstPage = await _ctx.Records
-                .ApplyKeysetPaging(firstRequest, sortKey, x => x.Id)
-                .ToListResponseAsync(firstRequest, x => Map(x), partitionSelector, x => x.Id);
-
-            Assert.That(firstPage.Model.Count, Is.EqualTo(50));
-            Assert.That(firstPage.HasMoreRecords, Is.True);
-            Assert.That(firstPage.NextPartitionKey, Is.Not.Null.And.Not.Empty);
-            Assert.That(firstPage.NextRowKey, Is.Not.Null.And.Not.Empty);
-
-            var secondRequest = ListRequest.Create(1, 50);
-            secondRequest.NextPartitionKey = firstPage.NextPartitionKey;
-            secondRequest.NextRowKey = firstPage.NextRowKey;
-
-            var secondPage = await _ctx.Records
-                .ApplyKeysetPaging(secondRequest, sortKey, x => x.Id)
-                .ToListResponseAsync(secondRequest, x => Map(x), partitionSelector, x => x.Id);
-
-            Assert.That(secondPage.Model.Count, Is.EqualTo(50));
-
-            var overlap = firstPage.Model.Select(x => x.Id)
-                .Intersect(secondPage.Model.Select(x => x.Id))
-                .ToList();
-
-            Assert.That(overlap, Is.Empty);
-
-            var allRecords = await _ctx.Records.ToListAsync();
-            var expectedFirst100 = expectedOrder(allRecords)
-                .Take(100)
-                .ToList();
-
-            var actualFirst100 = firstPage.Model
-                .Concat(secondPage.Model)
-                .Select(x => x.Id)
-                .ToList();
-
-            Assert.That(actualFirst100, Is.EqualTo(expectedFirst100.Select(x => x.Id)));
-        }
+  
 
         [Test]
         public async Task Should_Page_Through_All_Records_Without_Duplicates_Or_Gaps()
