@@ -13,37 +13,30 @@ using System.Threading.Tasks;
 
 public static class EfKeysetPagingExtensions
 {
-    /// <summary>
-    /// Applies keyset (seek) paging using ListRequest.NextPartitionKey/NextRowKey as a cursor.
-    /// Ordering: sortKey DESC, rowKey DESC.
-    /// Cursor means: fetch items strictly "after" the cursor in that ordering.
-    /// </summary>
     public static IQueryable<T> ApplyKeysetPaging<T, TSort, TRow>(
-        this IQueryable<T> query,
-        ListRequest req,
-        Expression<Func<T, TSort>> sortKey,
-        Expression<Func<T, TRow>> rowKey)
-        where TSort : IComparable<TSort>
-        where TRow : IComparable<TRow>
+       this IQueryable<T> query,
+       ListRequest req,
+       Expression<Func<T, TSort>> sortKey,
+       Expression<Func<T, TRow>> rowKey)
+       where TSort : IComparable<TSort>
+       where TRow : IComparable<TRow>
     {
         if (req?.HasCursor == true)
         {
-            // Parse cursor from strings
             var lastSort = Parse<TSort>(req.NextPartitionKey);
             var lastRow = Parse<TRow>(req.NextRowKey);
 
-            // Build: x => sort(x) < lastSort || (sort(x) == lastSort && row(x) < lastRow)
             var param = sortKey.Parameters[0];
 
-            var sortBody = Expression.Invoke(sortKey, param);
-            var rowBody = Expression.Invoke(rowKey, param);
+            var sortBody = RebindParameter(sortKey.Body, sortKey.Parameters[0], param);
+            var rowBody = RebindParameter(rowKey.Body, rowKey.Parameters[0], param);
 
             var lastSortConst = Expression.Constant(lastSort, typeof(TSort));
             var lastRowConst = Expression.Constant(lastRow, typeof(TRow));
 
-            var sortLess = Expression.LessThan(sortBody, lastSortConst);
+            var sortLess = BuildLessThan(sortBody, lastSortConst, typeof(TSort));
             var sortEq = Expression.Equal(sortBody, lastSortConst);
-            var rowLess = Expression.LessThan(rowBody, lastRowConst);
+            var rowLess = BuildLessThan(rowBody, lastRowConst, typeof(TRow));
 
             var predicateBody = Expression.OrElse(sortLess, Expression.AndAlso(sortEq, rowLess));
             var predicate = Expression.Lambda<Func<T, bool>>(predicateBody, param);
@@ -51,28 +44,123 @@ public static class EfKeysetPagingExtensions
             query = query.Where(predicate);
         }
 
-        var pageSize = req.PageSize;
-        var takeSize = pageSize + 1;
-
         return query
             .OrderByDescending(sortKey)
             .ThenByDescending(rowKey)
-            .Take(takeSize);
+            .Take(req.PageSize + 1);
+    }
+
+    private static Expression BuildLessThan(Expression left, Expression right, Type type)
+    {
+        var nonNullableType = Nullable.GetUnderlyingType(type) ?? type;
+
+        if (nonNullableType == typeof(string))
+            return BuildCompareToLessThan(left, right, typeof(string));
+
+        if (nonNullableType == typeof(Guid))
+            return BuildCompareToLessThan(left, right, typeof(Guid));
+
+        if (nonNullableType == typeof(DateOnly))
+        {
+            if (Nullable.GetUnderlyingType(type) == null)
+                return Expression.LessThan(left, right);
+
+            var leftHasValue = Expression.Property(left, nameof(Nullable<DateOnly>.HasValue));
+            var rightHasValue = Expression.Property(right, nameof(Nullable<DateOnly>.HasValue));
+            var leftValue = Expression.Property(left, nameof(Nullable<DateOnly>.Value));
+            var rightValue = Expression.Property(right, nameof(Nullable<DateOnly>.Value));
+
+            return Expression.AndAlso(
+                Expression.AndAlso(leftHasValue, rightHasValue),
+                Expression.LessThan(leftValue, rightValue));
+        }
+
+        return Expression.LessThan(left, right);
+    }
+
+    private static Expression BuildCompareToLessThan(Expression left, Expression right, Type type)
+    {
+        var nullableUnderlying = Nullable.GetUnderlyingType(left.Type);
+
+        if (nullableUnderlying != null)
+        {
+            var leftHasValue = Expression.Property(left, "HasValue");
+            var rightHasValue = Expression.Property(right, "HasValue");
+            var leftValue = Expression.Property(left, "Value");
+            var rightValue = Expression.Property(right, "Value");
+
+            var compare = BuildNonNullableCompareToLessThan(leftValue, rightValue, nullableUnderlying);
+
+            return Expression.AndAlso(Expression.AndAlso(leftHasValue, rightHasValue), compare);
+        }
+
+        return BuildNonNullableCompareToLessThan(left, right, type);
+    }
+
+    private static Expression BuildNonNullableCompareToLessThan(Expression left, Expression right, Type type)
+    {
+        var compareTo = type.GetMethod(nameof(IComparable.CompareTo), new[] { type });
+        if (compareTo == null)
+            throw new InvalidOperationException($"Could not find CompareTo({type.Name}) on {type.Name}.");
+
+        var compareCall = Expression.Call(left, compareTo, right);
+        return Expression.LessThan(compareCall, Expression.Constant(0));
+    }
+
+    private static Expression RebindParameter(Expression body, ParameterExpression from, ParameterExpression to)
+    {
+        return new ParameterReplaceVisitor(from, to).Visit(body);
+    }
+
+    private sealed class ParameterReplaceVisitor : ExpressionVisitor
+    {
+        private readonly ParameterExpression _from;
+        private readonly ParameterExpression _to;
+
+        public ParameterReplaceVisitor(ParameterExpression from, ParameterExpression to)
+        {
+            _from = from;
+            _to = to;
+        }
+
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            return node == _from ? _to : base.VisitParameter(node);
+        }
     }
 
     private static T Parse<T>(string value)
     {
-        if (typeof(T) == typeof(DateTime))
-            return (T)(object)DateTime.Parse(value, null, DateTimeStyles.RoundtripKind);
+        var targetType = typeof(T);
+        var nonNullableType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
-        if (typeof(T) == typeof(DateTimeOffset))
-            return (T)(object)DateTimeOffset.Parse(value, null, DateTimeStyles.RoundtripKind);
+        if (string.IsNullOrWhiteSpace(value))
+            return default;
 
-        if (typeof(T) == typeof(Guid))
-            return (T)(object)Guid.Parse(value);
+        object parsed;
 
-        // Most primitives, enums, strings
-        return (T)Convert.ChangeType(value, typeof(T), CultureInfo.InvariantCulture);
+        if (nonNullableType == typeof(string))
+        {
+            parsed = value;
+        }
+        else if (nonNullableType == typeof(Guid))
+        {
+            parsed = Guid.Parse(value);
+        }
+        else if (nonNullableType == typeof(DateOnly))
+        {
+            parsed = DateOnly.ParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+        }
+        else if (nonNullableType.IsEnum)
+        {
+            parsed = Enum.Parse(nonNullableType, value, ignoreCase: true);
+        }
+        else
+        {
+            parsed = Convert.ChangeType(value, nonNullableType, CultureInfo.InvariantCulture);
+        }
+
+        return (T)parsed;
     }
 }
 
@@ -206,17 +294,27 @@ public static partial class EfListResponseExtensions
         set => _current.Value = value;
     }
 
-    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, Func<TIn, Task<TOut>> mapAsync, Func<TOut, DateTime> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
+    private const string DateOnlyCursorFormat = "yyyy-MM-dd";
+
+    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut, TPartition, TRow>(this IQueryable<TIn> query, Func<TIn, Task<TOut>> mapAsync, Func<TOut, TPartition> partitionKeySelector, Func<TOut, TRow> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
     {
         return await query.ToListResponseAsync(new ListRequest { PageSize = int.MaxValue }, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
     }
 
-    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, DateTime> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
+    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut, TPartition, TRow>(this IQueryable<TIn> query, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, TPartition> partitionKeySelector, Func<TOut, TRow> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
     {
-        // Materialize (EF must execute on the server first)
+        return await ToListResponseCoreAsync(query, request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
+    }
+
+    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut, TPartition, TRow>(this IQueryable<TIn> query, ICacheProvider cache, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, TPartition> partitionKeySelector, Func<TOut, TRow> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
+    {
+        return await ToListResponseWithCacheCoreAsync(query, cache, request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
+    }
+
+    private static async Task<ListResponse<TOut>> ToListResponseCoreAsync<TIn, TOut, TPartition, TRow>(IQueryable<TIn> query, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, TPartition> partitionKeySelector, Func<TOut, TRow> rowKeySelector, bool parallel, CancellationToken ct) where TOut : class
+    {
         var dtos = await query.ToListAsync(ct).ConfigureAwait(false);
 
-        // Async map
         IReadOnlyList<TOut> mapped;
 
         if (parallel)
@@ -228,51 +326,32 @@ public static partial class EfListResponseExtensions
             var list = new List<TOut>(dtos.Count);
             foreach (var dto in dtos)
                 list.Add(await mapAsync(dto).ConfigureAwait(false));
+
             mapped = list;
         }
 
-        return ListResponse<TOut>.Create(mapped, request, partitionKeySelector, rowKeySelector);
-    }
+        var hasMoreRecords = mapped.Count > request.PageSize;
+        var model = hasMoreRecords ? mapped.Take(request.PageSize).ToList() : mapped.ToList();
 
-    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, Func<TIn, Task<TOut>> mapAsync, Func<TOut, string> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
-    {
-        return await query.ToListResponseAsync(new ListRequest { PageSize = int.MaxValue }, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
-    }
+        string nextPartitionKey = null;
+        string nextRowKey = null;
 
-    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, string> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
-    {
-        // Materialize (EF must execute on the server first)
-        var dtos = await query.ToListAsync(ct).ConfigureAwait(false);
-
-        // Async map
-        IReadOnlyList<TOut> mapped;
-
-        if (parallel)
+        if (model.Count > 0)
         {
-            mapped = await Task.WhenAll(dtos.Select(mapAsync)).ConfigureAwait(false);
-        }
-        else
-        {
-            var list = new List<TOut>(dtos.Count);
-            foreach (var dto in dtos)
-                list.Add(await mapAsync(dto).ConfigureAwait(false));
-            mapped = list;
+            var lastReturned = model[model.Count - 1];
+            nextPartitionKey = SerializeCursorValue(partitionKeySelector(lastReturned));
+            nextRowKey = SerializeCursorValue(rowKeySelector(lastReturned));
         }
 
-        return ListResponse<TOut>.Create(mapped, request, partitionKeySelector, rowKeySelector);
+        return ListResponse<TOut>.Create(model, request, hasMoreRecords, nextPartitionKey, nextRowKey);
     }
 
-    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, ICacheProvider cache,ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, string> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
+    private static async Task<ListResponse<TOut>> ToListResponseWithCacheCoreAsync<TIn, TOut, TPartition, TRow>(IQueryable<TIn> query, ICacheProvider cache, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, TPartition> partitionKeySelector, Func<TOut, TRow> rowKeySelector, bool parallel, CancellationToken ct) where TOut : class
     {
-        // Extract/strip CacheScope marker if present
         query.TryStrip(out var stripped, out var cacheSpec);
 
-        // If not cacheable, just run the normal path (no behavior change)
         if (cacheSpec == null || cache == null)
-        {
-            return await stripped.ToListResponseAsync(request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct)
-                .ConfigureAwait(false);
-        }
+            return await ToListResponseCoreAsync(stripped, request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
 
         var verKey = $"{cacheSpec.Scope}:ver";
         var ver = await cache.GetLongAsync(verKey).ConfigureAwait(false);
@@ -284,65 +363,38 @@ public static partial class EfListResponseExtensions
         if (cached != null)
             return cached;
 
-        var result = await stripped.ToListResponseAsync(request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
+        var result = await ToListResponseCoreAsync(stripped, request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
 
         await cache.AddAsync(dataKey, result, cacheSpec.Ttl).ConfigureAwait(false);
         return result;
     }
 
-    public static async Task<ListResponse<TOut>> ToListResponseAsync<TIn, TOut>(this IQueryable<TIn> query, ICacheProvider cache, ListRequest request, Func<TIn, Task<TOut>> mapAsync, Func<TOut, DateTime> partitionKeySelector, Func<TOut, string> rowKeySelector, bool parallel = true, CancellationToken ct = default) where TOut : class
+    private static string SerializeCursorValue<T>(T value)
     {
-        // Extract/strip CacheScope marker if present
-        query.TryStrip(out var stripped, out var cacheSpec);
+        if (value == null)
+            return null;
 
-        // If not cacheable, just run the normal path (no behavior change)
-        if (cacheSpec == null || cache == null)
-        {
-            return await stripped.ToListResponseAsync(request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct)
-                .ConfigureAwait(false);
-        }
+        var type = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
 
-        var verKey = $"{cacheSpec.Scope}:ver";
-        var ver = await cache.GetLongAsync(verKey).ConfigureAwait(false);
+        if (type == typeof(string))
+            return (string)(object)value;
 
-        var reqSig = ListRequestCacheSig.ReqSig(request);
-        var dataKey = $"{cacheSpec.Scope}:v{ver}:{reqSig}";
+        if (type == typeof(DateOnly))
+            return ((DateOnly)(object)value).ToString(DateOnlyCursorFormat, CultureInfo.InvariantCulture);
 
-        var cached = await cache.GetAsync<ListResponse<TOut>>(dataKey).ConfigureAwait(false);
-        if (cached != null)
-            return cached;
+        if (type == typeof(DateTime))
+            return ((DateTime)(object)value).ToString("O", CultureInfo.InvariantCulture);
 
-        var result = await stripped.ToListResponseAsync(request, mapAsync, partitionKeySelector, rowKeySelector, parallel, ct).ConfigureAwait(false);
+        if (type == typeof(Guid))
+            return ((Guid)(object)value).ToString();
 
-        await cache.AddAsync(dataKey, result, cacheSpec.Ttl).ConfigureAwait(false);
-        return result;
-    }
+        if (type.IsEnum)
+            return value.ToString();
 
-    private static async Task<ListResponse<TOut>> MaterializeMapCreateAsync<TIn, TOut>(
-        IQueryable<TIn> query,
-        ListRequest request,
-        Func<TIn, Task<TOut>> mapAsync,
-        Func<TOut, string> partitionKeySelector,
-        Func<TOut, string> rowKeySelector,
-        bool parallel,
-        CancellationToken ct) where TOut : class
-    {
-        var dtos = await query.ToListAsync(ct).ConfigureAwait(false);
+        if (value is IFormattable formattable)
+            return formattable.ToString(null, CultureInfo.InvariantCulture);
 
-        IReadOnlyList<TOut> mapped;
-        if (parallel)
-        {
-            mapped = await Task.WhenAll(dtos.Select(mapAsync)).ConfigureAwait(false);
-        }
-        else
-        {
-            var list = new List<TOut>(dtos.Count);
-            foreach (var dto in dtos)
-                list.Add(await mapAsync(dto).ConfigureAwait(false));
-            mapped = list;
-        }
-
-        return ListResponse<TOut>.Create(mapped, request, partitionKeySelector, rowKeySelector);
+        return value.ToString();
     }
 
 }
