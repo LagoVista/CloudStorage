@@ -92,5 +92,20 @@ namespace LagoVista.CloudStorage.Utils
         {
             throw new NotImplementedException();
         }
+
+        public Task<bool> AttemptAcquireLockAsync(string key, string token, TimeSpan? expires = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<bool> ExtendLockAsync(string key, string token, TimeSpan? expires = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<bool> ReleaseLockAsync(string key, string toke)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -39,7 +39,18 @@ namespace LagoVista.CloudStorage.Storage
 
         public Task AddToCollectionAsync(string collectionKey, string key, string value)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> AttemptAcquireLockAsync(string key, string token, TimeSpan? expires = null)
+        {
+            return Task.FromResult(false);
+        }
+
+        public Task<bool> ExtendLockAsync(string key, string token, TimeSpan? expires = null)
+        {
+
+            return Task.FromResult(false);
         }
 
         public async Task<T> GetAndDeleteAsync<T>(string key) where T : class
@@ -119,6 +130,11 @@ namespace LagoVista.CloudStorage.Storage
 
             _inMemoryCache.Add(key, "1");
             return Task.FromResult((long)1);
+        }
+
+        public Task<bool> ReleaseLockAsync(string key, string toke)
+        {
+            throw new NotImplementedException();
         }
 
         public Task RemoveAsync(string key)

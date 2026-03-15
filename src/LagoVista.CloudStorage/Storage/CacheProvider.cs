@@ -42,6 +42,39 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
+        public async Task<bool> AttemptAcquireLockAsync(string key, string token, TimeSpan? expires = null)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                return await db.LockTakeAsync(key, token, expires ?? TimeSpan.FromSeconds(30));
+            }
+
+            return false;
+        }
+
+        public async Task<bool> ExtendLockAsync(string key, string token, TimeSpan? expires = null)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                return await db.LockExtendAsync(key, token, expires ?? TimeSpan.FromSeconds(30));
+            }
+
+            return false;
+        }
+
+        public async Task<bool> ReleaseLockAsync(string key, string toke)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                return await db.LockReleaseAsync(key, toke);
+            }
+
+            return false;
+        }
+
         public Task AddAsync<T>(string key, T value, TimeSpan? ttl = null)
         {
             if(value == null)
