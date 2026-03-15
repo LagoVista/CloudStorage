@@ -24,7 +24,7 @@ namespace LagoVista.Relational
         /// <summary>
         /// When the billing event started
         /// </summary>
-        public DateTime StartTimestamp { get; set; }
+        public DateTime StartTimestampUtc { get; set; }
 
         /// <summary>
         /// User Id of the user that initiated the billing event
@@ -35,7 +35,7 @@ namespace LagoVista.Relational
         /// <summary>
         /// When the billing event ended
         /// </summary>
-        public DateTime? EndTimestamp { get; set; }
+        public DateTime? EndTimestampUtc { get; set; }
         
         /// <summary>
         /// User Id of the User that Terminated the Billing Event.
@@ -46,7 +46,19 @@ namespace LagoVista.Relational
         /// That the record should be considered from a billing perspective. 
         /// </summary>
         public DateOnly? BillingDate { get; set; }
-        
+
+        /// <summary>
+        /// UTC instant when this open slice must roll into the next billing day.
+        /// Null only for event types that never roll.
+        /// </summary>
+        public DateTime? RolloverAtUtc { get; set; }
+
+        /// <summary>
+        /// Captured billing timezone for this slice.
+        /// This must be a stable id into our supported timezone catalog.
+        /// </summary>
+        public int BillingTimeZoneId { get; set; }
+
         /// <summary>
         /// Current Status for Billing Event, -Open, Completed, Invoiced, Error
         /// </summary>
@@ -139,20 +151,22 @@ namespace LagoVista.Relational
             entity.Property(x => x.ResourceName).HasColumnOrder(3);
             entity.Property(x => x.SubscriptionId).HasColumnOrder(4);
             entity.Property(x => x.ProductId).HasColumnOrder(5);
-            entity.Property(x => x.StartTimestamp).HasColumnOrder(6);
+            entity.Property(x => x.StartTimestampUtc).HasColumnOrder(6);
             entity.Property(x => x.StartedByAppUserId).HasColumnOrder(7);
-            entity.Property(x => x.EndTimestamp).HasColumnOrder(8);
+            entity.Property(x => x.EndTimestampUtc).HasColumnOrder(8);
             entity.Property(x => x.BillingDate).HasColumnOrder(9);
-            entity.Property(x => x.EndedByAppUserId).HasColumnOrder(10);
-            entity.Property(x => x.HoursBilled).HasColumnOrder(11);
-            entity.Property(x => x.UnitCost).HasColumnOrder(12);
-            entity.Property(x => x.DiscountPercent).HasColumnOrder(13);
-            entity.Property(x => x.Extended).HasColumnOrder(14);
-            entity.Property(x => x.UnitTypeId).HasColumnOrder(15);
-            entity.Property(x => x.Notes).HasColumnOrder(16);
-            entity.Property(x => x.Status).HasColumnOrder(17);
-            entity.Property(x => x.UnitPrice).HasColumnOrder(18);
-            entity.Property(x => x.Tokens).HasColumnOrder(19);
+            entity.Property(x => x.RolloverAtUtc).HasColumnOrder(10);
+            entity.Property(x => x.BillingTimeZoneId).HasColumnOrder(11);   
+            entity.Property(x => x.EndedByAppUserId).HasColumnOrder(12);
+            entity.Property(x => x.HoursBilled).HasColumnOrder(13);
+            entity.Property(x => x.UnitCost).HasColumnOrder(14);
+            entity.Property(x => x.DiscountPercent).HasColumnOrder(15);
+            entity.Property(x => x.Extended).HasColumnOrder(16);
+            entity.Property(x => x.UnitTypeId).HasColumnOrder(17);
+            entity.Property(x => x.Notes).HasColumnOrder(18);
+            entity.Property(x => x.Status).HasColumnOrder(19);
+            entity.Property(x => x.UnitPrice).HasColumnOrder(20);
+            entity.Property(x => x.Tokens).HasColumnOrder(21);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -160,10 +174,12 @@ namespace LagoVista.Relational
             entity.Property(x => x.ResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.SubscriptionId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.StartTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.StartTimestampUtc).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.StartedByAppUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.EndTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.BillingDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.EndTimestampUtc).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.RolloverAtUtc).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.BillingTimeZoneId).HasColumnType(StandardDBTypes.IntStorage(provider));
+            entity.Property(x => x.BillingDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.EndedByAppUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.HoursBilled).HasColumnType(StandardDBTypes.DecimalMedium(provider));
             entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.MoneyStorage(provider));

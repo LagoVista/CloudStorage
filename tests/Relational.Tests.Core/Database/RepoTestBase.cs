@@ -35,6 +35,8 @@ namespace Relational.Tests.Core.Database
 
         protected abstract EfTestProvider Provider { get; }
 
+        protected abstract void CreateRepos(BillingDataContext billing, MetricsDataContext metricsDataContext, IAdminLogger logger, ILagoVistaAutoMapper autoMapper, ISecureStorage secureStorage);
+
         protected virtual string SqlServerBaseConnectionString => "Server=localhost,1433;Database=master;User Id=sa;Password=4SomeDbTesting?;Encrypt=True;TrustServerCertificate=True;";
         protected virtual string PostgresBaseConnectionString => Environment.GetEnvironmentVariable("TEST_POSTGRES_CS") ?? "";
 
@@ -52,6 +54,8 @@ namespace Relational.Tests.Core.Database
             // Core Primaries for Evenrything
             UserSeeds.Populate(10);
             OrganizationSeeds.Populate(10);
+
+
 
 
             UserEH = UserSeeds.Primary.ToEntityHeader();
@@ -77,6 +81,9 @@ namespace Relational.Tests.Core.Database
 
             await InitializeAsync(BillingCtx);
             await InitializeAsync(metrics);
+            
+            CreateRepos(BillingCtx, metrics, Logger, AutoMapper, SecureStorage);
+
             await PopulateAsync();
 
             cmdInterceptor.IsReady = true;

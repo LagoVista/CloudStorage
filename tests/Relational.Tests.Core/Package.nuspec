@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>LagoVista.Relational.Tests.Core</id>
-    <version>3.0.3223.0607</version>
+    <version>3.0.3223.1850</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -12,20 +12,22 @@
     <copyright>Copyright Software Logistics - 2026</copyright>
     <tags>HomeAutomation IoT LagoVista</tags>
     <icon>LagoVistaIcon.png</icon>
-    <releaseNotes>Build Date: 3/14/2026 10:07:31 AM UTC</releaseNotes>
+    <releaseNotes>Build Date: 3/14/2026 10:50:38 PM UTC</releaseNotes>
     <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
       <group targetFramework="net9.0">
-        <dependency id="LagoVista.Core" version="3.0.3223.0607" />
-        <dependency id="Microsoft.EntityFrameworkCore.SqlServer" version="9.0.13" />
-        <dependency id="Microsoft.Extensions.Logging.Console" version="9.0.13" />
-        <dependency id="Npgsql.EntityFrameworkCore.PostgreSQL" version="9.0.4" />
+        <dependency id="LagoVista.Core.TestBase" version="3.0.3223.1850" />
+        <dependency id="Microsoft.Data.Sqlite.Core" version="10.0.3" />
+        <dependency id="Microsoft.EntityFrameworkCore.Sqlite" version="9.0.13" />
+        <dependency id="LagoVista.Crypto" version="3.0.3223.1850" />
+        <dependency id="LagoVista.CloudStorage" version="3.0.3223.1850" />
+        <dependency id="LagoVista.Relational" version="3.0.3223.1850" />
       </group>
     </dependencies>
   </metadata>
   <files>
     <file src="LagoVistaIcon.png" target="LagoVistaIcon.png" />
-    <file src="bin\release\net9.0\Relational.Tests.Core.dll" target="lib\net9.0\Relational.Tests.Core.dll" />
-    <file src="bin\release\net9.0\Relational.Tests.Core.pdb" target="lib\net9.0\Relational.Tests.Core.pdb" />
+    <file src="bin\release\net9.0\LagoVista.Relational.Tests.Core.dll" target="lib\net9.0\LagoVista.Relational.Tests.Core.dll" />
+    <file src="bin\release\net9.0\LagoVista.Relational.Tests.Core.pdb" target="lib\net9.0\LagoVista.Relational.Tests.Core.pdb" />
   </files>
 </package>
