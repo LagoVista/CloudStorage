@@ -37,6 +37,8 @@ namespace LagoVista.Relational
         public String OrganizationId { get; set; }
         public DateOnly BillingStart { get; set; }
         public DateOnly BillingEnd { get; set; }
+        public DateOnly ServicesStart { get; set; }
+        public DateOnly ServicesEnd { get; set; }
 
         public DateTime CreationTimestamp { get; set; }
         public DateOnly DueDate { get; set; }
@@ -74,7 +76,7 @@ namespace LagoVista.Relational
         [Required]
         public string Status { get; set; }
 
-        public DateTime StatusDate { get; set; }
+        public DateTime StatusTimestamp { get; set; }
 
         [IgnoreOnMapTo]
         public CustomerDTO Customer { get; set; }
@@ -124,27 +126,29 @@ namespace LagoVista.Relational
             entity.Property(x => x.Notes).HasColumnOrder(9);
             entity.Property(x => x.BillingStart).HasColumnOrder(10);
             entity.Property(x => x.BillingEnd).HasColumnOrder(11);
-            entity.Property(x => x.CreationTimestamp).HasColumnOrder(12);
-            entity.Property(x => x.DueDate).HasColumnOrder(13);
-            entity.Property(x => x.EncryptedTotal).HasColumnOrder(14);
-            entity.Property(x => x.EncryptedDiscount).HasColumnOrder(15);
-            entity.Property(x => x.EncryptedExtended).HasColumnOrder(16);
-            entity.Property(x => x.EncryptedTotalPaid).HasColumnOrder(17);
-            entity.Property(x => x.PaidDate).HasColumnOrder(18);
-            entity.Property(x => x.ClosedTransactionId).HasColumnOrder(19);
-            entity.Property(x => x.Status).HasColumnOrder(20);
-            entity.Property(x => x.StatusDate).HasColumnOrder(21);
-            entity.Property(x => x.FailedAttemptCount).HasColumnOrder(22);
-            entity.Property(x => x.AgreementId).HasColumnOrder(23);
-            entity.Property(x => x.EncryptedShipping).HasColumnOrder(24);
-            entity.Property(x => x.EncryptedTax).HasColumnOrder(25);
-            entity.Property(x => x.EncryptedSubtotal).HasColumnOrder(26);
-            entity.Property(x => x.TaxPercent).HasColumnOrder(27);
-            entity.Property(x => x.ContactId).HasColumnOrder(28);
-            entity.Property(x => x.ContactName).HasColumnOrder(29);
-            entity.Property(x => x.AdditionalNotes).HasColumnOrder(30);
-            entity.Property(x => x.IsLocked).HasColumnOrder(31);
-            entity.Property(x => x.InvoiceDate).HasColumnOrder(32);
+            entity.Property(x => x.ServicesStart).HasColumnOrder(12);
+            entity.Property(x => x.ServicesEnd).HasColumnOrder(13);
+            entity.Property(x => x.CreationTimestamp).HasColumnOrder(14);
+            entity.Property(x => x.DueDate).HasColumnOrder(15);
+            entity.Property(x => x.EncryptedTotal).HasColumnOrder(16);
+            entity.Property(x => x.EncryptedDiscount).HasColumnOrder(17);
+            entity.Property(x => x.EncryptedExtended).HasColumnOrder(18);
+            entity.Property(x => x.EncryptedTotalPaid).HasColumnOrder(19);
+            entity.Property(x => x.PaidDate).HasColumnOrder(20);
+            entity.Property(x => x.ClosedTransactionId).HasColumnOrder(21);
+            entity.Property(x => x.Status).HasColumnOrder(22);
+            entity.Property(x => x.StatusTimestamp).HasColumnOrder(23);
+            entity.Property(x => x.FailedAttemptCount).HasColumnOrder(24);
+            entity.Property(x => x.AgreementId).HasColumnOrder(25);
+            entity.Property(x => x.EncryptedShipping).HasColumnOrder(26);
+            entity.Property(x => x.EncryptedTax).HasColumnOrder(27);
+            entity.Property(x => x.EncryptedSubtotal).HasColumnOrder(28);
+            entity.Property(x => x.TaxPercent).HasColumnOrder(29);
+            entity.Property(x => x.ContactId).HasColumnOrder(30);
+            entity.Property(x => x.ContactName).HasColumnOrder(31);
+            entity.Property(x => x.AdditionalNotes).HasColumnOrder(32);
+            entity.Property(x => x.IsLocked).HasColumnOrder(33);
+            entity.Property(x => x.InvoiceDate).HasColumnOrder(34);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -158,6 +162,8 @@ namespace LagoVista.Relational
             entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.BillingStart).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.BillingEnd).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.ServicesStart).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.ServicesEnd).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.CreationTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.DueDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.EncryptedTotal).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
@@ -167,7 +173,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.PaidDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.ClosedTransactionId).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
-            entity.Property(x => x.StatusDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.StatusTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.FailedAttemptCount).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.AgreementId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.EncryptedShipping).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
