@@ -19,6 +19,8 @@ namespace LagoVista.Relational
         public const string PaymentStatus_Approved = "approved";
         public const string PaymentStatus_Funded = "funded";
 
+        public Guid PayrollSummaryId { get; set; }
+
         public DateOnly PeriodStart { get; set; }
         public DateOnly PeriodEnd { get; set; }
 
@@ -72,10 +74,17 @@ namespace LagoVista.Relational
         public List<PaymentDeductionDTO> Deductions { get; set; }
 
         [IgnoreOnMapTo]
+        public List<PaymentEmployerTaxDetailDTO> PayrollTaxDetails { get; set; }
+
+        [IgnoreOnMapTo]
         public AppUserDTO User { get; set; }
 
         [IgnoreOnMapTo]
         public TimePeriodDTO TimePeriod { get; set; }
+
+        [IgnoreOnMapTo]
+        public PayrollSummaryDTO PayrollSummary { get; set; }
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             var mb = modelBuilder;
@@ -86,6 +95,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
             entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.TimePeriod).WithMany().HasForeignKey(x => x.TimePeriodId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.PayrollSummary).WithMany().HasForeignKey(x => x.PayrollSummaryId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
             entity.HasMany(x => x.Deductions).WithOne(x => x.Payment).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
@@ -102,29 +112,30 @@ namespace LagoVista.Relational
             entity.Property(x => x.LastUpdatedDate).HasColumnOrder(5);
             entity.Property(x => x.UserId).HasColumnOrder(6);
             entity.Property(x => x.TimePeriodId).HasColumnOrder(7);
-            entity.Property(x => x.PeriodStart).HasColumnOrder(8);
-            entity.Property(x => x.PeriodEnd).HasColumnOrder(9);
-            entity.Property(x => x.PaymentStatus).HasColumnOrder(10);
-            entity.Property(x => x.OrganizationId).HasColumnOrder(11);
-            entity.Property(x => x.SubmittedDate).HasColumnOrder(12);
-            entity.Property(x => x.ExpectedDeliveryDate).HasColumnOrder(13);
-            entity.Property(x => x.BillableHours).HasColumnOrder(14);
-            entity.Property(x => x.InternalHours).HasColumnOrder(15);
-            entity.Property(x => x.EquityHours).HasColumnOrder(16);
-            entity.Property(x => x.EncryptedGross).HasColumnOrder(17);
-            entity.Property(x => x.EncryptedNet).HasColumnOrder(18);
-            entity.Property(x => x.EncryptedExpenses).HasColumnOrder(19);
-            entity.Property(x => x.PrimaryTransactionId).HasColumnOrder(20);
-            entity.Property(x => x.SecondaryTransactionId).HasColumnOrder(21);
-            entity.Property(x => x.EncryptedPrimaryDeposit).HasColumnOrder(22);
-            entity.Property(x => x.EncryptedEstimatedTaxWithholding).HasColumnOrder(23);
-            entity.Property(x => x.ExpenseDetail).HasColumnOrder(24);
-            entity.Property(x => x.DeductionsDetail).HasColumnOrder(25);
-            entity.Property(x => x.EncryptedEarnedEquity).HasColumnOrder(26);
-            entity.Property(x => x.ContractorPayment).HasColumnOrder(27);
-            entity.Property(x => x.W2Payment).HasColumnOrder(28);
-            entity.Property(x => x.OfficerPayment).HasColumnOrder(29);
-            entity.Property(x => x.EncryptedSecondaryDeposit).HasColumnOrder(30);
+            entity.Property(x => x.PayrollSummaryId).HasColumnOrder(8);
+            entity.Property(x => x.PeriodStart).HasColumnOrder(9);
+            entity.Property(x => x.PeriodEnd).HasColumnOrder(10);
+            entity.Property(x => x.PaymentStatus).HasColumnOrder(11);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(12);
+            entity.Property(x => x.SubmittedDate).HasColumnOrder(13);
+            entity.Property(x => x.ExpectedDeliveryDate).HasColumnOrder(14);
+            entity.Property(x => x.BillableHours).HasColumnOrder(15);
+            entity.Property(x => x.InternalHours).HasColumnOrder(16);
+            entity.Property(x => x.EquityHours).HasColumnOrder(17);
+            entity.Property(x => x.EncryptedGross).HasColumnOrder(18);
+            entity.Property(x => x.EncryptedNet).HasColumnOrder(19);
+            entity.Property(x => x.EncryptedExpenses).HasColumnOrder(20);
+            entity.Property(x => x.PrimaryTransactionId).HasColumnOrder(21);
+            entity.Property(x => x.SecondaryTransactionId).HasColumnOrder(22);
+            entity.Property(x => x.EncryptedPrimaryDeposit).HasColumnOrder(23);
+            entity.Property(x => x.EncryptedEstimatedTaxWithholding).HasColumnOrder(24);
+            entity.Property(x => x.ExpenseDetail).HasColumnOrder(25);
+            entity.Property(x => x.DeductionsDetail).HasColumnOrder(26);
+            entity.Property(x => x.EncryptedEarnedEquity).HasColumnOrder(27);
+            entity.Property(x => x.ContractorPayment).HasColumnOrder(28);
+            entity.Property(x => x.W2Payment).HasColumnOrder(29);
+            entity.Property(x => x.OfficerPayment).HasColumnOrder(30);
+            entity.Property(x => x.EncryptedSecondaryDeposit).HasColumnOrder(31);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -134,6 +145,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.UserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.TimePeriodId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.PayrollSummaryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.PeriodStart).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.PeriodEnd).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.PaymentStatus).HasColumnType(StandardDBTypes.StatusStorage(provider));

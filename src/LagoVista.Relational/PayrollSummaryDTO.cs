@@ -17,11 +17,15 @@ namespace LagoVista.Relational
 
         public string EncryptedTotalSalary { get; set; }
         [Required]
+        public string EncryptedTotalGross { get; set; }
+        [Required]
+        public string EncryptedTotalNet { get; set; }
+        [Required]
         public string EncryptedTotalPayroll { get; set; }
         [Required]
         public string EncryptedTotalExpenses { get; set; }
         [Required]
-        public string EncryptedTotalTaxLiability { get; set; }
+        public string EncryptedTotalPayrollTaxObligation { get; set; }
         [Required]
         public string EncryptedTotalRevenue { get; set; }
         public string EncryptedTaxLiabilities { get; set; }
@@ -41,6 +45,12 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public List<PayrollSummaryDeductionDTO> Deductions { get; set; }
 
+        [IgnoreOnMapTo]
+        public List<PaymentDTO> Payments { get; set; }
+
+        [IgnoreOnMapTo]
+        public List<PaymentEmployerTaxDetailDTO> PayrollTaxDetails { get; set; }
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             var mb = modelBuilder;
@@ -53,7 +63,9 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
             entity.HasOne(x => x.TimePeriod).WithOne(x => x.PayrollSummary).HasForeignKey<TimePeriodDTO>(x => x.PayrollSummaryId);
+            entity.HasMany(x => x.Payments).WithOne(x => x.PayrollSummary).HasForeignKey(x => x.PayrollSummaryId);
             entity.HasMany(x => x.Deductions).WithOne(x => x.PayrollSummary).HasForeignKey(x => x.PayrollSummaryId);    
+            entity.HasMany(x => x.PayrollTaxDetails).WithOne(x => x.PayrollSummary).HasForeignKey(x => x.PayrollSummaryId);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
@@ -66,15 +78,17 @@ namespace LagoVista.Relational
             entity.Property(x => x.LastUpdatedDate).HasColumnOrder(5);
             entity.Property(x => x.OrganizationId).HasColumnOrder(6);
             entity.Property(x => x.EncryptedTotalSalary).HasColumnOrder(7);
-            entity.Property(x => x.EncryptedTotalPayroll).HasColumnOrder(8);
-            entity.Property(x => x.EncryptedTotalExpenses).HasColumnOrder(9);
-            entity.Property(x => x.EncryptedTotalTaxLiability).HasColumnOrder(10);
-            entity.Property(x => x.EncryptedTotalRevenue).HasColumnOrder(11);
-            entity.Property(x => x.EncryptedTaxLiabilities).HasColumnOrder(12);
-            entity.Property(x => x.Status).HasColumnOrder(13);
-            entity.Property(x => x.Locked).HasColumnOrder(14);
-            entity.Property(x => x.LockedTimestamp).HasColumnOrder(15);
-            entity.Property(x => x.LockedByUserId).HasColumnOrder(16);
+            entity.Property(x => x.EncryptedTotalGross).HasColumnOrder(8);
+            entity.Property(x => x.EncryptedTotalNet).HasColumnOrder(9);
+            entity.Property(x => x.EncryptedTotalPayroll).HasColumnOrder(10);
+            entity.Property(x => x.EncryptedTotalExpenses).HasColumnOrder(11);
+            entity.Property(x => x.EncryptedTotalPayrollTaxObligation).HasColumnOrder(12);
+            entity.Property(x => x.EncryptedTotalRevenue).HasColumnOrder(13);
+            entity.Property(x => x.EncryptedTaxLiabilities).HasColumnOrder(14);
+            entity.Property(x => x.Status).HasColumnOrder(15);
+            entity.Property(x => x.Locked).HasColumnOrder(16);
+            entity.Property(x => x.LockedTimestamp).HasColumnOrder(17);
+            entity.Property(x => x.LockedByUserId).HasColumnOrder(18);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -85,8 +99,10 @@ namespace LagoVista.Relational
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.EncryptedTotalSalary).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotalPayroll).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedTotalGross).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedTotalNet).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotalExpenses).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.EncryptedTotalTaxLiability).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedTotalPayrollTaxObligation).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotalRevenue).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTaxLiabilities).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
