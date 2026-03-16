@@ -18,7 +18,7 @@ namespace LagoVista.Relational
         public Guid PaymentId { get; set; }
 
         [Required]
-        public Guid PayrollSummaryId { get; set; }
+        public Guid PayrollRunId { get; set; }
 
         [Required]
         public DateOnly EffectiveDate { get; set; }
@@ -54,7 +54,7 @@ namespace LagoVista.Relational
         public PaymentDTO Payment { get; set; }
 
         [IgnoreOnMapTo]
-        public PayrollSummaryDTO PayrollSummary { get; set; }
+        public PayrollRunDTO PayrollRun { get; set; }
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -66,7 +66,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
             entity.HasOne(x => x.Payment).WithMany(x => x.PayrollTaxDetails).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(x => x.PayrollSummary).WithMany(x => x.PayrollTaxDetails).HasForeignKey(x => x.PayrollSummaryId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.PayrollRun).WithMany(x => x.PayrollTaxDetails).HasForeignKey(x => x.PayrollRunId).OnDelete(DeleteBehavior.Cascade);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
@@ -74,7 +74,7 @@ namespace LagoVista.Relational
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.PaymentId).HasColumnOrder(2);
-            entity.Property(x => x.PayrollSummaryId).HasColumnOrder(3);
+            entity.Property(x => x.PayrollRunId).HasColumnOrder(3);
             entity.Property(x => x.OrganizationId).HasColumnOrder(4);
             entity.Property(x => x.UserId).HasColumnOrder(5);
             entity.Property(x => x.EffectiveDate).HasColumnOrder(6);
@@ -86,7 +86,7 @@ namespace LagoVista.Relational
 
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.PaymentId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.PayrollSummaryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.PayrollRunId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.UserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.EffectiveDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));

@@ -25,10 +25,10 @@ namespace LagoVista.Relational
         public DateOnly End { get; set; }
         public bool Locked { get; set; }
 
-        public Guid? PayrollSummaryId { get; set; }
+        public Guid? PayrollRunId { get; set; }
 
         [IgnoreOnMapTo]
-        public PayrollSummaryDTO PayrollSummary { get; set; }
+        public PayrollRunDTO PayrollRun { get; set; }
 
         public DateTime? LockedTimestamp { get; set; }
         public string LockedByUserId { get; set; }
@@ -54,7 +54,7 @@ namespace LagoVista.Relational
             // Relationships
             entity.HasOne(x => x.LockedByUser).WithMany().HasForeignKey(x => x.LockedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(x => x.PayrollSummary).WithOne(x => x.TimePeriod).HasForeignKey<TimePeriodDTO>(x => x.PayrollSummaryId);
+            entity.HasOne(x => x.PayrollRun).WithOne(x => x.TimePeriod).HasForeignKey<TimePeriodDTO>(x => x.PayrollRunId);
             entity.HasMany(x => x.TimeEntries).WithOne(x => x.TimePeriod).HasForeignKey(x => x.TimePeriodId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
@@ -67,7 +67,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Locked).HasColumnOrder(4);
             entity.Property(x => x.LockedByUserId).HasColumnOrder(5);
             entity.Property(x => x.LockedTimestamp).HasColumnOrder(6);
-            entity.Property(x => x.PayrollSummaryId).HasColumnOrder(7);
+            entity.Property(x => x.PayrollRunId).HasColumnOrder(7);
             entity.Property(x => x.Start).HasColumnOrder(8);
             entity.Property(x => x.End).HasColumnOrder(9);
 
@@ -78,7 +78,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Locked).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.LockedByUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LockedTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.PayrollSummaryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.PayrollRunId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.Start).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.End).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
         }

@@ -97,6 +97,19 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public List<InvoiceLogsDTO> Logs { get; set; }
 
+        [IgnoreOnMapTo]
+        [NotMapped]
+        public string CustomerName => Customer?.CustomerName;
+
+        [IgnoreOnMapTo]
+        [NotMapped]
+        public string OrgName => Organization?.OrgName;
+
+        [IgnoreOnMapTo]
+        [NotMapped]
+        public string AgreementName => Agreement?.Name;
+
+ 
 
         public static void Configure(ModelBuilder modelBuilder)
         {

@@ -14,7 +14,7 @@ namespace LagoVista.Relational.DataContexts
         {
 
         }
-       
+
         public string GetBersion => this.GetType().Assembly.GetName().Version.ToString();
 
         public DbSet<AppUserDTO> AppUser { get; set; }
@@ -68,9 +68,10 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<ExpenseReimbursementDTO> ReimbursedDeductions { get; set; }
 
         public DbSet<PayRateDTO> PayRates { get; set; }
-        public DbSet<PayrollSummaryDTO> PayrollSummary { get; set; }
-        public DbSet<PayrollSummaryDeductionDTO> PayrollSummaryDeductions { get; set; }
+        public DbSet<PayrollRunDTO> PayrollRuns { get; set; }
+        public DbSet<PayrollRunDeductionDTO> PayrollRunDeductions { get; set; }
 
+        public DbSet<PaymentEmployerTaxDetailDTO> PaymentEmployerTaxDetails { get; set; }
 
         public DbSet<RecurringCycleTypeDTO> RecurringCycleTypes { get; set; }
 
@@ -86,8 +87,6 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<VendorDTO> Vendor { get; set; }
 
         public DbSet<WorkRoleDTO> WorkRoles { get; set; }
-
-
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -117,7 +116,7 @@ namespace LagoVista.Relational.DataContexts
 
             InvoiceDTO.Configure(modelBuilder);
             InvoiceLineItemDTO.Configure(modelBuilder);
-            InvoiceLogsDTO.Configure(modelBuilder); 
+            InvoiceLogsDTO.Configure(modelBuilder);
 
             LicenseDTO.Configure(modelBuilder);
             LicenseUsageDTO.Configure(modelBuilder);
@@ -127,8 +126,8 @@ namespace LagoVista.Relational.DataContexts
 
             PayRateDTO.Configure(modelBuilder);
 
-            PayrollSummaryDTO.Configure(modelBuilder);
-            PayrollSummaryDeductionDTO.Configure(modelBuilder);
+            Relational.PayrollRunDTO.Configure(modelBuilder);
+            PayrollRunDeductionDTO.Configure(modelBuilder);
             ExpenseReimbursementDTO.Configure(modelBuilder);
 
             ProductCategoryDTO.Configure(modelBuilder);
@@ -149,10 +148,12 @@ namespace LagoVista.Relational.DataContexts
 
             SerialNumberDTO.Configure(modelBuilder);
 
-           SubscriptionDTO.Configure(modelBuilder);
+            SubscriptionDTO.Configure(modelBuilder);
 
-           TimeEntryDTO.Configure(modelBuilder);
-           TimePeriodDTO.Configure(modelBuilder);
+            TimeEntryDTO.Configure(modelBuilder);
+            TimePeriodDTO.Configure(modelBuilder);
+
+            PaymentEmployerTaxDetailDTO.Configure(modelBuilder);
 
             TransactionStagingDto.Configure(modelBuilder);
 

@@ -25,7 +25,7 @@ InvoiceLineItemDTO	EncryptedUnitPrice, EncryptedTotal, EncryptedDiscount, Encryp
 InvoiceLogDTO	EncryptedAmount
 PaymentDTO	EncryptedGross, EncryptedNet, EncryptedExpenses, EncryptedPrimaryDeposit, EncryptedSecondaryDeposit, EncryptedEarnedEquity
 PayRate	EncryptedSalary, EncryptedDeductions, EncryptedEquityScaler, EncryptedBillableRate, EncryptedInternalRate
-PayrollSummaryDTO	EncryptedTotalSalary, EncryptedTotalPayroll, EncryptedTotalExpenses, EncryptedTotalPayrollTaxObligation, EncryptedTotalRevenue, EncryptedTaxLiabilities
+PayrollRun	EncryptedTotalSalary, EncryptedTotalPayroll, EncryptedTotalExpenses, EncryptedTotalPayrollTaxObligation, EncryptedTotalRevenue, EncryptedTaxLiabilities
 ExpenseDTO	EncryptedAmount, EncryptedReimbursedAmount
          
          

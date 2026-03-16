@@ -19,6 +19,7 @@ namespace LagoVista.Relational
         [Required]
         public string OrganizationId { get; set; }
         [Required]
+        [IgnoreOnMapTo]
         public Guid PaymentId { get; set; }
         [Required]
         public Guid ExpenseId { get; set; }

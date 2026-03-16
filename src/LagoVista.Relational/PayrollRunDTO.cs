@@ -9,9 +9,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LagoVista.Relational
 {
     [ModernKeyId("org-{id}", IdPath = "OrganizationId")]
-    [Table("PayrollSummary", Schema = "dbo")]
+    [Table("PayrollRun", Schema = "dbo")]
     [EncryptionKey("PAYROLLSUMMARY_KEY")]
-    public class PayrollSummaryDTO : DbModelBase
+    public class PayrollRunDTO : DbModelBase
     {
         [Required]
 
@@ -28,6 +28,8 @@ namespace LagoVista.Relational
         public string EncryptedTotalPayrollTaxObligation { get; set; }
         [Required]
         public string EncryptedTotalRevenue { get; set; }
+
+        [IgnoreOnMapTo]
         public string EncryptedTaxLiabilities { get; set; }
         [Required]
         public string Status { get; set; }
@@ -35,15 +37,26 @@ namespace LagoVista.Relational
         public DateTime? LockedTimestamp { get; set; }
         public string LockedByUserId { get; set; }
 
+        public bool Approved { get; set; }
+
+        public DateTime? ApprovedTimestamp { get; set; } 
+
+        public string ApprovedByUserId { get; set; }
+
         [IgnoreOnMapTo]
         [MapTo("LockedByUser")]
-        public AppUserDTO LockedUser { get; set; }
+        public AppUserDTO LockedByUser { get; set; }
+
+        [IgnoreOnMapTo]
+        [MapTo("ApprovedByUser")]
+        public AppUserDTO ApprovedByUser { get; set; }
+
 
         [IgnoreOnMapTo]
         public TimePeriodDTO TimePeriod { get; set; }
 
         [IgnoreOnMapTo]
-        public List<PayrollSummaryDeductionDTO> Deductions { get; set; }
+        public List<PayrollRunDeductionDTO> Deductions { get; set; }
 
         [IgnoreOnMapTo]
         public List<PaymentDTO> Payments { get; set; }
@@ -55,17 +68,18 @@ namespace LagoVista.Relational
         {
             var mb = modelBuilder;
             var provider = mb.GetProviderName();
-            var entity = mb.Entity<PayrollSummaryDTO>();
+            var entity = mb.Entity<PayrollRunDTO>();
 
             // Relationships
-            entity.HasOne(x => x.LockedUser).WithMany().HasForeignKey(x => x.LockedByUserId);
+            entity.HasOne(x => x.LockedByUser).WithMany().HasForeignKey(x => x.LockedByUserId);
+            entity.HasOne(x => x.ApprovedByUser).WithMany().HasForeignKey(x => x.ApprovedByUserId);
             entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
-            entity.HasOne(x => x.TimePeriod).WithOne(x => x.PayrollSummary).HasForeignKey<TimePeriodDTO>(x => x.PayrollSummaryId);
-            entity.HasMany(x => x.Payments).WithOne(x => x.PayrollSummary).HasForeignKey(x => x.PayrollSummaryId);
-            entity.HasMany(x => x.Deductions).WithOne(x => x.PayrollSummary).HasForeignKey(x => x.PayrollSummaryId);    
-            entity.HasMany(x => x.PayrollTaxDetails).WithOne(x => x.PayrollSummary).HasForeignKey(x => x.PayrollSummaryId);
+            entity.HasOne(x => x.TimePeriod).WithOne(x => x.PayrollRun).HasForeignKey<TimePeriodDTO>(x => x.PayrollRunId);
+            entity.HasMany(x => x.Payments).WithOne(x => x.PayrollRun).HasForeignKey(x => x.PayrollRunId);
+            entity.HasMany(x => x.Deductions).WithOne(x => x.PayrollRun).HasForeignKey(x => x.PayrollRunId);    
+            entity.HasMany(x => x.PayrollTaxDetails).WithOne(x => x.PayrollRun).HasForeignKey(x => x.PayrollRunId);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
@@ -89,6 +103,9 @@ namespace LagoVista.Relational
             entity.Property(x => x.Locked).HasColumnOrder(16);
             entity.Property(x => x.LockedTimestamp).HasColumnOrder(17);
             entity.Property(x => x.LockedByUserId).HasColumnOrder(18);
+            entity.Property(x => x.Locked).HasColumnOrder(19);
+            entity.Property(x => x.LockedTimestamp).HasColumnOrder(20);
+            entity.Property(x => x.LockedByUserId).HasColumnOrder(21);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -109,6 +126,9 @@ namespace LagoVista.Relational
             entity.Property(x => x.Locked).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.LockedTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.LockedByUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.Approved).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.ApprovedTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.ApprovedByUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
         }
     }
 }

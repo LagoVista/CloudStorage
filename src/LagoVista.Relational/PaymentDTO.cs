@@ -19,7 +19,7 @@ namespace LagoVista.Relational
         public const string PaymentStatus_Approved = "approved";
         public const string PaymentStatus_Funded = "funded";
 
-        public Guid PayrollSummaryId { get; set; }
+        public Guid PayrollRunId { get; set; }
 
         public DateOnly PeriodStart { get; set; }
         public DateOnly PeriodEnd { get; set; }
@@ -58,11 +58,12 @@ namespace LagoVista.Relational
         [Required]
         public string EncryptedEarnedEquity { get; set; }
 
+        [IgnoreOnMapTo]
+        public string ExpenseDetail { get; set; } = "legacy";
 
-        public string ExpenseDetail { get; set; }
-        public string DeductionsDetail { get; set; }
+        [IgnoreOnMapTo]
+        public string DeductionsDetail { get; set; } = "legacy";
 
-        
         public bool ContractorPayment { get; set; }
         public bool W2Payment { get; set; }
         public bool OfficerPayment { get; set; }
@@ -83,7 +84,7 @@ namespace LagoVista.Relational
         public TimePeriodDTO TimePeriod { get; set; }
 
         [IgnoreOnMapTo]
-        public PayrollSummaryDTO PayrollSummary { get; set; }
+        public PayrollRunDTO PayrollRun { get; set; }
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -95,7 +96,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
             entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.TimePeriod).WithMany().HasForeignKey(x => x.TimePeriodId).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.PayrollSummary).WithMany().HasForeignKey(x => x.PayrollSummaryId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.PayrollRun).WithMany().HasForeignKey(x => x.PayrollRunId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
             entity.HasMany(x => x.Deductions).WithOne(x => x.Payment).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
@@ -112,7 +113,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.LastUpdatedDate).HasColumnOrder(5);
             entity.Property(x => x.UserId).HasColumnOrder(6);
             entity.Property(x => x.TimePeriodId).HasColumnOrder(7);
-            entity.Property(x => x.PayrollSummaryId).HasColumnOrder(8);
+            entity.Property(x => x.PayrollRunId).HasColumnOrder(8);
             entity.Property(x => x.PeriodStart).HasColumnOrder(9);
             entity.Property(x => x.PeriodEnd).HasColumnOrder(10);
             entity.Property(x => x.PaymentStatus).HasColumnOrder(11);
@@ -145,7 +146,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.UserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.TimePeriodId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.PayrollSummaryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.PayrollRunId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.PeriodStart).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.PeriodEnd).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.PaymentStatus).HasColumnType(StandardDBTypes.StatusStorage(provider));
