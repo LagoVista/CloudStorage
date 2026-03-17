@@ -9,6 +9,7 @@ namespace LagoVista.Relational
 {
     [ModernKeyId("org-{id}", IdPath = "OrganizationId")]
     [Table("PaymentEmployerTaxDetail", Schema = "dbo")]
+    [EncryptionKey("PAYROLL_KEY")]
     public class PaymentEmployerTaxDetailDTO
     {
         [Key]

@@ -101,6 +101,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
             entity.HasMany(x => x.Deductions).WithOne(x => x.Payment).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(x => x.ExpenseReimbursements).WithOne(x => x.Payment).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.PayrollTaxDetails).WithOne(x => x.Payment).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

@@ -9,6 +9,7 @@ namespace LagoVista.Relational
 {
     [ModernKeyId("user-{id}", IdPath = "UserId")]
     [Table("PaymentDeduction", Schema = "dbo")]
+    [EncryptionKey("UserId={id}", IdProperty = "UserId")]
     public class PaymentDeductionDTO
     {
         [Key]

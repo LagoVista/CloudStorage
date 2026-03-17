@@ -10,6 +10,7 @@ namespace LagoVista.Relational
 
     [ModernKeyId("user-{id}", IdPath = "UserId")]
     [Table("ExpenseReimbursed", Schema = "dbo")]
+    [EncryptionKey("UserId={id}", IdProperty = "UserId")]
     public class ExpenseReimbursementDTO
     {
         [Key]
@@ -19,7 +20,6 @@ namespace LagoVista.Relational
         [Required]
         public string OrganizationId { get; set; }
         [Required]
-        [IgnoreOnMapTo]
         public Guid PaymentId { get; set; }
         [Required]
         public Guid ExpenseId { get; set; }
@@ -30,7 +30,7 @@ namespace LagoVista.Relational
         [Required]
         public string EncryptedSubmittedAmount { get; set; }
         [Required]
-        public string EncryptedReimbursedAmountAmount { get; set; }
+        public string EncryptedReimbursedAmount { get; set; }
         [Required]
         public string Description { get; set; }
 
@@ -76,7 +76,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.ExpenseDate).HasColumnOrder(7);
             entity.Property(x => x.Description).HasColumnOrder(8);
             entity.Property(x => x.EncryptedSubmittedAmount).HasColumnOrder(9);
-            entity.Property(x => x.EncryptedReimbursedAmountAmount).HasColumnOrder(10);
+            entity.Property(x => x.EncryptedReimbursedAmount).HasColumnOrder(10);
 
 
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -88,7 +88,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.ExpenseDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.EncryptedSubmittedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.EncryptedReimbursedAmountAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.EncryptedReimbursedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
 
         }
 
