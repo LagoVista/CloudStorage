@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LagoVista.Relational
 {
     [ModernKeyId("exteranl-account-{id}", IdPath = "ItemId")]
-    [EncryptionKey("exteranl-account-{id}", IdProperty = nameof(TransactionStagingDto.PlaidAccountId), CreateIfMissing = false)]
+    [EncryptionKey("exteranl-account-{id}", IdProperty = nameof(TransactionStagingDto.ProviderAccountId), CreateIfMissing = false)]
 
     [Table("TransactionStaging", Schema = "dbo")]
     public class TransactionStagingDto
@@ -29,9 +29,10 @@ namespace LagoVista.Relational
 
         public string PendingTransactionId { get; set; }
 
-        public string PlaidAccountId { get; set; }
-
-        public string PlaidTransactionId { get; set; }
+        public string Provider { get; set; }
+        public string ProviderId { get; set; }
+        public string ProviderAccountId { get; set; }
+        public string ExternalTransactionId { get; set; }
 
         public string TransactionType { get; set; }
 
@@ -77,17 +78,19 @@ namespace LagoVista.Relational
             entity.Property(x => x.MerchantName).HasColumnOrder(6);
             entity.Property(x => x.OriginalDescription).HasColumnOrder(7);
             entity.Property(x => x.PendingTransactionId).HasColumnOrder(8);
-            entity.Property(x => x.PlaidAccountId).HasColumnOrder(9);
-            entity.Property(x => x.PlaidTransactionId).HasColumnOrder(10);
-            entity.Property(x => x.TransactionType).HasColumnOrder(11);
-            entity.Property(x => x.AuthorizationDate).HasColumnOrder(12);
-            entity.Property(x => x.EncryptedAmount).HasColumnOrder(13);
-            entity.Property(x => x.IsoCurrencyCode).HasColumnOrder(14);
-            entity.Property(x => x.UnofficialCurrencyCode).HasColumnOrder(15);
-            entity.Property(x => x.Categories).HasColumnOrder(16);
-            entity.Property(x => x.CheckNumber).HasColumnOrder(17);
-            entity.Property(x => x.SuggestedCategory).HasColumnOrder(18);
-            entity.Property(x => x.MerchantEntryId).HasColumnOrder(19);
+            entity.Property(x => x.Provider).HasColumnOrder(9);
+            entity.Property(x => x.ProviderId).HasColumnOrder(10);
+            entity.Property(x => x.ProviderAccountId).HasColumnOrder(11);
+            entity.Property(x => x.ExternalTransactionId).HasColumnOrder(12);
+            entity.Property(x => x.TransactionType).HasColumnOrder(13);
+            entity.Property(x => x.AuthorizationDate).HasColumnOrder(14);
+            entity.Property(x => x.EncryptedAmount).HasColumnOrder(15);
+            entity.Property(x => x.IsoCurrencyCode).HasColumnOrder(16);
+            entity.Property(x => x.UnofficialCurrencyCode).HasColumnOrder(17);
+            entity.Property(x => x.Categories).HasColumnOrder(18);
+            entity.Property(x => x.CheckNumber).HasColumnOrder(19);
+            entity.Property(x => x.SuggestedCategory).HasColumnOrder(20);
+            entity.Property(x => x.MerchantEntryId).HasColumnOrder(21);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -98,8 +101,10 @@ namespace LagoVista.Relational
             entity.Property(x => x.MerchantName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.OriginalDescription).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.PendingTransactionId).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.PlaidAccountId).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.PlaidTransactionId).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Provider).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ProviderId).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.ProviderAccountId).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.ExternalTransactionId).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.TransactionType).HasColumnType(StandardDBTypes.CategoryStorage(provider));
             entity.Property(x => x.AuthorizationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
