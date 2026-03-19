@@ -72,7 +72,7 @@ public static class DefaultSqlNormalizer
         return s;
     }
 
-    public static string NormalizeEf(string? defaultValueSql, object defaultValue)
+    public static string NormalizeEf(string defaultValueSql, object defaultValue)
     {
         if (!string.IsNullOrWhiteSpace(defaultValueSql))
         {

@@ -56,7 +56,7 @@ ORDER BY ORDINAL_POSITION;";
     }
     public static async Task<IReadOnlyList<DbTableRef>> ReadAllTablesAsync(
           SqlConnection conn,
-          string? schema = "dbo",
+          string schema = "dbo",
           bool includeViews = false)
     {
         if (conn == null) throw new ArgumentNullException(nameof(conn));

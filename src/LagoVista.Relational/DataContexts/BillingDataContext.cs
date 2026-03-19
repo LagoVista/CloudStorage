@@ -20,6 +20,7 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<AppUserDTO> AppUser { get; set; }
         public DbSet<OrganizationDTO> Org { get; set; }
 
+        public DbSet<CreditCardDTO> CreditCards { get; set; }
 
         public DbSet<ProductDTO> Product { get; set; }
 
@@ -31,7 +32,6 @@ namespace LagoVista.Relational.DataContexts
 
         public DbSet<AccountDto> Account { get; set; }
         public DbSet<AccountTransactionDto> Transaction { get; set; }
-        public DbSet<TransactionStagingDto> TransactionStaging { get; set; }
 
         public DbSet<AccountTransactionCategoryDto> AccountTransactionCategory { get; set; }
 
@@ -82,6 +82,9 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<TimeEntryDTO> TimeEntries { get; set; }
         public DbSet<TimePeriodDTO> TimePeriods { get; set; }
 
+    //    public DbSet<TransactionStagingDto> TransactionStaging { get; set; }
+
+
         public DbSet<UnitTypeDTO> UnitTypes { get; set; }
 
         public DbSet<VendorDTO> Vendor { get; set; }
@@ -105,6 +108,8 @@ namespace LagoVista.Relational.DataContexts
             BillingEventDTO.Configure(modelBuilder);
 
             BudgetItemDTO.Configure(modelBuilder);
+
+            CreditCardDTO.Configure(modelBuilder);
 
             CustomerDTO.Configure(modelBuilder);
 
@@ -155,7 +160,7 @@ namespace LagoVista.Relational.DataContexts
 
             PaymentEmployerTaxDetailDTO.Configure(modelBuilder);
 
-            TransactionStagingDto.Configure(modelBuilder);
+//            TransactionStagingDto.Configure(modelBuilder);
 
             VendorDTO.Configure(modelBuilder);
 

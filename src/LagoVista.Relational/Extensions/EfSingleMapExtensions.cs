@@ -26,7 +26,7 @@ public static class EfSingleMapExtensions
         return await mapAsync(dto).ConfigureAwait(false);
     }
 
-    public static async Task<TOut?> FirstOrDefaultMapAsync<TIn, TOut>(
+    public static async Task<TOut> FirstOrDefaultMapAsync<TIn, TOut>(
         this IQueryable<TIn> query,
         Func<TIn, Task<TOut>> mapAsync,
         CancellationToken ct = default)

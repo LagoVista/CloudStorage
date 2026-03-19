@@ -22,9 +22,6 @@ public static class EfColumnTypeReader
 
         var list = new List<ColumnTypeShape>();
 
-        var idx = 1;
-        
-
         foreach (var p in et.GetProperties())
         {
             // Skip properties not mapped to this store object (prevents the exception you hit earlier)

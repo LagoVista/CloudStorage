@@ -12,16 +12,15 @@ namespace Relational.Tests.Core.Utils
             this T entity,
             EntityHeader org = null,
             EntityHeader user = null,
-            DateTime? nowUtc = null) where T : RelationalEntityBase
+            UtcTimestamp? nowUtc = null) where T : RelationalEntityBase
         {
-            var now = nowUtc ?? DateTime.UtcNow;
-            var ts = now.ToJSONString();
-
+            var now = nowUtc ?? UtcTimestamp.Now;
+            
             entity.OwnerOrganization = org ?? OrganizationSeeds.Primary.ToEntityHeader();
             entity.CreatedBy = user ?? UserSeeds.Primary.ToEntityHeader();
             entity.LastUpdatedBy = user ?? UserSeeds.Primary.ToEntityHeader();
-            entity.CreationDate = ts;
-            entity.LastUpdatedDate = ts;
+            entity.CreationDate = now;
+            entity.LastUpdatedDate = now;
 
             return entity;
         }

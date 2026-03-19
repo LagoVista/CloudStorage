@@ -1,11 +1,5 @@
-﻿using LagoVista.CloudStorage.Utils;
-using LagoVista.Core.Models;
-using LagoVista.Models;
-using LagoVista.Relational;
-using LagoVista.Relational.DataContexts;
-using Microsoft.Data.SqlClient;
+﻿using LagoVista.Relational;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -45,7 +39,7 @@ namespace Relational.Tests
         }
 
         [Test]
-        public async Task CheckSingleTable() => await AssertTableMatchesModelAsync(typeof(TimeEntryDTO), true, showEFSuggestions:true, showDBSuggestions:true, typesOnly:true );
+        public async Task CheckSingleTable() => await AssertTableMatchesModelAsync(typeof(CreditCardDTO), true, showEFSuggestions:true, showDBSuggestions:true, typesOnly:true );
 
         private static HashSet<string> GetExpectedTablesFromDbSets(DbContext ctx)
         {

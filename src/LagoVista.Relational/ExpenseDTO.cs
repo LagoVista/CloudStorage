@@ -17,6 +17,8 @@ namespace LagoVista.Relational
         public Guid TimePeriodId { get; set; }
         public Guid? BillingEventId { get; set; }
 
+        public Guid? CreditCardId { get; set; }
+
         public Guid? VendorId { get; set; }
 
         public Guid? PaymentId { get; set; }
@@ -54,6 +56,9 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public AppUserDTO ApprovedUser { get; set; }
 
+        [IgnoreOnMapTo]
+        public CreditCardDTO CreditCard { get; set; }
+
         public bool Locked { get; set; }
 
         [Required]
@@ -71,6 +76,7 @@ namespace LagoVista.Relational
 
             // Relationships
             entity.HasOne(x => x.Agreement).WithMany().HasForeignKey(x => x.AgreementId);
+            entity.HasOne(x => x.CreditCard).WithMany(x => x.Expenses).HasForeignKey(x => x.CreditCardId);
             entity.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.ExpenseCategoryId);
             entity.HasOne(x => x.Payment).WithMany().HasForeignKey(x => x.PaymentId);
             entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId);
@@ -87,30 +93,31 @@ namespace LagoVista.Relational
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.TimePeriodId).HasColumnOrder(2);
-            entity.Property(x => x.ExpenseCategoryId).HasColumnOrder(3);
-            entity.Property(x => x.AgreementId).HasColumnOrder(4);
-            entity.Property(x => x.BillingEventId).HasColumnOrder(5);
-            entity.Property(x => x.PaymentId).HasColumnOrder(6);
-            entity.Property(x => x.ExpenseDate).HasColumnOrder(7);
-            entity.Property(x => x.ProjectId).HasColumnOrder(8);
-            entity.Property(x => x.ProjectName).HasColumnOrder(9);
-            entity.Property(x => x.WorkTaskId).HasColumnOrder(10);
-            entity.Property(x => x.WorkTaskName).HasColumnOrder(11);
-            entity.Property(x => x.UserId).HasColumnOrder(12);
-            entity.Property(x => x.OrganizationId).HasColumnOrder(13);
-            entity.Property(x => x.Approved).HasColumnOrder(14);
-            entity.Property(x => x.ApprovedById).HasColumnOrder(15);
-            entity.Property(x => x.ApprovedDate).HasColumnOrder(16);
-            entity.Property(x => x.Locked).HasColumnOrder(17);
-            entity.Property(x => x.EncryptedAmount).HasColumnOrder(18);
-            entity.Property(x => x.EncryptedReimbursedAmount).HasColumnOrder(19);
-            entity.Property(x => x.Notes).HasColumnOrder(20);
-            entity.Property(x => x.Description).HasColumnOrder(21);
-            entity.Property(x => x.CreatedById).HasColumnOrder(22);
-            entity.Property(x => x.LastUpdatedById).HasColumnOrder(23);
-            entity.Property(x => x.CreationDate).HasColumnOrder(24);
-            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(25);
-            entity.Property(x => x.VendorId).HasColumnOrder(26);
+            entity.Property(x => x.CreditCardId).HasColumnOrder(3);
+            entity.Property(x => x.ExpenseCategoryId).HasColumnOrder(4);
+            entity.Property(x => x.AgreementId).HasColumnOrder(5);
+            entity.Property(x => x.BillingEventId).HasColumnOrder(6);
+            entity.Property(x => x.PaymentId).HasColumnOrder(7);
+            entity.Property(x => x.ExpenseDate).HasColumnOrder(8);
+            entity.Property(x => x.ProjectId).HasColumnOrder(9);
+            entity.Property(x => x.ProjectName).HasColumnOrder(10);
+            entity.Property(x => x.WorkTaskId).HasColumnOrder(11);
+            entity.Property(x => x.WorkTaskName).HasColumnOrder(12);
+            entity.Property(x => x.UserId).HasColumnOrder(13);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(14);
+            entity.Property(x => x.Approved).HasColumnOrder(15);
+            entity.Property(x => x.ApprovedById).HasColumnOrder(16);
+            entity.Property(x => x.ApprovedDate).HasColumnOrder(17);
+            entity.Property(x => x.Locked).HasColumnOrder(18);
+            entity.Property(x => x.EncryptedAmount).HasColumnOrder(19);
+            entity.Property(x => x.EncryptedReimbursedAmount).HasColumnOrder(20);
+            entity.Property(x => x.Notes).HasColumnOrder(21);
+            entity.Property(x => x.Description).HasColumnOrder(22);
+            entity.Property(x => x.CreatedById).HasColumnOrder(23);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(24);
+            entity.Property(x => x.CreationDate).HasColumnOrder(25);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(26);
+            entity.Property(x => x.VendorId).HasColumnOrder(27);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));

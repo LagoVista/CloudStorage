@@ -50,6 +50,10 @@ namespace LagoVista.Relational
         public bool LinkActive { get; set; }
         public string ExternalProviderId { get; set; }
 
+        //[IgnoreOnMapTo]
+        //public List<TransactionStagingDto> StagedTransactions { get; set; }
+
+
         [IgnoreOnMapTo()]
         public List<AccountTransactionDto> Transactions { get; set; }
 
@@ -67,6 +71,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById);
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+    //        entity.HasMany(x => x.StagedTransactions).WithOne(x => x.Account).HasForeignKey(x => x.AccountId);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

@@ -1,61 +1,70 @@
 ﻿using LagoVista.Core.Attributes;
+using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Security.Cryptography.X509Certificates;
 
 namespace LagoVista.Relational
 {
-    [ModernKeyId("exteranl-account-{id}", IdPath = "ItemId")]
-    [EncryptionKey("exteranl-account-{id}", IdProperty = nameof(TransactionStagingDto.ProviderAccountId), CreateIfMissing = false)]
-
+    [ModernKeyId("external-account-{id}", IdPath = nameof(OrganizationId))]
+    [EncryptionKey("external-account-{id}", IdProperty = nameof(OrganizationId), CreateIfMissing = false)]
     [Table("TransactionStaging", Schema = "dbo")]
     public class TransactionStagingDto
     {
         public Guid Id { get; set; }
 
         [Required]
-        public string ItemId { get; set; }
-
-        public Guid? AccountId { get; set; }
-        public string CreditCardId { get; set; }
+        public string OrganizationId { get; set; }
 
         [Required]
-        public string Name { get; set; }
+        public string IdempotencyHash { get; set; }
+
+        public Guid? AccountId { get; set; }
+        public Guid? CreditCardId { get; set; }
+
+        [Required]
+        public string TransactionDescription { get; set; }
 
         public string MerchantName { get; set; }
+        public string CheckNumber { get; set; }
 
-        public string OriginalDescription { get; set; }
+        [Required]
+        public string PostedDate { get; set; }
 
-        public string PendingTransactionId { get; set; }
-
-        public string Provider { get; set; }
-        public string ProviderId { get; set; }
-        public string ProviderAccountId { get; set; }
-        public string ExternalTransactionId { get; set; }
-
-        public string TransactionType { get; set; }
-
-        public DateTime AuthorizationDate { get; set; }
+        public string ChangeType { get; set; }
 
         [Required]
         public string EncryptedAmount { get; set; }
 
-        public string IsoCurrencyCode { get; set; }
+        public Guid? SuggestedAccountTransactionCategoryId { get; set; }
+        public Guid? SuggestedExpenseCategoryId { get; set; }
+        public Guid? SuggestedVendorId { get; set; }
 
-        public string UnofficialCurrencyCode { get; set; }
+        public double? SuggestedConfidence { get; set; }
 
-        public string Categories { get; set; }
+        public string PendingVectorRecordId { get; set; }
 
-        public string CheckNumber { get; set; }
+        public DateTime CreationDate { get; set; }
 
-        public string SuggestedCategory { get; set; }
+        [IgnoreOnMapTo]
+        public OrganizationDTO Organization { get; set; }
 
-        public string MerchantEntryId { get; set; }
-
-        [IgnoreOnMapTo()]
+        [IgnoreOnMapTo]
         public AccountDto Account { get; set; }
 
+        [IgnoreOnMapTo]
+        public CreditCardDTO CreditCard { get; set; }
+
+        [IgnoreOnMapTo]
+        public AccountTransactionCategoryDto AccountTransactionCategory { get; set; }
+
+        [IgnoreOnMapTo]
+        public ExpenseCategoryDTO ExpenseCategory { get; set; }
+
+        [IgnoreOnMapTo]
+        public VendorDTO Vendor { get; set; }
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -63,57 +72,63 @@ namespace LagoVista.Relational
             var provider = mb.GetProviderName();
             var entity = mb.Entity<TransactionStagingDto>();
 
-            // Relationships
-            entity.HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId);
+            entity.ToTable("TransactionStaging", "dbo");
 
-            // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
 
-            // Column order
-            entity.Property(x => x.Id).HasColumnOrder(1);
-            entity.Property(x => x.ItemId).HasColumnOrder(2);
-            entity.Property(x => x.AccountId).HasColumnOrder(3);
-            entity.Property(x => x.CreditCardId).HasColumnOrder(3);
-            entity.Property(x => x.Name).HasColumnOrder(5);
-            entity.Property(x => x.MerchantName).HasColumnOrder(6);
-            entity.Property(x => x.OriginalDescription).HasColumnOrder(7);
-            entity.Property(x => x.PendingTransactionId).HasColumnOrder(8);
-            entity.Property(x => x.Provider).HasColumnOrder(9);
-            entity.Property(x => x.ProviderId).HasColumnOrder(10);
-            entity.Property(x => x.ProviderAccountId).HasColumnOrder(11);
-            entity.Property(x => x.ExternalTransactionId).HasColumnOrder(12);
-            entity.Property(x => x.TransactionType).HasColumnOrder(13);
-            entity.Property(x => x.AuthorizationDate).HasColumnOrder(14);
-            entity.Property(x => x.EncryptedAmount).HasColumnOrder(15);
-            entity.Property(x => x.IsoCurrencyCode).HasColumnOrder(16);
-            entity.Property(x => x.UnofficialCurrencyCode).HasColumnOrder(17);
-            entity.Property(x => x.Categories).HasColumnOrder(18);
-            entity.Property(x => x.CheckNumber).HasColumnOrder(19);
-            entity.Property(x => x.SuggestedCategory).HasColumnOrder(20);
-            entity.Property(x => x.MerchantEntryId).HasColumnOrder(21);
+        //    entity.HasOne(x => x.Account).WithMany(x => x.StagedTransactions).HasForeignKey(x => x.AccountId);
+        //    entity.HasOne(x => x.CreditCard).WithMany(x => x.StagedTransactions).HasForeignKey(x => x.CreditCardId);
 
-            // Storage types
+            //entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            //entity.HasOne(x => x.AccountTransactionCategory).WithMany().HasForeignKey(x => x.SuggestedAccountTransactionCategoryId);
+            //entity.HasOne(x => x.ExpenseCategory).WithMany().HasForeignKey(x => x.SuggestedExpenseCategoryId);
+            //entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.SuggestedVendorId);
+
+            entity.HasIndex(x => new { x.OrganizationId, x.IdempotencyHash }).IsUnique();
+
+            entity.Property(x => x.Id).HasColumnOrder(1);
+            entity.Property(x => x.OrganizationId).HasColumnOrder(2);
+            entity.Property(x => x.IdempotencyHash).HasColumnOrder(3);
+            entity.Property(x => x.AccountId).HasColumnOrder(4);
+            entity.Property(x => x.CreditCardId).HasColumnOrder(5);
+            entity.Property(x => x.TransactionDescription).HasColumnOrder(6);
+            entity.Property(x => x.MerchantName).HasColumnOrder(7);
+            entity.Property(x => x.CheckNumber).HasColumnOrder(8);
+            entity.Property(x => x.PostedDate).HasColumnOrder(9);
+            entity.Property(x => x.ChangeType).HasColumnOrder(10);
+            entity.Property(x => x.EncryptedAmount).HasColumnOrder(11);
+            entity.Property(x => x.SuggestedAccountTransactionCategoryId).HasColumnOrder(12);
+            entity.Property(x => x.SuggestedExpenseCategoryId).HasColumnOrder(13);
+            entity.Property(x => x.SuggestedVendorId).HasColumnOrder(14);
+            entity.Property(x => x.SuggestedConfidence).HasColumnOrder(15);
+            entity.Property(x => x.PendingVectorRecordId).HasColumnOrder(16);
+            entity.Property(x => x.CreationDate).HasColumnOrder(17);
+
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.ItemId).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.IdempotencyHash).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.AccountId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.CreditCardId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.CreditCardId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.TransactionDescription).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.MerchantName).HasColumnType(StandardDBTypes.NameStorage(provider));
-            entity.Property(x => x.OriginalDescription).HasColumnType(StandardDBTypes.TextMax(provider));
-            entity.Property(x => x.PendingTransactionId).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.Provider).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.ProviderId).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.ProviderAccountId).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.ExternalTransactionId).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.TransactionType).HasColumnType(StandardDBTypes.CategoryStorage(provider));
-            entity.Property(x => x.AuthorizationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.IsoCurrencyCode).HasColumnType(StandardDBTypes.CategoryStorage(provider));
-            entity.Property(x => x.UnofficialCurrencyCode).HasColumnType(StandardDBTypes.CategoryStorage(provider));
-            entity.Property(x => x.Categories).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.CheckNumber).HasColumnType(StandardDBTypes.TextTiny(provider));
-            entity.Property(x => x.SuggestedCategory).HasColumnType(StandardDBTypes.CategoryStorage(provider));
-            entity.Property(x => x.MerchantEntryId).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.PostedDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
+            entity.Property(x => x.ChangeType).HasColumnType(StandardDBTypes.CategoryStorage(provider));
+            entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
+            entity.Property(x => x.SuggestedAccountTransactionCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.SuggestedExpenseCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.SuggestedVendorId).HasColumnType(StandardDBTypes.UuidStorage(provider));
+            entity.Property(x => x.SuggestedConfidence).HasColumnType(StandardDBTypes.DecimalSmall(provider));
+            entity.Property(x => x.PendingVectorRecordId).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+
+            entity.Property(x => x.OrganizationId).IsRequired();
+            entity.Property(x => x.IdempotencyHash).IsRequired();
+            entity.Property(x => x.TransactionDescription).IsRequired();
+            entity.Property(x => x.PostedDate).IsRequired();
+            entity.Property(x => x.EncryptedAmount).IsRequired();
+            entity.Property(x => x.ChangeType).IsRequired();
+            entity.Property(x => x.CreationDate).IsRequired();
         }
     }
 }
