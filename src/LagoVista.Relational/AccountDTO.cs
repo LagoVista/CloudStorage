@@ -37,18 +37,6 @@ namespace LagoVista.Relational
 
         public bool IsActive { get; set; }
 
-        [Required]
-        public string ExternalProvider { get; set; }
-
-        public string ExternalAccountId { get; set; }
-        public string AccessTokenSecretId { get; set; }
-
-        public string TransactionCursor { get; set; }
-        public string SyncStatus { get; set; }
-        public DateTime? LastSyncAt { get; set; }
-        public string LastError { get; set; }
-        public bool LinkActive { get; set; }
-        public string ExternalProviderId { get; set; }
 
         [IgnoreOnMapTo]
         public List<TransactionStagingDto> StagedTransactions { get; set; }
@@ -92,18 +80,9 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreationDate).HasColumnOrder(12);
             entity.Property(x => x.LastUpdatedDate).HasColumnOrder(13);
             entity.Property(x => x.IsActive).HasColumnOrder(14);
-            entity.Property(x => x.LinkActive).HasColumnOrder(15);
-            entity.Property(x => x.TransactionJournalOnly).HasColumnOrder(16);
-            entity.Property(x => x.ExternalProvider).HasColumnOrder(17);
-            entity.Property(x => x.ExternalAccountId).HasColumnOrder(18);
-            entity.Property(x => x.AccessTokenSecretId).HasColumnOrder(19);
-            entity.Property(x => x.TransactionCursor).HasColumnOrder(20);
-            entity.Property(x => x.SyncStatus).HasColumnOrder(21);
-            entity.Property(x => x.LastSyncAt).HasColumnOrder(22);
-            entity.Property(x => x.LastError).HasColumnOrder(23);
-            entity.Property(x => x.EncryptedOnlineBalance).HasColumnOrder(24);
-            entity.Property(x => x.ExternalProviderId).HasColumnOrder(25);
-            entity.Property(x => x.Version).HasColumnOrder(26);
+            entity.Property(x => x.TransactionJournalOnly).HasColumnOrder(15);
+            entity.Property(x => x.EncryptedOnlineBalance).HasColumnOrder(16);
+            entity.Property(x => x.Version).HasColumnOrder(17);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -120,17 +99,8 @@ namespace LagoVista.Relational
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.LastUpdatedDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.IsActive).HasColumnType(StandardDBTypes.FlagStorage(provider));
-            entity.Property(x => x.LinkActive).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.TransactionJournalOnly).HasColumnType(StandardDBTypes.FlagStorage(provider));
-            entity.Property(x => x.ExternalProvider).HasColumnType(StandardDBTypes.TextTiny(provider));
-            entity.Property(x => x.ExternalAccountId).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.AccessTokenSecretId).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.TransactionCursor).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.SyncStatus).HasColumnType(StandardDBTypes.StatusStorage(provider));
-            entity.Property(x => x.LastSyncAt).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastError).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.EncryptedOnlineBalance).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.ExternalProviderId).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.Version).HasColumnType(StandardDBTypes.LongStorage(provider));
         }
     }
