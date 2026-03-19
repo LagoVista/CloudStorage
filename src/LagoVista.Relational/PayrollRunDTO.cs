@@ -103,9 +103,9 @@ namespace LagoVista.Relational
             entity.Property(x => x.Locked).HasColumnOrder(16);
             entity.Property(x => x.LockedTimestamp).HasColumnOrder(17);
             entity.Property(x => x.LockedByUserId).HasColumnOrder(18);
-            entity.Property(x => x.Locked).HasColumnOrder(19);
-            entity.Property(x => x.LockedTimestamp).HasColumnOrder(20);
-            entity.Property(x => x.LockedByUserId).HasColumnOrder(21);
+            entity.Property(x => x.Approved).HasColumnOrder(19);
+            entity.Property(x => x.ApprovedTimestamp).HasColumnOrder(20);
+            entity.Property(x => x.ApprovedByUserId).HasColumnOrder(21);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -121,7 +121,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.EncryptedTotalExpenses).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotalPayrollTaxObligation).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotalRevenue).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
-            entity.Property(x => x.EncryptedTaxLiabilities).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.EncryptedTaxLiabilities).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.Locked).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.LockedTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));

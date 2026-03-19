@@ -31,7 +31,7 @@ namespace LagoVista.Relational
         public string CheckNumber { get; set; }
 
         [Required]
-        public string PostedDate { get; set; }
+        public DateOnly PostedDate { get; set; }
 
         public string ChangeType { get; set; }
 
@@ -42,7 +42,7 @@ namespace LagoVista.Relational
         public Guid? SuggestedExpenseCategoryId { get; set; }
         public Guid? SuggestedVendorId { get; set; }
 
-        public double? SuggestedConfidence { get; set; }
+        public decimal? SuggestedConfidence { get; set; }
 
         public string PendingVectorRecordId { get; set; }
 
@@ -68,24 +68,24 @@ namespace LagoVista.Relational
 
         public static void Configure(ModelBuilder modelBuilder)
         {
+
             var mb = modelBuilder;
             var provider = mb.GetProviderName();
             var entity = mb.Entity<TransactionStagingDto>();
 
-            entity.ToTable("TransactionStaging", "dbo");
-
             entity.HasKey(x => x.Id);
 
-        //    entity.HasOne(x => x.Account).WithMany(x => x.StagedTransactions).HasForeignKey(x => x.AccountId);
-        //    entity.HasOne(x => x.CreditCard).WithMany(x => x.StagedTransactions).HasForeignKey(x => x.CreditCardId);
+            entity.HasOne(x => x.Account).WithMany(x => x.StagedTransactions).HasForeignKey(x => x.AccountId);
+            entity.HasOne(x => x.CreditCard).WithMany(x => x.StagedTransactions).HasForeignKey(x => x.CreditCardId);
 
-            //entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
-            //entity.HasOne(x => x.AccountTransactionCategory).WithMany().HasForeignKey(x => x.SuggestedAccountTransactionCategoryId);
-            //entity.HasOne(x => x.ExpenseCategory).WithMany().HasForeignKey(x => x.SuggestedExpenseCategoryId);
-            //entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.SuggestedVendorId);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasOne(x => x.AccountTransactionCategory).WithMany().HasForeignKey(x => x.SuggestedAccountTransactionCategoryId);
+            entity.HasOne(x => x.ExpenseCategory).WithMany().HasForeignKey(x => x.SuggestedExpenseCategoryId);
+            entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.SuggestedVendorId);
 
             entity.HasIndex(x => new { x.OrganizationId, x.IdempotencyHash }).IsUnique();
 
+       
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.OrganizationId).HasColumnOrder(2);
             entity.Property(x => x.IdempotencyHash).HasColumnOrder(3);
@@ -103,7 +103,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.SuggestedConfidence).HasColumnOrder(15);
             entity.Property(x => x.PendingVectorRecordId).HasColumnOrder(16);
             entity.Property(x => x.CreationDate).HasColumnOrder(17);
-
+           
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.IdempotencyHash).HasColumnType(StandardDBTypes.TextMedium(provider));
@@ -119,7 +119,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.SuggestedExpenseCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.SuggestedVendorId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.SuggestedConfidence).HasColumnType(StandardDBTypes.DecimalSmall(provider));
-            entity.Property(x => x.PendingVectorRecordId).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.PendingVectorRecordId).HasColumnType(StandardDBTypes.TextShort(provider));
             entity.Property(x => x.CreationDate).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
 
             entity.Property(x => x.OrganizationId).IsRequired();

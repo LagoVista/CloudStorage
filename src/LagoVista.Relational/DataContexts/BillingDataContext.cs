@@ -82,8 +82,7 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<TimeEntryDTO> TimeEntries { get; set; }
         public DbSet<TimePeriodDTO> TimePeriods { get; set; }
 
-    //    public DbSet<TransactionStagingDto> TransactionStaging { get; set; }
-
+        public DbSet<TransactionStagingDto> TransactionStaging { get; set; }
 
         public DbSet<UnitTypeDTO> UnitTypes { get; set; }
 
@@ -160,7 +159,7 @@ namespace LagoVista.Relational.DataContexts
 
             PaymentEmployerTaxDetailDTO.Configure(modelBuilder);
 
-//            TransactionStagingDto.Configure(modelBuilder);
+            TransactionStagingDto.Configure(modelBuilder);
 
             VendorDTO.Configure(modelBuilder);
 

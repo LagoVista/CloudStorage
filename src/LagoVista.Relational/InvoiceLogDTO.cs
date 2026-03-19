@@ -58,7 +58,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.EventId).HasColumnOrder(5);
             entity.Property(x => x.EventData).HasColumnOrder(6);
             entity.Property(x => x.Message).HasColumnOrder(7);
-            entity.Property(x => x.EncryptedAmount).HasColumnOrder(7);
+            entity.Property(x => x.EncryptedAmount).HasColumnOrder(8);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));

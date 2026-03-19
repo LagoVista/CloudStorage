@@ -24,7 +24,7 @@ namespace LagoVista.Relational
         /// <summary>
         /// When the billing event started
         /// </summary>
-        public DateTime StartTimestampUtc { get; set; }
+        public DateTime StartTimestamp { get; set; }
 
         /// <summary>
         /// User Id of the user that initiated the billing event
@@ -35,7 +35,7 @@ namespace LagoVista.Relational
         /// <summary>
         /// When the billing event ended
         /// </summary>
-        public DateTime? EndTimestampUtc { get; set; }
+        public DateTime? EndTimestamp { get; set; }
         
         /// <summary>
         /// User Id of the User that Terminated the Billing Event.
@@ -51,7 +51,7 @@ namespace LagoVista.Relational
         /// UTC instant when this open slice must roll into the next billing day.
         /// Null only for event types that never roll.
         /// </summary>
-        public DateTime? RolloverAtUtc { get; set; }
+        public DateTime? RolloverAt { get; set; }
 
         /// <summary>
         /// Captured billing timezone for this slice.
@@ -151,12 +151,12 @@ namespace LagoVista.Relational
             entity.Property(x => x.ResourceName).HasColumnOrder(3);
             entity.Property(x => x.SubscriptionId).HasColumnOrder(4);
             entity.Property(x => x.ProductId).HasColumnOrder(5);
-            entity.Property(x => x.StartTimestampUtc).HasColumnOrder(6);
+            entity.Property(x => x.StartTimestamp).HasColumnOrder(6);
             entity.Property(x => x.StartedByAppUserId).HasColumnOrder(7);
-            entity.Property(x => x.EndTimestampUtc).HasColumnOrder(8);
-            entity.Property(x => x.BillingDate).HasColumnOrder(9);
-            entity.Property(x => x.RolloverAtUtc).HasColumnOrder(10);
-            entity.Property(x => x.BillingTimeZoneId).HasColumnOrder(11);   
+            entity.Property(x => x.EndTimestamp).HasColumnOrder(8);
+            entity.Property(x => x.RolloverAt).HasColumnOrder(9);
+            entity.Property(x => x.BillingTimeZoneId).HasColumnOrder(10);
+            entity.Property(x => x.BillingDate).HasColumnOrder(11);
             entity.Property(x => x.EndedByAppUserId).HasColumnOrder(12);
             entity.Property(x => x.HoursBilled).HasColumnOrder(13);
             entity.Property(x => x.UnitCost).HasColumnOrder(14);
@@ -174,10 +174,10 @@ namespace LagoVista.Relational
             entity.Property(x => x.ResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.SubscriptionId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.ProductId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.StartTimestampUtc).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.StartTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.StartedByAppUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.EndTimestampUtc).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.RolloverAtUtc).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.EndTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.RolloverAt).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.BillingTimeZoneId).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.BillingDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.EndedByAppUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));

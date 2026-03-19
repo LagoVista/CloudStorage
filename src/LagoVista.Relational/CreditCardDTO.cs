@@ -41,8 +41,8 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public List<ExpenseDTO> Expenses { get; set; }
 
-        //[IgnoreOnMapTo]
-        //public List<TransactionStagingDto> StagedTransactions { get; set; }
+        [IgnoreOnMapTo]
+        public List<TransactionStagingDto> StagedTransactions { get; set; }
 
         [IgnoreOnMapTo]
         public AppUserDTO CardHolderUser { get; set; }
@@ -60,7 +60,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.CardHolderUser).WithMany().HasForeignKey(x => x.CardHolderId).OnDelete(DeleteBehavior.Restrict);
             entity.HasMany(x => x.Expenses).WithOne(x => x.CreditCard).HasForeignKey(x => x.CreditCardId).OnDelete(DeleteBehavior.Restrict);
-            //entity.HasMany(x => x.StagedTransactions).WithOne(x => x.CreditCard).HasForeignKey(x => x.CreditCardId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(x => x.StagedTransactions).WithOne(x => x.CreditCard).HasForeignKey(x => x.CreditCardId).OnDelete(DeleteBehavior.Restrict);
 
 
             entity.Property(x => x.Id).HasColumnOrder(1);

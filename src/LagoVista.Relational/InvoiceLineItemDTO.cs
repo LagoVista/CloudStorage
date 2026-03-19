@@ -78,7 +78,7 @@ namespace LagoVista.Relational
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.InvoiceId).HasColumnOrder(2);
-            entity.Property(x => x.InvoiceId).HasColumnOrder(3);
+            entity.Property(x => x.CustomerId).HasColumnOrder(3);
             entity.Property(x => x.AgreementId).HasColumnOrder(4);
             entity.Property(x => x.ResourceId).HasColumnOrder(5);
             entity.Property(x => x.ResourceName).HasColumnOrder(6);
