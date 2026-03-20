@@ -914,7 +914,7 @@ where c.id = @id";
             else
             {
                 doc.IsDeleted = true;
-                doc.DeletionDate = DateTime.UtcNow.ToJSONString();
+                doc.DeletionDate = UtcTimestamp.Now;
                 result = await container.UpsertItemAsync(doc);
                 if (_ragIndexingServices != null)
                     await _ragIndexingServices.IndexAsync(doc);
@@ -955,7 +955,7 @@ where c.id = @id";
 
 
             doc.IsDeleted = true;
-            doc.DeletionDate = DateTime.UtcNow.ToJSONString();
+            doc.DeletionDate = UtcTimestamp.Now;
             var result = await container.UpsertItemAsync(doc, partitionKeyValue);
             timer.Dispose();
 

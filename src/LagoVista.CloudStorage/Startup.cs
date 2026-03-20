@@ -8,6 +8,7 @@ using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.CloudStorage.Utils.TableSizer;
 using LagoVista.Core.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LagoVista.CloudStorage
 {
