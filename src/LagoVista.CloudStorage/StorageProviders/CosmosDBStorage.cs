@@ -41,7 +41,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         protected virtual bool ShouldConsolidateCollections
         {
-            get { return false; }
+            get { return true; }
         }
 
 

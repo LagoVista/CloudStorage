@@ -15,21 +15,15 @@ namespace LagoVista.Relational
     {
         public static void ConfigureDataContextServices(IConfigurationRoot configurationRoot, Microsoft.Extensions.DependencyInjection.IServiceCollection services, ILogger logger)
         {
-            var billingDbSection = configurationRoot.GetSection("BillingDb");
-            if (billingDbSection == null)
-            {
-                logger.AddCustomEvent(LogLevel.ConfigurationError, "[BillingManager_Startup]", "Missing Section BillingDb");
-                throw new InvalidConfigurationException($"[Relational__Startup] Missing Section BillingDb");
-            }
+            var section = configurationRoot.GetRequiredSection("BillingDb");
 
             var connectionSettings = new ConnectionSettings()
             {
-                Uri = billingDbSection["ServerURL"],
-                ResourceName = billingDbSection["InitialCatalog"],
-                UserName = billingDbSection["UserName"],
-                Password = billingDbSection["Password"],
+                Uri = section.Require("ServerURL"),
+                ResourceName = section.Require("InitialCatalog"),
+                UserName = section.Require("UserName"),
+                Password = section.Require("Password"),
             };
-
 
             services.AddScoped<IKeyIdTargetResolver, Services.KeyIdTargetResolver>();   
 
