@@ -175,14 +175,14 @@ namespace LagoVista.CloudStorage.Storage
             if (existing != null)
             {
                 existing.Stars = rating;
-                existing.TimeStamp = DateTime.UtcNow.ToJSONString();
+                existing.TimeStamp = UtcTimestamp.Now;
             }
             else
             {
                 ratings.Ratings.Add(new EntityRating()
                 {
                     Stars = rating,
-                    TimeStamp = DateTime.UtcNow.ToJSONString(),
+                    TimeStamp = UtcTimestamp.Now,
                     User = user,
                 });
             }
@@ -215,7 +215,7 @@ namespace LagoVista.CloudStorage.Storage
             var operations = new List<PatchOperation>()
             {
                 PatchOperation.Set($"/{nameof(EntityBase.IsPublic)}", true),
-                PatchOperation.Set($"/{nameof(EntityBase.PublicPromotionDate)}", DateTime.UtcNow.ToJSONString()),
+                PatchOperation.Set($"/{nameof(EntityBase.PublicPromotionDate)}", UtcTimestamp.Now),
                 PatchOperation.Set($"/{nameof(EntityBase.PublicPromotedBy)}", user),
             };
 

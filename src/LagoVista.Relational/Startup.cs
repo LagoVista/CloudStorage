@@ -42,9 +42,9 @@ namespace LagoVista.Relational
 
 namespace LagoVista.DependencyInjection
 {
-    public static class StorageModule
+    public static class RelationalStorageModule
     {
-        public static void AddStorageModule(this IServiceCollection services, IConfigurationRoot configurationRoot, ILogger logger)
+        public static void AddRelationalStorageModule(this IServiceCollection services, IConfigurationRoot configurationRoot, ILogger logger)
         {
             LagoVista.Relational.Startup.ConfigureDataContextServices(configurationRoot, services, logger);
         }   

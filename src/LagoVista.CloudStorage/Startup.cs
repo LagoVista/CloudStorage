@@ -8,6 +8,8 @@ using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.CloudStorage.Utils.TableSizer;
 using LagoVista.Core.Interfaces;
+using LagoVista.Core.PlatformSupport;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LagoVista.CloudStorage
@@ -28,6 +30,19 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
 
             LagoVista.Core.AutoMapper.Startup.ConfigureServices(services);
+        }
+    }
+}
+
+
+
+namespace LagoVista.DependencyInjection
+{
+    public static class CloudStorageModule
+    {
+        public static void AddCloudStorageModule(this IServiceCollection services, IConfigurationRoot configurationRoot, ILogger logger)
+        {
+            LagoVista.CloudStorage.Startup.ConfigureServices(services);
         }
     }
 }

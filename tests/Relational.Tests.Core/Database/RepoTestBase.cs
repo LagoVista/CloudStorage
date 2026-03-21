@@ -149,7 +149,7 @@ namespace Relational.Tests.Core.Database
             var keyProvider = new EncryptionKeyProvider(secureStorage);
             var planner = new EncryptedMapperPlanner(registry);
             var encryptor = new Encryptor();
-            var modernEncryptor = new ModernEncryptionService(new AadBuilderV1(), new EnvelopeCodecV2(), new SecureStorageKeyMaterialStore(secureStorage), new AesGcmEncryptorNet9(), OrgEH, UserEH);
+            var modernEncryptor = new ModernEncryptionService(new AadBuilderV1(), new EnvelopeCodecV2(), new SecureStorageKeyMaterialStore(secureStorage), new AesGcmEncryptorNet9());
 
             var encryptedMapper = new EncryptedMapper(keyProvider, planner, encryptor, modernEncryptor, new ModernKeyIdBuilder(new KeyIdTargetResolver(BillingCtx)));
             return new LagoVistaAutoMapper(encryptedMapper, atomicBuilder, registry);

@@ -39,7 +39,7 @@ namespace Relational.Tests
         }
 
         [Test]
-        public async Task CheckSingleTable() => await AssertTableMatchesModelAsync(typeof(AccountDto), true, showEFSuggestions:true, showDBSuggestions:true, typesOnly:true );
+        public async Task CheckSingleTable() => await AssertTableMatchesModelAsync(typeof(OwnedDeviceDTO), true, showEFSuggestions:true, showDBSuggestions:true, typesOnly:true );
 
         private static HashSet<string> GetExpectedTablesFromDbSets(DbContext ctx)
         {
