@@ -1,9 +1,10 @@
 ﻿using LagoVista.CloudStorage.Utils;
 using LagoVista.Core.Models;
-using LegacyMigrationScaffolding.Generation;
-using LegacyMigrationScaffolding.Schema;
+using MarchDataMigration.Generator.CodeGen;
+using MarchDataMigration.Generator.Models;
 using Microsoft.Data.SqlClient;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LegacyMigrationScaffolding.Usage
@@ -12,23 +13,27 @@ namespace LegacyMigrationScaffolding.Usage
     public class GenerateMigrationsExample
     {
         [Test]
-        public Task GenerateAsync()
+        public async Task GenerateAsync()
         {
-            var settings = TestConnections.DevSQLServer;
-            settings.ResourceName = "nuviot-dev-2026-03-22";
-            var target = Build(settings);
-            var source = Build(TestConnections.DevSQLServer);
+            var sourceSettings = TestConnections.ProdSQLServer;
+            sourceSettings.UserName = Environment.GetEnvironmentVariable("SQL_READER_USER");
+            sourceSettings.Password = Environment.GetEnvironmentVariable("SQL_READER_PASSWORD");
+            var source = Build(sourceSettings);
 
-            var scaffolder = new MigrationScaffolder();
+            var targetSettings = TestConnections.DevSQLServer;
+            targetSettings.ResourceName = "nuviot-dev-2026-03-22";
+            var target = Build(targetSettings);
 
-            return scaffolder.GenerateAsync(new ScaffoldingOptions
+            var request = new MigrationGeneratorRequest()
             {
+                OutputRootPath = @"D:\NuvIoT\cs.CloudStorage\Tests\MarchDataMigration\Generated",
                 SourceConnectionString = source,
-                DestinationConnectionString = target,
-                OutputFolder = @"D:\NuvIoT\cs.CloudStorage\tests\MarchDataMigration\Tables",
-                Namespace = "LegacyMigration.Generated",
-                SchemaName = "dbo"
-            });
+                TargetConnectionString = target,
+                IncludeTables = new[] {"PayrollSummary/PayRun"}
+            };
+
+            var generator = new MigrationArtifactGenerator();
+            await generator.GenerateAsync(request, CancellationToken.None);
         }
 
         public static string Build(ConnectionSettings settings)

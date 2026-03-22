@@ -118,7 +118,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.IsReconciled).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.TransactionCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
-            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Name).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.Tag).HasColumnType(StandardDBTypes.TextLong(provider));
             entity.Property(x => x.OriginalHash).HasColumnType(StandardDBTypes.TextMedium(provider));

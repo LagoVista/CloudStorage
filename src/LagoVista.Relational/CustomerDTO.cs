@@ -80,8 +80,8 @@ namespace LagoVista.Relational
             entity.Property(x => x.CustomerName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.BillingContactName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.BillingContactEmail).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.Address1).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.Address2).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Address1).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Address2).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.City).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.State).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Zip).HasColumnType(StandardDBTypes.TextShort(provider));
