@@ -118,11 +118,11 @@ namespace LagoVista.Relational
             var entity = mb.Entity<ProductDTO>();
 
             // Relationships
-            entity.HasOne(x => x.RecurringCycleType).WithMany().HasForeignKey(x => x.RecurringCycleTypeId);
-            entity.HasOne(x => x.UnitType).WithMany().HasForeignKey(x => x.UnitTypeId);
-            entity.HasOne(x => x.ProductCategory).WithMany(x => x.Products).HasForeignKey(x => x.ProductCategoryId).IsRequired();
-            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
-            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById);
+            entity.HasOne(x => x.RecurringCycleType).WithMany().HasForeignKey(x => x.RecurringCycleTypeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.UnitType).WithMany().HasForeignKey(x => x.UnitTypeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ProductCategory).WithMany(x => x.Products).HasForeignKey(x => x.ProductCategoryId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

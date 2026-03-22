@@ -27,7 +27,7 @@ namespace LagoVista.Relational
             var entity = mb.Entity<LicenseUsageDTO>();
 
             // Relationships
-            entity.HasOne(x => x.License).WithMany(x => x.Usage).HasForeignKey(x => x.LicenseId);
+            entity.HasOne(x => x.License).WithMany(x => x.Usage).HasForeignKey(x => x.LicenseId).OnDelete(DeleteBehavior.NoAction);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

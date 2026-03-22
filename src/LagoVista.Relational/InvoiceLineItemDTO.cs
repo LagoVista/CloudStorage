@@ -67,10 +67,10 @@ namespace LagoVista.Relational
             var entity = mb.Entity<InvoiceLineItemDTO>();
 
             // Relationships
-            entity.HasOne(x => x.Invoice).WithMany(x => x.LineItems).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.Agreement).WithMany(x => x.InvoiceLineItems).HasForeignKey(x => x.AgreementId);
-            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId);
-            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
+            entity.HasOne(x => x.Invoice).WithMany(x => x.LineItems).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Agreement).WithMany(x => x.InvoiceLineItems).HasForeignKey(x => x.AgreementId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

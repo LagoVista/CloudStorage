@@ -64,10 +64,10 @@ namespace LagoVista.Relational
             var entity = mb.Entity<PaymentEmployerTaxDetailDTO>();
 
             // Relationships
-            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
-            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
-            entity.HasOne(x => x.Payment).WithMany(x => x.PayrollTaxDetails).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(x => x.PayrollRun).WithMany(x => x.PayrollTaxDetails).HasForeignKey(x => x.PayrollRunId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Payment).WithMany(x => x.PayrollTaxDetails).HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Cascade).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.PayrollRun).WithMany(x => x.PayrollTaxDetails).HasForeignKey(x => x.PayrollRunId).OnDelete(DeleteBehavior.Cascade).OnDelete(DeleteBehavior.Cascade);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

@@ -43,9 +43,9 @@ namespace LagoVista.Relational
             var entity = mb.Entity<ExpenseCategoryDTO>();
 
             // Relationships
-            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
-            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
-            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

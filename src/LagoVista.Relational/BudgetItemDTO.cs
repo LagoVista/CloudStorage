@@ -52,12 +52,12 @@ namespace LagoVista.Relational
             var entity = mb.Entity<BudgetItemDTO>();
 
             // Relationships
-            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
-            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.AccountTransactionCategory).WithMany().HasForeignKey(x => x.AccountTransactionCategoryId);
-            entity.HasOne(x => x.ExpenseCategory).WithMany().HasForeignKey(x => x.ExpenseCategoryId);
-            entity.HasOne(x => x.WorkRole).WithMany().HasForeignKey(x => x.WorkRoleId);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.AccountTransactionCategory).WithMany().HasForeignKey(x => x.AccountTransactionCategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ExpenseCategory).WithMany().HasForeignKey(x => x.ExpenseCategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.WorkRole).WithMany().HasForeignKey(x => x.WorkRoleId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

@@ -71,15 +71,15 @@ namespace LagoVista.Relational
             var entity = mb.Entity<PayrollRunDTO>();
 
             // Relationships
-            entity.HasOne(x => x.LockedByUser).WithMany().HasForeignKey(x => x.LockedByUserId);
-            entity.HasOne(x => x.ApprovedByUser).WithMany().HasForeignKey(x => x.ApprovedByUserId);
-            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
-            entity.HasOne(x => x.TimePeriod).WithOne(x => x.PayrollRun).HasForeignKey<TimePeriodDTO>(x => x.PayrollRunId);
-            entity.HasMany(x => x.Payments).WithOne(x => x.PayrollRun).HasForeignKey(x => x.PayrollRunId);
-            entity.HasMany(x => x.Deductions).WithOne(x => x.PayrollRun).HasForeignKey(x => x.PayrollRunId);    
-            entity.HasMany(x => x.PayrollTaxDetails).WithOne(x => x.PayrollRun).HasForeignKey(x => x.PayrollRunId);
+            entity.HasOne(x => x.LockedByUser).WithMany().HasForeignKey(x => x.LockedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ApprovedByUser).WithMany().HasForeignKey(x => x.ApprovedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.TimePeriod).WithOne(x => x.PayrollRun).HasForeignKey<TimePeriodDTO>(x => x.PayrollRunId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(x => x.Payments).WithOne(x => x.PayrollRun).HasForeignKey(x => x.PayrollRunId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(x => x.Deductions).WithOne(x => x.PayrollRun).HasForeignKey(x => x.PayrollRunId).OnDelete(DeleteBehavior.Restrict);    
+            entity.HasMany(x => x.PayrollTaxDetails).WithOne(x => x.PayrollRun).HasForeignKey(x => x.PayrollRunId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

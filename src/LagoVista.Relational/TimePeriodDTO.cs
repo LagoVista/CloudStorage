@@ -54,7 +54,7 @@ namespace LagoVista.Relational
             // Relationships
             entity.HasOne(x => x.LockedByUser).WithMany().HasForeignKey(x => x.LockedByUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(x => x.PayrollRun).WithOne(x => x.TimePeriod).HasForeignKey<TimePeriodDTO>(x => x.PayrollRunId);
+            entity.HasOne(x => x.PayrollRun).WithOne(x => x.TimePeriod).HasForeignKey<TimePeriodDTO>(x => x.PayrollRunId).OnDelete(DeleteBehavior.Restrict);
             entity.HasMany(x => x.TimeEntries).WithOne(x => x.TimePeriod).HasForeignKey(x => x.TimePeriodId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency

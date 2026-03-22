@@ -41,8 +41,8 @@ namespace LagoVista.Relational
             var entity = mb.Entity<ProductIncludedDTO>();
 
             // Relationships
-            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
-            entity.HasOne(x => x.Package).WithMany().HasForeignKey(x => x.PackageId);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Package).WithMany().HasForeignKey(x => x.PackageId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

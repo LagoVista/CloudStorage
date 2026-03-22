@@ -85,11 +85,11 @@ namespace LagoVista.Relational
             var entity = mb.Entity<AccountTransactionDto>();
 
             // Relationships
-            entity.HasOne(x => x.Account).WithMany(x => x.Transactions).HasForeignKey(x => x.AccountId);
-            entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId);
-            entity.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.TransactionCategoryId);
-            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
-            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById);
+            entity.HasOne(x => x.Account).WithMany(x => x.Transactions).HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.TransactionCategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

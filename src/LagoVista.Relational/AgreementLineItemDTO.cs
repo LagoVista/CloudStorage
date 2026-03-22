@@ -75,12 +75,12 @@ namespace LagoVista.Relational
             var entity = mb.Entity<AgreementLineItemDTO>();
 
             // Relationships
-            entity.HasOne(x => x.License).WithOne(x => x.AgreementLineItem).HasForeignKey<LicenseDTO>(x => x.AgreementLineItemId);
-            entity.HasOne(x => x.Agreement).WithMany(x => x.LineItems).HasForeignKey(x => x.AgreementId);
-            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
-            entity.HasOne(x => x.UnitType).WithMany().HasForeignKey(x => x.UnitTypeId);
-            entity.HasOne(x => x.RecurringCycleType).WithMany().HasForeignKey(x => x.RecurringCycleTypeId);
-            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId);
+            entity.HasOne(x => x.License).WithOne(x => x.AgreementLineItem).HasForeignKey<LicenseDTO>(x => x.AgreementLineItemId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Agreement).WithMany(x => x.LineItems).HasForeignKey(x => x.AgreementId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.UnitType).WithMany().HasForeignKey(x => x.UnitTypeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.RecurringCycleType).WithMany().HasForeignKey(x => x.RecurringCycleTypeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

@@ -82,13 +82,13 @@ namespace LagoVista.Relational
             var entity = mb.Entity<AgreementDTO>();
 
             // Relationships
-            entity.HasMany(x => x.InvoiceLineItems).WithOne().HasForeignKey(x => x.Id);
-            entity.HasMany(x => x.LineItems).WithOne().HasForeignKey(x => x.AgreementId);
-            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
-            entity.HasMany(x => x.TimeEntries).WithOne(te => te.Agreement).HasForeignKey(te => te.AgreementId);
+            entity.HasMany(x => x.InvoiceLineItems).WithOne().HasForeignKey(x => x.Id).OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(x => x.LineItems).WithOne().HasForeignKey(x => x.AgreementId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.NoAction).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.NoAction).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction).OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(x => x.TimeEntries).WithOne(te => te.Agreement).HasForeignKey(te => te.AgreementId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

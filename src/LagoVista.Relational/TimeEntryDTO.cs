@@ -54,13 +54,13 @@ namespace LagoVista.Relational
             var entity = mb.Entity<TimeEntryDTO>();
 
             // Relationships
-            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById);
-            entity.HasOne(x => x.Agreement).WithMany(x => x.TimeEntries).HasForeignKey(x => x.AgreementId);
-            entity.HasOne(x => x.BillingEvent).WithMany().HasForeignKey(x => x.BillingEventId);
-            entity.HasOne(x => x.TimePeriod).WithMany(x => x.TimeEntries).HasForeignKey(x => x.TimePeriodId);
-            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
-            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Agreement).WithMany(x => x.TimeEntries).HasForeignKey(x => x.AgreementId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.BillingEvent).WithMany().HasForeignKey(x => x.BillingEventId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.TimePeriod).WithMany(x => x.TimeEntries).HasForeignKey(x => x.TimePeriodId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

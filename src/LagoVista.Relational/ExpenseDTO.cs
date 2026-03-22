@@ -75,17 +75,17 @@ namespace LagoVista.Relational
             var entity = mb.Entity<ExpenseDTO>();
 
             // Relationships
-            entity.HasOne(x => x.Agreement).WithMany().HasForeignKey(x => x.AgreementId);
-            entity.HasOne(x => x.CreditCard).WithMany(x => x.Expenses).HasForeignKey(x => x.CreditCardId);
-            entity.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.ExpenseCategoryId);
-            entity.HasOne(x => x.Payment).WithMany().HasForeignKey(x => x.PaymentId);
-            entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId);
-            entity.HasOne(x => x.TimePeriod).WithMany().HasForeignKey(x => x.TimePeriodId);
-            entity.HasOne(x => x.ApprovedUser).WithMany().HasForeignKey(x => x.ApprovedById);
-            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId);
-            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
-            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById);
-            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId);
+            entity.HasOne(x => x.Agreement).WithMany().HasForeignKey(x => x.AgreementId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreditCard).WithMany(x => x.Expenses).HasForeignKey(x => x.CreditCardId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.ExpenseCategoryId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Payment).WithMany().HasForeignKey(x => x.PaymentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Vendor).WithMany().HasForeignKey(x => x.VendorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.TimePeriod).WithMany().HasForeignKey(x => x.TimePeriodId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ApprovedUser).WithMany().HasForeignKey(x => x.ApprovedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Organization).WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

@@ -47,8 +47,8 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.NoAction);
-            entity.HasMany(x => x.Usage).WithOne(x => x.License).HasForeignKey(x => x.LicenseId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(x => x.AgreementLineItem).WithOne(x => x.License).HasForeignKey<LicenseDTO>(x => x.AgreementLineItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(x => x.Usage).WithOne(x => x.License).HasForeignKey(x => x.LicenseId).OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(x => x.AgreementLineItem).WithOne(x => x.License).HasForeignKey<LicenseDTO>(x => x.AgreementLineItemId).OnDelete(DeleteBehavior.NoAction);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

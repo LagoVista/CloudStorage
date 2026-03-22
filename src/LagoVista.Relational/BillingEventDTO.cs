@@ -137,10 +137,10 @@ namespace LagoVista.Relational
             var entity = mb.Entity<BillingEventDTO>();
 
             // Relationships
-            entity.HasOne(x => x.Subscription).WithMany(x => x.BillingEvents).HasForeignKey(x => x.SubscriptionId);
-            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId);
-            entity.HasOne(x => x.StartedByAppUser).WithMany().HasForeignKey(x => x.StartedByAppUserId);
-            entity.HasOne(x => x.EndedByAppUser).WithMany().HasForeignKey(x => x.EndedByAppUserId);
+            entity.HasOne(x => x.Subscription).WithMany(x => x.BillingEvents).HasForeignKey(x => x.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.StartedByAppUser).WithMany().HasForeignKey(x => x.StartedByAppUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.EndedByAppUser).WithMany().HasForeignKey(x => x.EndedByAppUserId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);

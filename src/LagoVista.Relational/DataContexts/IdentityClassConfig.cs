@@ -34,7 +34,7 @@ namespace LagoVista.Relational.DataContexts
             modelBuilder.Entity<OrganizationDTO>()
             .HasOne(o => o.BillingContact)
             .WithMany()
-            .HasForeignKey(o => o.OrgBillingContactId);
+            .HasForeignKey(o => o.OrgBillingContactId).OnDelete(DeleteBehavior.Restrict);
 
             if (modelBuilder.IsSqlServer())
             {
