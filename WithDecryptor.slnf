@@ -1,0 +1,17 @@
+{
+  "solution": {
+    "path": "CloudStorage.sln",
+    "projects": [
+      "..\\as.NuvIoTAppSupport\\src\\LagoVista.SecureStorage\\LagoVista.SecureStorage.csproj",
+      "Apps\\DataMigration\\DataMigration.csproj",
+      "ThrowAway\\ThrowAway.csproj",
+      "src\\LagoVista.CloudStorage\\LagoVista.CloudStorage.csproj",
+      "src\\LagoVista.Relational\\LagoVista.Relational.csproj",
+      "src\\SchemaVerify\\SchemaVerify.csproj",
+      "tests\\LagoVista.CloudStorage.Tests\\LagoVista.CloudStorage.IntegrationTests.csproj",
+      "tests\\MarchDataMigration\\MarchDataMigration.csproj",
+      "tests\\Relational.Tests.Core\\LagoVista.Relational.Tests.Core.csproj",
+      "tests\\Relational.Tests\\Relational.Tests.csproj"
+    ]
+  }
+}

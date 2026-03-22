@@ -54,10 +54,6 @@ namespace Relational.Tests.Core.Database
             // Core Primaries for Evenrything
             UserSeeds.Populate(10);
             OrganizationSeeds.Populate(10);
-
-
-
-
             UserEH = UserSeeds.Primary.ToEntityHeader();
             OrgEH = OrganizationSeeds.Primary.ToEntityHeader();
 
