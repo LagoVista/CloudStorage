@@ -31,13 +31,12 @@ namespace LagoVista.CloudStorage
          
             services.AddSingleton<ICacheProviderSettings, CacheProviderSettings>();
             services.AddSingleton<ISyncConnectionSettings, SyncConnections>();
+            services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
 
             LagoVista.Core.AutoMapper.Startup.ConfigureServices(services);
         }
     }
 }
-
-
 
 namespace LagoVista.DependencyInjection
 {
