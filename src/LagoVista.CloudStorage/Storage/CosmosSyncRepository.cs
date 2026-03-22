@@ -20,8 +20,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static LagoVista.Core.Attributes.EntityDescriptionAttribute;
-using static LagoVista.Core.Models.AdaptiveCard.MSTeams;
 
 namespace LagoVista.CloudStorage.Storage
 {

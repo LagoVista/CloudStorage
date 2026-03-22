@@ -8,13 +8,8 @@ using LagoVista.Core;
 using LagoVista.Core.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
 using LagoVista.IoT.Logging.Utils;
-using Microsoft.Azure.Cosmos.Serialization.HybridRow;
-using MongoDB.Bson.Serialization.IdGenerators;
 using Moq;
 using System.Diagnostics;
-using System.Security.Cryptography;
-using ZstdSharp.Unsafe;
-using static System.Net.WebRequestMethods;
 
 ISyncRepository _syncRepo;
 IFkIndexTableWriterBatched _fkeyWriter;
