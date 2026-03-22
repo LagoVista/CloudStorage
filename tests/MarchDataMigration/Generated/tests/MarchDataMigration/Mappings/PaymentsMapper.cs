@@ -1,5 +1,6 @@
 using MarchDataMigration.Generated.ExpenseCategory;
 using MarchDataMigration.Generated.Payments;
+using System;
 using System.Diagnostics.Tracing;
 
 namespace MarchDataMigration.Mappings
@@ -18,6 +19,7 @@ namespace MarchDataMigration.Mappings
                 LastUpdatedDate = source.CreationDate,
                 UserId = source.UserId,
                 TimePeriodId = source.TimePeriodId,
+                PayrollRunId = Guid.Parse("D233CF03-BFC4-4443-85B6-39F1188A7227"),
                 PeriodStart = source.PeriodStart,
                 PeriodEnd = source.PeriodEnd,
                 PaymentStatus = source.Status,

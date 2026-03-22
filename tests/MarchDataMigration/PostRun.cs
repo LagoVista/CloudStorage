@@ -14,7 +14,9 @@ namespace MarchDataMigration
             update AgreementLineItems set CustomerId = (select CustomerId from Agreements where Agreements.Id = AgreementLineItems.AgreementId)
             update InvoiceLineItems set CustomerId = (select CustomerId from Invoices where Invoices.Id = InvoiceLineItems.InvoiceId)
             update InvoiceLogs set CustomerId = (select CustomerId from Invoices where Invoices.Id = InvoiceLogs.InvoiceId)
+            update Payments set PayrollRunid= XXX
 
+--- Enable FKey
 
 ";
     }

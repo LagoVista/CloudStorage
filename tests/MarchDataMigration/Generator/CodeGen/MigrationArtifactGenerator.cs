@@ -41,20 +41,28 @@ namespace MarchDataMigration.Generator.CodeGen
             Directory.CreateDirectory(Path.Combine(root, "Mappings"));
             Directory.CreateDirectory(Path.Combine(root, "Tests"));
 
-            foreach (var tableName in tableNames)
+            foreach (var tableName in request.IncludeTables)
             {
-                var source = sourceLookup[tableName];
-                var target = targetLookup[tableName];
-                var featureDir = Path.Combine(root, "Generated", tableName);
+                var sourceName = tableName;
+                var targetName = tableName;
+                if (tableName.Contains("/"))
+                {
+                    sourceName = tableName.Split('/')[0];
+                    targetName = tableName.Split('/')[1];
+                }
+
+                var source = sourceLookup[sourceName];
+                var target = targetLookup[targetName];
+                var featureDir = Path.Combine(root, "Generated", sourceName);
                 Directory.CreateDirectory(featureDir);
 
-                WriteGenerated(Path.Combine(featureDir, $"Source{tableName}Row.g.cs"), BuildSourceRow(tableName, source));
-                WriteGenerated(Path.Combine(featureDir, $"Target{tableName}Row.g.cs"), BuildTargetRow(tableName, target));
-                WriteGenerated(Path.Combine(featureDir, $"{tableName}TableDefinition.g.cs"), BuildTableDefinition(tableName, target));
-                WriteGenerated(Path.Combine(featureDir, $"{tableName}SourceReader.g.cs"), BuildSourceReader(tableName, source));
-                WriteGenerated(Path.Combine(featureDir, $"{tableName}MigrationService.g.cs"), BuildMigrationService(tableName, target));
-                WriteGenerated(Path.Combine(root, "Tests", $"{tableName}MigrationTests.g.cs"), BuildMigrationTest(tableName));
-                WriteIfMissing(Path.Combine(root, "Mappings", $"{tableName}Mapper.cs"), BuildMapperStub(tableName, source, target));
+                WriteGenerated(Path.Combine(featureDir, $"Source{sourceName}Row.g.cs"), BuildSourceRow(sourceName, source));
+                WriteGenerated(Path.Combine(featureDir, $"Target{targetName}Row.g.cs"), BuildTargetRow(targetName, target));
+                WriteGenerated(Path.Combine(featureDir, $"{sourceName}TableDefinition.g.cs"), BuildTableDefinition(sourceName, target));
+                WriteGenerated(Path.Combine(featureDir, $"{sourceName}SourceReader.g.cs"), BuildSourceReader(sourceName, source));
+                WriteGenerated(Path.Combine(featureDir, $"{sourceName}MigrationService.g.cs"), BuildMigrationService(sourceName, target));
+                WriteGenerated(Path.Combine(root, "Tests", $"{sourceName}MigrationTests.g.cs"), BuildMigrationTest(sourceName));
+                WriteIfMissing(Path.Combine(root, "Mappings", $"{sourceName}Mapper.cs"), BuildMapperStub(sourceName, source, target));
             }
         }
 

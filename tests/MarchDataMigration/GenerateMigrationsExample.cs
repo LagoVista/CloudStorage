@@ -29,7 +29,7 @@ namespace LegacyMigrationScaffolding.Usage
                 OutputRootPath = @"D:\NuvIoT\cs.CloudStorage\Tests\MarchDataMigration\Generated",
                 SourceConnectionString = source,
                 TargetConnectionString = target,
-                IncludeTables = new[] {"PayrollSummary/PayRun"}
+                IncludeTables = new[] {"PayrollSummary/PayrollRun"}
             };
 
             var generator = new MigrationArtifactGenerator();
