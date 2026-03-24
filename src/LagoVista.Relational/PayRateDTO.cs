@@ -11,7 +11,7 @@ namespace LagoVista.Relational
 {
     [ModernKeyId("user-{id}", IdPath = "UserId")]
     [Table("PayRates", Schema = "dbo")]
-    [EncryptionKey("Rate-{id}", IdProperty = nameof(PayRateDTO.UserId), CreateIfMissing = true)]
+    [EncryptionKey("RateKey-{id}", IdProperty = nameof(PayRateDTO.UserId), CreateIfMissing = true)]
     public class PayRateDTO : DbModelBase, IEntityHeaderFactory
     {
         [Required]
