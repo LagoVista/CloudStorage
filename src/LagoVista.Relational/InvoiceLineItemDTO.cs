@@ -40,6 +40,9 @@ namespace LagoVista.Relational
         [Required]
         public string Units { get; set; }
 
+        public int UnitTypeId { get; set; }
+
+
         public bool? Taxable { get; set; }
         public string EncryptedUnitPrice { get; set; }
         public string EncryptedTotal { get; set; }
@@ -60,6 +63,10 @@ namespace LagoVista.Relational
         public CustomerDTO Customer { get; set; }
 
 
+        [IgnoreOnMapTo]
+        public UnitTypeDTO UnitType { get; set; }
+
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             var mb = modelBuilder;
@@ -70,6 +77,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Invoice).WithMany(x => x.LineItems).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(x => x.Agreement).WithMany(x => x.InvoiceLineItems).HasForeignKey(x => x.AgreementId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.UnitType).WithMany().HasForeignKey(x => x.UnitTypeId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
@@ -85,13 +93,14 @@ namespace LagoVista.Relational
             entity.Property(x => x.ProductName).HasColumnOrder(7);
             entity.Property(x => x.Quantity).HasColumnOrder(8);
             entity.Property(x => x.Units).HasColumnOrder(9);
-            entity.Property(x => x.EncryptedUnitPrice).HasColumnOrder(10);
-            entity.Property(x => x.EncryptedTotal).HasColumnOrder(11);
-            entity.Property(x => x.EncryptedDiscount).HasColumnOrder(12);
-            entity.Property(x => x.EncryptedExtended).HasColumnOrder(13);
-            entity.Property(x => x.Taxable).HasColumnOrder(14);
-            entity.Property(x => x.ProductId).HasColumnOrder(15);
-            entity.Property(x => x.EncryptedShipping).HasColumnOrder(16);
+            entity.Property(x => x.UnitTypeId).HasColumnOrder(10);
+            entity.Property(x => x.EncryptedUnitPrice).HasColumnOrder(11);
+            entity.Property(x => x.EncryptedTotal).HasColumnOrder(12);
+            entity.Property(x => x.EncryptedDiscount).HasColumnOrder(13);
+            entity.Property(x => x.EncryptedExtended).HasColumnOrder(14);
+            entity.Property(x => x.Taxable).HasColumnOrder(15);
+            entity.Property(x => x.ProductId).HasColumnOrder(16);
+            entity.Property(x => x.EncryptedShipping).HasColumnOrder(17);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -102,6 +111,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.ResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.ProductName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Quantity).HasColumnType(StandardDBTypes.DecimalSmall(provider));
+            entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.Units).HasColumnType(StandardDBTypes.CategoryStorage(provider));
             entity.Property(x => x.EncryptedUnitPrice).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.EncryptedTotal).HasColumnType(StandardDBTypes.EncryptionStorage(provider));

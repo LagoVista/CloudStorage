@@ -65,7 +65,7 @@ namespace LagoVista.Relational.DataContexts
 
         public DbSet<PaymentDTO> Payments { get; set; }
         public DbSet<PaymentDeductionDTO> PaymentDeductions { get; set; }
-        public DbSet<ExpenseReimbursementDTO> ReimbursedDeductions { get; set; }
+        public DbSet<ExpenseReimbursementDTO> ReimbursedExpenses { get; set; }
 
         public DbSet<PayRateDTO> PayRates { get; set; }
         public DbSet<PayrollRunDTO> PayrollRuns { get; set; }
