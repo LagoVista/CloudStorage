@@ -28,8 +28,7 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<ISyncRepository, CosmosSyncRepository>();
             services.AddSingleton<INodeLocatorTableReader, NodeLocatorTableReader>();
             services.AddSingleton<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
-         
-            services.AddSingleton<ICacheProviderSettings, CacheProviderSettings>();
+        
             services.AddSingleton<ISyncConnectionSettings, SyncConnections>();
             services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
 

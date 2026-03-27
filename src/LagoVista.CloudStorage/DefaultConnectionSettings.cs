@@ -16,12 +16,12 @@ namespace LagoVista.CloudStorage
 
         public DefaultConnectionSettings(IConfiguration configuration)
         {
-            var docDbSection = configuration.GetSection("DefaultDocDBStorage");
+            var docDbSection = configuration.GetRequiredSection("DefaultDocDBStorage");
             DefaultDocDbSettings = new ConnectionSettings
             {
-                Uri = docDbSection.GetValue<string>("Endpoint"),
-                AccessKey = docDbSection.GetValue<string>("AccessKey"),
-                ResourceName = docDbSection.GetValue<string>("DbName"),
+                Uri = docDbSection.Require("Endpoint"),
+                AccessKey = docDbSection.Require("AccessKey"),
+                ResourceName = docDbSection.Require("DbName"),
             };
 
             if (String.IsNullOrEmpty(DefaultDocDbSettings.Uri) || String.IsNullOrEmpty(DefaultDocDbSettings.AccessKey) || String.IsNullOrEmpty(DefaultDocDbSettings.ResourceName))
@@ -29,18 +29,18 @@ namespace LagoVista.CloudStorage
                 throw new ArgumentException("DefaultDocDBStorage settings are required for SyncConnections.");
             }
 
-            var tsSection = configuration.GetSection("DefaultTableStorage");
+            var tsSection = configuration.GetRequiredSection("DefaultTableStorage");
             DefaultTableStorageSettings = new ConnectionSettings
             {
-                AccountId = tsSection.GetValue<string>("Name"),
-                AccessKey = tsSection.GetValue<string>("AccessKey"),
+                AccountId = tsSection.Require("Name"),
+                AccessKey = tsSection.Require("AccessKey"),
             };
 
-            var ehSection = configuration.GetSection("CheckPointStorage");
+            var ehSection = configuration.GetRequiredSection("CheckPointStorage");
             EHCheckPointStorageSettings = new ConnectionSettings
             {
-                AccountId = ehSection.GetValue<string>("Name"),
-                AccessKey = ehSection.GetValue<string>("AccessKey"),
+                AccountId = ehSection.Require("Name"),
+                AccessKey = ehSection.Require("AccessKey"),
             };
 
         }

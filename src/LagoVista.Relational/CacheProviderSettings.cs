@@ -2,7 +2,6 @@
 using LagoVista.Core.Models;
 using Microsoft.Extensions.Configuration;
 using System;
-using System.ComponentModel.DataAnnotations;
 
 namespace LagoVista.CloudStorage
 {
@@ -16,16 +15,11 @@ namespace LagoVista.CloudStorage
         {
             var cacheSection = configuration.GetRequiredSection("SystemCache");
 
-            UseCache = Convert.ToBoolean(cacheSection["UseCache"]);
+            UseCache = Convert.ToBoolean(cacheSection.Require("UseCache"));
             CacheSettings = new ConnectionSettings
             {
-                Uri = cacheSection.GetValue<string>("Uri"),
+                Uri = cacheSection.Require("Uri"),
             };
-
-            if(String.IsNullOrEmpty(CacheSettings.Uri))
-            {
-                throw new ValidationException("Cache URI is required when UseCache is true.");
-            }
         }
     }
 }
