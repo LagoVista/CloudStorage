@@ -16,7 +16,7 @@ namespace LagoVista.CloudStorage
 
         public DefaultConnectionSettings(IConfiguration configuration)
         {
-            var docDbSection = configuration.GetRequiredSection("DefaultDocDBStorage");
+            var docDbSection = configuration.GetSection("DefaultDocDBStorage");
             DefaultDocDbSettings = new ConnectionSettings
             {
                 Uri = docDbSection.Require("Endpoint"),
@@ -29,14 +29,14 @@ namespace LagoVista.CloudStorage
                 throw new ArgumentException("DefaultDocDBStorage settings are required for SyncConnections.");
             }
 
-            var tsSection = configuration.GetRequiredSection("DefaultTableStorage");
+            var tsSection = configuration.GetSection("DefaultTableStorage");
             DefaultTableStorageSettings = new ConnectionSettings
             {
                 AccountId = tsSection.Require("Name"),
                 AccessKey = tsSection.Require("AccessKey"),
             };
 
-            var ehSection = configuration.GetRequiredSection("CheckPointStorage");
+            var ehSection = configuration.GetSection("CheckPointStorage");
             EHCheckPointStorageSettings = new ConnectionSettings
             {
                 AccountId = ehSection.Require("Name"),

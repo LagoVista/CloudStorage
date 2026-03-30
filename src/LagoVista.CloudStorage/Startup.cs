@@ -18,16 +18,16 @@ namespace LagoVista.CloudStorage
     {
         public static void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<ICacheProvider, CacheProvider>();
-            services.AddSingleton<IStorageUtils, StorageUtils>();
-            services.AddSingleton<IDocumentCloudServices, DocumentCloudServices>();
-            services.AddSingleton<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
-            services.AddSingleton<ICategoryManager, CategoryManager>();
-            services.AddSingleton<ITableSizer, TableSizer>();
-            services.AddSingleton<INodeLocatorTableWriterBatched,  NodeLocatorTableWriterBatched>();
-            services.AddSingleton<ISyncRepository, CosmosSyncRepository>();
-            services.AddSingleton<INodeLocatorTableReader, NodeLocatorTableReader>();
-            services.AddSingleton<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
+            services.AddScoped<ICacheProvider, CacheProvider>();
+            services.AddScoped<IStorageUtils, StorageUtils>();
+            services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
+            services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
+            services.AddScoped<ICategoryManager, CategoryManager>();
+            services.AddScoped<ITableSizer, TableSizer>();
+            services.AddScoped<INodeLocatorTableWriterBatched,  NodeLocatorTableWriterBatched>();
+            services.AddScoped<ISyncRepository, CosmosSyncRepository>();
+            services.AddScoped<INodeLocatorTableReader, NodeLocatorTableReader>();
+            services.AddScoped<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
         
             services.AddSingleton<ISyncConnectionSettings, SyncConnections>();
             services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
