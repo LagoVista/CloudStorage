@@ -24,11 +24,6 @@ namespace LagoVista.CloudStorage
                 ResourceName = docDbSection.Require("DbName"),
             };
 
-            if (String.IsNullOrEmpty(DefaultDocDbSettings.Uri) || String.IsNullOrEmpty(DefaultDocDbSettings.AccessKey) || String.IsNullOrEmpty(DefaultDocDbSettings.ResourceName))
-            {
-                throw new ArgumentException("DefaultDocDBStorage settings are required for SyncConnections.");
-            }
-
             var tsSection = configuration.GetSection("DefaultTableStorage");
             DefaultTableStorageSettings = new ConnectionSettings
             {

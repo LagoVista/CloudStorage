@@ -13,7 +13,7 @@ namespace LagoVista.CloudStorage
 
         public CacheProviderSettings(IConfiguration configuration)
         {
-            var cacheSection = configuration.GetRequiredSection("SystemCache");
+            var cacheSection = configuration.GetSection("SystemCache");
 
             UseCache = Convert.ToBoolean(cacheSection.Require("UseCache"));
             CacheSettings = new ConnectionSettings

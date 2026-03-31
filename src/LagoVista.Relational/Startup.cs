@@ -16,7 +16,7 @@ namespace LagoVista.Relational
     {
         public static void ConfigureDataContextServices(IConfigurationRoot configurationRoot, Microsoft.Extensions.DependencyInjection.IServiceCollection services, ILogger logger)
         {
-            var section = configurationRoot.GetRequiredSection("BillingDb");
+            var section = configurationRoot.GetSection("BillingDb");
 
             var connectionSettings = new ConnectionSettings()
             {
@@ -25,7 +25,6 @@ namespace LagoVista.Relational
                 UserName = section.Require("UserName"),
                 Password = section.Require("Password"),
             };
-
 
             services.AddSingleton<LagoVista.CloudStorage.ICacheProviderSettings, CacheProviderSettings>();
             services.AddScoped<IKeyIdTargetResolver, Services.KeyIdTargetResolver>();   

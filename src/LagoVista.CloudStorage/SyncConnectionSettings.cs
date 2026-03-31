@@ -15,15 +15,10 @@ namespace LagoVista.CloudStorage
             var section = configuration.GetSection("DefaultDocDBStorage");
             SyncConnectionSettings = new ConnectionSettings
             {
-                Uri = section.GetValue<string>("Endpoint"),
-                AccessKey = section.GetValue<string>("AccessKey"),
-                ResourceName = section.GetValue<string>("DbName"),
+                Uri = section.Require("Endpoint"),
+                AccessKey = section.Require("AccessKey"),
+                ResourceName = section.Require("DbName"),
             };
-
-            if (String.IsNullOrEmpty(SyncConnectionSettings.Uri) || String.IsNullOrEmpty(SyncConnectionSettings.AccessKey) || String.IsNullOrEmpty(SyncConnectionSettings.ResourceName))
-            {
-                throw new ArgumentException("DefaultDocDBStorage settings are required for SyncConnections.");
-            }
         }
     }
 }
