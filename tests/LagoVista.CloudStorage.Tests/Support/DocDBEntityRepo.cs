@@ -22,8 +22,6 @@ namespace LagoVista.CloudStorage.Tests.Support
 
         }
 
-        protected override bool ShouldConsolidateCollections => true;
-
         public Task CreateDBDocment(DocDBEntitty entity)
         {
             return CreateDocumentAsync(entity);

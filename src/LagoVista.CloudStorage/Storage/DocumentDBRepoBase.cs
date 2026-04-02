@@ -147,7 +147,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         }
 
-        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudCachedServices cloudServices) : 
+        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudCachedServices cloudServices) :
             this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, cloudServices.CacheProvider, cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter)
         {
             _ragIndexingServices = cloudServices.RagIndexingServices;
@@ -155,7 +155,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudServices cloudServices) :
-            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, dependencyManager:cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter)
+            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, dependencyManager: cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter)
         {
             _fkeyIndexWriter = cloudServices.FkIndexTableWriter;
         }
@@ -297,10 +297,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             return docClient.GetContainer(_dbName, GetCollectionName());
         }
 
-        protected virtual bool ShouldConsolidateCollections
-        {
-            get { return false; }
-        }
 
         protected async Task<Database> GetDatabase(CosmosClient client)
         {
@@ -316,19 +312,13 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public virtual String GetCollectionName()
         {
-            if (ShouldConsolidateCollections)
+
+            if (IsRuntimeData)
             {
-                if (IsRuntimeData)
-                {
-                    return _dbName + "_CollectionsRunTime";
-                }
-                else
-                    return _dbName + "_Collections";
+                return _dbName + "_CollectionsRunTime";
             }
             else
-            {
-                return _defaultCollectionName;
-            }
+                return _dbName + "_Collections";
         }
 
         public async Task<EntityHeader> GetEntityHeaderForRecordAsync(string id, CancellationToken ct = default)
@@ -465,7 +455,7 @@ where c.id = @id";
 
                 if (_fkeyIndexWriter != null)
                 {
-                    var fkNodes =ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehNodes);
+                    var fkNodes = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehNodes);
                     await _fkeyIndexWriter.UpsertAllAsync(fkNodes);
                 }
 
@@ -482,7 +472,7 @@ where c.id = @id";
         }
 
         private async Task PostDiscussionUpdates(IDiscussableEntity entity)
-        {            
+        {
             var discussable = entity as IDiscussableEntity;
             var mentionRegEx = new Regex(@"data-mention-id=""(?<mentionId>[A-F0-9]+)""");
             var forMAttr = typeof(TEntity).GetCustomAttribute<EntityDescriptionAttribute>();
@@ -543,7 +533,7 @@ where c.id = @id";
                 var result = Validator.Validate(item as IValidateable, Actions.Update);
                 if (!result.Successful)
                 {
-                    foreach(var error in result.Errors)
+                    foreach (var error in result.Errors)
                     {
                         _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", $"Validation Error: {error.Message}", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", item.Id));
                     }
@@ -564,7 +554,7 @@ where c.id = @id";
 
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
-           
+
             var container = await GetContainerAsync();
 
             var sw = Stopwatch.StartNew();
@@ -647,7 +637,7 @@ where c.id = @id";
             if (discussable != null)
             {
                 Console.WriteLine($"===================> Checking it is discussable <========================================");
-                
+
                 await PostDiscussionUpdates(discussable);
             }
 
@@ -680,7 +670,7 @@ where c.id = @id";
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
                     _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "PreconditionFailed", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
                     throw new ContentModifiedException() { EntityType = typeof(TEntity).Name, Id = item.Id };
-                    
+
                 case System.Net.HttpStatusCode.RequestEntityTooLarge:
                     _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync", "RequestEntityTooLarge]", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
@@ -708,7 +698,7 @@ where c.id = @id";
             if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache))
             {
                 await _cacheProvider.RemoveAsync(GetCacheKey(item.Id));
-              //  sw.Restart();
+                //  sw.Restart();
                 await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item));
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Added {typeof(TEntity).Name} back to cache after update in {sw.Elapsed.TotalMilliseconds}ms");
             }
@@ -907,7 +897,7 @@ where c.id = @id";
                 result = await container.DeleteItemAsync<TEntity>(doc.Id, PartitionKey.None);
                 if (_ragIndexingServices != null)
                 {
-                    if(!EntityHeader.IsNullOrEmpty(doc.OwnerOrganization))
+                    if (!EntityHeader.IsNullOrEmpty(doc.OwnerOrganization))
                         await _ragIndexingServices.RemoveIndexAsync(doc.OwnerOrganization.Id, doc.Id);
                 }
             }
@@ -1156,7 +1146,7 @@ where c.id = @id";
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted]", 
+                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted]",
                     $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted] in {sw.Elapsed.TotalMilliseconds} ms",
                     items.Count.ToString().ToKVP("recordCount"),
                     new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
@@ -1187,12 +1177,12 @@ where c.id = @id";
                 var items = new List<TEntityFactory>();
                 var requestCharge = 0.0;
 
-                if(listRequest.OrderBy != null && listRequest.OrderByDesc != null)
+                if (listRequest.OrderBy != null && listRequest.OrderByDesc != null)
                 {
                     return ListResponse<TEntitySummary>.FromError("order by AND order by desc were both provided, must either be both empty or only provide one of the two.");
                 }
 
-                if(listRequest.OrderBy != null)
+                if (listRequest.OrderBy != null)
                 {
                     switch (listRequest.OrderBy.Value)
                     {
@@ -1238,10 +1228,10 @@ where c.id = @id";
                     isDeletedQuery = qry => true;
 
                 System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> isDraftQuery = (qry) => !qry.IsDraft.IsDefined() || qry.IsDraft == false;
-                if(listRequest.ShowDrafts)
+                if (listRequest.ShowDrafts)
                     isDraftQuery = qry => true;
 
-                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> categoryQuery = (qry) => qry.Category.Key == listRequest.CategoryKey;;
+                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> categoryQuery = (qry) => qry.Category.Key == listRequest.CategoryKey; ;
                 if (String.IsNullOrEmpty(listRequest.CategoryKey))
                     categoryQuery = qry => true;
 
@@ -1253,11 +1243,11 @@ where c.id = @id";
                                                         .Where(entityTypeQuery)
                                                         .Where(categoryQuery)
                                                         .Where(isDeletedQuery)
-                                                        .Where(isDraftQuery); 
-                                     
-                if(orderByDesc != null)
+                                                        .Where(isDraftQuery);
+
+                if (orderByDesc != null)
                     linqQuery = linqQuery.OrderByDescending(orderByDesc);
-                else if(sort != null)
+                else if (sort != null)
                     linqQuery = linqQuery.OrderBy(sort);
 
                 linqQuery = linqQuery.Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
