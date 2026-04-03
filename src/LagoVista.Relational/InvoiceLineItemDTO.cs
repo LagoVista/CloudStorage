@@ -37,7 +37,8 @@ namespace LagoVista.Relational
         public Guid? ProductId { get; set; }
 
         public decimal Quantity { get; set; }
-        [Required]
+
+        [IgnoreOnMapTo]
         public string Units { get; set; }
 
         public int UnitTypeId { get; set; }
