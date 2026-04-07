@@ -36,10 +36,17 @@ namespace LagoVista.Relational
 
         protected async Task AddWithContextAsync(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task> work)
         {
-            var encryptionServices = new EncryptionServices(_secureStorage, _adminlogger, secretId, org, user);
-            var svc = new EncryptedRepoContext<TContext>(_context, encryptionServices);
-            await svc.EncryptionServices.SetAccountEncryptionString();
-            await work(svc);
+            try
+            {
+                var encryptionServices = new EncryptionServices(_secureStorage, _adminlogger, secretId, org, user);
+                var svc = new EncryptedRepoContext<TContext>(_context, encryptionServices);
+                await svc.EncryptionServices.SetAccountEncryptionString();
+                await work(svc);
+            }
+            catch (Exception ex)
+            {
+                _adminlogger.AddException(this.Tag(), ex);
+            }
         }
 
         protected async Task UpdateWithContextAsync(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task> work)

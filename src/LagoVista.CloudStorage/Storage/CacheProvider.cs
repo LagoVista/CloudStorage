@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Policy;
 using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Storage
@@ -19,7 +20,7 @@ namespace LagoVista.CloudStorage.Storage
         private static Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>();
 
 
-        public CacheProvider(ICacheProviderSettings settings, IAdminLogger adminlogger)
+        public CacheProvider(ICacheProviderSettings settings, IAdminLogger adminlogger, IAppConfig appConfig)
         {
             _logger = adminlogger ?? throw new ArgumentNullException(nameof(adminlogger));
 
@@ -27,15 +28,17 @@ namespace LagoVista.CloudStorage.Storage
 
             if (settings.UseCache)
             {
+                var uri = appConfig.Environment == Environments.Local ? "127.0.0.1" : settings.CacheSettings.Uri;
                 try
                 {
-                    _logger.Trace($"{this.Tag()} - Initializing cache provider with settings: {JsonConvert.SerializeObject(settings.CacheSettings.Uri)}");
-                    _multiplexer = ConnectionMultiplexer.Connect(settings.CacheSettings.Uri);
-                    _logger.Trace($"{this.Tag()} - Established connection to REDIS: {JsonConvert.SerializeObject(settings.CacheSettings.Uri)}");
+
+                    _logger.Trace($"{this.Tag()} - Initializing cache provider with settings: {uri} - Slot Title {appConfig.Environment}, {appConfig.AppId} ");
+                    _multiplexer = ConnectionMultiplexer.Connect(uri);
+                    _logger.Trace($"{this.Tag()} - Established connection to REDIS: {uri}");
                 }
                 catch (Exception ex)
                 {
-                    _logger.AddError(this.Tag(), $"Failed to connect to REDIS with settings: {JsonConvert.SerializeObject(settings.CacheSettings.Uri)}. Exception: {ex}.  You can disable remote cache by setting UseCache = false in AppSettings.  Or you can setup a SSH tunnel to dev cache server.");
+                    _logger.AddError(this.Tag(), $"Failed to connect to REDIS with settings: {uri}. Exception: {ex}.  You can disable remote cache by setting UseCache = false in AppSettings.  Or you can setup a SSH tunnel to dev cache server.");
                     throw;
                 }
 
