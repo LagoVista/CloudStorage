@@ -21,6 +21,9 @@ namespace LagoVista.Relational
         [Required]
         public string CreatedById { get; set; }
 
+        [MapFrom("VoidedByUser")]
+        public string VoidedByUserId { get; set; }
+
         [MapFrom("LastUpdatedBy")]
         [Required]
         public string LastUpdatedById { get; set; }
@@ -31,6 +34,14 @@ namespace LagoVista.Relational
         [Required]
         public DateTime LastUpdatedDate { get; set; }
 
+
+        public DateTime? VoidedTimestamp { get; set; }
+
+        public bool IsVoided { get; set; }
+
+        [MapTo("VoideddByUser")]
+        [IgnoreOnMapTo]
+        public AppUserDTO VoidedByUser { get; set; }
 
         [MapTo("CreatedBy")]
         [IgnoreOnMapTo]
@@ -90,6 +101,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.TransactionCategoryId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.VoidedByUser).WithMany().HasForeignKey(x => x.VoidedByUserId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
@@ -100,23 +112,28 @@ namespace LagoVista.Relational
             entity.Property(x => x.TransactionDate).HasColumnOrder(3);
             entity.Property(x => x.EncryptedAmount).HasColumnOrder(4);
             entity.Property(x => x.IsReconciled).HasColumnOrder(5);
-            entity.Property(x => x.TransactionCategoryId).HasColumnOrder(6);
-            entity.Property(x => x.Name).HasColumnOrder(7);
-            entity.Property(x => x.Description).HasColumnOrder(8);
-            entity.Property(x => x.Tag).HasColumnOrder(9);
-            entity.Property(x => x.OriginalHash).HasColumnOrder(10);
-            entity.Property(x => x.CreatedById).HasColumnOrder(11);
-            entity.Property(x => x.LastUpdatedById).HasColumnOrder(12);
-            entity.Property(x => x.CreationDate).HasColumnOrder(13);
-            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(14);
-            entity.Property(x => x.VendorId).HasColumnOrder(15);
-
+            entity.Property(x => x.IsVoided).HasColumnOrder(6);
+            entity.Property(x => x.VoidedTimestamp).HasColumnOrder(7);
+            entity.Property(x => x.VoidedByUserId).HasColumnOrder(8);
+            entity.Property(x => x.TransactionCategoryId).HasColumnOrder(9);
+            entity.Property(x => x.Name).HasColumnOrder(10);
+            entity.Property(x => x.Description).HasColumnOrder(11);
+            entity.Property(x => x.Tag).HasColumnOrder(12);
+            entity.Property(x => x.OriginalHash).HasColumnOrder(13);
+            entity.Property(x => x.CreatedById).HasColumnOrder(14);
+            entity.Property(x => x.LastUpdatedById).HasColumnOrder(15);
+            entity.Property(x => x.CreationDate).HasColumnOrder(16);
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(17);
+            entity.Property(x => x.VendorId).HasColumnOrder(18);
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.AccountId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.TransactionDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.EncryptedAmount).HasColumnType(StandardDBTypes.EncryptionStorage(provider));
             entity.Property(x => x.IsReconciled).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.IsVoided).HasColumnType(StandardDBTypes.FlagStorage(provider));
+            entity.Property(x => x.VoidedTimestamp).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.VoidedByUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.TransactionCategoryId).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.Name).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
