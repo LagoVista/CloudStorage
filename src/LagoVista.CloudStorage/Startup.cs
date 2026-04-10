@@ -18,7 +18,6 @@ namespace LagoVista.CloudStorage
     {
         public static void ConfigureServices(IServiceCollection services)
         {
-            services.AddScoped<ICacheProvider, CacheProvider>();
             services.AddScoped<IStorageUtils, StorageUtils>();
             services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
             services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
@@ -28,7 +27,8 @@ namespace LagoVista.CloudStorage
             services.AddScoped<ISyncRepository, CosmosSyncRepository>();
             services.AddScoped<INodeLocatorTableReader, NodeLocatorTableReader>();
             services.AddScoped<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
-        
+
+            services.AddSingleton<ICacheProvider, CacheProvider>();
             services.AddSingleton<ISyncConnectionSettings, SyncConnections>();
             services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
 
