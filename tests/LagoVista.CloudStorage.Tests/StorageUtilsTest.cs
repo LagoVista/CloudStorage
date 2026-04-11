@@ -38,8 +38,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
             var syncSettings = new SyncSettings();
             
             _nodeLocator = new NodeLocatorTableReader(syncSettings, _logger);
-            _storageUtils = new StorageUtils(_logger, _nodeLocator, new Mock<ICacheProvider>().Object);
-            _storageUtils.SetConnection(syncSettings.DefaultDocDbSettings);
+            _storageUtils = new StorageUtils(syncSettings, _logger, _nodeLocator, new Mock<ICacheProvider>().Object);
         }
 
         [Test]

@@ -1,9 +1,11 @@
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.CloudStorage.Utils;
 using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
+using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
@@ -32,11 +34,13 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ICacheProvider _cacheProvider;
         private readonly INodeLocatorTableReader _nodeLocator;
 
-        public StorageUtils(IAdminLogger logger, INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider)
+        public StorageUtils(IDefaultConnectionSettings defaultConnectionSettings, IAdminLogger logger, INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));    
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
             _nodeLocator = nodeLocator ?? throw new ArgumentNullException(nameof(nodeLocator));
+        
+            SetConnection(defaultConnectionSettings.DefaultDocDbSettings);
         }
 
 
@@ -510,6 +514,50 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Failed did not find {entityType} of type {typeof(TEntity).Name} for organization {org.Text} in {sw.Elapsed.TotalMilliseconds}ms");
+
+            return null;
+        }
+
+        private class SimpleEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public string Name { get; set; }
+            public bool IsPublic { get; set; }
+            public EntityHeader OwnerOrganization { get; set; }
+        
+            public EntityHeader ToEntityHeader()
+            {
+                return new EntityHeader()
+                {
+                    Id = Id,
+                    Text = Name,
+                    EntityType = EntityType,
+                };
+            }
+
+        }
+
+        public async Task<List<EntityHeader>> GetEntitiesByTypeAsync(string orgId, string entityType)
+        {
+            var sw = Stopwatch.StartNew();
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var linqQuery = container.GetItemLinqQueryable<SimpleEntity>()
+                    .Where(doc => doc.EntityType == entityType && (doc.OwnerOrganization.Id == orgId || doc.IsPublic));
+
+            Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Query {linqQuery}");
+
+            var entities = new List<EntityBase>();
+
+            using (var iterator = linqQuery.ToFeedIterator<SimpleEntity>())
+            {
+                if (iterator.HasMoreResults)
+                {
+                    return (await iterator.ReadNextAsync()).Select(ent => ent.ToEntityHeader()).ToList();
+                }
+            }
+
+            Console.WriteLine($"[StorageUtils__FindWithKeyAsync] - Failed did not find {entityType} of type {typeof(TEntity).Name} for organization {orgId} in {sw.Elapsed.TotalMilliseconds}ms");
 
             return null;
         }
