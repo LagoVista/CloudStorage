@@ -36,6 +36,8 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<AccountTransactionCategoryDto> AccountTransactionCategory { get; set; }
 
 
+        public DbSet<JobInvocationRequestDTO> JobInvocationRequests { get; set; }
+
         public DbSet<AgreementDTO> Agreements { get; set; }
         public DbSet<AgreementLineItemDTO> AgreementLineItems { get; set; }
 
@@ -124,6 +126,8 @@ namespace LagoVista.Relational.DataContexts
 
             LicenseDTO.Configure(modelBuilder);
             LicenseUsageDTO.Configure(modelBuilder);
+
+            JobInvocationRequestDTO.Configure(modelBuilder);
 
             PaymentDTO.Configure(modelBuilder);
             PaymentDeductionDTO.Configure(modelBuilder);
