@@ -22,6 +22,13 @@ namespace LagoVista.Relational
         public string ManifestId { get; set; }
 
         [Required]
+        public string ManifestName { get; set; }
+
+        public string ScheduleEntryId { get; set; }
+
+        public string ScheduleEntryName { get; set; }
+
+        [Required]
         public string CorrelationId { get; set; }
 
         [Required]
@@ -35,7 +42,7 @@ namespace LagoVista.Relational
         [Required]
         public string State { get; set; }
 
-        public DateTime RunAt { get; set; }
+        public DateTime? RunAt { get; set; }
 
         public DateTime? ScheduledOccurrence { get; set; }
 
@@ -48,6 +55,10 @@ namespace LagoVista.Relational
         public DateTime? ClaimExpires { get; set; }
 
         public DateTime? StartedTime { get; set; }
+
+        public DateTime? BlockedTime { get; set; }
+
+        public string BlockedReason { get; set; }
 
         public string ClaimedByHostId { get; set; }
 
@@ -78,23 +89,31 @@ namespace LagoVista.Relational
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.OrganizationId).HasColumnOrder(2);
             entity.Property(x => x.ManifestId).HasColumnOrder(3);
-            entity.Property(x => x.CorrelationId).HasColumnOrder(4);
-            entity.Property(x => x.InvocationKind).HasColumnOrder(5);
-            entity.Property(x => x.State).HasColumnOrder(6);
-            entity.Property(x => x.RunAt).HasColumnOrder(7);
-            entity.Property(x => x.ScheduledOccurrence).HasColumnOrder(8);
-            entity.Property(x => x.CreationDate).HasColumnOrder(9);
-            entity.Property(x => x.ClaimedTime).HasColumnOrder(10);
-            entity.Property(x => x.ClaimExpires).HasColumnOrder(11);
-            entity.Property(x => x.StartedTime).HasColumnOrder(12);
-            entity.Property(x => x.ClaimedByHostId).HasColumnOrder(13);
-            entity.Property(x => x.LastExecutionId).HasColumnOrder(14);
-            entity.Property(x => x.LastError).HasColumnOrder(15);
-            entity.Property(x => x.Version).HasColumnOrder(16);
+            entity.Property(x => x.ManifestName).HasColumnOrder(4);
+            entity.Property(x => x.ScheduleEntryId).HasColumnOrder(5);
+            entity.Property(x => x.ScheduleEntryName).HasColumnOrder(6);
+            entity.Property(x => x.CorrelationId).HasColumnOrder(7);
+            entity.Property(x => x.InvocationKind).HasColumnOrder(8);
+            entity.Property(x => x.State).HasColumnOrder(9);
+            entity.Property(x => x.RunAt).HasColumnOrder(10);
+            entity.Property(x => x.ScheduledOccurrence).HasColumnOrder(11);
+            entity.Property(x => x.CreationDate).HasColumnOrder(12);
+            entity.Property(x => x.ClaimedTime).HasColumnOrder(13);
+            entity.Property(x => x.ClaimExpires).HasColumnOrder(14);
+            entity.Property(x => x.StartedTime).HasColumnOrder(15);
+            entity.Property(x => x.ClaimedByHostId).HasColumnOrder(16);
+            entity.Property(x => x.LastExecutionId).HasColumnOrder(17);
+            entity.Property(x => x.LastError).HasColumnOrder(18);
+            entity.Property(x => x.BlockedTime).HasColumnOrder(19);
+            entity.Property(x => x.BlockedReason).HasColumnOrder(20);
+            entity.Property(x => x.Version).HasColumnOrder(21);
 
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.ManifestId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ManifestName).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.ScheduleEntryId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ScheduleEntryName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.CorrelationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.InvocationKind).HasColumnType(StandardDBTypes.CategoryStorage(provider));
             entity.Property(x => x.State).HasColumnType(StandardDBTypes.CategoryStorage(provider));
@@ -107,6 +126,8 @@ namespace LagoVista.Relational
             entity.Property(x => x.ClaimedByHostId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastExecutionId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.LastError).HasColumnType(StandardDBTypes.TextMax(provider));
+            entity.Property(x => x.BlockedTime).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.BlockedReason).HasColumnType(StandardDBTypes.TextLong(provider));
             entity.Property(x => x.Version).HasColumnType(StandardDBTypes.LongStorage(provider));
         }
     }
