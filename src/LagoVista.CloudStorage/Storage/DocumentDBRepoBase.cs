@@ -566,34 +566,34 @@ where c.id = @id";
                 var ehCache = new Dictionary<string, EntityHeader>();
                 var ehCurrentNodes = item.FindEntityHeaderNodes();
                 var exisitng = await GetDocumentAsync(item.Id);
-                var ehPreviousNodes = exisitng.FindEntityHeaderNodes();
+                /*               var ehPreviousNodes = exisitng.FindEntityHeaderNodes();
 
-                foreach (var node in ehCurrentNodes)
-                {
-                    if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
-                          (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
-                    {
-                        if (ehCache.ContainsKey(node.Id))
-                        {
-                            var eh = ehCache[node.Id];
-                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                        }
-                        else
-                        {
-                            var eh = await GetEntityHeaderForRecordAsync(node.Id);
-                            if (eh.Id == NOT_FOUND_ID)
-                            {
-                                eh.Resolved = false;
-                                _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
-                            }
-                            else
-                            {
-                                ehCache.Add(node.Id, eh);
-                                item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                            }
-                        }
-                    }
-                }
+                             foreach (var node in ehCurrentNodes)
+                              {
+                                  if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
+                                        (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
+                                  {
+                                      if (ehCache.ContainsKey(node.Id))
+                                      {
+                                          var eh = ehCache[node.Id];
+                                          item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
+                                      }
+                                      else
+                                      {
+                                          var eh = await GetEntityHeaderForRecordAsync(node.Id);
+                                          if (eh.Id == NOT_FOUND_ID)
+                                          {
+                                              eh.Resolved = false;
+                                              _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
+                                          }
+                                          else
+                                          {
+                                              ehCache.Add(node.Id, eh);
+                                              item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
+                                          }
+                                      }
+                                  }
+                              }*/
 
                 if (exisitng.Name != item.Name)
                 {
