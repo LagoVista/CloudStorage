@@ -124,9 +124,6 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.CreatedByUser).WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.LastUpdatedByUser).WithMany().HasForeignKey(x => x.LastUpdatedById).OnDelete(DeleteBehavior.Restrict);
 
-            // Key / indexes / concurrency
-            entity.HasKey(x => x.Id);
-
             // Column order
             entity.Property(x => x.Id).HasColumnOrder(1);
             entity.Property(x => x.ProductCategoryId).HasColumnOrder(2);

@@ -28,6 +28,8 @@ namespace LagoVista.Relational
 
         public string ScheduleEntryName { get; set; }
 
+        public bool IsEnabled { get; set; }
+
         [Required]
         public string CorrelationId { get; set; }
 
@@ -86,27 +88,29 @@ namespace LagoVista.Relational
             entity.HasIndex(x => x.ManifestId);
             entity.HasIndex(x => x.OrganizationId);
 
-            entity.Property(x => x.Id).HasColumnOrder(1);
-            entity.Property(x => x.OrganizationId).HasColumnOrder(2);
-            entity.Property(x => x.ManifestId).HasColumnOrder(3);
-            entity.Property(x => x.ManifestName).HasColumnOrder(4);
-            entity.Property(x => x.ScheduleEntryId).HasColumnOrder(5);
-            entity.Property(x => x.ScheduleEntryName).HasColumnOrder(6);
-            entity.Property(x => x.CorrelationId).HasColumnOrder(7);
-            entity.Property(x => x.InvocationKind).HasColumnOrder(8);
-            entity.Property(x => x.State).HasColumnOrder(9);
-            entity.Property(x => x.RunAt).HasColumnOrder(10);
-            entity.Property(x => x.ScheduledOccurrence).HasColumnOrder(11);
-            entity.Property(x => x.CreationDate).HasColumnOrder(12);
-            entity.Property(x => x.ClaimedTime).HasColumnOrder(13);
-            entity.Property(x => x.ClaimExpires).HasColumnOrder(14);
-            entity.Property(x => x.StartedTime).HasColumnOrder(15);
-            entity.Property(x => x.ClaimedByHostId).HasColumnOrder(16);
-            entity.Property(x => x.LastExecutionId).HasColumnOrder(17);
-            entity.Property(x => x.LastError).HasColumnOrder(18);
-            entity.Property(x => x.BlockedTime).HasColumnOrder(19);
-            entity.Property(x => x.BlockedReason).HasColumnOrder(20);
-            entity.Property(x => x.Version).HasColumnOrder(21);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.Id).HasColumnOrder(1);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.OrganizationId).HasColumnOrder(2);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.ManifestId).HasColumnOrder(3);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.ManifestName).HasColumnOrder(4);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.ScheduleEntryId).HasColumnOrder(5);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.ScheduleEntryName).HasColumnOrder(6);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.IsEnabled).HasColumnOrder(7);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.CorrelationId).HasColumnOrder(8);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.InvocationKind).HasColumnOrder(9);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.State).HasColumnOrder(10);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.RunAt).HasColumnOrder(11);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.ScheduledOccurrence).HasColumnOrder(12);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.CreationDate).HasColumnOrder(13);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.ClaimedTime).HasColumnOrder(14);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.ClaimExpires).HasColumnOrder(15);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.StartedTime).HasColumnOrder(16);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.ClaimedByHostId).HasColumnOrder(17);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.LastExecutionId).HasColumnOrder(18);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.LastError).HasColumnOrder(19);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.BlockedTime).HasColumnOrder(20);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.BlockedReason).HasColumnOrder(21);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.Version).HasColumnOrder(22);
+
 
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
             entity.Property(x => x.OrganizationId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
