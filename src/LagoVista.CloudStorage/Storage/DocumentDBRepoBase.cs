@@ -401,7 +401,7 @@ where c.id = @id";
 
             var response = await container.CreateItemAsync(item);
 
-            var ehNodes = item.FindEntityHeaderNodes();
+            /*var ehNodes = item.FindEntityHeaderNodes();
             foreach (var node in ehNodes)
             {
                 if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
@@ -434,7 +434,7 @@ where c.id = @id";
                         }
                     }
                 }
-            }
+            }*/
 
             if (response.StatusCode != System.Net.HttpStatusCode.Created)
             {
@@ -453,11 +453,11 @@ where c.id = @id";
                 if (_ragIndexingServices != null)
                     await _ragIndexingServices.IndexAsync(item);
 
-                if (_fkeyIndexWriter != null)
+                /*if (_fkeyIndexWriter != null)
                 {
                     var fkNodes = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehNodes);
                     await _fkeyIndexWriter.UpsertAllAsync(fkNodes);
-                }
+                }*/
 
                 DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
                 DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
