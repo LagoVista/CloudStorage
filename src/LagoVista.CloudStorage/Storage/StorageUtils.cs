@@ -395,6 +395,39 @@ namespace LagoVista.CloudStorage.Storage
             return null;
         }
 
+        public async Task<JObject> GetJobjectByIdAsync(string id, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+
+            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
+            const string sql = "SELECT * FROM c WHERE c.id = @id";
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@id", id.Trim());
+
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = 1
+            };
+
+            var container = Client.GetContainer(_dbName, _collectionName);
+
+            using var iterator = container.GetItemQueryIterator<JObject>(
+                qd,
+                requestOptions: requestOptions);
+
+            while (iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                var doc = page.Resource?.FirstOrDefault();
+                if (doc == null) continue;
+
+                // Return raw JSON for UI side-by-side display.
+                return doc;
+            }
+
+            return null;
+        }
+
         public List<String> SkippedNotes = new List<string>()
         {
             nameof(IEntityBase.PublicPromotedBy),
