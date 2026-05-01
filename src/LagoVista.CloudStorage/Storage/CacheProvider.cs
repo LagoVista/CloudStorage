@@ -85,8 +85,10 @@ namespace LagoVista.CloudStorage.Storage
                 throw new ArgumentNullException(nameof(value));
             }
 
-            return AddAsync(key, JsonConvert.SerializeObject(value), ttl);
+            return AddAsync(key, JsonConvert.SerializeObject(value), ttl ?? DefaultTTL);
         }
+
+        public static readonly TimeSpan DefaultTTL = TimeSpan.FromMinutes(30);
 
         public Task AddAsync(string key, string value, TimeSpan? ttl = null)
         {
@@ -97,7 +99,7 @@ namespace LagoVista.CloudStorage.Storage
                 var db = _multiplexer.GetDatabase();
                 _logger.Trace($"{this.Tag()} - Added Key: {key}");
 
-                return db.StringSetAsync(key, value, ttl, When.Always);
+                return db.StringSetAsync(key, value, ttl ?? DefaultTTL, When.Always);
             }
             else if (_inMemoryCache != null)
             {
