@@ -526,7 +526,7 @@ where c.id = @id";
             return $"{_dbName}-{typeof(TEntity).Name}-{id}".ToLower();
         }
 
-        protected async Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item, bool checkEtag = false)
+        protected async Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item, bool checkEtag = false, string idOverride = null)
         {
             if (item is IValidateable && !item.IsDraft)
             {
@@ -565,7 +565,7 @@ where c.id = @id";
                 var timer = DocumentUpdate.WithLabels(typeof(TEntity).Name).NewTimer();
                 var ehCache = new Dictionary<string, EntityHeader>();
                 var ehCurrentNodes = item.FindEntityHeaderNodes();
-                var exisitng = await GetDocumentAsync(item.Id);
+                var exisitng = await GetDocumentAsync(idOverride ?? item.Id);
                 /*               var ehPreviousNodes = exisitng.FindEntityHeaderNodes();
 
                              foreach (var node in ehCurrentNodes)
@@ -620,7 +620,7 @@ where c.id = @id";
                         }
                     });
 
-                    await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, item.Name);
+                    await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, idOverride ?? item.Id, item.GetType().Name, item.Name);
                 }
                 else
                 {
@@ -649,17 +649,17 @@ where c.id = @id";
             {
                 case System.Net.HttpStatusCode.BadRequest:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "BadRequest", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "BadRequest", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
                     throw new Exception($"Bad Request on Upsert {typeof(TEntity).Name}");
 
                 case System.Net.HttpStatusCode.Forbidden:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Forbidden", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Forbidden", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
                     throw new Exception($"Forbidden on Upsert {typeof(TEntity).Name}");
 
                 case System.Net.HttpStatusCode.Conflict:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Conflict", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Conflict", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
                     throw new ContentModifiedException()
                     {
                         EntityType = typeof(TEntity).Name,
@@ -668,11 +668,11 @@ where c.id = @id";
 
                 case System.Net.HttpStatusCode.PreconditionFailed:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "PreconditionFailed", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "PreconditionFailed", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
                     throw new ContentModifiedException() { EntityType = typeof(TEntity).Name, Id = item.Id };
 
                 case System.Net.HttpStatusCode.RequestEntityTooLarge:
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync", "RequestEntityTooLarge]", typeof(TEntity).Name.ToKVP("entityType"), item.Id.ToKVP("id"));
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync", "RequestEntityTooLarge]", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
 
                     throw new Exception($"RequestEntityTooLarge Upsert on type {typeof(TEntity).Name}");
@@ -697,9 +697,9 @@ where c.id = @id";
 
             if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache))
             {
-                await _cacheProvider.RemoveAsync(GetCacheKey(item.Id));
+                await _cacheProvider.RemoveAsync(GetCacheKey((idOverride ?? item.Id)));
                 //  sw.Restart();
-                await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item));
+                await _cacheProvider.AddAsync(GetCacheKey((idOverride ?? item.Id)), JsonConvert.SerializeObject(item));
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Added {typeof(TEntity).Name} back to cache after update in {sw.Elapsed.TotalMilliseconds}ms");
             }
 

@@ -28,9 +28,8 @@ namespace LagoVista.CloudStorage.IntegrationTests
             _fkeyWriter = new FkIndexTableWriterBatched(new SyncSettings(), _logger);
             _nodeWriter = new NodeLocatorTableWriterBatched(new SyncSettings(), _logger);
             _nodeReader = new NodeLocatorTableReader(new SyncSettings(), _logger);
-            _syncRepo = new CosmosSyncRepository(new SyncSettings(), _fkeyWriter, _nodeWriter,_nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
+            _syncRepo = new CosmosSyncRepository(new SyncSettings(), _fkeyWriter, _nodeWriter, Mock.Of<IRagIndexingServices>(), Mock.Of<IEntityDetailResponseFactory>(), _nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
         }
-
 
         [Test]
         public async Task GetOrgEntityHeaderAsync()

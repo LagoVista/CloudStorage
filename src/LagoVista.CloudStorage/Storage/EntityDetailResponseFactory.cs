@@ -53,7 +53,7 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
-        private async Task<(Type ModelType, object Model)> LoadModelAsync(string id, string requestedEntityType, EntityHeader user, EntityHeader org)
+        public async Task<(Type ModelType, object Model)> LoadModelAsync(string id, string requestedEntityType, EntityHeader user, EntityHeader org)
         {
             var json = await _entityJsonLoader.GetJobjectByIdAsync(id);
 

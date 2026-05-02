@@ -38,13 +38,16 @@ namespace LagoVista.CloudStorage.Storage
         private readonly IFkIndexTableWriterBatched _fkWriter;
         private readonly INodeLocatorTableWriterBatched _nodeLocatorWriter;
         private readonly INodeLocatorTableReader _nodeLocator;
+        private readonly IRagIndexingServices _ragIndexingServices;
         private readonly ICacheProvider _cacheProvider;
+        private readonly IEntityDetailResponseFactory _entityDetailResponseFactory;
         private readonly string _dbName;
 
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
-        public CosmosSyncRepository(ISyncConnectionSettings options, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider, ILogger logger)
+        public CosmosSyncRepository(ISyncConnectionSettings options, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
+            INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider, ILogger logger)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -52,6 +55,8 @@ namespace LagoVista.CloudStorage.Storage
             _nodeLocatorWriter = nodeLocatorWriter ?? throw new ArgumentNullException(nameof(nodeLocatorWriter));
             _nodeLocator = nodeLocator ?? throw new ArgumentNullException(nameof(nodeLocator));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
+            _ragIndexingServices = ragIndexingServices ?? throw new ArgumentNullException(nameof(ragIndexingServices));
+            _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
             _dbName = _options.SyncConnectionSettings.ResourceName;
             _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
             {
@@ -486,6 +491,8 @@ where c.id = @id";
                 returnedEtag = null;
             }
 
+            
+
             _logger.Trace($"{this.Tag()} - Success", resp.StatusCode.ToString().ToKVP("responseCode"));
 
             return new SyncUpsertResult
@@ -541,8 +548,13 @@ where c.id = @id";
                 doc[nameof(EntityBase.LastUpdatedBy)] = JToken.FromObject(user);
                 doc[nameof(EntityBase.LastUpdatedDate)] = DateTime.UtcNow.ToJSONString();
 
-
                 var result = await UpsertJsonAsync(doc, null, ct);
+
+                var modelResult = await _entityDetailResponseFactory.LoadModelAsync(id, entityType, user, org);
+                if (modelResult.Model is IEntityBase model)
+                {
+                    await _ragIndexingServices.IndexAsync(model);
+                }
 
                 await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
 
