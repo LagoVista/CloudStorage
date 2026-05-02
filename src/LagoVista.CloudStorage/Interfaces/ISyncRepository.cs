@@ -1,6 +1,7 @@
 ﻿using LagoVista.CloudStorage.Models;
 using LagoVista.Core.Models;
 using LagoVista.Core.Validation;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -17,6 +18,7 @@ namespace LagoVista.CloudStorage.Interfaces
 
         Task<string> GetOwnedJsonByIdAsync(string id, string ownerOrganizationId, CancellationToken ct = default);
         Task<string> GetJsonByIdAsync(string id, CancellationToken ct = default);
+        Task<JObject> GetJObjectByIdAsync(string id, CancellationToken ct = default);
         Task<string> GetJsonByEntityTypeAndKeyAsync(string key, string entityType, string ownerOrganizationId, CancellationToken ct = default);
 
         Task<SyncUpsertResult> UpsertJsonAsync(string json, string expectedETag = null, CancellationToken ct = default);

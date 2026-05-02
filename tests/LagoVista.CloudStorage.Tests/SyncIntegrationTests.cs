@@ -19,7 +19,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
         IFkIndexTableWriterBatched _fkeyWriter;
         INodeLocatorTableWriterBatched _nodeWriter;
         INodeLocatorTableReader _nodeReader;
-    IAdminLogger _logger;
+        IAdminLogger _logger;
 
         [SetUp]
         public void Setup()
@@ -66,7 +66,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
         [Test]
         public async Task UpsertEntity()
         {
-            var json = await _syncRepo.GetJsonByIdAsync("41CA44CB485D4B3BA751F0DAAC3E1F76");
+            var json = await _syncRepo.GetJsonByIdAsync("A8032C06172A48E5BA01B5F49089B7CD");
             var entity = JsonConvert.DeserializeObject<EntityBase>(json);
 
             await _syncRepo.UpsertJsonAsync(json, entity.OwnerOrganization, entity.CreatedBy);

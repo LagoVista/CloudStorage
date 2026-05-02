@@ -262,6 +262,42 @@ where c.id = @id";
             return null;
         }
 
+        public async Task<JObject> GetJObjectByIdAsync(string id, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+
+            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
+            const string sql = "SELECT * FROM c WHERE c.id = @id";
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@id", id.Trim());
+
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = 1
+            };
+
+            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
+            {
+                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
+            }
+
+            using var iterator = _container.GetItemQueryIterator<JObject>(
+                qd,
+                requestOptions: requestOptions);
+
+            while (iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                var doc = page.Resource?.FirstOrDefault();
+                if (doc == null) continue;
+
+                // Return raw JSON for UI side-by-side display.
+                return doc;
+            }
+
+            return null;
+        }
+
         public async Task<string> GetOwnedJsonByIdAsync(string id, string ownerOrganizationId, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
@@ -389,7 +425,9 @@ where c.id = @id";
             // Ensure trimmed values are persisted.
             doc[nameof(EntityBase.EntityType)] = entityType;
             doc[nameof(EntityBase.Key)] = key;
-            doc[nameof(EntityBase.Sha256Hex)] = EntityHasher.CalculateHash(doc);
+            var hash = EntityHasher.CalculateHash(doc);
+            doc[nameof(EntityBase.Sha256Hex)] = hash;
+            
             // We use stream APIs to avoid binding to any model types.
             var bytes = System.Text.Encoding.UTF8.GetBytes(doc.ToString(Formatting.None));
             using var ms = new MemoryStream(bytes);
@@ -406,8 +444,6 @@ where c.id = @id";
             {
                 pk = new PartitionKey(FIXED_PARITIONKEY);
             }
-
-
 
             ResponseMessage resp;
             if (pk.HasValue)
@@ -642,6 +678,7 @@ where c.id = @id";
             {
                 token["Key"] = Guid.NewGuid().ToId().Value.ToLowerInvariant();
             }
+
 
             token["Sha256Hex"] = EntityHasher.CalculateHash(token.DeepClone());
             var bytes = System.Text.Encoding.UTF8.GetBytes(token.ToString(Formatting.None));
