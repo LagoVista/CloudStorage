@@ -71,6 +71,24 @@ namespace LagoVista.CloudStorage.Storage
             return (modelType, model);
         }
 
+        public async Task<(Type ModelType, object Model)> LoadModelAsync(string id,  EntityHeader user, EntityHeader org)
+        {
+            var json = await _entityJsonLoader.GetJobjectByIdAsync(id);
+
+            AuthorizeOwnerOrganization(json, org);
+
+            var actualEntityType = GetEntityType(json);
+            
+            var modelType = _entityTypeResolver.GetEntityType(actualEntityType);
+            var model = JsonConvert.DeserializeObject(json.ToString(), modelType);
+
+            await _security.AuthorizeAsync(user, org, modelType, Core.Validation.Actions.Read);
+            await _security.LogEntityActionAsync(id, actualEntityType, "Read", user, org);
+
+            return (modelType, model);
+        }
+
+
         public Task<JObject> CreateAiDetailResponseAsync(Type modelType, object model, EntityHeader org, EntityHeader user)
         {
             if (modelType == null) throw new ArgumentNullException(nameof(modelType));

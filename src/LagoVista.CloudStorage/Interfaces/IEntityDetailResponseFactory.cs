@@ -16,5 +16,6 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<JObject> GetAiDetailResponseAsync(string id, EntityHeader org, EntityHeader user);
         Task<JObject> GetFormDetailResponseAsync(string entityType, string id, EntityHeader org, EntityHeader user);
         Task<(Type ModelType, object Model)> LoadModelAsync(string id, string requestedEntityType, EntityHeader user, EntityHeader org);
+        Task<(Type ModelType, object Model)> LoadModelAsync(string id, EntityHeader user, EntityHeader org);
     }
 }
