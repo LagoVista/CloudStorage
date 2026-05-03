@@ -22,7 +22,6 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ISyncConnectionSettings _options;
         private readonly ICacheProvider _cacheProvider;
         private readonly IRagIndexingServices _ragIndexingServices;
-        public const string FIXED_PARITIONKEY = null;
         public const string ALL_MODULES_CACHE_KEY = "NUVIOT_ALL_MODULES";
         public const string MODULE_CACHE_KEY = "NUVIOT_MODULE_";
         private readonly string _dbName;
@@ -62,11 +61,6 @@ namespace LagoVista.CloudStorage.Storage
                 MaxItemCount = 1
             };
 
-            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
-            {
-                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
-            }
-
             using var iterator = _container.GetItemQueryIterator<JObject>(qd, requestOptions: requestOptions);
 
             JObject doc = null;
@@ -75,28 +69,22 @@ namespace LagoVista.CloudStorage.Storage
             {
                 var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
                 doc = page.Resource?.FirstOrDefault();
-                if (doc == null) continue;
+                if (doc == null)
+                    return InvokeResult.FromError($"Could not find record with id: {id}");
             }
 
             var sha256Hex = EntityHasher.CalculateHash(doc);
 
             var sha256HexJsonPropertyName = nameof(IEntityBase.Sha256Hex);
 
-            var partitionKey = !string.IsNullOrWhiteSpace(FIXED_PARITIONKEY)
-                ? new PartitionKey(FIXED_PARITIONKEY)
-                : new PartitionKey(doc.Value<string>("partitionKey")); // replace with your real PK property
-
+            
             var patchOperations = new[]
             {
                 PatchOperation.Set($"/{sha256HexJsonPropertyName}", sha256Hex)
             };
 
-            await _container.PatchItemAsync<JObject>(id, partitionKey: partitionKey, patchOperations: patchOperations,
-                requestOptions: new PatchItemRequestOptions
-                {
-                    EnableContentResponseOnWrite = false
-                },
-                cancellationToken: ct).ConfigureAwait(false);
+            await _container.PatchItemAsync<JObject>(id, partitionKey: PartitionKey.None, patchOperations: patchOperations,
+                requestOptions: new PatchItemRequestOptions{EnableContentResponseOnWrite = false}, cancellationToken: ct).ConfigureAwait(false);
 
             var entityType = doc["EntityType"]?.Value<string>()?.Trim();
             var key = doc["Key"]?.Value<string>()?.Trim();
