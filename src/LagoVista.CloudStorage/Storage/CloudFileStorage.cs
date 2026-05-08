@@ -2,6 +2,7 @@
 // ContentHash: 73ccdcdc6691bbce18c2bc28f254684bcf4b8d35e3c9da61ec54b09473afd68b
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using LagoVista.Core;
@@ -54,6 +55,7 @@ namespace LagoVista.CloudStorage.Storage
             if (String.IsNullOrEmpty(accessKey)) throw new ArgumentNullException(nameof(accessKey));
         }
 
+
         private async Task<BlobContainerClient> CreateBlobContainerClient(String containerName )
         {
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountId};AccountKey={_accessKey}";
@@ -71,7 +73,7 @@ namespace LagoVista.CloudStorage.Storage
             return AddFileAsync(_containerName, fileName, data, contentType, cacheControl);
         }
 
-        public async Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null)
+        public async Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null, bool rejectUpdates = false)
         {
             var sw = Stopwatch.StartNew();
             if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
@@ -106,8 +108,12 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     _logger.Trace($"{this.Tag()} - adding content", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), containerName.ToKVP("container"), fileName.ToKVP("fileName"));
 
+                    var blobOptions = new BlobUploadOptions { HttpHeaders = header };
+                    if(rejectUpdates)
+                        blobOptions.Conditions = new BlobRequestConditions { IfNoneMatch = Azure.ETag.All };
+
                     var binaryData = new BinaryData(data);
-                    var blobResult = await blobClient.UploadAsync(binaryData, new BlobUploadOptions { HttpHeaders = header });
+                    var blobResult = await blobClient.UploadAsync(binaryData, blobOptions);
                     var statusCode = blobResult.GetRawResponse().Status;
                     if (statusCode < 200 || statusCode > 299)
                         throw new InvalidOperationException($"Invalid response Code {statusCode}");
@@ -115,6 +121,19 @@ namespace LagoVista.CloudStorage.Storage
                     _logger.Trace($"{this.Tag()} - added content", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), containerName.ToKVP("container"), fileName.ToKVP("fileName"));
 
                     return InvokeResult<Uri>.Create(blobClient.Uri);
+                }
+                catch (RequestFailedException ex) when (rejectUpdates && IsBlobAlreadyExistsOrConditionFailed(ex))
+                {
+                    _logger.AddCustomEvent(
+                        LagoVista.Core.PlatformSupport.LogLevel.Warning,
+                        this.Tag(),
+                        "Blob already exists; upload rejected.",
+                        ex.Message.ToKVP("exceptionMessage"),
+                        ex.Status.ToString().ToKVP("status"),
+                        containerName.ToKVP("containerName"),
+                        fileName.ToKVP("fileName"));
+
+                    return InvokeResult<Uri>.FromError($"Blob already exists: {fileName}");
                 }
                 catch (Exception ex)
                 {
@@ -134,6 +153,11 @@ namespace LagoVista.CloudStorage.Storage
 
             //really never get here....
             return InvokeResult<Uri>.FromError("Could not upload file");
+        }
+
+        private static bool IsBlobAlreadyExistsOrConditionFailed(RequestFailedException ex)
+        {
+            return ex.Status == 409 || ex.Status == 412;
         }
 
         public Task<InvokeResult<Uri>> UpdateFileAsync(string containerName, string fileName, string data, string contentType = "text/plain", string cacheControl = null)
