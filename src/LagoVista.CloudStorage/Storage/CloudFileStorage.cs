@@ -88,13 +88,14 @@ namespace LagoVista.CloudStorage.Storage
 
             var containerClient = await CreateBlobContainerClient(containerName);
 
+            if (fileName.StartsWith("/"))
+                fileName = fileName.TrimStart('/');
+
             var blobClient = containerClient.GetBlobClient(fileName);
             var header = new BlobHttpHeaders { ContentType = contentType };
             if (cacheControl != null)
                 header.CacheControl = cacheControl;
 
-            if (fileName.StartsWith("/"))
-                fileName = fileName.TrimStart('/');
 
             _logger.Trace($"{this.Tag()} - Uploading File to Blob Storage: {fileName}", fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
 
@@ -121,6 +122,21 @@ namespace LagoVista.CloudStorage.Storage
                     _logger.Trace($"{this.Tag()} - added content", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), containerName.ToKVP("container"), fileName.ToKVP("fileName"));
 
                     return InvokeResult<Uri>.Create(blobClient.Uri);
+                }
+                catch (RequestFailedException ex) when (IsBlobLeaseFailure(ex))
+                {
+                    _logger.AddCustomEvent(
+                        LagoVista.Core.PlatformSupport.LogLevel.Error,
+                        this.Tag(),
+                        "Blob lease failure during upload.",
+                        ex.Message.ToKVP("exceptionMessage"),
+                        ex.ErrorCode.ToKVP("errorCode"),
+                        ex.Status.ToString().ToKVP("status"),
+                        containerName.ToKVP("containerName"),
+                        fileName.ToKVP("fileName"),
+                        rejectUpdates.ToString().ToKVP("rejectUpdates"));
+
+                    return InvokeResult<Uri>.FromError($"Blob is currently leased and cannot be uploaded without a lease id: {fileName}");
                 }
                 catch (RequestFailedException ex) when (rejectUpdates && IsBlobAlreadyExistsOrConditionFailed(ex))
                 {
@@ -155,9 +171,18 @@ namespace LagoVista.CloudStorage.Storage
             return InvokeResult<Uri>.FromError("Could not upload file");
         }
 
+        private static bool IsBlobLeaseFailure(RequestFailedException ex)
+        {
+            return ex.ErrorCode == BlobErrorCode.LeaseIdMissing.ToString() ||
+                   ex.ErrorCode == BlobErrorCode.LeaseIdMismatchWithBlobOperation.ToString() ||
+                   ex.ErrorCode == BlobErrorCode.LeaseAlreadyPresent.ToString();
+        }
+
+
         private static bool IsBlobAlreadyExistsOrConditionFailed(RequestFailedException ex)
         {
-            return ex.Status == 409 || ex.Status == 412;
+            return ex.ErrorCode == BlobErrorCode.BlobAlreadyExists.ToString() ||
+                   ex.ErrorCode == BlobErrorCode.ConditionNotMet.ToString();
         }
 
         public Task<InvokeResult<Uri>> UpdateFileAsync(string containerName, string fileName, string data, string contentType = "text/plain", string cacheControl = null)
