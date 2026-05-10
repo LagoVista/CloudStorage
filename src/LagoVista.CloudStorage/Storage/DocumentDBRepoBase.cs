@@ -450,7 +450,7 @@ where c.id = @id";
             {
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(CreateDocumentAsync)}] - Request Cost - {response.RequestCharge} - Elapsed {sw.Elapsed.TotalMilliseconds}ms");
 
-                if (_ragIndexingServices != null)
+                if (_ragIndexingServices != null && item.ShouldVectorIndex)
                     await _ragIndexingServices.IndexAsync(item);
 
                 /*if (_fkeyIndexWriter != null)
@@ -703,7 +703,7 @@ where c.id = @id";
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Added {typeof(TEntity).Name} back to cache after update in {sw.Elapsed.TotalMilliseconds}ms");
             }
 
-            if (_ragIndexingServices != null)
+            if (_ragIndexingServices != null && item.ShouldVectorIndex)
                 await _ragIndexingServices.IndexAsync(item);
 
             return new OperationResponse<TEntity>(upsertResult);
@@ -906,7 +906,7 @@ where c.id = @id";
                 doc.IsDeleted = true;
                 doc.DeletionDate = UtcTimestamp.Now;
                 result = await container.UpsertItemAsync(doc);
-                if (_ragIndexingServices != null)
+                if (_ragIndexingServices != null && doc.ShouldVectorIndex)
                     await _ragIndexingServices.IndexAsync(doc);
             }
             timer.Dispose();

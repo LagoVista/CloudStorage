@@ -553,7 +553,8 @@ where c.id = @id";
                 var modelResult = await _entityDetailResponseFactory.LoadModelAsync(id, entityType, user, org);
                 if (modelResult.Model is IEntityBase model)
                 {
-                    await _ragIndexingServices.IndexAsync(model);
+                    if(model.ShouldVectorIndex)
+                        await _ragIndexingServices.IndexAsync(model);
                 }
 
                 await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
