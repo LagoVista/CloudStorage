@@ -830,16 +830,16 @@ namespace LagoVista.CloudStorage.Storage
                 _logger.AddError("TableStorageBase_UdpateAsync", "emptyPartitionKey", new KeyValuePair<string, string>("tableName", GetTableName()));
                 throw new Exception("Row and Partition Keys must be present to insert or replace an entity.");
             }
-            
+
             var rowKey = Uri.EscapeDataString(entity.RowKey);
             var partitionKey = Uri.EscapeDataString(entity.PartitionKey);
 
             var fullResourcePath = $"(PartitionKey='{partitionKey}',RowKey='{rowKey}')";
             var operationUri = new Uri($"{_srvrPath}{fullResourcePath}");
-            
+
             var json = JsonConvert.SerializeObject(entity);
 
-            using(var updateTimer = UpdateMetric.WithLabels(typeof(TEntity).Name))
+            using (var updateTimer = UpdateMetric.WithLabels(typeof(TEntity).Name))
             using (var request = CreateRequest(fullResourcePath))
             {
                 var jsonContent = new StringContent(json);
@@ -881,6 +881,13 @@ namespace LagoVista.CloudStorage.Storage
                         _logger.Trace($"[TableStorageBase<{typeof(TEntity).Name}>__UpdateAsync] {operationUri} {sw.ElapsedMilliseconds} ms");
                 }
             }
+
+        }
+
+        public async Task<List<TEntity>> GetResultsAsync(string partitionKey, params FilterOptions[] filters)
+        {
+            var result = await GetPagedResultsAsync(partitionKey, new ListRequest() { PageSize = 1000 }, filters);
+            return result.Model.ToList();
         }
 
         public async Task<ListResponse<TEntity>> GetPagedResultsAsync(string partitionKey, ListRequest listRequest, params FilterOptions[] filters)

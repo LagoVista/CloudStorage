@@ -551,6 +551,71 @@ namespace LagoVista.CloudStorage.Storage
             return null;
         }
 
+        public async Task<InvokeResult> AttachAiEntitySessionAsync(string entityId, string entityType, EntityHeader session, string sessionType, string sessionTypeKey, EntityHeader org, EntityHeader user)
+        {
+            if (string.IsNullOrWhiteSpace(entityId)) throw new ArgumentException("entityId is required.", nameof(entityId));
+            if (string.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (session == null) throw new ArgumentNullException(nameof(session));
+            if (string.IsNullOrWhiteSpace(session.Id)) throw new ArgumentException("session.Id is required.", nameof(session));
+            if (string.IsNullOrWhiteSpace(sessionTypeKey)) throw new ArgumentException("sessionTypeKey is required.", nameof(sessionTypeKey));
+            if (org == null) throw new ArgumentNullException(nameof(org));
+            if (user == null) throw new ArgumentNullException(nameof(user));
+
+            var sw = Stopwatch.StartNew();
+            var container = Client.GetContainer(_dbName, _collectionName);
+            var response = await container.ReadItemAsync<EntityBase>(entityId, PartitionKey.None);
+            var entity = response.Resource;
+
+            if (entity == null)
+            {
+                throw new RecordNotFoundException(entityType, entityId);
+            }
+
+            if (entity.EntityType != entityType)
+            {
+                throw new InvalidOperationException($"Entity type mismatch for {entityId}. Expected {entityType}, found {entity.EntityType}.");
+            }
+
+            if (entity.OwnerOrganization.Id != org.Id)
+            {
+                throw new NotAuthorizedException($"Attempt to attach AI session to record of type {entity.EntityType} owned by org {entity.OwnerOrganization.Text} by org {org.Text}");
+            }
+
+            entity.AiEntitySessions ??= new List<AiEntitySession>();
+
+            var existing = entity.AiEntitySessions.FirstOrDefault(existingSession =>
+                existingSession.Session?.Id == session.Id &&
+                existingSession.SessionTypeKey == sessionTypeKey);
+
+            if (existing != null)
+            {
+                _logger.Trace($"{this.Tag()} - AI session {session.Id} already attached to {entity.EntityType} {entityId} as {sessionTypeKey} in {sw.Elapsed.TotalMilliseconds}ms");
+                return InvokeResult.Success;
+            }
+
+            entity.AiEntitySessions.Add(new AiEntitySession()
+            {
+                Session = session,
+                SessionType = sessionType,
+                SessionTypeKey = sessionTypeKey,
+                CreationDate = UtcTimestamp.Now,
+                CreatedBy = user,
+            });
+
+            var operations = new List<PatchOperation>()
+    {
+        PatchOperation.Set($"/{nameof(EntityBase.AiEntitySessions)}", entity.AiEntitySessions),
+    };
+
+            await _cacheProvider.RemoveAsync(GetCacheKey(entity.EntityType, entityId));
+
+            await container.PatchItemAsync<EntityBase>(entityId, PartitionKey.None, operations);
+
+            _logger.Trace($"{this.Tag()} - Attached AI session {session.Id} to {entity.EntityType} {entityId} as {sessionTypeKey} in {sw.Elapsed.TotalMilliseconds}ms");
+
+            return InvokeResult.Success;
+        }
+
         private class SimpleEntity
         {
             public string Id { get; set; }
