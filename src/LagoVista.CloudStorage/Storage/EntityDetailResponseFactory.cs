@@ -5,6 +5,7 @@ using LagoVista.Core.Models.AIMetaData;
 using LagoVista.Core.Models.UIMetaData;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -118,13 +119,13 @@ namespace LagoVista.CloudStorage.Storage
         private Task<JObject> CreateTypedFormDetailAsync<TModel>(object model, EntityHeader org, EntityHeader user) where TModel : class, new()
         {
             var response = DetailResponse<TModel>.Create((TModel)model);
-            return Task.FromResult(JObject.FromObject(response));
+            return Task.FromResult(JObject.FromObject(response, CamelCaseJsonSerializer));
         }
 
         private Task<JObject> CreateTypedAiDetailedResponseAsync<TModel>(object model, EntityHeader org, EntityHeader user) where TModel : class, new()
         {
             var response = AiDetailResponse<TModel>.Create((TModel)model);
-            return Task.FromResult(JObject.FromObject(response));
+            return Task.FromResult(JObject.FromObject(response, CamelCaseJsonSerializer));
         }
 
         public async Task<JObject> GetAiDetailResponseAsync(string entityType, string id, EntityHeader org, EntityHeader user)
@@ -150,5 +151,11 @@ namespace LagoVista.CloudStorage.Storage
             var loaded = await LoadModelAsync(id, null, user, org);
             return await CreateFormDetailResponseAsync(loaded.ModelType, loaded.Model, org, user);
         }
+
+        private static readonly JsonSerializer CamelCaseJsonSerializer = JsonSerializer.Create(new JsonSerializerSettings
+        {
+            ContractResolver = new CamelCasePropertyNamesContractResolver(),
+            NullValueHandling = NullValueHandling.Ignore
+        });
     }
 }
