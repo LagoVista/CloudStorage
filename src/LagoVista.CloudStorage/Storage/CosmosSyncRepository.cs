@@ -381,7 +381,7 @@ where c.id = @id";
             return null;
         }
 
-        private async Task<SyncUpsertResult> UpsertJsonAsync(JObject doc, string expectedETag = null, CancellationToken ct = default)
+        public async Task<SyncUpsertResult> UpsertJsonAsync(JObject doc, string expectedETag = null, CancellationToken ct = default)
         {
             _logger.Trace($"{this.Tag()} - Apply");
 
@@ -392,7 +392,6 @@ where c.id = @id";
 
             if (string.IsNullOrWhiteSpace(id))
             {
-                Debugger.Break();
                 return new SyncUpsertResult()
                 {
                     StatusCode = 500,
@@ -402,7 +401,6 @@ where c.id = @id";
 
             if (string.IsNullOrWhiteSpace(entityType))
             {
-                Debugger.Break();
                 return new SyncUpsertResult()
                 {
                     StatusCode = 500,
