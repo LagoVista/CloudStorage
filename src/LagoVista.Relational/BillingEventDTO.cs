@@ -54,6 +54,12 @@ namespace LagoVista.Relational
         public DateTime? RolloverAt { get; set; }
 
         /// <summary>
+        /// Stable business key used to safely de-duplicate usage events submitted through the billing event pipeline.
+        /// This is not the RabbitMQ message id; retries for the same usage slice should reuse this value.
+        /// </summary>
+        public string IdempotencyKey { get; set; }
+
+        /// <summary>
         /// Captured billing timezone for this slice.
         /// This must be a stable id into our supported timezone catalog.
         /// </summary>
@@ -167,6 +173,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Status).HasColumnOrder(19);
             entity.Property(x => x.UnitPrice).HasColumnOrder(20);
             entity.Property(x => x.Tokens).HasColumnOrder(21);
+            entity.Property(x => x.IdempotencyKey).HasColumnOrder(22);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -190,6 +197,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.MoneyStorage(provider));
             entity.Property(x => x.Tokens).HasColumnType(StandardDBTypes.LongStorage(provider));
+            entity.Property(x => x.IdempotencyKey).HasColumnType(StandardDBTypes.TextMedium(provider));
         }
     }
 }
