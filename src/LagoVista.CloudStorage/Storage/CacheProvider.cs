@@ -28,7 +28,7 @@ namespace LagoVista.CloudStorage.Storage
 
             if (settings.UseCache)
             {
-                var uri = appConfig.Environment == Environments.Local ? "127.0.0.1" : settings.CacheSettings.Uri;
+                var uri = settings.CacheSettings.Uri;
                 try
                 {
 
