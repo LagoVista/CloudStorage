@@ -1,14 +1,10 @@
 ﻿using Azure.Data.Tables;
 using LagoVista.Core;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
-using static LagoVista.Core.Models.AdaptiveCard.MSTeams;
 
 namespace LagoVista.CloudStorage.Utils
 {
-
     internal static class SummaryTablePropertyWriter
     {
         public static void Add(TableEntity entity, string columnName, object value)
@@ -17,6 +13,9 @@ namespace LagoVista.CloudStorage.Utils
             if (String.IsNullOrWhiteSpace(columnName)) throw new ArgumentNullException(nameof(columnName));
 
             if (value == null)
+                return;
+
+            if (TryAddEntityHeader(entity, columnName, value))
                 return;
 
             switch (value)
@@ -62,12 +61,9 @@ namespace LagoVista.CloudStorage.Utils
                     return;
             }
 
-            if (TryAddEntityHeader(entity, columnName, value))
-                return;
-
             throw new NotSupportedException(
                 $"Summary table property [{columnName}] has unsupported type [{value.GetType().FullName}]. " +
-                "Supported types are string, int, long, bool, double, decimal, GuidString36," +
+                "Supported types are string, int, long, bool, double, decimal, GuidString36, " +
                 "NormalizedId32, UtcTimestamp, CalendarDate, EntityHeader, and EntityHeader<T>.");
         }
 
@@ -78,29 +74,21 @@ namespace LagoVista.CloudStorage.Utils
             if (!type.Name.StartsWith("EntityHeader"))
                 return false;
 
-            var key = type.GetProperty("Key")?.GetValue(value)?.ToString();
-            if (!String.IsNullOrWhiteSpace(key))
-            {
-                entity[columnName] = key;
-                return true;
-            }
-
             var id = type.GetProperty("Id")?.GetValue(value)?.ToString();
-            if (!String.IsNullOrWhiteSpace(id))
-            {
-                entity[columnName] = id;
-                return true;
-            }
-
             var text = type.GetProperty("Text")?.GetValue(value)?.ToString();
-            if (!String.IsNullOrWhiteSpace(text))
+            var key = type.GetProperty("Key")?.GetValue(value)?.ToString();
+
+            if (String.IsNullOrWhiteSpace(id) || String.IsNullOrWhiteSpace(text))
             {
-                entity[columnName] = text;
-                return true;
+                throw new NotSupportedException(
+                    $"EntityHeader summary table property [{columnName}] must have both Id and Text.");
             }
 
-            throw new NotSupportedException(
-                $"EntityHeader summary table property [{columnName}] does not have Key, Id, or Text.");
+            entity[$"{columnName}Id"] = id;
+            entity[$"{columnName}Text"] = text;
+            entity[$"{columnName}Key"] = key ?? String.Empty;
+
+            return true;
         }
     }
 }

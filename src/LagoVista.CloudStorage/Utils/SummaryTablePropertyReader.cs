@@ -1,10 +1,9 @@
-﻿using LagoVista.Core;
+﻿using Azure.Data.Tables;
+using LagoVista.Core;
 using LagoVista.Core.Models;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
-using System.Text;
 
 namespace LagoVista.CloudStorage.Utils
 {
@@ -56,9 +55,9 @@ namespace LagoVista.CloudStorage.Utils
                 return;
             }
 
-            if (targetType == typeof(Guid))
+            if (targetType == typeof(NormalizedId32))
             {
-                property.SetValue(summary, Guid.Parse(value.ToString()));
+                property.SetValue(summary, NormalizedId32.Parse(value.ToString()));
                 return;
             }
 
@@ -80,49 +79,92 @@ namespace LagoVista.CloudStorage.Utils
                 return;
             }
 
-            if (TrySetEntityHeader(summary, property, targetType, value))
-                return;
-
             throw new NotSupportedException(
                 $"Summary table property [{property.Name}] has unsupported read type [{property.PropertyType.FullName}].");
         }
 
-        private static bool TrySetEntityHeader<TSummary>(
+        public static bool TrySetEntityHeader<TSummary>(
             TSummary summary,
             PropertyInfo property,
-            Type targetType,
-            object value)
+            TableEntity entity)
         {
+            if (summary == null) throw new ArgumentNullException(nameof(summary));
+            if (property == null) throw new ArgumentNullException(nameof(property));
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+
+            var targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+
             if (!targetType.Name.StartsWith("EntityHeader"))
                 return false;
 
-            var text = value.ToString();
+            var idColumnName = $"{property.Name}Id";
+            var textColumnName = $"{property.Name}Text";
+            var keyColumnName = $"{property.Name}Key";
+
+            var hasId = entity.TryGetValue(idColumnName, out var idValue);
+            var hasText = entity.TryGetValue(textColumnName, out var textValue);
+            var hasKey = entity.TryGetValue(keyColumnName, out var keyValue);
+
+            if (!hasId && !hasText && !hasKey)
+                return true;
+
+            var id = idValue?.ToString();
+            var text = textValue?.ToString();
+            var key = keyValue?.ToString();
+
+            if (String.IsNullOrWhiteSpace(id) || String.IsNullOrWhiteSpace(text))
+            {
+                throw new NotSupportedException(
+                    $"EntityHeader summary table property [{property.Name}] must have both [{idColumnName}] and [{textColumnName}].");
+            }
 
             if (targetType == typeof(EntityHeader))
             {
-                property.SetValue(summary, EntityHeader.Create(text, text));
+                property.SetValue(summary, EntityHeader.Create(id, text));
                 return true;
             }
 
             if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(EntityHeader<>))
             {
-                var createMethod = targetType.GetMethod("Create", new[] { targetType.GetGenericArguments()[0] });
-                if (createMethod == null)
-                {
-                    throw new NotSupportedException(
-                        $"Could not find Create method for generic EntityHeader property [{property.Name}].");
-                }
-
-                var enumType = targetType.GetGenericArguments()[0];
-                var enumValue = Enum.Parse(enumType, text, true);
-                var header = createMethod.Invoke(null, new[] { enumValue });
-
-                property.SetValue(summary, header);
+                property.SetValue(summary, CreateGenericEntityHeader(targetType, id, text, key));
                 return true;
             }
 
             throw new NotSupportedException(
                 $"EntityHeader summary table property [{property.Name}] uses unsupported type [{targetType.FullName}].");
+        }
+
+        private static object CreateGenericEntityHeader(Type targetType, string id, string text, string key)
+        {
+            var enumType = targetType.GetGenericArguments()[0];
+
+            if (!String.IsNullOrWhiteSpace(key))
+            {
+                var enumValue = Enum.Parse(enumType, key, true);
+
+                var createFromEnumMethod = targetType.GetMethod(
+                    "Create",
+                    BindingFlags.Public | BindingFlags.Static,
+                    null,
+                    new[] { enumType },
+                    null);
+
+                if (createFromEnumMethod != null)
+                    return createFromEnumMethod.Invoke(null, new[] { enumValue });
+            }
+
+            var createFromIdTextMethod = targetType.GetMethod(
+                "Create",
+                BindingFlags.Public | BindingFlags.Static,
+                null,
+                new[] { typeof(string), typeof(string) },
+                null);
+
+            if (createFromIdTextMethod != null)
+                return createFromIdTextMethod.Invoke(null, new object[] { id, text });
+
+            throw new NotSupportedException(
+                $"Could not create generic EntityHeader [{targetType.FullName}]. Expected Create(enum) or Create(string, string).");
         }
     }
 }

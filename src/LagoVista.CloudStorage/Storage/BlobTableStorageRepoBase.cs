@@ -173,6 +173,8 @@ namespace LagoVista.CloudStorage.Storage
                 .And(query)
                 .ToFilterString();
 
+            _logger.Trace($"{this.Tag()} - {filter}");
+
             var pageSize = Math.Min(1000, listRequest.PageSize <= 0 ? 100 : listRequest.PageSize);
             var rows = new List<TSummary>();
 
@@ -185,6 +187,8 @@ namespace LagoVista.CloudStorage.Storage
                 if (rows.Count >= pageSize)
                     break;
             }
+
+            _logger.Trace($"{this.Tag()} - return {rows.Count}");
 
             return ListResponse<TSummary>.Create(rows);
         }
@@ -215,6 +219,9 @@ namespace LagoVista.CloudStorage.Storage
             return entity;
         }
 
+        // BlobTableStorageRepoBase<TDetail, TSummary>
+        // replace CreateSummaryFromTableEntity with this version
+
         private TSummary CreateSummaryFromTableEntity(TableEntity entity)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -227,6 +234,9 @@ namespace LagoVista.CloudStorage.Storage
                     continue;
 
                 if (IsReservedTableProperty(property.Name))
+                    continue;
+
+                if (SummaryTablePropertyReader.TrySetEntityHeader(summary, property, entity))
                     continue;
 
                 if (!entity.TryGetValue(property.Name, out var value))
