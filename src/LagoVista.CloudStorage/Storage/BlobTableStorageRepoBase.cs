@@ -61,6 +61,21 @@ namespace LagoVista.CloudStorage.Storage
             return detail.Id.Value;
         }
 
+        protected virtual bool ShouldWriteArchiveRecord(TDetail detail)
+        {
+            return false;
+        }
+
+        protected virtual string GetArchivePartitionKey(TDetail detail)
+        {
+            return $"{GetPartitionKey(detail)}_{GetRowKey(detail)}";
+        }
+
+        protected virtual string GetArchiveRowKey(TDetail detail)
+        {
+            return ReverseTicks();
+        }
+
         protected virtual string GetDetailBlobName(string orgId, string id)
         {
             return $"{orgId}/{id}.json";
@@ -69,6 +84,11 @@ namespace LagoVista.CloudStorage.Storage
         protected virtual string GetDetailBlobName(TDetail detail)
         {
             return GetDetailBlobName(detail.OwnerOrganization.Id, detail.Id.Value);
+        }
+
+        protected virtual string GetArchiveDetailBlobName(TDetail detail, string archiveRowKey)
+        {
+            return $"{detail.OwnerOrganization.Id}/{detail.Id.Value}/archive/{archiveRowKey}.json";
         }
 
         private async Task EnsureInitializedAsync()
@@ -115,25 +135,47 @@ namespace LagoVista.CloudStorage.Storage
             await EnsureInitializedAsync();
 
             var detailJson = JsonConvert.SerializeObject(detail);
-            var blobResult = await _fileStorage.AddFileAsync(
+
+            var currentBlobResult = await _fileStorage.AddFileAsync(
                 GetDetailBlobContainerName(),
                 GetDetailBlobName(detail),
                 detailJson,
                 "application/json");
 
-            if (!blobResult.Successful)
-                return blobResult.ToInvokeResult();
+            if (!currentBlobResult.Successful)
+                return currentBlobResult.ToInvokeResult();
 
             var summary = detail.CreateSummary();
             if (summary == null)
                 throw new InvalidOperationException($"{typeof(TDetail).Name}.CreateSummary returned null.");
 
-            var tableEntity = CreateSummaryTableEntity(
+            var currentTableEntity = CreateSummaryTableEntity(
                 GetPartitionKey(detail),
                 GetRowKey(detail),
                 summary);
 
-            await _summaryTableClient.UpsertEntityAsync(tableEntity, TableUpdateMode.Replace);
+            await _summaryTableClient.UpsertEntityAsync(currentTableEntity, TableUpdateMode.Replace);
+
+            if (!ShouldWriteArchiveRecord(detail))
+                return InvokeResult.Success;
+
+            var archiveRowKey = GetArchiveRowKey(detail);
+
+            var archiveBlobResult = await _fileStorage.AddFileAsync(
+                GetDetailBlobContainerName(),
+                GetArchiveDetailBlobName(detail, archiveRowKey),
+                detailJson,
+                "application/json");
+
+            if (!archiveBlobResult.Successful)
+                return archiveBlobResult.ToInvokeResult();
+
+            var archiveTableEntity = CreateSummaryTableEntity(
+                GetArchivePartitionKey(detail),
+                archiveRowKey,
+                summary);
+
+            await _summaryTableClient.UpsertEntityAsync(archiveTableEntity, TableUpdateMode.Replace);
 
             return InvokeResult.Success;
         }
@@ -151,6 +193,27 @@ namespace LagoVista.CloudStorage.Storage
             if (!blobResult.Successful)
             {
                 var error = blobResult.Errors.FirstOrDefault()?.Message ?? $"Could not load detail blob [{blobName}].";
+                throw new InvalidOperationException(error);
+            }
+
+            var json = Encoding.UTF8.GetString(blobResult.Result);
+            return JsonConvert.DeserializeObject<TDetail>(json);
+        }
+
+        protected async Task<TDetail> GetArchiveDetailAsync(string orgId, string id, string archiveRowKey)
+        {
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentNullException(nameof(orgId));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentNullException(nameof(id));
+            if (String.IsNullOrWhiteSpace(archiveRowKey)) throw new ArgumentNullException(nameof(archiveRowKey));
+
+            await EnsureInitializedAsync();
+
+            var blobName = $"{orgId}/{id}/archive/{archiveRowKey}.json";
+            var blobResult = await _fileStorage.GetFileAsync(GetDetailBlobContainerName(), blobName);
+
+            if (!blobResult.Successful)
+            {
+                var error = blobResult.Errors.FirstOrDefault()?.Message ?? $"Could not load archive detail blob [{blobName}].";
                 throw new InvalidOperationException(error);
             }
 
@@ -193,6 +256,45 @@ namespace LagoVista.CloudStorage.Storage
             return ListResponse<TSummary>.Create(rows);
         }
 
+        protected async Task<ListResponse<TSummary>> GetArchiveSummariesAsync(
+            string orgId,
+            string id,
+            ListRequest listRequest,
+            TableStorageQuery query = null)
+        {
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentNullException(nameof(orgId));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentNullException(nameof(id));
+            if (listRequest == null) listRequest = new ListRequest { PageSize = 100 };
+
+            await EnsureInitializedAsync();
+
+            var archivePartitionKey = $"{orgId}_{id}";
+
+            var filter = TableStorageQuery.Create()
+                .WhereEquals("PartitionKey", archivePartitionKey)
+                .And(query)
+                .ToFilterString();
+
+            _logger.Trace($"{this.Tag()} - {filter}");
+
+            var pageSize = Math.Min(1000, listRequest.PageSize <= 0 ? 100 : listRequest.PageSize);
+            var rows = new List<TSummary>();
+
+            await foreach (var entity in _summaryTableClient.QueryAsync<TableEntity>(
+                filter: filter,
+                maxPerPage: pageSize))
+            {
+                rows.Add(CreateSummaryFromTableEntity(entity));
+
+                if (rows.Count >= pageSize)
+                    break;
+            }
+
+            _logger.Trace($"{this.Tag()} - return archive {rows.Count}");
+
+            return ListResponse<TSummary>.Create(rows);
+        }
+
         private TableEntity CreateSummaryTableEntity(string partitionKey, string rowKey, TSummary summary)
         {
             if (String.IsNullOrWhiteSpace(partitionKey)) throw new ArgumentNullException(nameof(partitionKey));
@@ -218,9 +320,6 @@ namespace LagoVista.CloudStorage.Storage
 
             return entity;
         }
-
-        // BlobTableStorageRepoBase<TDetail, TSummary>
-        // replace CreateSummaryFromTableEntity with this version
 
         private TSummary CreateSummaryFromTableEntity(TableEntity entity)
         {
@@ -254,6 +353,11 @@ namespace LagoVista.CloudStorage.Storage
                    propertyName == "RowKey" ||
                    propertyName == "Timestamp" ||
                    propertyName == "ETag";
+        }
+
+        private static string ReverseTicks()
+        {
+            return $"{DateTime.MaxValue.Ticks - DateTime.UtcNow.Ticks:D19}";
         }
     }
 }
