@@ -49,6 +49,122 @@ namespace LagoVista.CloudStorage.Storage
             return $"{_dbName}-{entityType}-{id}".ToLower();
         }
 
+        public async Task<InvokeResult<List<JObject>>> GetEntitiesWithEmptyFieldAsync(
+    string entityType,
+    string fieldName,
+    string orgId,
+    int maxItems,
+    CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+            {
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+            }
+
+            if (String.IsNullOrWhiteSpace(fieldName))
+            {
+                throw new ArgumentException("fieldName is required.", nameof(fieldName));
+            }
+
+            if (String.IsNullOrWhiteSpace(orgId))
+            {
+                throw new ArgumentException("orgId is required.", nameof(orgId));
+            }
+
+            if (maxItems <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+            }
+
+            var safeFieldName = fieldName.Trim();
+
+            if (!IsSafeCosmosPropertyName(safeFieldName))
+            {
+                return InvokeResult<List<JObject>>.FromError($"Field name '{fieldName}' is not safe for a Cosmos query.");
+            }
+
+            var results = new List<JObject>();
+
+            var sql =
+        $@"SELECT TOP {maxItems} *
+FROM c
+WHERE c.EntityType = @entityType
+AND c.OwnerOrganization.Id = @orgId
+AND (
+    NOT IS_DEFINED(c[""{safeFieldName}""])
+    OR IS_NULL(c[""{safeFieldName}""])
+    OR c[""{safeFieldName}""] = ''
+)";
+
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@entityType", entityType.Trim())
+                .WithParameter("@orgId", orgId.Trim());
+
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = Math.Min(maxItems, 100)
+            };
+
+            try
+            {
+                using var iterator = _container.GetItemQueryIterator<JObject>(
+                    qd,
+                    requestOptions: requestOptions);
+
+                while (iterator.HasMoreResults && results.Count < maxItems)
+                {
+                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+
+                    foreach (var doc in page.Resource)
+                    {
+                        if (doc == null)
+                        {
+                            continue;
+                        }
+
+                        results.Add(doc);
+
+                        if (results.Count >= maxItems)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} {entityType} entities with empty field '{safeFieldName}'.");
+
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
+            }
+        }
+
+        private static bool IsSafeCosmosPropertyName(string fieldName)
+        {
+            if (String.IsNullOrWhiteSpace(fieldName))
+            {
+                return false;
+            }
+
+            if (fieldName.Length > 128)
+            {
+                return false;
+            }
+
+            foreach (var ch in fieldName)
+            {
+                if (!(Char.IsLetterOrDigit(ch) || ch == '_'))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public async Task<InvokeResult> CalculateHashAsync(string id, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
@@ -252,6 +368,49 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             return null;
+        }
+
+        public async Task<InvokeResult<Dictionary<string, JToken>>> GetEntityFieldsAsync(string id, IEnumerable<string> fieldNames, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(id))
+            {
+                throw new ArgumentException("id is required.", nameof(id));
+            }
+
+            if (fieldNames == null)
+            {
+                throw new ArgumentNullException(nameof(fieldNames));
+            }
+
+            var requestedFields = fieldNames
+                .Where(fieldName => !String.IsNullOrWhiteSpace(fieldName))
+                .Select(fieldName => fieldName.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!requestedFields.Any())
+            {
+                return InvokeResult<Dictionary<string, JToken>>.Create(new Dictionary<string, JToken>());
+            }
+
+            var doc = await LoadDocumentByIdAsync(id.Trim(), ct).ConfigureAwait(false);
+
+            if (doc == null)
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not find document with id '{id}' to read entity fields.");
+                return InvokeResult<Dictionary<string, JToken>>.FromError($"Could not find record with id: {id}");
+            }
+
+            var result = new Dictionary<string, JToken>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var fieldName in requestedFields)
+            {
+                result[fieldName] = doc.TryGetValue(fieldName, StringComparison.OrdinalIgnoreCase, out var token)
+                    ? token
+                    : JValue.CreateNull();
+            }
+
+            return InvokeResult<Dictionary<string, JToken>>.Create(result);
         }
 
         private static List<AiEntitySession> ReadAiEntitySessions(JObject doc)
