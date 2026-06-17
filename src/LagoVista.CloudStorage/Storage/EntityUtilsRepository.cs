@@ -443,5 +443,304 @@ AND (
                 await _cacheProvider.RemoveAsync($"{MODULE_CACHE_KEY}{key}");
             }
         }
+
+        public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(
+    string entityType,
+    string orgId,
+    IEnumerable<EntityChecklistStep> checklistSteps,
+    int maxItems,
+    CancellationToken ct)
+        {
+            if (checklistSteps == null)
+            {
+                throw new ArgumentNullException(nameof(checklistSteps));
+            }
+
+            var checklistStepKeys = checklistSteps
+                .Where(step => step != null && !String.IsNullOrWhiteSpace(step.Key))
+                .Select(step => step.Key)
+                .ToList();
+
+            return GetEntitiesWithCompletedChecklistStepsAsync(
+                entityType,
+                orgId,
+                checklistStepKeys,
+                maxItems,
+                ct);
+        }
+
+        public async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(
+            string entityType,
+            string orgId,
+            IEnumerable<string> checklistStepKeys,
+            int maxItems,
+            CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+            {
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+            }
+
+            if (String.IsNullOrWhiteSpace(orgId))
+            {
+                throw new ArgumentException("orgId is required.", nameof(orgId));
+            }
+
+            if (checklistStepKeys == null)
+            {
+                throw new ArgumentNullException(nameof(checklistStepKeys));
+            }
+
+            if (maxItems <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+            }
+
+            var requiredStepKeys = checklistStepKeys
+                .Where(stepKey => !String.IsNullOrWhiteSpace(stepKey))
+                .Select(stepKey => stepKey.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!requiredStepKeys.Any())
+            {
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromError(
+                    "At least one checklist step key is required.");
+            }
+
+            foreach (var stepKey in requiredStepKeys)
+            {
+                if (!IsSafeChecklistStepKey(stepKey))
+                {
+                    return InvokeResult<List<EntityChecklistCandidateSummary>>.FromError(
+                        $"Checklist step key '{stepKey}' is not safe for a Cosmos query.");
+                }
+            }
+
+            var sql = BuildCompletedChecklistStepsSql(requiredStepKeys, maxItems);
+
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@entityType", entityType.Trim())
+                .WithParameter("@orgId", orgId.Trim())
+                .WithParameter("@completedStatus", EntityChecklistStatus.Completed);
+
+            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+            {
+                qd = qd.WithParameter($"@stepKey{idx}", requiredStepKeys[idx]);
+            }
+
+            var requestOptions = new QueryRequestOptions
+            {
+                MaxItemCount = Math.Min(maxItems, 100)
+            };
+
+            var results = new List<EntityChecklistCandidateSummary>();
+
+            try
+            {
+                using (var iterator = _container.GetItemQueryIterator<EntityChecklistCandidateSummary>(
+                    qd,
+                    requestOptions: requestOptions))
+                {
+                    while (iterator.HasMoreResults && results.Count < maxItems)
+                    {
+                        var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+
+                        foreach (var item in page.Resource)
+                        {
+                            if (item == null)
+                            {
+                                continue;
+                            }
+
+                            results.Add(item);
+
+                            if (results.Count >= maxItems)
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                _logger.Trace(
+                    $"{this.Tag()} - Found {results.Count} {entityType} entities with completed checklist steps [{String.Join(", ", requiredStepKeys)}].");
+
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromException(this.Tag(), ex);
+            }
+        }
+
+        public async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesReadyForChecklistStepAsync(string entityType, string orgId, IEnumerable<string> requiredCompletedStepKeys, string targetIncompleteStepKey, int maxItems, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+            if (requiredCompletedStepKeys == null) throw new ArgumentNullException(nameof(requiredCompletedStepKeys));
+            if (String.IsNullOrWhiteSpace(targetIncompleteStepKey)) throw new ArgumentException("targetIncompleteStepKey is required.", nameof(targetIncompleteStepKey));
+            if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+
+            var requiredStepKeys = requiredCompletedStepKeys.Where(stepKey => !String.IsNullOrWhiteSpace(stepKey)).Select(stepKey => stepKey.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var targetStepKey = targetIncompleteStepKey.Trim();
+
+            if (!requiredStepKeys.Any()) return InvokeResult<List<EntityChecklistCandidateSummary>>.FromError("At least one required completed checklist step key is required.");
+            if (!IsSafeChecklistStepKey(targetStepKey)) return InvokeResult<List<EntityChecklistCandidateSummary>>.FromError($"Target checklist step key '{targetStepKey}' is not safe for a Cosmos query.");
+
+            foreach (var stepKey in requiredStepKeys)
+            {
+                if (!IsSafeChecklistStepKey(stepKey)) return InvokeResult<List<EntityChecklistCandidateSummary>>.FromError($"Checklist step key '{stepKey}' is not safe for a Cosmos query.");
+            }
+
+            var take = Math.Min(maxItems, 250);
+            var results = new List<EntityChecklistCandidateSummary>();
+
+            var sql = BuildReadyForChecklistStepSql(requiredStepKeys, take);
+
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@entityType", entityType.Trim())
+                .WithParameter("@orgId", orgId.Trim())
+                .WithParameter("@completedStatus", EntityChecklistStatus.Completed)
+                .WithParameter("@targetStepKey", targetStepKey);
+
+            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+            {
+                qd = qd.WithParameter($"@stepKey{idx}", requiredStepKeys[idx]);
+            }
+
+            var requestOptions = new QueryRequestOptions { MaxItemCount = Math.Min(take, 100) };
+
+            try
+            {
+                using var iterator = _container.GetItemQueryIterator<JObject>(qd, requestOptions: requestOptions);
+
+                while (iterator.HasMoreResults && results.Count < take)
+                {
+                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+
+                    foreach (var doc in page.Resource)
+                    {
+                        if (doc == null) continue;
+
+                        results.Add(ToChecklistCandidateSummary(doc));
+
+                        if (results.Count >= take) break;
+                    }
+                }
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} {entityType} entities ready for checklist step '{targetStepKey}' with prerequisites [{String.Join(", ", requiredStepKeys)}].");
+
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromException(this.Tag(), ex);
+            }
+        }
+
+        private static EntityChecklistCandidateSummary ToChecklistCandidateSummary(JObject item)
+        {
+            return new EntityChecklistCandidateSummary
+            {
+                Id = item.Value<string>("Id") ?? item.Value<string>("id"),
+                EntityType = item.Value<string>("EntityType"),
+                Name = item.Value<string>("Name"),
+                Key = item.Value<string>("Key"),
+                Description = item.Value<string>("Description"),
+            };
+        }
+
+        private static string BuildReadyForChecklistStepSql(List<string> requiredStepKeys, int maxItems)
+        {
+            var sql = new System.Text.StringBuilder();
+
+            sql.AppendLine($"SELECT TOP {maxItems}");
+            sql.AppendLine("    c.id AS Id,");
+            sql.AppendLine("    c.EntityType AS EntityType,");
+            sql.AppendLine("    c.Name AS Name,");
+            sql.AppendLine("    c.Key AS Key,");
+            sql.AppendLine("    c.Description AS Description");
+            sql.AppendLine("FROM c");
+            sql.AppendLine("WHERE c.EntityType = @entityType");
+            sql.AppendLine("AND c.OwnerOrganization.Id = @orgId");
+
+            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+            {
+                sql.AppendLine($@"AND EXISTS (
+    SELECT VALUE status
+    FROM status IN c.ChecklistStatus
+    WHERE status.StepKey = @stepKey{idx}
+    AND status.Status.Id = @completedStatus
+)");
+            }
+
+            sql.AppendLine(@"AND NOT EXISTS (
+    SELECT VALUE status
+    FROM status IN c.ChecklistStatus
+    WHERE status.StepKey = @targetStepKey
+    AND status.Status.Id = @completedStatus
+)");
+
+            sql.AppendLine("ORDER BY c.Name");
+
+            return sql.ToString();
+        }
+
+        private static string BuildCompletedChecklistStepsSql(
+            List<string> requiredStepKeys,
+            int maxItems)
+        {
+            var sql = new System.Text.StringBuilder();
+
+            sql.AppendLine($"SELECT TOP {maxItems}");
+            sql.AppendLine("    c.id AS Id,");
+            sql.AppendLine("    c.EntityType AS EntityType,");
+            sql.AppendLine("    c.Name AS Name,");
+            sql.AppendLine("    c.Key AS Key,");
+            sql.AppendLine("    c.Description AS Description");
+            sql.AppendLine("FROM c");
+            sql.AppendLine("WHERE c.EntityType = @entityType");
+            sql.AppendLine("AND c.OwnerOrganization.Id = @orgId");
+
+            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+            {
+                sql.AppendLine($@"AND EXISTS (
+    SELECT VALUE status
+    FROM status IN c.ChecklistStatus
+    WHERE status.StepKey = @stepKey{idx}
+    AND status.Status.Id = @completedStatus
+)");
+            }
+
+            sql.AppendLine("ORDER BY c.Name");
+
+            return sql.ToString();
+        }
+
+        private static bool IsSafeChecklistStepKey(string stepKey)
+        {
+            if (String.IsNullOrWhiteSpace(stepKey))
+            {
+                return false;
+            }
+
+            if (stepKey.Length > 128)
+            {
+                return false;
+            }
+
+            foreach (var ch in stepKey)
+            {
+                if (!(Char.IsLetterOrDigit(ch) || ch == '_' || ch == '-' || ch == '.'))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 }
