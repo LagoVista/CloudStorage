@@ -1,4 +1,3 @@
-
 using LagoVista.Core.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
 using Newtonsoft.Json;
@@ -7,18 +6,19 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Security.Policy;
 using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Storage
 {
     public class CacheProvider : ICacheProvider
     {
+        private const string DependentsSuffix = ":dependents";
+
         private readonly IAdminLogger _logger;
         private readonly ConnectionMultiplexer _multiplexer = null;
 
-        private static Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>();
-
+        private static readonly Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>();
+        private static readonly Dictionary<string, Dictionary<string, string>> _inMemoryCollections = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
         public CacheProvider(ICacheProviderSettings settings, IAdminLogger adminlogger, IAppConfig appConfig)
         {
@@ -29,9 +29,9 @@ namespace LagoVista.CloudStorage.Storage
             if (settings.UseCache)
             {
                 var uri = settings.CacheSettings.Uri;
+
                 try
                 {
-
                     _logger.Trace($"{this.Tag()} - Initializing cache provider with settings: {uri} - Slot Title {appConfig.Environment}, {appConfig.AppId} ");
                     _multiplexer = ConnectionMultiplexer.Connect(uri);
                     _logger.Trace($"{this.Tag()} - Established connection to REDIS: {uri}");
@@ -41,9 +41,10 @@ namespace LagoVista.CloudStorage.Storage
                     _logger.AddError(this.Tag(), $"Failed to connect to REDIS with settings: {uri}. Exception: {ex}.  You can disable remote cache by setting UseCache = false in AppSettings.  Or you can setup a SSH tunnel to dev cache server.");
                     throw;
                 }
-
             }
         }
+
+        public static readonly TimeSpan DefaultTTL = TimeSpan.FromMinutes(30);
 
         public async Task<bool> AttemptAcquireLockAsync(string key, string token, TimeSpan? expires = null)
         {
@@ -80,7 +81,7 @@ namespace LagoVista.CloudStorage.Storage
 
         public Task AddAsync<T>(string key, T value, TimeSpan? ttl = null)
         {
-            if(value == null)
+            if (value == null)
             {
                 throw new ArgumentNullException(nameof(value));
             }
@@ -88,31 +89,52 @@ namespace LagoVista.CloudStorage.Storage
             return AddAsync(key, JsonConvert.SerializeObject(value), ttl ?? DefaultTTL);
         }
 
-        public static readonly TimeSpan DefaultTTL = TimeSpan.FromMinutes(30);
-
-        public Task AddAsync(string key, string value, TimeSpan? ttl = null)
+        public async Task AddAsync<T>(string key, T value, IEnumerable<string> dependencyKeys, TimeSpan? ttl = null)
         {
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
-
-            if (_multiplexer != null)
+            if (value == null)
             {
-                var db = _multiplexer.GetDatabase();
-                _logger.Trace($"{this.Tag()} - Added Key: {key}");
-
-                return db.StringSetAsync(key, value, ttl ?? DefaultTTL, When.Always);
-            }
-            else if (_inMemoryCache != null)
-            {
-                lock (_inMemoryCache)
-                {
-                    if (_inMemoryCache.ContainsKey(key))
-                        _inMemoryCache.Remove(key);
-
-                    _inMemoryCache.Add(key, value);
-                }
+                throw new ArgumentNullException(nameof(value));
             }
 
-            return Task.CompletedTask;
+            await AddAsync(key, JsonConvert.SerializeObject(value), dependencyKeys, ttl ?? DefaultTTL);
+        }
+
+        public async Task AddAsync(string key, string value, TimeSpan? ttl = null)
+        {
+            ValidateKey(key);
+
+            await AddCacheValueAsync(key, value, ttl ?? DefaultTTL);
+            await InvalidateDependentsAsync(key);
+        }
+
+        public async Task AddAsync(string key, string value, IEnumerable<string> dependencyKeys, TimeSpan? ttl = null)
+        {
+            await AddAsync(key, value, ttl);
+            await RegisterDependenciesAsync(key, dependencyKeys);
+        }
+
+        public async Task RegisterDependenciesAsync(string key, IEnumerable<string> dependencyKeys)
+        {
+            ValidateKey(key);
+
+            if (dependencyKeys == null)
+            {
+                return;
+            }
+
+            var normalizedKey = NormalizeKey(key);
+            var normalizedDependencyKeys = dependencyKeys
+                .Where(dependencyKey => !string.IsNullOrWhiteSpace(dependencyKey))
+                .Select(NormalizeKey)
+                .Where(dependencyKey => !String.Equals(dependencyKey, normalizedKey, StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var dependencyKey in normalizedDependencyKeys)
+            {
+                var dependentsCollectionKey = GetDependentsCollectionKey(dependencyKey);
+                await AddToCollectionAsync(dependentsCollectionKey, normalizedKey, normalizedKey);
+            }
         }
 
         public Task AddToCollectionAsync(string collectionKey, string key, string value)
@@ -126,43 +148,44 @@ namespace LagoVista.CloudStorage.Storage
                 return db.HashSetAsync(collectionKey, key, value);
             }
 
+            lock (_inMemoryCollections)
+            {
+                if (!_inMemoryCollections.TryGetValue(collectionKey, out var collection))
+                {
+                    collection = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    _inMemoryCollections[collectionKey] = collection;
+                }
+
+                collection[key] = value;
+            }
+
             return Task.CompletedTask;
         }
 
         public async Task<string> GetAsync(string key)
         {
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+            ValidateKey(key);
 
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
                 var result = await db.StringGetAsync(key);
-
                 var str = (string)result;
-                if(!result.HasValue)
-                {
-                    _logger.Trace($"{this.Tag()} - Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(str)}");
-                }
-                else 
-                    _logger.Trace($"{this.Tag()} - Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(str)}");
+
+                _logger.Trace($"{this.Tag()} - Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(str)}");
                 return str;
             }
-            else
-            {
-                if (_inMemoryCache != null)
-                {
-                    if (_inMemoryCache.ContainsKey(key))
-                    {
-                        Console.WriteLine($"[InMemoryCache__GetAsync (in memory)] - Cache Hit - {key}.");
-                        return _inMemoryCache[key];
-                    }
-                    else
-                    {
-                        Console.WriteLine("[InMemoryCache__GetAsync (in memory)] - Cache Miss.");
-                    }
-                }
 
+            lock (_inMemoryCache)
+            {
+                if (_inMemoryCache.TryGetValue(key, out var value))
+                {
+                    Console.WriteLine($"[InMemoryCache__GetAsync (in memory)] - Cache Hit - {key}.");
+                    return value;
+                }
             }
+
+            Console.WriteLine("[InMemoryCache__GetAsync (in memory)] - Cache Miss.");
             return null;
         }
 
@@ -182,11 +205,11 @@ namespace LagoVista.CloudStorage.Storage
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-
                 var redisKeys = keyList.Select(k => (RedisKey)k).ToArray();
                 var values = await db.StringGetAsync(redisKeys);
 
                 var result = new Dictionary<string, string>(keyList.Count, StringComparer.Ordinal);
+
                 for (var i = 0; i < keyList.Count; i++)
                 {
                     result[keyList[i]] = (string)values[i];
@@ -195,18 +218,17 @@ namespace LagoVista.CloudStorage.Storage
                 return result;
             }
 
-            if (_inMemoryCache != null)
+            lock (_inMemoryCache)
             {
                 var result = new Dictionary<string, string>(keyList.Count, StringComparer.Ordinal);
-                foreach (var k in keyList)
+
+                foreach (var key in keyList)
                 {
-                    result[k] = _inMemoryCache.ContainsKey(k) ? _inMemoryCache[k] : null;
+                    result[key] = _inMemoryCache.TryGetValue(key, out var value) ? value : null;
                 }
 
                 return result;
             }
-
-            return new Dictionary<string, string>();
         }
 
         public async Task<IEnumerable<object>> GetCollection(string collectionKey)
@@ -216,11 +238,19 @@ namespace LagoVista.CloudStorage.Storage
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-
                 var result = await db.HashGetAllAsync(collectionKey);
                 return result.Cast<object>();
             }
-            return null;
+
+            lock (_inMemoryCollections)
+            {
+                if (_inMemoryCollections.TryGetValue(collectionKey, out var collection))
+                {
+                    return collection.Select(item => (object)item).ToList();
+                }
+            }
+
+            return Enumerable.Empty<object>();
         }
 
         public async Task<string> GetFromCollection(string collectionKey, string key)
@@ -235,11 +265,15 @@ namespace LagoVista.CloudStorage.Storage
                 _logger.Trace($"{this.Tag()} - Getting item with key: {key} from collection: {collectionKey}");
 
                 var value = await db.HashGetAsync(collectionKey, key);
+                return (string)value;
+            }
 
-                var result = (string)value;
-
-
-                return result;
+            lock (_inMemoryCollections)
+            {
+                if (_inMemoryCollections.TryGetValue(collectionKey, out var collection) && collection.TryGetValue(key, out var value))
+                {
+                    return value;
+                }
             }
 
             return null;
@@ -247,25 +281,8 @@ namespace LagoVista.CloudStorage.Storage
 
         public Task RemoveAsync(string key)
         {
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
-
-            if (_multiplexer != null)
-            {
-                var db = _multiplexer.GetDatabase();
-                if (db == null)
-                {
-                    throw new ArgumentNullException("Database for cache provider is null.");
-                }
-
-                _logger.Trace($"{this.Tag()} - Removing item with key: {key}");
-                return db.KeyDeleteAsync(key);
-            }
-            else if (_inMemoryCache != null)
-            {
-                _inMemoryCache.Remove(key);
-            }
-
-            return Task.CompletedTask;
+            ValidateKey(key);
+            return RemoveAsync(key, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         }
 
         public Task RemoveFromCollectionAsync(string collectionKey, string key)
@@ -281,23 +298,41 @@ namespace LagoVista.CloudStorage.Storage
                 return db.HashDeleteAsync(collectionKey, key);
             }
 
+            lock (_inMemoryCollections)
+            {
+                if (_inMemoryCollections.TryGetValue(collectionKey, out var collection))
+                {
+                    collection.Remove(key);
+
+                    if (collection.Count == 0)
+                    {
+                        _inMemoryCollections.Remove(collectionKey);
+                    }
+                }
+            }
+
             return Task.CompletedTask;
         }
 
-        public async Task<T> GetAsync<T>(string key) where T: class
+        public async Task<T> GetAsync<T>(string key) where T : class
         {
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+            ValidateKey(key);
 
             var json = await GetAsync(key);
+
             if (String.IsNullOrEmpty(json))
+            {
                 return null;
+            }
 
             return JsonConvert.DeserializeObject<T>(json);
         }
 
         public async Task<T> GetAndDeleteAsync<T>(string key) where T : class
         {
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+            ValidateKey(key);
+
+            string json = null;
 
             if (_multiplexer != null)
             {
@@ -308,65 +343,59 @@ return v
 ";
 
                 var db = _multiplexer.GetDatabase() ?? throw new ArgumentNullException("Database for cache provider is null.");
-                var json = (RedisValue)await db.ScriptEvaluateAsync(
-                            script,
-                            keys: new RedisKey[] { key });
-
-
-                if (String.IsNullOrEmpty(json))
-                {
-                    _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {key} not found in cache.");  
-                    return null;
-                }
-
-                _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {key} found and removed from cache.");
-
-                return JsonConvert.DeserializeObject<T>(json);
+                json = (RedisValue)await db.ScriptEvaluateAsync(script, keys: new RedisKey[] { key });
             }
-            else if (_inMemoryCache != null)
+            else
             {
-                if(_inMemoryCache.ContainsKey(key))
+                lock (_inMemoryCache)
                 {
-                    var json = _inMemoryCache[key];
-                    _inMemoryCache.Remove(key);
-                    return JsonConvert.DeserializeObject<T>(json);
+                    if (_inMemoryCache.TryGetValue(key, out json))
+                    {
+                        _inMemoryCache.Remove(key);
+                    }
                 }
+            }
 
+            await InvalidateDependentsAsync(key);
+
+            if (String.IsNullOrEmpty(json))
+            {
+                _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {key} not found in cache.");
                 return null;
             }
 
-            return null;
+            _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {key} found and removed from cache.");
+            return JsonConvert.DeserializeObject<T>(json);
         }
 
         public async Task<long> GetLongAsync(string key)
         {
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+            ValidateKey(key);
 
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase() ?? throw new ArgumentNullException("Database for cache provider is null.");
-
-                if (string.IsNullOrWhiteSpace(key))
-                    throw new ArgumentNullException(nameof(key));
-
                 var val = await db.StringGetAsync(key).ConfigureAwait(false);
-                if (val.IsNullOrEmpty) return 0;
 
-                // Redis returns bytes/string. Be lenient: if it isn't a number, treat as 0 (cache-safe).
-                if (long.TryParse(val.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
-                    return parsed;
-
-                return 0;
-            }
-            else if (_inMemoryCache != null)
-            {
-                if (_inMemoryCache.ContainsKey(key))
+                if (val.IsNullOrEmpty)
                 {
-                    var intValue = Convert.ToInt64(_inMemoryCache[key]);
-                    return intValue;
+                    return 0;
+                }
+
+                if (long.TryParse(val.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+                {
+                    return parsed;
                 }
 
                 return 0;
+            }
+
+            lock (_inMemoryCache)
+            {
+                if (_inMemoryCache.TryGetValue(key, out var value))
+                {
+                    return Convert.ToInt64(value);
+                }
             }
 
             return 0;
@@ -374,34 +403,167 @@ return v
 
         public async Task<long> IncrementAsync(string key)
         {
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+            ValidateKey(key);
 
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase() ?? throw new ArgumentNullException("Database for cache provider is null.");
-                if (string.IsNullOrWhiteSpace(key))
-                    throw new ArgumentNullException(nameof(key));
-
-                // Atomic INCR (creates key if missing, starting at 0 then +1)
                 return await db.StringIncrementAsync(key).ConfigureAwait(false);
             }
-            else if (_inMemoryCache != null)
-            {
-                if (_inMemoryCache.ContainsKey(key))
-                {
-                    var intValue = Convert.ToInt64( _inMemoryCache[key]);
-                    _inMemoryCache.Remove(key);
-                    intValue++;
-                    _inMemoryCache.Add(key, intValue.ToString());
 
+            lock (_inMemoryCache)
+            {
+                if (_inMemoryCache.TryGetValue(key, out var value))
+                {
+                    var intValue = Convert.ToInt64(value) + 1;
+                    _inMemoryCache[key] = intValue.ToString();
                     return intValue;
                 }
 
-                _inMemoryCache.Add(key, "1");
+                _inMemoryCache[key] = "1";
                 return 1;
             }
+        }
 
-            return 1;
+        private Task AddCacheValueAsync(string key, string value, TimeSpan ttl)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+
+                _logger.Trace($"{this.Tag()} - Added Key: {key}");
+                return db.StringSetAsync(key, value, ttl, When.Always);
+            }
+
+            lock (_inMemoryCache)
+            {
+                _inMemoryCache[key] = value;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private async Task RemoveAsync(string key, HashSet<string> visitedKeys)
+        {
+            var normalizedKey = NormalizeKey(key);
+
+            if (!visitedKeys.Add(normalizedKey))
+            {
+                return;
+            }
+
+            var dependentKeys = await GetDependentCacheKeysAsync(normalizedKey);
+
+            await RemoveCacheValueAsync(normalizedKey);
+
+            foreach (var dependentKey in dependentKeys)
+            {
+                await RemoveAsync(dependentKey, visitedKeys);
+            }
+
+            await RemoveCacheValueAsync(GetDependentsCollectionKey(normalizedKey));
+        }
+
+        private Task InvalidateDependentsAsync(string key)
+        {
+            return InvalidateDependentsAsync(key, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        private async Task InvalidateDependentsAsync(string key, HashSet<string> visitedKeys)
+        {
+            var normalizedKey = NormalizeKey(key);
+
+            if (!visitedKeys.Add(normalizedKey))
+            {
+                return;
+            }
+
+            var dependentKeys = await GetDependentCacheKeysAsync(normalizedKey);
+
+            foreach (var dependentKey in dependentKeys)
+            {
+                await RemoveAsync(dependentKey, visitedKeys);
+            }
+
+            await RemoveCacheValueAsync(GetDependentsCollectionKey(normalizedKey));
+        }
+
+        private async Task<IReadOnlyCollection<string>> GetDependentCacheKeysAsync(string key)
+        {
+            var dependentsCollectionKey = GetDependentsCollectionKey(key);
+
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+                var values = await db.HashValuesAsync(dependentsCollectionKey);
+
+                return values
+                    .Where(value => value.HasValue)
+                    .Select(value => NormalizeKey(value.ToString()))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            lock (_inMemoryCollections)
+            {
+                if (_inMemoryCollections.TryGetValue(dependentsCollectionKey, out var collection))
+                {
+                    return collection.Values
+                        .Where(value => !string.IsNullOrWhiteSpace(value))
+                        .Select(NormalizeKey)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                }
+            }
+
+            return Array.Empty<string>();
+        }
+
+        private Task RemoveCacheValueAsync(string key)
+        {
+            if (_multiplexer != null)
+            {
+                var db = _multiplexer.GetDatabase();
+
+                if (db == null)
+                {
+                    throw new ArgumentNullException("Database for cache provider is null.");
+                }
+
+                _logger.Trace($"{this.Tag()} - Removing item with key: {key}");
+                return db.KeyDeleteAsync(key);
+            }
+
+            lock (_inMemoryCache)
+            {
+                _inMemoryCache.Remove(key);
+            }
+
+            lock (_inMemoryCollections)
+            {
+                _inMemoryCollections.Remove(key);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        private static string GetDependentsCollectionKey(string key)
+        {
+            return $"{NormalizeKey(key)}{DependentsSuffix}";
+        }
+
+        private static string NormalizeKey(string key)
+        {
+            ValidateKey(key);
+            return key.Trim().ToLowerInvariant();
+        }
+
+        private static void ValidateKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new ArgumentException("Key is required.", nameof(key));
+            }
         }
     }
 }

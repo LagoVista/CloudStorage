@@ -107,5 +107,20 @@ namespace LagoVista.CloudStorage.Utils
         {
             throw new NotImplementedException();
         }
+
+        public Task AddAsync<T>(string key, T value, IEnumerable<string> dependencyKeys, TimeSpan? ttl = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task AddAsync(string key, string value, IEnumerable<string> dependencyKeys, TimeSpan? ttl = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task RegisterDependenciesAsync(string key, IEnumerable<string> dependencyKeys)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

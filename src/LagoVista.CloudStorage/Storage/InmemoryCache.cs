@@ -37,6 +37,16 @@ namespace LagoVista.CloudStorage.Storage
             return Task.CompletedTask;
         }
 
+        public Task AddAsync<T>(string key, T value, IEnumerable<string> dependencyKeys, TimeSpan? ttl = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task AddAsync(string key, string value, IEnumerable<string> dependencyKeys, TimeSpan? ttl = null)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task AddToCollectionAsync(string collectionKey, string key, string value)
         {
             return Task.CompletedTask;
@@ -130,6 +140,11 @@ namespace LagoVista.CloudStorage.Storage
 
             _inMemoryCache.Add(key, "1");
             return Task.FromResult((long)1);
+        }
+
+        public Task RegisterDependenciesAsync(string key, IEnumerable<string> dependencyKeys)
+        {
+            throw new NotImplementedException();
         }
 
         public Task<bool> ReleaseLockAsync(string key, string toke)

@@ -324,6 +324,8 @@ namespace LagoVista.CloudStorage.Storage
             obj.DatabaseName = _dbName;
 
             var response = await container.UpsertItemAsync(obj);
+            await _cacheProvider.RemoveAsync(GetCacheKey(obj.EntityType, obj.Id));
+
             if (response.StatusCode != System.Net.HttpStatusCode.Created)
             {
                 throw new Exception("Could not upsert document.");
@@ -352,6 +354,7 @@ namespace LagoVista.CloudStorage.Storage
                 }
 
                 await container.DeleteItemAsync<TEntity>(id, PartitionKey.None);
+                await _cacheProvider.RemoveAsync(GetCacheKey(typeof(TEntity).Name, id));
             }
         }
 
@@ -603,9 +606,9 @@ namespace LagoVista.CloudStorage.Storage
             });
 
             var operations = new List<PatchOperation>()
-    {
-        PatchOperation.Set($"/{nameof(EntityBase.AiEntitySessions)}", entity.AiEntitySessions),
-    };
+            {
+                PatchOperation.Set($"/{nameof(EntityBase.AiEntitySessions)}", entity.AiEntitySessions),
+            };
 
             await _cacheProvider.RemoveAsync(GetCacheKey(entity.EntityType, entityId));
 
