@@ -502,6 +502,8 @@ AND (
             var sql = BuildCandidateSummarySql(predicates, take);
             var qd = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@completedStatus", EntityChecklistStatus.Completed);
 
+            _logger.Trace($"{this.Tag()} - Finding completed check lists", sql.ToKVP("query"));
+
             for (var idx = 0; idx < stepKeys.Count; idx++)
             {
                 qd = qd.WithParameter($"@stepKey{idx}", stepKeys[idx]);
@@ -583,6 +585,8 @@ AND (
 
             var sql = BuildCandidateSummarySql(predicates, take);
             var qd = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@completedStatus", EntityChecklistStatus.Completed);
+
+            _logger.Trace($"{this.Tag()} - Finding completed check lists", sql.ToKVP("query"));
 
             for (var idx = 0; idx < requiredStepKeys.Count; idx++)
             {
@@ -668,6 +672,8 @@ AND (
 
                 var sql = $"SELECT VALUE COUNT(1) FROM c WHERE {String.Join(" AND ", predicates)}";
                 var qd = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@completedStatus", EntityChecklistStatus.Completed);
+
+                _logger.Trace($"{this.Tag()} - Finding completed check lists", sql.ToKVP("query"));
 
                 for (var idx = 0; idx < stepKeys.Count; idx++)
                 {
