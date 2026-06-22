@@ -489,8 +489,8 @@ where c.id = @id";
                 returnedEtag = null;
             }
 
-            
-
+            await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
+           
             _logger.Trace($"{this.Tag()} - Success", resp.StatusCode.ToString().ToKVP("responseCode"));
 
             return new SyncUpsertResult
