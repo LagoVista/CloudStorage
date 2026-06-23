@@ -49,6 +49,103 @@ namespace LagoVista.CloudStorage.Storage
             return $"{_dbName}-{entityType}-{id}".ToLower();
         }
 
+        public async Task<InvokeResult<List<JObject>>> GetEntityReadinessScorecardCandidatesAsync(IEnumerable<string> entityTypes, string orgId, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+
+            var requestedEntityTypes = (entityTypes ?? Enumerable.Empty<string>())
+                .Where(entityType => !String.IsNullOrWhiteSpace(entityType))
+                .Select(entityType => entityType.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (requestedEntityTypes.Count == 0)
+            {
+                return InvokeResult<List<JObject>>.Create(new List<JObject>());
+            }
+
+            const string sql =
+        @"SELECT
+    c.id,
+    c.EntityType,
+    c.ReadinessChecks
+FROM c
+WHERE c.OwnerOrganization.Id = @orgId
+AND ARRAY_CONTAINS(@entityTypes, c.EntityType)";
+
+            var query = new QueryDefinition(sql)
+                .WithParameter("@orgId", orgId.Trim())
+                .WithParameter("@entityTypes", requestedEntityTypes);
+
+            var results = new List<JObject>();
+            var requestOptions = new QueryRequestOptions { MaxItemCount = 100 };
+
+            try
+            {
+                using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
+
+                while (iterator.HasMoreResults)
+                {
+                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                    results.AddRange(page.Resource.Where(item => item != null));
+                }
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} readiness scorecard entities across {requestedEntityTypes.Count} entity types for organization '{orgId}'.");
+
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
+            }
+        }
+
+        public async Task<InvokeResult<List<JObject>>> GetEntityReadinessCandidatesAsync(string entityType, string orgId, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+
+            const string sql =
+        @"SELECT
+    c.id,
+    c.EntityType,
+    c.ChecklistStatus,
+    c.ReadinessChecks,
+    c._etag
+FROM c
+WHERE c.OwnerOrganization.Id = @orgId
+AND c.EntityType = @entityType";
+
+            var query = new QueryDefinition(sql)
+                .WithParameter("@orgId", orgId.Trim())
+                .WithParameter("@entityType", entityType.Trim());
+
+            var results = new List<JObject>();
+            var requestOptions = new QueryRequestOptions { MaxItemCount = 100 };
+
+            try
+            {
+                using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
+
+                while (iterator.HasMoreResults)
+                {
+                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                    results.AddRange(page.Resource.Where(item => item != null));
+                }
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} readiness reconciliation candidates for entity type '{entityType}' in organization '{orgId}'.");
+
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
+            }
+        }
+
+
         public async Task<InvokeResult<List<JObject>>> GetEntitiesWithEmptyFieldAsync(
     string entityType,
     string fieldName,
