@@ -1007,5 +1007,198 @@ AND (
             return true;
         }
 
+        public async Task<InvokeResult<List<EntityChecklistBlockedCandidateSummary>>> GetEntitiesBlockedByChecklistPrerequisitesAsync(
+    string entityType,
+    string orgId,
+    IEnumerable<string> requiredCompletedStepKeys,
+    int maxItems,
+    CancellationToken ct)
+        {
+            const string tag = "[EntityUtilsRepository__GetEntitiesBlockedByChecklistPrerequisitesAsync]";
+
+            try
+            {
+                if (String.IsNullOrWhiteSpace(entityType))
+                {
+                    throw new ArgumentException("entityType is required.", nameof(entityType));
+                }
+
+                if (String.IsNullOrWhiteSpace(orgId))
+                {
+                    throw new ArgumentException("orgId is required.", nameof(orgId));
+                }
+
+                if (requiredCompletedStepKeys == null)
+                {
+                    throw new ArgumentNullException(nameof(requiredCompletedStepKeys));
+                }
+
+                if (maxItems <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+                }
+
+                var requiredStepKeys = NormalizeChecklistStepKeys(requiredCompletedStepKeys);
+
+                if (!requiredStepKeys.Any())
+                {
+                    return InvokeResult<List<EntityChecklistBlockedCandidateSummary>>.FromError(
+                        "At least one required completed checklist step key is required.");
+                }
+
+                var validation = ValidateChecklistStepKeys(requiredStepKeys);
+
+                if (!validation.Successful)
+                {
+                    return InvokeResult<List<EntityChecklistBlockedCandidateSummary>>.FromInvokeResult(validation);
+                }
+
+                var take = Math.Min(maxItems, 5000);
+                var missingPrerequisitePredicates = new List<string>();
+
+                for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+                {
+                    missingPrerequisitePredicates.Add(
+                        BuildIncompleteChecklistStepPredicate($"@requiredStepKey{idx}"));
+                }
+
+                var sql = BuildBlockedCandidateSql(missingPrerequisitePredicates, take);
+
+                var qd = new QueryDefinition(sql)
+                    .WithParameter("@entityType", entityType.Trim())
+                    .WithParameter("@orgId", orgId.Trim())
+                    .WithParameter("@completedStatus", EntityChecklistStatus.Completed);
+
+                for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+                {
+                    qd = qd.WithParameter($"@requiredStepKey{idx}", requiredStepKeys[idx]);
+                }
+
+                var documents = new List<EntityChecklistBlockedCandidateDocument>();
+                var requestOptions = new QueryRequestOptions
+                {
+                    MaxItemCount = Math.Min(take, 100)
+                };
+
+                using var iterator = _container.GetItemQueryIterator<EntityChecklistBlockedCandidateDocument>(
+                    qd,
+                    requestOptions: requestOptions);
+
+                while (iterator.HasMoreResults && documents.Count < take)
+                {
+                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+
+                    foreach (var item in page.Resource)
+                    {
+                        if (item == null)
+                        {
+                            continue;
+                        }
+
+                        documents.Add(item);
+
+                        if (documents.Count >= take)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+
+                _logger.Trace(
+                    $"{this.Tag()} - Found {documents.Count} blocked checklist candidates from the query {entityType} " +
+                    $"with prerequisites [{String.Join(", ", requiredStepKeys)}].");
+
+                var results = documents
+                    .Select(document =>
+                    {
+                        var completedStepKeys = (document.ChecklistStatus ?? new List<EntityChecklistStatus>())
+                            .Where(status =>
+                                status != null &&
+                                !String.IsNullOrWhiteSpace(status.StepKey) &&
+                                status.Status != null &&
+                                String.Equals(
+                                    status.Status.Key,
+                                    EntityChecklistStatus.Completed,
+                                    StringComparison.OrdinalIgnoreCase))
+                            .Select(status => status.StepKey)
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                        var missingStepKeys = requiredStepKeys
+                            .Where(stepKey => !completedStepKeys.Contains(stepKey))
+                            .ToList();
+
+                        return new EntityChecklistBlockedCandidateSummary
+                        {
+                            Id = document.Id,
+                            EntityType = document.EntityType,
+                            Name = document.Name,
+                            Key = document.Key,
+                            Description = document.Description,
+                            MissingRequiredStepKeys = missingStepKeys
+                        };
+                    })
+                    .Where(candidate => candidate.MissingRequiredStepKeys.Any())
+                    .ToList();
+
+                _logger.Trace(
+                    $"{this.Tag()} - Found {results.Count} blocked checklist candidates for {entityType} " +
+                    $"with prerequisites [{String.Join(", ", requiredStepKeys)}].");
+
+                return InvokeResult<List<EntityChecklistBlockedCandidateSummary>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(tag, ex);
+                return InvokeResult<List<EntityChecklistBlockedCandidateSummary>>.FromException(tag, ex);
+            }
+        }
+
+        private static string BuildBlockedCandidateSql(IEnumerable<string> missingPrerequisitePredicates, int maxItems)
+        {
+            var predicates = (missingPrerequisitePredicates ?? Enumerable.Empty<string>())
+                .Where(predicate => !String.IsNullOrWhiteSpace(predicate))
+                .ToList();
+
+            if (!predicates.Any())
+            {
+                throw new ArgumentException(
+                    "At least one missing prerequisite predicate is required.",
+                    nameof(missingPrerequisitePredicates));
+            }
+
+            var sql = new System.Text.StringBuilder();
+
+            sql.AppendLine($"SELECT TOP {maxItems}");
+            sql.AppendLine("    c.id AS Id,");
+            sql.AppendLine("    c.EntityType AS EntityType,");
+            sql.AppendLine("    c.Name AS Name,");
+            sql.AppendLine("    c.Key AS Key,");
+            sql.AppendLine("    c.Description AS Description,");
+            sql.AppendLine("    c.ChecklistStatus AS ChecklistStatus");
+            sql.AppendLine("FROM c");
+            sql.AppendLine("WHERE c.EntityType = @entityType");
+            sql.AppendLine("AND c.OwnerOrganization.Id = @orgId");
+            sql.AppendLine("AND (");
+            sql.AppendLine($"    {String.Join(Environment.NewLine + "    OR ", predicates)}");
+            sql.AppendLine(")");
+            sql.AppendLine("ORDER BY c.Name");
+
+            return sql.ToString();
+        }
+        private class EntityChecklistBlockedCandidateDocument
+        {
+            public string Id { get; set; }
+
+            public string EntityType { get; set; }
+
+            public string Name { get; set; }
+
+            public string Key { get; set; }
+
+            public string Description { get; set; }
+
+            public List<EntityChecklistStatus> ChecklistStatus { get; set; } = new List<EntityChecklistStatus>();
+        }
     }
 }

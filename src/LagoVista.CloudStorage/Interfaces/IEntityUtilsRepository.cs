@@ -35,5 +35,10 @@ namespace LagoVista.CloudStorage.Interfaces
 
         Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesReadyForChecklistStepAsync(string entityType, string orgId, IEnumerable<string> requiredCompletedStepKeys, IEnumerable<string> targetIncompleteStepKeys, int maxItems, CancellationToken ct);
         Task<InvokeResult<List<JObject>>> GetEntityReadinessScorecardCandidatesAsync(IEnumerable<string> entityTypes, string orgId, CancellationToken ct);
+
+
+        Task<InvokeResult<List<EntityChecklistBlockedCandidateSummary>>> GetEntitiesBlockedByChecklistPrerequisitesAsync(string entityType, string orgId, IEnumerable<string> requiredCompletedStepKeys, int maxItems, CancellationToken ct);
     }
+
+
 }
