@@ -606,7 +606,7 @@ AND (
                 qd = qd.WithParameter($"@stepKey{idx}", stepKeys[idx]);
             }
 
-            return await ExecuteCandidateSummaryQueryAsync(qd, take, $"{this.Tag()} - Found completed checklist candidates for {entityType} with steps [{String.Join(", ", stepKeys)}].", ct).ConfigureAwait(false);
+            return await ExecuteCandidateSummaryQueryAsync(qd, stepKeys, take, $"{this.Tag()} - Found completed checklist candidates for {entityType} with steps [{String.Join(", ", stepKeys)}].", ct).ConfigureAwait(false);
         }
 
         public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesReadyForChecklistStepAsync(string entityType, string orgId, IEnumerable<string> requiredCompletedStepKeys, string targetIncompleteStepKey, int maxItems, CancellationToken ct)
@@ -695,7 +695,7 @@ AND (
                 qd = qd.WithParameter($"@targetStepKey{idx}", targetStepKeys[idx]);
             }
 
-            return await ExecuteCandidateSummaryQueryAsync(qd, take, $"{this.Tag()} - Found ready checklist candidates for {entityType} with prerequisites [{String.Join(", ", requiredStepKeys)}] and targets [{String.Join(", ", targetStepKeys)}].", ct).ConfigureAwait(false);
+            return await ExecuteCandidateSummaryQueryAsync(qd, targetStepKeys, take, $"{this.Tag()} - Found ready checklist candidates for {entityType} with prerequisites [{String.Join(", ", requiredStepKeys)}] and targets [{String.Join(", ", targetStepKeys)}].", ct).ConfigureAwait(false);
         }
 
         public async Task<InvokeResult<int>> CountEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct)
@@ -881,34 +881,60 @@ AND (
             }
         }
 
-        private async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> ExecuteCandidateSummaryQueryAsync(QueryDefinition qd, int maxItems, string traceMessage, CancellationToken ct)
+        private async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> ExecuteCandidateSummaryQueryAsync(QueryDefinition qd, IEnumerable<string> targetStepKeys, int maxItems, string traceMessage, CancellationToken ct)
         {
-            var results = new List<EntityChecklistCandidateSummary>();
+            var documents = new List<EntityChecklistCandidateDocument>();
             var requestOptions = new QueryRequestOptions { MaxItemCount = Math.Min(maxItems, 100) };
+            var normalizedTargetStepKeys = NormalizeChecklistStepKeys(targetStepKeys ?? Enumerable.Empty<string>());
+            var targetStepKeySet = normalizedTargetStepKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             try
             {
-                using var iterator = _container.GetItemQueryIterator<EntityChecklistCandidateSummary>(qd, requestOptions: requestOptions);
+                using var iterator = _container.GetItemQueryIterator<EntityChecklistCandidateDocument>(qd, requestOptions: requestOptions);
 
-                while (iterator.HasMoreResults && results.Count < maxItems)
+                while (iterator.HasMoreResults && documents.Count < maxItems)
                 {
                     var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
 
-                    foreach (var item in page.Resource)
+                    foreach (var document in page.Resource)
                     {
-                        if (item == null)
-                        {
+                        if (document == null)
                             continue;
-                        }
 
-                        results.Add(item);
+                        documents.Add(document);
 
-                        if (results.Count >= maxItems)
-                        {
+                        if (documents.Count >= maxItems)
                             break;
-                        }
                     }
                 }
+
+                var results = documents
+                    .Select(document =>
+                    {
+                        var completedTargetStepKeys = (document.ChecklistStatus ?? new List<EntityChecklistStatus>())
+                            .Where(status =>
+                                status != null &&
+                                !String.IsNullOrWhiteSpace(status.StepKey) &&
+                                targetStepKeySet.Contains(status.StepKey) &&
+                                status.Status != null &&
+                                String.Equals(status.Status.Key, EntityChecklistStatus.Completed, StringComparison.OrdinalIgnoreCase))
+                            .Select(status => status.StepKey)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList();
+
+                        return new EntityChecklistCandidateSummary
+                        {
+                            Id = document.Id,
+                            EntityType = document.EntityType,
+                            Name = document.Name,
+                            Key = document.Key,
+                            Description = document.Description,
+                            CompletedTargetStepKeys = completedTargetStepKeys,
+                            CompletedTargetStepCount = completedTargetStepKeys.Count,
+                            TargetStepCount = normalizedTargetStepKeys.Count
+                        };
+                    })
+                    .ToList();
 
                 _logger.Trace(traceMessage);
 
@@ -943,7 +969,8 @@ AND (
             sql.AppendLine("    c.EntityType AS EntityType,");
             sql.AppendLine("    c.Name AS Name,");
             sql.AppendLine("    c.Key AS Key,");
-            sql.AppendLine("    c.Description AS Description");
+            sql.AppendLine("    c.Description AS Description,");
+            sql.AppendLine("    c.ChecklistStatus AS ChecklistStatus");
             sql.AppendLine("FROM c");
             sql.AppendLine($"WHERE {String.Join(Environment.NewLine + "AND ", predicates)}");
             sql.AppendLine("ORDER BY c.Name");
@@ -1109,10 +1136,25 @@ AND (
                     $"{this.Tag()} - Found {documents.Count} blocked checklist candidates from the query {entityType} " +
                     $"with prerequisites [{String.Join(", ", requiredStepKeys)}].");
 
+                foreach (var document in documents)
+                {
+                    _logger.Trace(
+                        $"{this.Tag()} - Blocked candidate '{document.Name ?? document.Id}' " +
+                        $"has {document.ChecklistStatus?.Count ?? 0} checklist status entries.");
+
+                    foreach (var status in document.ChecklistStatus)
+                    {
+                        _logger.Trace(
+                            $"{this.Tag()} - Checklist status: StepKey='{status.StepKey}', " +
+                            $"Status='{status.Status?.Key}'.");
+                    }
+                }
+
+
                 var results = documents
                     .Select(document =>
                     {
-                        var completedStepKeys = (document.ChecklistStatus ?? new List<EntityChecklistStatus>())
+                        var completedStepKeys = (document.ChecklistStatus)
                             .Where(status =>
                                 status != null &&
                                 !String.IsNullOrWhiteSpace(status.StepKey) &&
@@ -1127,6 +1169,11 @@ AND (
                         var missingStepKeys = requiredStepKeys
                             .Where(stepKey => !completedStepKeys.Contains(stepKey))
                             .ToList();
+
+                        _logger.Trace(
+                            $"{this.Tag()} - Candidate '{document.Name ?? document.Id}' completed " +
+                            $"[{String.Join(", ", completedStepKeys)}] and is missing " +
+                            $"[{String.Join(", ", missingStepKeys)}].");
 
                         return new EntityChecklistBlockedCandidateSummary
                         {
@@ -1187,6 +1234,21 @@ AND (
             return sql.ToString();
         }
         private class EntityChecklistBlockedCandidateDocument
+        {
+            public string Id { get; set; }
+
+            public string EntityType { get; set; }
+
+            public string Name { get; set; }
+
+            public string Key { get; set; }
+
+            public string Description { get; set; }
+
+            public List<EntityChecklistStatus> ChecklistStatus { get; set; } = new List<EntityChecklistStatus>();
+        }
+
+        private class EntityChecklistCandidateDocument
         {
             public string Id { get; set; }
 
