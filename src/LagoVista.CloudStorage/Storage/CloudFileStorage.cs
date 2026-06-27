@@ -238,7 +238,7 @@ namespace LagoVista.CloudStorage.Storage
                     }
                     else
                     {
-                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, this.Tag(), "", fileName.ToKVP("fileName"),
+                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, this.Tag(), "", fileName.ToKVP("fileName"), _accountId.ToKVP("accountId"),
                            containerName.ToKVP("containerName"), ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
                     }
                     await Task.Delay(retryCount * 250);

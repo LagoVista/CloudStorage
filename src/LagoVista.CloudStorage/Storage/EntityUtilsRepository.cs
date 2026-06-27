@@ -1201,6 +1201,66 @@ AND (
             }
         }
 
+        public async Task<InvokeResult<List<JObject>>> GetEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct)
+        {
+            const string tag = "[EntityUtilsRepository__GetEntitiesByTypeAsync]";
+
+            try
+            {
+                if (String.IsNullOrWhiteSpace(entityType))
+                {
+                    throw new ArgumentException("entityType is required.", nameof(entityType));
+                }
+
+                if (String.IsNullOrWhiteSpace(orgId))
+                {
+                    throw new ArgumentException("orgId is required.", nameof(orgId));
+                }
+
+                const string sql =
+        @"SELECT *
+FROM c
+WHERE c.EntityType = @entityType
+AND c.OwnerOrganization.Id = @orgId";
+
+                var query = new QueryDefinition(sql)
+                    .WithParameter("@entityType", entityType.Trim())
+                    .WithParameter("@orgId", orgId.Trim());
+
+                var results = new List<JObject>();
+                var requestOptions = new QueryRequestOptions
+                {
+                    MaxItemCount = 100
+                };
+
+                using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
+
+                while (iterator.HasMoreResults)
+                {
+                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+
+                    foreach (var document in page.Resource)
+                    {
+                        if (document == null)
+                        {
+                            continue;
+                        }
+
+                        results.Add(document);
+                    }
+                }
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} entities of type '{entityType}' for organization '{orgId}'.");
+
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(tag, ex);
+                return InvokeResult<List<JObject>>.FromException(tag, ex);
+            }
+        }
+
         private static string BuildBlockedCandidateSql(IEnumerable<string> missingPrerequisitePredicates, int maxItems)
         {
             var predicates = (missingPrerequisitePredicates ?? Enumerable.Empty<string>())
