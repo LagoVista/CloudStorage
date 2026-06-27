@@ -541,6 +541,21 @@ AND (
             }
         }
 
+        public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, int maxItems, CancellationToken ct)
+        {
+            return GetEntitiesWithCompletedChecklistStepsInternalAsync(entityType, orgId, checklistStepKeys, null, maxItems, ct);
+        }
+
+        public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, string targetChecklistStepKey, int maxItems, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(targetChecklistStepKey))
+            {
+                throw new ArgumentException("targetChecklistStepKey is required.", nameof(targetChecklistStepKey));
+            }
+
+            return GetEntitiesWithCompletedChecklistStepsInternalAsync(entityType, orgId, checklistStepKeys, targetChecklistStepKey.Trim(), maxItems, ct);
+        }
+
         public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<EntityChecklistStep> checklistSteps, int maxItems, CancellationToken ct)
         {
             if (checklistSteps == null)
@@ -548,12 +563,15 @@ AND (
                 throw new ArgumentNullException(nameof(checklistSteps));
             }
 
-            var checklistStepKeys = checklistSteps.Where(step => step != null && !String.IsNullOrWhiteSpace(step.Key)).Select(step => step.Key).ToList();
+            var checklistStepKeys = checklistSteps
+                .Where(step => step != null && !String.IsNullOrWhiteSpace(step.Key))
+                .Select(step => step.Key)
+                .ToList();
 
             return GetEntitiesWithCompletedChecklistStepsAsync(entityType, orgId, checklistStepKeys, maxItems, ct);
         }
 
-        public async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, int maxItems, CancellationToken ct)
+        private async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsInternalAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, string targetChecklistStepKey, int maxItems, CancellationToken ct)
         {
             if (String.IsNullOrWhiteSpace(entityType))
             {
@@ -583,13 +601,18 @@ AND (
             }
 
             var validation = ValidateChecklistStepKeys(stepKeys);
+
             if (!validation.Successful)
             {
                 return InvokeResult<List<EntityChecklistCandidateSummary>>.FromInvokeResult(validation);
             }
 
             var take = Math.Min(maxItems, 5000);
-            var predicates = new List<string> { "c.EntityType = @entityType", "c.OwnerOrganization.Id = @orgId" };
+            var predicates = new List<string>
+    {
+        "c.EntityType = @entityType",
+        "c.OwnerOrganization.Id = @orgId"
+    };
 
             for (var idx = 0; idx < stepKeys.Count; idx++)
             {
@@ -597,17 +620,28 @@ AND (
             }
 
             var sql = BuildCandidateSummarySql(predicates, take);
-            var qd = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@completedStatus", EntityChecklistStatus.Completed);
 
-            _logger.Trace($"{this.Tag()} - Finding completed check lists", sql.ToKVP("query"));
+            var qd = new QueryDefinition(sql)
+                .WithParameter("@entityType", entityType.Trim())
+                .WithParameter("@orgId", orgId.Trim())
+                .WithParameter("@completedStatus", EntityChecklistStatus.Completed);
 
             for (var idx = 0; idx < stepKeys.Count; idx++)
             {
                 qd = qd.WithParameter($"@stepKey{idx}", stepKeys[idx]);
             }
 
-            return await ExecuteCandidateSummaryQueryAsync(qd, stepKeys, take, $"{this.Tag()} - Found completed checklist candidates for {entityType} with steps [{String.Join(", ", stepKeys)}].", ct).ConfigureAwait(false);
+            _logger.Trace($"{this.Tag()} - Finding completed check lists", sql.ToKVP("query"));
+
+            return await ExecuteCandidateSummaryQueryAsync(
+                qd,
+                stepKeys,
+                targetChecklistStepKey,
+                take,
+                $"{this.Tag()} - Found completed checklist candidates for {entityType} with steps [{String.Join(", ", stepKeys)}].",
+                ct).ConfigureAwait(false);
         }
+
 
         public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesReadyForChecklistStepAsync(string entityType, string orgId, IEnumerable<string> requiredCompletedStepKeys, string targetIncompleteStepKey, int maxItems, CancellationToken ct)
         {
@@ -695,7 +729,7 @@ AND (
                 qd = qd.WithParameter($"@targetStepKey{idx}", targetStepKeys[idx]);
             }
 
-            return await ExecuteCandidateSummaryQueryAsync(qd, targetStepKeys, take, $"{this.Tag()} - Found ready checklist candidates for {entityType} with prerequisites [{String.Join(", ", requiredStepKeys)}] and targets [{String.Join(", ", targetStepKeys)}].", ct).ConfigureAwait(false);
+            return await ExecuteCandidateSummaryQueryAsync(qd, targetStepKeys, null, take, $"{this.Tag()} - Found ready checklist candidates for {entityType} with prerequisites [{String.Join(", ", requiredStepKeys)}] and targets [{String.Join(", ", targetStepKeys)}].", ct).ConfigureAwait(false);
         }
 
         public async Task<InvokeResult<int>> CountEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct)
@@ -881,16 +915,21 @@ AND (
             }
         }
 
-        private async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> ExecuteCandidateSummaryQueryAsync(QueryDefinition qd, IEnumerable<string> targetStepKeys, int maxItems, string traceMessage, CancellationToken ct)
+        private async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> ExecuteCandidateSummaryQueryAsync(QueryDefinition queryDefinition, IReadOnlyCollection<string> checklistStepKeys, string targetChecklistStepKey, int maxItems, string successMessage, CancellationToken ct)
         {
+            if (queryDefinition == null)
+            {
+                throw new ArgumentNullException(nameof(queryDefinition));
+            }
+
             var documents = new List<EntityChecklistCandidateDocument>();
             var requestOptions = new QueryRequestOptions { MaxItemCount = Math.Min(maxItems, 100) };
-            var normalizedTargetStepKeys = NormalizeChecklistStepKeys(targetStepKeys ?? Enumerable.Empty<string>());
-            var targetStepKeySet = normalizedTargetStepKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var normalizedChecklistStepKeys = NormalizeChecklistStepKeys(checklistStepKeys ?? Enumerable.Empty<string>());
+            var checklistStepKeySet = normalizedChecklistStepKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             try
             {
-                using var iterator = _container.GetItemQueryIterator<EntityChecklistCandidateDocument>(qd, requestOptions: requestOptions);
+                using var iterator = _container.GetItemQueryIterator<EntityChecklistCandidateDocument>(queryDefinition, requestOptions: requestOptions);
 
                 while (iterator.HasMoreResults && documents.Count < maxItems)
                 {
@@ -899,28 +938,40 @@ AND (
                     foreach (var document in page.Resource)
                     {
                         if (document == null)
+                        {
                             continue;
+                        }
 
                         documents.Add(document);
 
                         if (documents.Count >= maxItems)
+                        {
                             break;
+                        }
                     }
                 }
 
                 var results = documents
                     .Select(document =>
                     {
-                        var completedTargetStepKeys = (document.ChecklistStatus ?? new List<EntityChecklistStatus>())
+                        var checklistStatus = document.ChecklistStatus ?? new List<EntityChecklistStatus>();
+
+                        var completedTargetStepKeys = checklistStatus
                             .Where(status =>
                                 status != null &&
                                 !String.IsNullOrWhiteSpace(status.StepKey) &&
-                                targetStepKeySet.Contains(status.StepKey) &&
+                                checklistStepKeySet.Contains(status.StepKey) &&
                                 status.Status != null &&
                                 String.Equals(status.Status.Key, EntityChecklistStatus.Completed, StringComparison.OrdinalIgnoreCase))
                             .Select(status => status.StepKey)
                             .Distinct(StringComparer.OrdinalIgnoreCase)
                             .ToList();
+
+                        var targetChecklistStatus = String.IsNullOrWhiteSpace(targetChecklistStepKey)
+                            ? null
+                            : checklistStatus.FirstOrDefault(status =>
+                                status != null &&
+                                String.Equals(status.StepKey, targetChecklistStepKey, StringComparison.OrdinalIgnoreCase));
 
                         return new EntityChecklistCandidateSummary
                         {
@@ -931,12 +982,13 @@ AND (
                             Description = document.Description,
                             CompletedTargetStepKeys = completedTargetStepKeys,
                             CompletedTargetStepCount = completedTargetStepKeys.Count,
-                            TargetStepCount = normalizedTargetStepKeys.Count
+                            TargetStepCount = normalizedChecklistStepKeys.Count,
+                            TargetChecklistStatus = targetChecklistStatus
                         };
                     })
                     .ToList();
 
-                _logger.Trace(traceMessage);
+                _logger.Trace(successMessage);
 
                 return InvokeResult<List<EntityChecklistCandidateSummary>>.Create(results);
             }
