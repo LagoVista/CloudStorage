@@ -1,4 +1,5 @@
-﻿using LagoVista.Core.Models;
+﻿using LagoVista.Core;
+using LagoVista.Core.Models;
 using LagoVista.Core.Validation;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ namespace LagoVista.CloudStorage.Interfaces
     public interface IEntityUtilsRepository
     {
         Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org);
+        Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org);
 
         Task<InvokeResult> IndexEntityAsync(string id, EntityHeader org, EntityHeader user, CancellationToken ct);
         Task<InvokeResult> UpsertAiEntitySessionAsync(string id, AiEntitySession session, CancellationToken ct);
@@ -48,4 +50,36 @@ namespace LagoVista.CloudStorage.Interfaces
     }
 
 
+    public sealed class EntityBaseSummary
+    {
+        public string Id { get; set; }
+
+        public string EntityType { get; set; }
+
+        public string Name { get; set; }
+
+        public string Key { get; set; }
+
+        public string Description { get; set; }
+
+        public LagoVistaIcon Icon { get; set; }
+
+        public EntityHeader Category { get; set; }
+
+        public bool IsDraft { get; set; }
+
+        public bool IsDeprecated { get; set; }
+
+        public MasterEntityStatus MasterStatus { get; set; }
+
+        public EntityReadinessStatus ReadinessStatus { get; set; }
+
+        public List<EntityChecklistStatus> ChecklistStatus { get; set; } = new List<EntityChecklistStatus>();
+
+        public UtcTimestamp CreationDate { get; set; }
+
+        public UtcTimestamp LastUpdatedDate { get; set; }
+
+        public int Revision { get; set; }
+    }
 }

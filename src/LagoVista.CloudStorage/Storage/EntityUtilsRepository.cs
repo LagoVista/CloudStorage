@@ -49,6 +49,42 @@ namespace LagoVista.CloudStorage.Storage
             return $"{_dbName}-{entityType}-{id}".ToLower();
         }
 
+        public async Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+
+            if (org == null)
+                throw new ArgumentNullException(nameof(org));
+
+            if (String.IsNullOrWhiteSpace(org.Id))
+                throw new ArgumentException("org.Id is required.", nameof(org));
+
+            var result = await GetEntitiesByTypeAsync(entityType.Trim(), org.Id.Trim(), CancellationToken.None).ConfigureAwait(false);
+
+            if (!result.Successful)
+                throw new InvalidOperationException($"Could not retrieve entities of type '{entityType}'.");
+
+            var entities = new List<EntityBaseSummary>();
+
+            foreach (var document in result.Result ?? new List<JObject>())
+            {
+                var entity = document.ToObject<EntityBaseSummary>();
+                if (entity == null)
+                {
+                    var entityId = document["id"]?.Value<string>() ?? "unknown";
+
+                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not deserialize entity '{entityId}' as {nameof(EntityBaseSummary)}.");
+
+                    throw new InvalidOperationException($"Could not deserialize entity '{entityId}' as {nameof(EntityBaseSummary)}.");
+                }
+
+                entities.Add(entity);
+            }
+
+            return entities;
+        }
+
         public Task<InvokeResult> PatchMasterStatusAsync(string id, MasterEntityStatus masterStatus, EntityHeader user, CancellationToken ct)
         {
             if (String.IsNullOrWhiteSpace(id))
@@ -1328,7 +1364,8 @@ AND (
         @"SELECT *
 FROM c
 WHERE c.EntityType = @entityType
-AND c.OwnerOrganization.Id = @orgId";
+AND c.OwnerOrganization.Id = @orgId
+ORDER BY c.Name ASC";
 
                 var query = new QueryDefinition(sql)
                     .WithParameter("@entityType", entityType.Trim())
