@@ -49,6 +49,61 @@ namespace LagoVista.CloudStorage.Storage
             return $"{_dbName}-{entityType}-{id}".ToLower();
         }
 
+        public Task<InvokeResult> PatchMasterStatusAsync(string id, MasterEntityStatus masterStatus, EntityHeader user, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(id))
+                throw new ArgumentException("id is required.", nameof(id));
+
+            if (masterStatus == null)
+                throw new ArgumentNullException(nameof(masterStatus));
+
+            if (user == null)
+                throw new ArgumentNullException(nameof(user));
+
+            var fields = new Dictionary<string, JToken>
+            {
+                [nameof(IEntityBase.MasterStatus)] = JObject.FromObject(masterStatus)
+            };
+
+            return PatchEntityFieldsAsync(id, fields, user, ct);
+        }
+
+        public async Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org)
+        {
+            if (String.IsNullOrWhiteSpace(id))
+                throw new ArgumentException("id is required.", nameof(id));
+
+            if (org == null)
+                throw new ArgumentNullException(nameof(org));
+
+            if (String.IsNullOrWhiteSpace(org.Id))
+                throw new ArgumentException("org.Id is required.", nameof(org));
+
+            var document = await LoadDocumentByIdAsync(id.Trim(), CancellationToken.None).ConfigureAwait(false);
+
+            if (document == null)
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not find document with id '{id}'.");
+                throw new KeyNotFoundException($"Could not find record with id: {id}");
+            }
+
+            var ownerOrganizationId = document[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>();
+
+            if (!String.Equals(ownerOrganizationId, org.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Entity '{id}' is owned by organization '{ownerOrganizationId ?? "unknown"}' rather than '{org.Id}'.");
+
+                throw new UnauthorizedAccessException($"Entity '{id}' does not belong to organization '{org.Id}'.");
+            }
+
+            var entity = document.ToObject<EntityBase>();
+
+            if (entity == null)
+                throw new InvalidOperationException($"Could not deserialize entity '{id}' as {nameof(EntityBase)}.");
+
+            return entity;
+        }
+
         public async Task<InvokeResult<List<JObject>>> GetEntityReadinessScorecardCandidatesAsync(IEnumerable<string> entityTypes, string orgId, CancellationToken ct)
         {
             if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));

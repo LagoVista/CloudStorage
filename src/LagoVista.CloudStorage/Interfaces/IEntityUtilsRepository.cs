@@ -9,6 +9,8 @@ namespace LagoVista.CloudStorage.Interfaces
 {
     public interface IEntityUtilsRepository
     {
+        Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org);
+
         Task<InvokeResult> IndexEntityAsync(string id, EntityHeader org, EntityHeader user, CancellationToken ct);
         Task<InvokeResult> UpsertAiEntitySessionAsync(string id, AiEntitySession session, CancellationToken ct);
         Task<InvokeResult> PatchEntityFieldsAsync(string id, Dictionary<string, JToken> fields, EntityHeader user, CancellationToken ct);
@@ -42,6 +44,7 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, string targetChecklistStepKey, int maxItems, CancellationToken ct);
 
         Task<InvokeResult<List<JObject>>> GetEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct);
+        Task<InvokeResult> PatchMasterStatusAsync(string id, MasterEntityStatus masterStatus, EntityHeader user, CancellationToken ct);
     }
 
 
