@@ -46,6 +46,7 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, string targetChecklistStepKey, int maxItems, CancellationToken ct);
 
         Task<InvokeResult<List<JObject>>> GetEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct);
+        Task<JObject> GetEntityByIdAsync(string entityType, string entityId, string orgId, CancellationToken token);
         Task<InvokeResult> PatchMasterStatusAsync(string id, MasterEntityStatus masterStatus, EntityHeader user, CancellationToken ct);
     }
 

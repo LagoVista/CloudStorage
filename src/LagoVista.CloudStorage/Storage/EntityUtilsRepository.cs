@@ -422,14 +422,27 @@ AND (
             if (!fields.Any()) return InvokeResult.Success;
             if (user == null) throw new ArgumentNullException(nameof(user));
 
-            for (var attempt = 1; attempt <= 3; attempt++)
+            const int maxAttempts = 5;
+            var documentId = id.Trim();
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                var doc = await LoadDocumentByIdAsync(id.Trim(), ct);
+                ct.ThrowIfCancellationRequested();
+
+                var doc = await LoadDocumentByIdAsync(documentId, ct).ConfigureAwait(false);
 
                 if (doc == null)
                 {
-                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not find document with id '{id}' to patch entity fields.");
-                    return InvokeResult.FromError($"Could not find record with id: {id}");
+                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not find document with id '{documentId}' to patch entity fields.");
+                    return InvokeResult.FromError($"Could not find record with id: {documentId}");
+                }
+
+                var etag = doc["_etag"]?.Value<string>();
+
+                if (String.IsNullOrWhiteSpace(etag))
+                {
+                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not patch entity '{documentId}' because its ETag was missing.");
+                    return InvokeResult.FromError($"Could not patch entity '{documentId}' because its ETag was missing.");
                 }
 
                 var now = UtcTimestamp.Now.Value;
@@ -454,24 +467,49 @@ AND (
 
                 patchOperations.Add(PatchOperation.Set($"/{nameof(EntityBase.LastUpdatedBy)}", JObject.FromObject(user)));
 
-                var etag = doc["_etag"]?.Value<string>();
-
                 try
                 {
-                    await _container.PatchItemAsync<JObject>(id.Trim(), PartitionKey.None, patchOperations,
-                        requestOptions: new PatchItemRequestOptions { EnableContentResponseOnWrite = false, IfMatchEtag = etag }, cancellationToken: ct).ConfigureAwait(false);
+                    await _container.PatchItemAsync<JObject>(
+                        documentId,
+                        PartitionKey.None,
+                        patchOperations,
+                        requestOptions: new PatchItemRequestOptions
+                        {
+                            EnableContentResponseOnWrite = false,
+                            IfMatchEtag = etag
+                        },
+                        cancellationToken: ct).ConfigureAwait(false);
 
-                    _logger.Trace($"{this.Tag()} - Patched fields [{String.Join(", ", fields.Keys)}] for entity '{id}' on attempt {attempt}.");
-                    await RemoveEntityCachesAsync(doc);
+                    _logger.Trace($"{this.Tag()} - Patched fields [{String.Join(", ", fields.Keys)}] for entity '{documentId}' on attempt {attempt}.");
+
+                    await RemoveEntityCachesAsync(doc).ConfigureAwait(false);
+
                     return InvokeResult.Success;
                 }
-                catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed && attempt < 3)
+                catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
                 {
-                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"ETag conflict while patching fields for entity '{id}'. Retrying attempt {attempt + 1}.");
+                    if (attempt == maxAttempts)
+                    {
+                        _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"ETag conflict while patching fields for entity '{documentId}'. All {maxAttempts} attempts failed.");
+
+                        return InvokeResult.FromError(
+                            $"Could not patch fields for entity '{documentId}' because the document was updated concurrently.");
+                    }
+
+                    var exponentialDelayMs = 50 * (1 << (attempt - 1));
+                    var jitterMs = new Random().Next(0, 50);
+                    var delay = TimeSpan.FromMilliseconds(exponentialDelayMs + jitterMs);
+
+                    _logger.AddCustomEvent(
+                        LogLevel.Warning,
+                        this.Tag(),
+                        $"ETag conflict while patching fields for entity '{documentId}'. Retrying attempt {attempt + 1} after {delay.TotalMilliseconds:0} ms.");
+
+                    await Task.Delay(delay, ct).ConfigureAwait(false);
                 }
             }
 
-            return InvokeResult.FromError($"Could not patch fields for entity '{id}' because the document was updated concurrently.");
+            return InvokeResult.FromError($"Could not patch fields for entity '{documentId}' because the document was updated concurrently.");
         }
 
 
@@ -556,6 +594,53 @@ AND (
             }
 
             return null;
+        }
+
+        public async Task<JObject> GetEntityByIdAsync(string entityType, string entityId, string orgId, CancellationToken token)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+            {
+                throw new ArgumentException("Entity type is required.", nameof(entityType));
+            }
+
+            if (String.IsNullOrWhiteSpace(entityId))
+            {
+                throw new ArgumentException("Entity id is required.", nameof(entityId));
+            }
+
+            if (String.IsNullOrWhiteSpace(orgId))
+            {
+                throw new ArgumentException("Organization id is required.", nameof(orgId));
+            }
+
+            var doc = await LoadDocumentByIdAsync(entityId.Trim(), token);
+
+            if (doc == null)
+            {
+                return null;
+            }
+
+            var owner = doc[nameof(EntityBase.OwnerOrganization)]?.ToObject<EntityHeader>();
+
+            if (owner == null || String.IsNullOrWhiteSpace(owner.Id))
+            {
+                throw new InvalidOperationException("Owner organization is not present; ownership could not be verified.");
+            }
+
+            if (!String.Equals(owner.Id, orgId.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The entity does not belong to the specified organization.");
+            }
+
+            var storedEntityType = doc[nameof(EntityBase.EntityType)]?.Value<string>();
+
+            if (!String.Equals(storedEntityType, entityType.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Entity type mismatch. Expected '{entityType}', but found '{storedEntityType}'.");
+            }
+
+            return doc;
         }
 
         public async Task<InvokeResult<Dictionary<string, JToken>>> GetEntityFieldsAsync(string id, IEnumerable<string> fieldNames, CancellationToken ct)

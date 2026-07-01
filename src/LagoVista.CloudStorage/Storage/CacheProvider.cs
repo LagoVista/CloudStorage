@@ -17,7 +17,7 @@ namespace LagoVista.CloudStorage.Storage
         private readonly IAdminLogger _logger;
         private readonly ConnectionMultiplexer _multiplexer = null;
 
-        private static readonly Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>();
+        private static readonly Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); 
         private static readonly Dictionary<string, Dictionary<string, string>> _inMemoryCollections = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
         public CacheProvider(ICacheProviderSettings settings, IAdminLogger adminlogger, IAppConfig appConfig)
@@ -50,8 +50,9 @@ namespace LagoVista.CloudStorage.Storage
         {
             if (_multiplexer != null)
             {
+                var normalizedKey = NormalizeKey(key);
                 var db = _multiplexer.GetDatabase();
-                return await db.LockTakeAsync(key, token, expires ?? TimeSpan.FromSeconds(30));
+                return await db.LockTakeAsync(normalizedKey, token, expires ?? TimeSpan.FromSeconds(30));
             }
 
             return false;
@@ -61,8 +62,10 @@ namespace LagoVista.CloudStorage.Storage
         {
             if (_multiplexer != null)
             {
+
+                var normalizedKey = NormalizeKey(key);
                 var db = _multiplexer.GetDatabase();
-                return await db.LockExtendAsync(key, token, expires ?? TimeSpan.FromSeconds(30));
+                return await db.LockExtendAsync(normalizedKey, token, expires ?? TimeSpan.FromSeconds(30));
             }
 
             return false;
@@ -72,8 +75,10 @@ namespace LagoVista.CloudStorage.Storage
         {
             if (_multiplexer != null)
             {
+                var normalizedKey = NormalizeKey(key);
+
                 var db = _multiplexer.GetDatabase();
-                return await db.LockReleaseAsync(key, toke);
+                return await db.LockReleaseAsync(normalizedKey, toke);
             }
 
             return false;
@@ -115,8 +120,6 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task RegisterDependenciesAsync(string key, IEnumerable<string> dependencyKeys)
         {
-            ValidateKey(key);
-
             if (dependencyKeys == null)
             {
                 return;
@@ -139,24 +142,24 @@ namespace LagoVista.CloudStorage.Storage
 
         public Task AddToCollectionAsync(string collectionKey, string key, string value)
         {
-            if (string.IsNullOrWhiteSpace(collectionKey)) throw new ArgumentException("Collection key is required.", nameof(collectionKey));
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+            var normalizedCollectionKey = NormalizeKey(collectionKey);
+            var normalizedKey = NormalizeKey(key);
 
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-                return db.HashSetAsync(collectionKey, key, value);
+                return db.HashSetAsync(normalizedCollectionKey, normalizedKey, value);
             }
 
             lock (_inMemoryCollections)
             {
-                if (!_inMemoryCollections.TryGetValue(collectionKey, out var collection))
+                if (!_inMemoryCollections.TryGetValue(normalizedCollectionKey, out var collection))
                 {
                     collection = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    _inMemoryCollections[collectionKey] = collection;
+                    _inMemoryCollections[normalizedCollectionKey] = collection;
                 }
 
-                collection[key] = value;
+                collection[normalizedKey] = value;
             }
 
             return Task.CompletedTask;
@@ -164,23 +167,23 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<string> GetAsync(string key)
         {
-            ValidateKey(key);
+            var normalizedKey = NormalizeKey(key);
 
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-                var result = await db.StringGetAsync(key);
+                var result = await db.StringGetAsync(normalizedKey);
                 var str = (string)result;
 
-                _logger.Trace($"{this.Tag()} - Getting cache item: {key} found in cache: {!String.IsNullOrEmpty(str)}");
+                _logger.Trace($"{this.Tag()} - Getting cache item: {normalizedKey} found in cache: {!String.IsNullOrEmpty(str)}");
                 return str;
             }
 
             lock (_inMemoryCache)
             {
-                if (_inMemoryCache.TryGetValue(key, out var value))
+                if (_inMemoryCache.TryGetValue(normalizedKey, out var value))
                 {
-                    Console.WriteLine($"[InMemoryCache__GetAsync (in memory)] - Cache Hit - {key}.");
+                    Console.WriteLine($"[InMemoryCache__GetAsync (in memory)] - Cache Hit - {normalizedKey}.");
                     return value;
                 }
             }
@@ -199,7 +202,12 @@ namespace LagoVista.CloudStorage.Storage
         {
             if (keys == null) throw new ArgumentNullException(nameof(keys));
 
-            var keyList = keys.Where(k => !string.IsNullOrWhiteSpace(k)).Distinct().ToList();
+            var keyList = keys
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Select(NormalizeKey)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             if (keyList.Count == 0) return new Dictionary<string, string>();
 
             if (_multiplexer != null)
@@ -235,16 +243,18 @@ namespace LagoVista.CloudStorage.Storage
         {
             if (string.IsNullOrWhiteSpace(collectionKey)) throw new ArgumentException("Collection key is required.", nameof(collectionKey));
 
+            var normalizedCollectionKey = NormalizeKey(collectionKey);
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-                var result = await db.HashGetAllAsync(collectionKey);
+                var result = await db.HashGetAllAsync(normalizedCollectionKey);
                 return result.Cast<object>();
             }
 
             lock (_inMemoryCollections)
             {
-                if (_inMemoryCollections.TryGetValue(collectionKey, out var collection))
+                if (_inMemoryCollections.TryGetValue(normalizedCollectionKey, out var collection))
                 {
                     return collection.Select(item => (object)item).ToList();
                 }
@@ -255,22 +265,23 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<string> GetFromCollection(string collectionKey, string key)
         {
-            if (string.IsNullOrWhiteSpace(collectionKey)) throw new ArgumentException("Collection key is required.", nameof(collectionKey));
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+            var normalizedCollectionKey = NormalizeKey(collectionKey);
+            var normalizedKey = NormalizeKey(key);
 
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
 
-                _logger.Trace($"{this.Tag()} - Getting item with key: {key} from collection: {collectionKey}");
+                _logger.Trace($"{this.Tag()} - Getting item with key: {normalizedKey} from collection: {normalizedCollectionKey}");
 
-                var value = await db.HashGetAsync(collectionKey, key);
+                var value = await db.HashGetAsync(normalizedCollectionKey, normalizedKey);
                 return (string)value;
             }
 
             lock (_inMemoryCollections)
             {
-                if (_inMemoryCollections.TryGetValue(collectionKey, out var collection) && collection.TryGetValue(key, out var value))
+                if (_inMemoryCollections.TryGetValue(normalizedCollectionKey, out var collection) &&
+                    collection.TryGetValue(normalizedKey, out var value))
                 {
                     return value;
                 }
@@ -287,26 +298,26 @@ namespace LagoVista.CloudStorage.Storage
 
         public Task RemoveFromCollectionAsync(string collectionKey, string key)
         {
-            if (string.IsNullOrWhiteSpace(collectionKey)) throw new ArgumentException("Collection key is required.", nameof(collectionKey));
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Key is required.", nameof(key));
+            var normalizedCollectionKey = NormalizeKey(collectionKey);
+            var normalizedKey = NormalizeKey(key);
 
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
 
-                _logger.Trace($"{this.Tag()} - Removing item with key: {key} from collection: {collectionKey}");
-                return db.HashDeleteAsync(collectionKey, key);
+                _logger.Trace($"{this.Tag()} - Removing item with key: {normalizedKey} from collection: {normalizedCollectionKey}");
+                return db.HashDeleteAsync(normalizedCollectionKey, normalizedKey);
             }
 
             lock (_inMemoryCollections)
             {
-                if (_inMemoryCollections.TryGetValue(collectionKey, out var collection))
+                if (_inMemoryCollections.TryGetValue(normalizedCollectionKey, out var collection))
                 {
-                    collection.Remove(key);
+                    collection.Remove(normalizedKey);
 
                     if (collection.Count == 0)
                     {
-                        _inMemoryCollections.Remove(collectionKey);
+                        _inMemoryCollections.Remove(normalizedCollectionKey);
                     }
                 }
             }
@@ -316,9 +327,9 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<T> GetAsync<T>(string key) where T : class
         {
-            ValidateKey(key);
+            var normalizedKey = NormalizeKey(key);
 
-            var json = await GetAsync(key);
+            var json = await GetAsync(normalizedKey);
 
             if (String.IsNullOrEmpty(json))
             {
@@ -330,7 +341,7 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<T> GetAndDeleteAsync<T>(string key) where T : class
         {
-            ValidateKey(key);
+            var normalizedKey = NormalizeKey(key);
 
             string json = null;
 
@@ -343,39 +354,39 @@ return v
 ";
 
                 var db = _multiplexer.GetDatabase() ?? throw new ArgumentNullException("Database for cache provider is null.");
-                json = (RedisValue)await db.ScriptEvaluateAsync(script, keys: new RedisKey[] { key });
+                json = (RedisValue)await db.ScriptEvaluateAsync(script, keys: new RedisKey[] { normalizedKey });
             }
             else
             {
                 lock (_inMemoryCache)
                 {
-                    if (_inMemoryCache.TryGetValue(key, out json))
+                    if (_inMemoryCache.TryGetValue(normalizedKey, out json))
                     {
-                        _inMemoryCache.Remove(key);
+                        _inMemoryCache.Remove(normalizedKey);
                     }
                 }
             }
 
-            await InvalidateDependentsAsync(key);
+            await InvalidateDependentsAsync(normalizedKey);
 
             if (String.IsNullOrEmpty(json))
             {
-                _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {key} not found in cache.");
+                _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {normalizedKey} not found in cache.");
                 return null;
             }
 
-            _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {key} found and removed from cache.");
+            _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {normalizedKey} found and removed from cache.");
             return JsonConvert.DeserializeObject<T>(json);
         }
 
         public async Task<long> GetLongAsync(string key)
         {
-            ValidateKey(key);
+            var normalizedKey = NormalizeKey(key);
 
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase() ?? throw new ArgumentNullException("Database for cache provider is null.");
-                var val = await db.StringGetAsync(key).ConfigureAwait(false);
+                var val = await db.StringGetAsync(normalizedKey).ConfigureAwait(false);
 
                 if (val.IsNullOrEmpty)
                 {
@@ -392,7 +403,7 @@ return v
 
             lock (_inMemoryCache)
             {
-                if (_inMemoryCache.TryGetValue(key, out var value))
+                if (_inMemoryCache.TryGetValue(normalizedKey, out var value))
                 {
                     return Convert.ToInt64(value);
                 }
@@ -404,40 +415,43 @@ return v
         public async Task<long> IncrementAsync(string key)
         {
             ValidateKey(key);
+            var normalizedKey = NormalizeKey(key);
 
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase() ?? throw new ArgumentNullException("Database for cache provider is null.");
-                return await db.StringIncrementAsync(key).ConfigureAwait(false);
+                return await db.StringIncrementAsync(normalizedKey).ConfigureAwait(false);
             }
 
             lock (_inMemoryCache)
             {
-                if (_inMemoryCache.TryGetValue(key, out var value))
+                if (_inMemoryCache.TryGetValue(normalizedKey, out var value))
                 {
                     var intValue = Convert.ToInt64(value) + 1;
-                    _inMemoryCache[key] = intValue.ToString();
+                    _inMemoryCache[normalizedKey] = intValue.ToString();
                     return intValue;
                 }
 
-                _inMemoryCache[key] = "1";
+                _inMemoryCache[normalizedKey] = "1";
                 return 1;
             }
         }
 
         private Task AddCacheValueAsync(string key, string value, TimeSpan ttl)
         {
+            var normalizedKey = NormalizeKey(key);
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
 
-                _logger.Trace($"{this.Tag()} - Added Key: {key}");
-                return db.StringSetAsync(key, value, ttl, When.Always);
+                _logger.Trace($"{this.Tag()} - Added Key: {normalizedKey}");
+                return db.StringSetAsync(normalizedKey, value, ttl, When.Always);
             }
 
             lock (_inMemoryCache)
             {
-                _inMemoryCache[key] = value;
+                _inMemoryCache[normalizedKey] = value;
             }
 
             return Task.CompletedTask;
@@ -521,6 +535,8 @@ return v
 
         private Task RemoveCacheValueAsync(string key)
         {
+            var normalizedKey = NormalizeKey(key);
+
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
@@ -530,18 +546,18 @@ return v
                     throw new ArgumentNullException("Database for cache provider is null.");
                 }
 
-                _logger.Trace($"{this.Tag()} - Removing item with key: {key}");
-                return db.KeyDeleteAsync(key);
+                _logger.Trace($"{this.Tag()} - Removing item with key: {normalizedKey}");
+                return db.KeyDeleteAsync(normalizedKey);
             }
 
             lock (_inMemoryCache)
             {
-                _inMemoryCache.Remove(key);
+                _inMemoryCache.Remove(normalizedKey);
             }
 
             lock (_inMemoryCollections)
             {
-                _inMemoryCollections.Remove(key);
+                _inMemoryCollections.Remove(normalizedKey);
             }
 
             return Task.CompletedTask;
