@@ -1,5 +1,6 @@
 ﻿using LagoVista.Core;
 using LagoVista.Core.Models;
+using LagoVista.Core.Models.EntityReadiness;
 using LagoVista.Core.Validation;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
@@ -10,13 +11,14 @@ namespace LagoVista.CloudStorage.Interfaces
 {
     public interface IEntityUtilsRepository
     {
-        Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org);
-        Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org);
+        Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org, CancellationToken ct = default);
+        Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org, CancellationToken ct = default);
+        Task<List<EntityCoreSummary>> GetEntityCoreAsync(string entityType, EntityHeader org, CancellationToken ct = default);
 
-        Task<InvokeResult> IndexEntityAsync(string id, EntityHeader org, EntityHeader user, CancellationToken ct);
-        Task<InvokeResult> UpsertAiEntitySessionAsync(string id, AiEntitySession session, CancellationToken ct);
-        Task<InvokeResult> PatchEntityFieldsAsync(string id, Dictionary<string, JToken> fields, EntityHeader user, CancellationToken ct);
-        Task<InvokeResult> CalculateHashAsync(string id, CancellationToken ct);
+        Task<InvokeResult> IndexEntityAsync(string id, EntityHeader org, EntityHeader user, CancellationToken ct = default);
+        Task<InvokeResult> UpsertAiEntitySessionAsync(string id, AiEntitySession session, CancellationToken ct = default);
+        Task<InvokeResult> PatchEntityFieldsAsync(string id, Dictionary<string, JToken> fields, EntityHeader user, CancellationToken ct = default);
+        Task<InvokeResult> CalculateHashAsync(string id, CancellationToken ct = default);
         Task<InvokeResult<Dictionary<string, JToken>>> GetEntityFieldsAsync(string id, IEnumerable<string> fieldNames, CancellationToken ct);
 
         Task<InvokeResult<List<JObject>>> GetEntitiesWithEmptyFieldAsync(string entityType, string fieldName, string orgId, int maxItems, CancellationToken ct);
@@ -50,6 +52,20 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<InvokeResult> PatchMasterStatusAsync(string id, MasterEntityStatus masterStatus, EntityHeader user, CancellationToken ct);
     }
 
+    public class EntityCoreSummary
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Key { get; set; }
+        public EntityHeader Category { get; set; }
+        public string Purpose { get; set; }
+        public string Description { get; set; }
+        public string PurposeSummary { get; set; }
+        public List<EntityReadinessCheckState> ReadinessChecks { get; set; } = new List<EntityReadinessCheckState>();
+
+        public List<EntityChecklistStatus> ChecklistStatus { get; set; } = new List<EntityChecklistStatus>();
+    }
+
 
     public sealed class EntityBaseSummary
     {
@@ -72,6 +88,7 @@ namespace LagoVista.CloudStorage.Interfaces
         public bool IsDeprecated { get; set; }
 
         public MasterEntityStatus MasterStatus { get; set; }
+        public List<EntityReadinessCheckState> ReadinessChecks { get; set; } = new List<EntityReadinessCheckState>();
 
         public EntityReadinessStatus ReadinessStatus { get; set; }
 

@@ -49,7 +49,7 @@ namespace LagoVista.CloudStorage.Storage
             return $"{_dbName}-{entityType}-{id}".ToLower();
         }
 
-        public async Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org)
+        public async Task<List<EntityCoreSummary>> GetEntityCoreAsync(string entityType, EntityHeader org, CancellationToken ct = default)
         {
             if (String.IsNullOrWhiteSpace(entityType))
                 throw new ArgumentException("entityType is required.", nameof(entityType));
@@ -60,7 +60,43 @@ namespace LagoVista.CloudStorage.Storage
             if (String.IsNullOrWhiteSpace(org.Id))
                 throw new ArgumentException("org.Id is required.", nameof(org));
 
-            var result = await GetEntitiesByTypeAsync(entityType.Trim(), org.Id.Trim(), CancellationToken.None).ConfigureAwait(false);
+            var result = await GetEntitiesByTypeAsync(entityType.Trim(), org.Id.Trim(), ct).ConfigureAwait(false);
+
+            if (!result.Successful)
+                throw new InvalidOperationException($"Could not retrieve entities of type '{entityType}'.");
+
+            var entities = new List<EntityCoreSummary>();
+
+            foreach (var document in result.Result ?? new List<JObject>())
+            {
+                var entity = document.ToObject<EntityCoreSummary>();
+                if (entity == null)
+                {
+                    var entityId = document["id"]?.Value<string>() ?? "unknown";
+
+                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not deserialize entity '{entityId}' as {nameof(EntityCoreSummary)}.");
+
+                    throw new InvalidOperationException($"Could not deserialize entity '{entityId}' as {nameof(EntityCoreSummary)}.");
+                }
+
+                entities.Add(entity);
+            }
+
+            return entities;
+        }
+
+        public async Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org, CancellationToken ct = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+
+            if (org == null)
+                throw new ArgumentNullException(nameof(org));
+
+            if (String.IsNullOrWhiteSpace(org.Id))
+                throw new ArgumentException("org.Id is required.", nameof(org));
+
+            var result = await GetEntitiesByTypeAsync(entityType.Trim(), org.Id.Trim(), ct).ConfigureAwait(false);
 
             if (!result.Successful)
                 throw new InvalidOperationException($"Could not retrieve entities of type '{entityType}'.");
@@ -104,7 +140,7 @@ namespace LagoVista.CloudStorage.Storage
             return PatchEntityFieldsAsync(id, fields, user, ct);
         }
 
-        public async Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org)
+        public async Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org, CancellationToken ct = default)
         {
             if (String.IsNullOrWhiteSpace(id))
                 throw new ArgumentException("id is required.", nameof(id));
@@ -1431,8 +1467,6 @@ AND (
 
         public async Task<InvokeResult<List<JObject>>> GetEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct)
         {
-            const string tag = "[EntityUtilsRepository__GetEntitiesByTypeAsync]";
-
             try
             {
                 if (String.IsNullOrWhiteSpace(entityType))
@@ -1485,8 +1519,8 @@ ORDER BY c.Name ASC";
             }
             catch (Exception ex)
             {
-                _logger.AddException(tag, ex);
-                return InvokeResult<List<JObject>>.FromException(tag, ex);
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
             }
         }
 
