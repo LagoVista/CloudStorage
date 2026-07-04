@@ -64,6 +64,7 @@ namespace LagoVista.CloudStorage.Interfaces
         public List<EntityReadinessCheckState> ReadinessChecks { get; set; } = new List<EntityReadinessCheckState>();
 
         public List<EntityChecklistStatus> ChecklistStatus { get; set; } = new List<EntityChecklistStatus>();
+        public List<EntityOwnershipPoint> OwnershipPoints { get; set; }
     }
 
 
