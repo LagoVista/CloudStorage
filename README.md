@@ -1,7 +1,5 @@
-# LagoVista.Common
+# Cloud storage
 
-Provides a layer that makes it quicker to store object graphs to cloud table and document db storage.
-
-Very Early Unstable and Prerelease software for Developing .NET applications with Devices, IoT and Home Automation.
+Provides generic data access service, base classes and models for document, flat and relational storage.
 
 Please contact KevinW@software-logistics.com for more information.
