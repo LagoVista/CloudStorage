@@ -526,180 +526,176 @@ where c.id = @id";
             return $"{_dbName}-{typeof(TEntity).Name}-{id}".ToLower();
         }
 
+        /*               var ehPreviousNodes = existing.FindEntityHeaderNodes();
+
+             foreach (var node in ehCurrentNodes)
+              {
+                  if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
+                        (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
+                  {
+                      if (ehCache.ContainsKey(node.Id))
+                      {
+                          var eh = ehCache[node.Id];
+                          item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
+                      }
+                      else
+                      {
+                          var eh = await GetEntityHeaderForRecordAsync(node.Id);
+                          if (eh.Id == NOT_FOUND_ID)
+                          {
+                              eh.Resolved = false;
+                              _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
+                          }
+                          else
+                          {
+                              ehCache.Add(node.Id, eh);
+                              item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
+                          }
+                      }
+                  }
+              }*/
+
+
         protected async Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item, bool checkEtag = false, string idOverride = null)
         {
             if (item is IValidateable && !item.IsDraft)
             {
-                var result = Validator.Validate(item as IValidateable, Actions.Update);
-                if (!result.Successful)
-                {
-                    foreach (var error in result.Errors)
-                    {
-                        _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", $"Validation Error: {error.Message}", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", item.Id));
-                    }
+                var validationResult = Validator.Validate(item as IValidateable, Actions.Update);
 
-                    throw new ValidationException("Found invalid data at storage", result.Errors);
+                if (!validationResult.Successful)
+                {
+                    foreach (var error in validationResult.Errors)
+                        _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", $"Validation Error: {error.Message}", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", item.Id));
+
+                    throw new ValidationException("Found invalid data at storage", validationResult.Errors);
                 }
             }
 
             ItemRequestOptions requestOptions = null;
+
             if (checkEtag)
             {
-                if (String.IsNullOrEmpty(item.ETag)) throw new ContentModifiedException() { EntityType = typeof(TEntity).Name, Id = item.Id };
-                requestOptions = new ItemRequestOptions() { IfMatchEtag = item.ETag };
+                if (String.IsNullOrEmpty(item.ETag))
+                    throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
+
+                requestOptions = new ItemRequestOptions { IfMatchEtag = item.ETag };
             }
 
             item.Revision++;
             item.RevisionTimeStamp = DateTime.UtcNow.ToJSONString();
-
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
 
+            var documentId = idOverride ?? item.Id;
+            var ownerOrgId = item.OwnerOrganization?.Id;
             var container = await GetContainerAsync();
-
             var sw = Stopwatch.StartNew();
+
+            DependentObjectCheckResult dependencyResult = null;
+            var nameChanged = false;
 
             if (_dependencyManager != null)
             {
+                var existing = await GetDocumentAsync(documentId);
 
-                var timer = DocumentUpdate.WithLabels(typeof(TEntity).Name).NewTimer();
-                var ehCache = new Dictionary<string, EntityHeader>();
-                var ehCurrentNodes = item.FindEntityHeaderNodes();
-                var exisitng = await GetDocumentAsync(idOverride ?? item.Id);
-                /*               var ehPreviousNodes = exisitng.FindEntityHeaderNodes();
+                nameChanged = !String.Equals(existing.Name, item.Name, StringComparison.Ordinal);
 
-                             foreach (var node in ehCurrentNodes)
-                              {
-                                  if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
-                                        (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
-                                  {
-                                      if (ehCache.ContainsKey(node.Id))
-                                      {
-                                          var eh = ehCache[node.Id];
-                                          item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                                      }
-                                      else
-                                      {
-                                          var eh = await GetEntityHeaderForRecordAsync(node.Id);
-                                          if (eh.Id == NOT_FOUND_ID)
-                                          {
-                                              eh.Resolved = false;
-                                              _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
-                                          }
-                                          else
-                                          {
-                                              ehCache.Add(node.Id, eh);
-                                              item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                                          }
-                                      }
-                                  }
-                              }*/
-
-                if (exisitng.Name != item.Name)
+                if (nameChanged)
                 {
-                    var dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item);
-                    if (dependencyResult.IsInUse)
-                    {
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Object {item.Name} in use");
-                        foreach (var obj in dependencyResult.DependentObjects)
-                            await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, obj.Id, obj.RecordType, item.Name);
-                    }
+                    dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item);
 
-                    item.AuditHistory.Add(new Core.Models.EntityChangeSet()
+                    if (item.AuditHistory == null)
+                        item.AuditHistory = new List<EntityChangeSet>();
+
+                    item.AuditHistory.Add(new EntityChangeSet
                     {
                         ChangeDate = DateTime.UtcNow.ToJSONString(),
                         ChangedBy = item.LastUpdatedBy,
-                        Changes = new List<Core.Models.EntityChange>()
-                        {
-                            new Core.Models.EntityChange()
-                            {
-                                OldValue = exisitng.Name,
-                                NewValue = item.Name,
-                                Field = nameof(item.Name),
-                            }
-                        }
-                    });
-
-                    await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, idOverride ?? item.Id, item.GetType().Name, item.Name);
-                }
-                else
+                        Changes = new List<EntityChange>
                 {
-                    if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Object {item.Name} name not changed");
+                    new EntityChange { OldValue = existing.Name, NewValue = item.Name, Field = nameof(item.Name) }
+                }
+                    });
+                }
+                else if (_verboseLogging)
+                {
+                    _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Object {item.Name} name not changed");
                 }
             }
-            else
+            else if (_verboseLogging)
             {
-                if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Dependency Manager is null");
+                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Dependency Manager is null");
             }
 
-            var discussable = item as IDiscussableEntity;
-
-            if (discussable != null)
+            if (item is IDiscussableEntity discussable)
             {
-                Console.WriteLine($"===================> Checking it is discussable <========================================");
-
+                Console.WriteLine("===================> Checking it is discussable <========================================");
                 await PostDiscussionUpdates(discussable);
             }
 
             item.SetHash();
-            var upsertResult = await container.UpsertItemAsync(item, requestOptions: requestOptions);
 
+            var upsertResult = await container.UpsertItemAsync(item, requestOptions: requestOptions);
 
             switch (upsertResult.StatusCode)
             {
                 case System.Net.HttpStatusCode.BadRequest:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "BadRequest", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "BadRequest", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
                     throw new Exception($"Bad Request on Upsert {typeof(TEntity).Name}");
 
                 case System.Net.HttpStatusCode.Forbidden:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Forbidden", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Forbidden", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
                     throw new Exception($"Forbidden on Upsert {typeof(TEntity).Name}");
 
                 case System.Net.HttpStatusCode.Conflict:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Conflict", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
-                    throw new ContentModifiedException()
-                    {
-                        EntityType = typeof(TEntity).Name,
-                        Id = item.Id
-                    };
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Conflict", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
+                    throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
 
                 case System.Net.HttpStatusCode.PreconditionFailed:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "PreconditionFailed", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
-                    throw new ContentModifiedException() { EntityType = typeof(TEntity).Name, Id = item.Id };
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "PreconditionFailed", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
+                    throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
 
                 case System.Net.HttpStatusCode.RequestEntityTooLarge:
-                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync", "RequestEntityTooLarge]", typeof(TEntity).Name.ToKVP("entityType"), (idOverride ?? item.Id).ToKVP("id"));
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
+                    _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync", "RequestEntityTooLarge]", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
                     throw new Exception($"RequestEntityTooLarge Upsert on type {typeof(TEntity).Name}");
 
                 case System.Net.HttpStatusCode.OK:
                 case System.Net.HttpStatusCode.Created:
-                    //if (_fkeyIndexWriter != null)
-                    //{
-                    //    var previousEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehPreviousNodes);
-                    //    var currentEdges = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehCurrentNodes);
-
-                    //    var diff = FkEdgeDiff.DiffOutboundEdges(previousEdges, currentEdges);
-                    //    await _fkeyIndexWriter.ApplyDiffAsync(diff);
-                    //}
-
                     _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Document Update {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {upsertResult.RequestCharge}");
+
+                    if (nameChanged && _dependencyManager != null)
+                    {
+                        if (dependencyResult?.IsInUse == true)
+                        {
+                            _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Object {item.Name} has {dependencyResult.DependentObjects.Count} legacy dependencies.");
+
+                            foreach (var dependentObject in dependencyResult.DependentObjects)
+                                await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, documentId, typeof(TEntity).Name, dependentObject.Id, dependentObject.RecordType, item.Name);
+                        }
+
+                        if (!String.IsNullOrWhiteSpace(ownerOrgId))
+                            await _dependencyManager.RenameRegisteredReferencesAsync(item.LastUpdatedBy, typeof(TEntity), documentId, ownerOrgId, item.Name);
+                        else
+                            _logger.AddCustomEvent(LogLevel.Warning, $"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", $"Could not update registered references for renamed entity '{documentId}' because OwnerOrganization.Id was missing.");
+
+                        await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, documentId, typeof(TEntity).Name, item.Name);
+                    }
+
                     break;
             }
 
-            //timer.Dispose();
             DocumentRequestCharge.WithLabels(GetCollectionName()).Set(upsertResult.RequestCharge);
 
-            if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache))
+            if (_cacheProvider != null && _cacheAborter != null && !_cacheAborter.AbortCache)
             {
-                await _cacheProvider.RemoveAsync(GetCacheKey((idOverride ?? item.Id)));
-                //  sw.Restart();
-                await _cacheProvider.AddAsync(GetCacheKey((idOverride ?? item.Id)), JsonConvert.SerializeObject(item));
+                await _cacheProvider.RemoveAsync(GetCacheKey(documentId));
+                await _cacheProvider.AddAsync(GetCacheKey(documentId), JsonConvert.SerializeObject(item));
+
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Added {typeof(TEntity).Name} back to cache after update in {sw.Elapsed.TotalMilliseconds}ms");
             }
 
@@ -713,7 +709,7 @@ where c.id = @id";
         {
             var sw = Stopwatch.StartNew();
 
-            if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache))
+            if (_cacheProvider != null && (_cacheAborter == null || !_cacheAborter.AbortCache))
             {
                 var json = await _cacheProvider.GetAsync(GetCacheKey(id));
                 if (!String.IsNullOrEmpty(json))
@@ -756,6 +752,7 @@ where c.id = @id";
             }
             else
             {
+                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Skip cache attempt Provider Is Null: {_cacheProvider != null}, AbortCache Flag: {_cacheAborter?.AbortCache} {GetCacheKey(id)}");
                 DocumentNotCached.WithLabels(typeof(TEntity).Name).Inc();
             }
 
@@ -765,7 +762,7 @@ where c.id = @id";
             {
                 sw = Stopwatch.StartNew();
                 await _cacheProvider.AddAsync(GetCacheKey(id), JsonConvert.SerializeObject(doc));
-                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Added To Cache {typeof(TEntity).Name}{GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
+                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Added To Cache {typeof(TEntity).Name} {GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
             }
 
             return doc;
@@ -874,11 +871,20 @@ where c.id = @id";
 
             if (_dependencyManager != null)
             {
-                var dependencyies = await _dependencyManager.CheckForDependenciesAsync(doc);
-                if (dependencyies.IsInUse)
+                var legacyResult = await _dependencyManager.CheckForDependenciesAsync(doc);
+                var registeredResult = await _dependencyManager.CheckRegisteredReferencesAsync(typeof(TEntity), doc.Id, doc.OwnerOrganization.Id, CancellationToken.None);
+
+                var dependentObjects = legacyResult.DependentObjects
+                    .Concat(registeredResult.DependentObjects)
+                    .GroupBy(record => $"{record.RecordType}:{record.Id}", StringComparer.OrdinalIgnoreCase)
+                    .Select(group => group.First())
+                    .ToArray();
+
+                if (dependentObjects.Any())
                 {
+
                     timer.Dispose();
-                    throw new InUseException(dependencyies);
+                    throw new InUseException(DependentObjectCheckResult.InUse(dependentObjects.ToArray()));
                 }
             }
 

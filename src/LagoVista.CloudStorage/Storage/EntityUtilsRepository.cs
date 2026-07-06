@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 namespace LagoVista.CloudStorage.Storage
@@ -23,12 +24,13 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ISyncConnectionSettings _options;
         private readonly ICacheProvider _cacheProvider;
         private readonly IRagIndexingServices _ragIndexingServices;
+        private readonly IDependencyManager _dependencyManager;
         public const string ALL_MODULES_CACHE_KEY = "NUVIOT_ALL_MODULES";
         public const string MODULE_CACHE_KEY = "NUVIOT_MODULE_";
         private readonly string _dbName;
 
 
-        public EntityUtilsRepository(ISyncConnectionSettings options, IEntityDetailResponseFactory entityDetailResponseFactory, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices)
+        public EntityUtilsRepository(ISyncConnectionSettings options, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
@@ -36,6 +38,7 @@ namespace LagoVista.CloudStorage.Storage
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ragIndexingServices = ragIndexingServices ?? throw new ArgumentNullException(nameof(ragIndexingServices));
             _dbName = _options.SyncConnectionSettings.ResourceName;
+            _dependencyManager = dependencyManager ?? throw new ArgumentNullException(nameof(dependencyManager));
 
             _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
             {
@@ -481,6 +484,17 @@ AND (
                     return InvokeResult.FromError($"Could not patch entity '{documentId}' because its ETag was missing.");
                 }
 
+                var entityTypeName = doc[nameof(EntityBase.EntityType)]?.Value<string>();
+                var ownerOrgId = doc[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>();
+                var existingName = doc[nameof(EntityBase.Name)]?.Value<string>();
+
+                var nameField = fields.FirstOrDefault(field => String.Equals(field.Key, nameof(EntityBase.Name), StringComparison.OrdinalIgnoreCase));
+                var updatedName = nameField.Value?.Type == JTokenType.String ? nameField.Value.Value<string>() : null;
+
+                var nameChanged =
+                    !String.IsNullOrWhiteSpace(updatedName) &&
+                    !String.Equals(existingName, updatedName, StringComparison.Ordinal);
+
                 var now = UtcTimestamp.Now.Value;
                 var patchOperations = new List<PatchOperation>();
 
@@ -519,6 +533,28 @@ AND (
                     _logger.Trace($"{this.Tag()} - Patched fields [{String.Join(", ", fields.Keys)}] for entity '{documentId}' on attempt {attempt}.");
 
                     await RemoveEntityCachesAsync(doc).ConfigureAwait(false);
+
+                    if (nameChanged &&
+                        !String.IsNullOrWhiteSpace(entityTypeName) &&
+                        !String.IsNullOrWhiteSpace(ownerOrgId))
+                    {
+                        var sourceType = EntityReferenceRegistry
+                            .GetAllRegistrations()
+                            .Where(registration => String.Equals(registration.SourceType.Name, entityTypeName, StringComparison.Ordinal))
+                            .Select(registration => registration.SourceType)
+                            .FirstOrDefault();
+
+                        if (sourceType != null)
+                        {
+                            await _dependencyManager.RenameRegisteredReferencesAsync(
+                                user,
+                                sourceType,
+                                documentId,
+                                ownerOrgId,
+                                updatedName,
+                                ct).ConfigureAwait(false);
+                        }
+                    }
 
                     return InvokeResult.Success;
                 }

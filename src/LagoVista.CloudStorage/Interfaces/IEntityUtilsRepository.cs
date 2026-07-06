@@ -57,6 +57,7 @@ namespace LagoVista.CloudStorage.Interfaces
         public string Id { get; set; }
         public string Name { get; set; }
         public string Key { get; set; }
+        public string Tla { get; set; }
         public EntityHeader Category { get; set; }
         public string Purpose { get; set; }
         public string Description { get; set; }
