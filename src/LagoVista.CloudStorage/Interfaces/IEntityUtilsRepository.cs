@@ -2,6 +2,7 @@
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.EntityReadiness;
 using LagoVista.Core.Validation;
+using MongoDB.Bson.Serialization.IdGenerators;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Threading;
@@ -59,6 +60,7 @@ namespace LagoVista.CloudStorage.Interfaces
         public string Key { get; set; }
         public string Tla { get; set; }
         public EntityHeader Category { get; set; }
+        public string Tla { get; set; }
         public string Purpose { get; set; }
         public string Description { get; set; }
         public string PurposeSummary { get; set; }
