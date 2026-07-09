@@ -5,6 +5,7 @@ using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using Microsoft.Azure.Cosmos;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -122,6 +123,181 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             return entities;
+        }
+
+        private const string StatusFieldName = "Status";
+
+        public async Task<InvokeResult<EntityHeaderStatusPatchResult>> PatchEntityHeaderStatusAsync(string entityType, string orgId, IEnumerable<string> currentStatusIds, JObject desiredStatus, EntityHeader user, bool dryRun, int maxItems, CancellationToken ct)
+        {
+            _logger.Trace($"{this.Tag()} - {entityType} - {JsonConvert.SerializeObject(desiredStatus)}.");
+
+            if (String.IsNullOrWhiteSpace(entityType)) return InvokeResult<EntityHeaderStatusPatchResult>.FromError("Entity type is required.");
+            if (String.IsNullOrWhiteSpace(orgId)) return InvokeResult<EntityHeaderStatusPatchResult>.FromError("Organization id is required.");
+            if (currentStatusIds == null) throw new ArgumentNullException(nameof(currentStatusIds));
+            if (desiredStatus == null) throw new ArgumentNullException(nameof(desiredStatus));
+            if (String.IsNullOrWhiteSpace(desiredStatus["Id"]?.Value<string>())) return InvokeResult<EntityHeaderStatusPatchResult>.FromError("Desired status id is required.");
+            if (user == null) throw new ArgumentNullException(nameof(user));
+            if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+
+            var statusIds = currentStatusIds.Where(id => !String.IsNullOrWhiteSpace(id)).Select(id => id.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+            if (!statusIds.Any())
+                return InvokeResult<EntityHeaderStatusPatchResult>.FromError("At least one current status id is required.");
+
+            foreach (var statusId in statusIds)
+            {
+                if (!IsSafeStatusId(statusId))
+                    return InvokeResult<EntityHeaderStatusPatchResult>.FromError($"Status id '{statusId}' is not safe for a Cosmos query.");
+            }
+
+            if (!IsSafeStatusId(desiredStatus["Id"]?.Value<string>()))
+                return InvokeResult<EntityHeaderStatusPatchResult>.FromError($"Desired status id '{desiredStatus["Id"]?.Value<string>()}' is not safe.");
+
+            var result = new EntityHeaderStatusPatchResult { EntityType = entityType.Trim(), DesiredStatusId = desiredStatus["Id"]?.Value<string>() };
+
+            var candidatesResult = await GetEntitiesWithStatusIdsAsync(entityType.Trim(), orgId.Trim(), statusIds, Math.Min(maxItems, 5000), ct).ConfigureAwait(false);
+
+            if (!candidatesResult.Successful)
+                candidatesResult.ToInvokeResult<EntityHeaderStatusPatchResult>();
+
+            result.Found = candidatesResult.Result.Count;
+
+            _logger.Trace($"{this.Tag()} - Found {result.Found} {entityType} entities with Status.Id in [{String.Join(", ", statusIds)}] for organization '{orgId}'.");
+
+            var idx = 1;
+
+            foreach (var doc in candidatesResult.Result)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var id = doc["id"]?.Value<string>();
+                var foundEntityType = doc[nameof(EntityBase.EntityType)]?.Value<string>();
+                var currentStatusId = doc[EntityUtilsRepository.StatusFieldName]?["Id"]?.Value<string>();
+                var desiredStatusId = desiredStatus["Id"]?.Value<string>();
+
+                if (!String.Equals(foundEntityType, entityType, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"Invalid entity type update Expected: {entityType} - Found: {foundEntityType}");
+
+                if (String.IsNullOrWhiteSpace(id))
+                {
+                    result.Errors++;
+                    result.ErrorMessages.Add("Encountered a matching document without an id.");
+                    continue;
+                }
+
+                if (String.IsNullOrWhiteSpace(desiredStatusId))
+                {
+                    result.Errors++;
+                    result.ErrorMessages.Add("Desired status is missing Id.");
+                    continue;
+                }
+
+                if (String.Equals(currentStatusId, desiredStatusId, StringComparison.OrdinalIgnoreCase))
+                {
+                    result.Skipped++;
+                    result.SkippedIds.Add(id);
+                    continue;
+                }
+
+                result.Matched++;
+
+                if (dryRun)
+                {
+                    result.Updated++;
+                    result.UpdatedIds.Add(id);
+                    continue;
+                }
+
+                var fields = new Dictionary<string, JToken> { [EntityUtilsRepository.StatusFieldName] = desiredStatus };
+                var patchResult = await PatchEntityFieldsAsync(id, fields, user, ct).ConfigureAwait(false);
+
+                if (patchResult.Successful)
+                {
+                    result.Updated++;
+                    result.UpdatedIds.Add(id);
+                }
+                else
+                {
+                    result.Errors++;
+                    result.ErrorMessages.Add($"{id} - {String.Join("; ", patchResult.Errors.Select(err => err.Message))}");
+                }
+            }
+
+            return InvokeResult<EntityHeaderStatusPatchResult>.Create(result);
+        }
+
+        private async Task<InvokeResult<List<JObject>>> GetEntitiesWithStatusIdsAsync(string entityType, string orgId, IReadOnlyCollection<string> statusIds, int maxItems, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+            if (statusIds == null) throw new ArgumentNullException(nameof(statusIds));
+            if (!statusIds.Any()) return InvokeResult<List<JObject>>.Create(new List<JObject>());
+            if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+
+            const string sql =
+@"SELECT *
+FROM c
+WHERE c.EntityType = @entityType
+AND c.OwnerOrganization.Id = @orgId
+AND (
+    NOT IS_DEFINED(c.Status)
+    OR IS_NULL(c.Status)
+    OR NOT IS_DEFINED(c.Status.Id)
+    OR IS_NULL(c.Status.Id)
+    OR ARRAY_CONTAINS(@statusIds, c.Status.Id)
+)
+ORDER BY c.Name ASC";
+
+            var query = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@statusIds", statusIds.ToList());
+            var results = new List<JObject>();
+            var requestOptions = new QueryRequestOptions { MaxItemCount = Math.Min(maxItems, 100) };
+
+            try
+            {
+                using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
+
+                while (iterator.HasMoreResults && results.Count < maxItems)
+                {
+                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+
+                    foreach (var document in page.Resource)
+                    {
+                        if (document == null)
+                            continue;
+
+                        results.Add(document);
+
+                        if (results.Count >= maxItems)
+                            break;
+                    }
+                }
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} {entityType} entities with Status.Id in [{String.Join(", ", statusIds)}].");
+
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
+            }
+        }
+
+        private static bool IsSafeStatusId(string statusId)
+        {
+            if (String.IsNullOrWhiteSpace(statusId))
+                return false;
+
+            if (statusId.Length > 128)
+                return false;
+
+            foreach (var ch in statusId)
+            {
+                if (!(Char.IsLetterOrDigit(ch) || ch == '_' || ch == '-' || ch == '.'))
+                    return false;
+            }
+
+            return true;
         }
 
         public Task<InvokeResult> PatchMasterStatusAsync(string id, MasterEntityStatus masterStatus, EntityHeader user, CancellationToken ct)

@@ -12,6 +12,7 @@ namespace LagoVista.CloudStorage.Interfaces
 {
     public interface IEntityUtilsRepository
     {
+        Task<InvokeResult<EntityHeaderStatusPatchResult>> PatchEntityHeaderStatusAsync(string entityType, string orgId, IEnumerable<string> currentStatusIds, JObject desiredStatus, EntityHeader user, bool dryRun, int maxItems, CancellationToken ct);
         Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org, CancellationToken ct = default);
         Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org, CancellationToken ct = default);
         Task<List<EntityCoreSummary>> GetEntityCoreAsync(string entityType, EntityHeader org, CancellationToken ct = default);
@@ -60,7 +61,6 @@ namespace LagoVista.CloudStorage.Interfaces
         public string Key { get; set; }
         public string Tla { get; set; }
         public EntityHeader Category { get; set; }
-        public string Tla { get; set; }
         public string Purpose { get; set; }
         public string Description { get; set; }
         public string PurposeSummary { get; set; }
@@ -70,6 +70,31 @@ namespace LagoVista.CloudStorage.Interfaces
         public List<EntityOwnershipPoint> OwnershipPoints { get; set; }
     }
 
+
+    public sealed class EntityHeaderStatusPatchResult
+    {
+        public string EntityType { get; set; }
+
+        public string FieldName { get; set; } = "Status";
+
+        public string DesiredStatusId { get; set; }
+
+        public int Found { get; set; }
+
+        public int Matched { get; set; }
+
+        public int Updated { get; set; }
+
+        public int Skipped { get; set; }
+
+        public int Errors { get; set; }
+
+        public List<string> UpdatedIds { get; set; } = new List<string>();
+
+        public List<string> SkippedIds { get; set; } = new List<string>();
+
+        public List<string> ErrorMessages { get; set; } = new List<string>();
+    }
 
     public sealed class EntityBaseSummary
     {
