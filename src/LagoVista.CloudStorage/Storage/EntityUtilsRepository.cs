@@ -844,6 +844,42 @@ AND (
             return null;
         }
 
+        public async Task<JObject> GetEntityByIdAsync(string entityId, string orgId, CancellationToken token)
+        {
+           
+            if (String.IsNullOrWhiteSpace(entityId))
+            {
+                throw new ArgumentException("Entity id is required.", nameof(entityId));
+            }
+
+            if (String.IsNullOrWhiteSpace(orgId))
+            {
+                throw new ArgumentException("Organization id is required.", nameof(orgId));
+            }
+
+            var doc = await LoadDocumentByIdAsync(entityId.Trim(), token);
+
+            if (doc == null)
+            {
+                return null;
+            }
+
+            var owner = doc[nameof(EntityBase.OwnerOrganization)]?.ToObject<EntityHeader>();
+
+            if (owner == null || String.IsNullOrWhiteSpace(owner.Id))
+            {
+                throw new InvalidOperationException("Owner organization is not present; ownership could not be verified.");
+            }
+
+            if (!String.Equals(owner.Id, orgId.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The entity does not belong to the specified organization.");
+            }
+
+            return doc;
+        }
+
+
         public async Task<JObject> GetEntityByIdAsync(string entityType, string entityId, string orgId, CancellationToken token)
         {
             if (String.IsNullOrWhiteSpace(entityType))
