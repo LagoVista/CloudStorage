@@ -52,6 +52,11 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<InvokeResult<List<JObject>>> GetEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct);
         Task<JObject> GetEntityByIdAsync(string entityType, string entityId, string orgId, CancellationToken token);
         Task<InvokeResult> PatchMasterStatusAsync(string id, MasterEntityStatus masterStatus, EntityHeader user, CancellationToken ct);
+
+        Task<bool> IsKeyUniqueAsync(string entityType, string orgId, string key, string id = null, CancellationToken ct = default);
+        Task<bool> IsTlaUniqueAsync(string entityType, string orgId, string tla, string id = null, CancellationToken ct = default);
+        Task<string> GenerateUniqueKeyAsync(string entityType, string orgId, string name, string key = null, string id = null, CancellationToken ct = default);
+        Task<string> GenerateUniqueTlaAsync(string entityType, string orgId, string name, string tla = null, string id = null, CancellationToken ct = default);
     }
 
     public class EntityCoreSummary

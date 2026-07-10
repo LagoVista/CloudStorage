@@ -1768,6 +1768,285 @@ ORDER BY c.Name ASC";
 
             return sql.ToString();
         }
+
+
+        public Task<bool> IsKeyUniqueAsync(string entityType, string orgId, string key, string id = null, CancellationToken ct = default)
+        {
+            return IsSemanticIdentifierUniqueAsync(entityType, orgId, nameof(EntityBase.Key), NormalizeKey(key), id, ct);
+        }
+
+        private const string TlaFieldName = "Tla";
+
+        public Task<bool> IsTlaUniqueAsync(string entityType, string orgId, string tla, string id = null, CancellationToken ct = default)
+        {
+            return IsSemanticIdentifierUniqueAsync(entityType, orgId, TlaFieldName, NormalizeTla(tla), id, ct);
+        }
+
+        public async Task<string> GenerateUniqueKeyAsync(string entityType, string orgId, string name, string key = null, string id = null, CancellationToken ct = default)
+        {
+            var baseKey = NormalizeKey(String.IsNullOrWhiteSpace(key) ? name : key);
+
+            if (String.IsNullOrWhiteSpace(baseKey))
+                baseKey = "entity";
+
+            if (baseKey.Length < 3)
+                baseKey = baseKey.PadRight(3, 'x');
+
+            if (await IsKeyUniqueAsync(entityType, orgId, baseKey, id, ct).ConfigureAwait(false))
+                return baseKey;
+
+            for (var idx = 2; idx < 10000; idx++)
+            {
+                var suffix = idx.ToString();
+                var candidate = $"{baseKey.Substring(0, Math.Min(baseKey.Length, 32 - suffix.Length))}{suffix}";
+
+                if (await IsKeyUniqueAsync(entityType, orgId, candidate, id, ct).ConfigureAwait(false))
+                    return candidate;
+            }
+
+            throw new InvalidOperationException($"Could not generate a unique key for entity type '{entityType}' in organization '{orgId}'.");
+        }
+
+        private static IReadOnlyList<string> BuildTlaCandidates(string preferredTla, string name, string entityType)
+        {
+            var candidates = new List<string>();
+            var phrase = FirstNonBlank(name, entityType, "Entity");
+            var words = SplitWords(phrase);
+            var letters = new String(phrase.Where(Char.IsLetter).Select(Char.ToUpperInvariant).ToArray());
+
+            if (letters.Length == 0)
+                letters = "ENT";
+
+            var first = letters[0];
+            var normalizedPreferred = NormalizeTla(preferredTla);
+
+            if (IsValidTla(normalizedPreferred))
+                AddTlaCandidate(candidates, normalizedPreferred);
+
+            if (words.Count >= 2)
+                AddTlaCandidate(candidates, BuildTlaFromWords(words));
+
+            AddTlaCandidate(candidates, BuildFallbackTla(phrase));
+
+            for (var secondIdx = 1; secondIdx < letters.Length; secondIdx++)
+            {
+                for (var thirdIdx = secondIdx + 1; thirdIdx < letters.Length; thirdIdx++)
+                    AddTlaCandidate(candidates, $"{first}{letters[secondIdx]}{letters[thirdIdx]}");
+            }
+
+            for (var secondIdx = 1; secondIdx < letters.Length; secondIdx++)
+                AddTlaCandidate(candidates, $"{first}{letters[secondIdx]}X");
+
+            AddTlaCandidate(candidates, $"{first}XX");
+            AddTlaCandidate(candidates, "ENT");
+
+            return candidates;
+        }
+
+        private static IEnumerable<string> BuildExhaustiveTlaCandidates(string name, string entityType)
+        {
+            var phrase = FirstNonBlank(name, entityType, "Entity");
+            var first = phrase.Where(Char.IsLetter).Select(Char.ToUpperInvariant).FirstOrDefault();
+
+            if (first >= 'A' && first <= 'Z')
+            {
+                for (var second = 'A'; second <= 'Z'; second++)
+                {
+                    for (var third = 'A'; third <= 'Z'; third++)
+                        yield return $"{first}{second}{third}";
+                }
+            }
+
+            for (var firstLetter = 'A'; firstLetter <= 'Z'; firstLetter++)
+            {
+                for (var second = 'A'; second <= 'Z'; second++)
+                {
+                    for (var third = 'A'; third <= 'Z'; third++)
+                        yield return $"{firstLetter}{second}{third}";
+                }
+            }
+        }
+
+        private static void AddTlaCandidate(List<string> candidates, string candidate)
+        {
+            candidate = NormalizeTla(candidate);
+
+            if (!IsValidTla(candidate))
+                return;
+
+            if (!candidates.Contains(candidate, StringComparer.OrdinalIgnoreCase))
+                candidates.Add(candidate);
+        }
+
+        private static string BuildTlaFromWords(List<string> words)
+        {
+            var first = FirstLetter(words.ElementAtOrDefault(0));
+            var second = FirstLetter(words.ElementAtOrDefault(1));
+            var third = words.Count >= 3 ? FirstLetter(words.ElementAtOrDefault(2)) : FirstLetter(words.ElementAtOrDefault(words.Count - 1), 1);
+
+            return $"{first}{second}{third}";
+        }
+
+        private static string BuildFallbackTla(string value)
+        {
+            var letters = new String((value ?? String.Empty).Where(Char.IsLetter).Select(Char.ToUpperInvariant).ToArray());
+
+            if (letters.Length >= 3)
+                return letters.Substring(0, 3);
+
+            if (letters.Length == 2)
+                return $"{letters}X";
+
+            if (letters.Length == 1)
+                return $"{letters}XX";
+
+            return "ENT";
+        }
+
+        private static char FirstLetter(string value, int offset = 0)
+        {
+            var letters = String.IsNullOrWhiteSpace(value) ? String.Empty : new String(value.Where(Char.IsLetter).Select(Char.ToUpperInvariant).ToArray());
+
+            if (letters.Length > offset)
+                return letters[offset];
+
+            if (letters.Length > 0)
+                return letters[0];
+
+            return 'X';
+        }
+
+        private static List<string> SplitWords(string value)
+        {
+            if (String.IsNullOrWhiteSpace(value))
+                return new List<string>();
+
+            var normalized = System.Text.RegularExpressions.Regex.Replace(value, "([a-z])([A-Z])", "$1 $2");
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, "[^A-Za-z]+", " ");
+
+            return normalized.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Where(word => !String.IsNullOrWhiteSpace(word)).ToList();
+        }
+
+        private static string FirstNonBlank(params string[] values)
+        {
+            return values.FirstOrDefault(value => !String.IsNullOrWhiteSpace(value));
+        }
+
+        private static string NormalizeKey(string value)
+        {
+            if (String.IsNullOrWhiteSpace(value))
+                return null;
+
+            var builder = new System.Text.StringBuilder();
+
+            foreach (var ch in value.ToLowerInvariant())
+            {
+                if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9'))
+                    builder.Append(ch);
+            }
+
+            var key = builder.ToString();
+
+            if (String.IsNullOrWhiteSpace(key))
+                return null;
+
+            if (!Char.IsLetter(key[0]))
+                key = $"a{key}";
+
+            if (key.Length > 32)
+                key = key.Substring(0, 32);
+
+            if (key.Length < 3)
+                key = key.PadRight(3, 'x');
+
+            return key;
+        }
+
+        private static string NormalizeTla(string value)
+        {
+            if (String.IsNullOrWhiteSpace(value))
+                return null;
+
+            var letters = new String(value.Where(Char.IsLetter).Select(Char.ToUpperInvariant).ToArray());
+
+            if (letters.Length < 3)
+                return null;
+
+            return letters.Substring(0, 3);
+        }
+
+        private static bool IsValidTla(string value)
+        {
+            return !String.IsNullOrWhiteSpace(value) && value.Length == 3 && value.All(ch => ch >= 'A' && ch <= 'Z');
+        }
+
+        public async Task<string> GenerateUniqueTlaAsync(string entityType, string orgId, string name, string tla = null, string id = null, CancellationToken ct = default)
+        {
+            foreach (var candidate in BuildTlaCandidates(tla, name, entityType))
+            {
+                if (await IsTlaUniqueAsync(entityType, orgId, candidate, id, ct).ConfigureAwait(false))
+                    return candidate;
+            }
+
+            foreach (var candidate in BuildExhaustiveTlaCandidates(name, entityType))
+            {
+                if (await IsTlaUniqueAsync(entityType, orgId, candidate, id, ct).ConfigureAwait(false))
+                    return candidate;
+            }
+
+            throw new InvalidOperationException($"Could not generate a unique TLA for entity type '{entityType}' in organization '{orgId}'.");
+        }
+
+        private async Task<bool> IsSemanticIdentifierUniqueAsync(string entityType, string orgId, string fieldName, string value, string id, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+
+            if (String.IsNullOrWhiteSpace(orgId))
+                throw new ArgumentException("orgId is required.", nameof(orgId));
+
+            if (String.IsNullOrWhiteSpace(fieldName))
+                throw new ArgumentException("fieldName is required.", nameof(fieldName));
+
+            if (String.IsNullOrWhiteSpace(value))
+                return true;
+
+            if (!IsSafeCosmosPropertyName(fieldName))
+                throw new ArgumentException($"Field name '{fieldName}' is not safe for a Cosmos query.", nameof(fieldName));
+
+            var sql =
+        $@"SELECT c.id
+FROM c
+WHERE c.EntityType = @entityType
+AND c.OwnerOrganization.Id = @orgId
+AND c[""{fieldName}""] = @value";
+
+            var query = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@value", value.Trim());
+            var requestOptions = new QueryRequestOptions { MaxItemCount = 25 };
+            var matchingIds = new List<string>();
+
+            using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
+
+            while (iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+
+                foreach (var doc in page.Resource)
+                {
+                    var matchingId = doc?["id"]?.Value<string>();
+
+                    if (!String.IsNullOrWhiteSpace(matchingId))
+                        matchingIds.Add(matchingId);
+                }
+            }
+
+            if (String.IsNullOrWhiteSpace(id))
+                return !matchingIds.Any();
+
+            return !matchingIds.Any(matchId => !String.Equals(matchId, id.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+
         private class EntityChecklistBlockedCandidateDocument
         {
             public string Id { get; set; }

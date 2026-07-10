@@ -1,4 +1,5 @@
-﻿using LagoVista.Core.Interfaces;
+﻿using LagoVista.Core.AI.Interfaces;
+using LagoVista.Core.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ namespace LagoVista.CloudStorage.Interfaces
     {
         IAdminLogger AdminLogger { get; }
         IDependencyManager DependencyManager { get;  }
+        IProducedArtifactService ProducedArtifactService { get; }
 
         IUserNotificationService UserNotificationService { get; }
 

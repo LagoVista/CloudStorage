@@ -6,6 +6,7 @@ using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.Core;
+using LagoVista.Core.AI.Interfaces;
 using LagoVista.Core.Attributes;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -51,6 +52,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly ICacheAborter _cacheAborter;
         private readonly IDependencyManager _dependencyManager;
         private readonly IRagIndexingServices _ragIndexingServices;
+        private readonly IProducedArtifactService _producedArtifactService;
         private readonly IFkIndexTableWriterBatched _fkeyIndexWriter;
         private readonly IDocumentDBRepoBase<TEntity> _storage;
 
@@ -152,12 +154,14 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             _ragIndexingServices = cloudServices.RagIndexingServices;
             _cacheAborter = cloudServices.CacheAborter;
+            _producedArtifactService = cloudServices.ProducedArtifactService;
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudServices cloudServices) :
             this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, dependencyManager: cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter)
         {
             _fkeyIndexWriter = cloudServices.FkIndexTableWriter;
+            _producedArtifactService = cloudServices.ProducedArtifactService;
         }
 
 
@@ -453,6 +457,9 @@ where c.id = @id";
                 if (_ragIndexingServices != null && item.ShouldVectorIndex)
                     await _ragIndexingServices.IndexAsync(item);
 
+                if(_producedArtifactService != null)
+                    await _producedArtifactService.CreateProducedArtifactsAsync(item);
+
                 /*if (_fkeyIndexWriter != null)
                 {
                     var fkNodes = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehNodes);
@@ -701,6 +708,9 @@ where c.id = @id";
 
             if (_ragIndexingServices != null && item.ShouldVectorIndex)
                 await _ragIndexingServices.IndexAsync(item);
+
+            if (_producedArtifactService != null)
+                await _producedArtifactService.CreateProducedArtifactsAsync(item);
 
             return new OperationResponse<TEntity>(upsertResult);
         }
