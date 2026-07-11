@@ -1496,7 +1496,8 @@ AND (
     SELECT VALUE status
     FROM status IN c.ChecklistStatus
     WHERE status.StepKey = {stepParameterName}
-    AND status.Status.Key = @completedStatus
+    AND IS_DEFINED(status.LastRun)
+    AND NOT IS_NULL(status.LastRun)
 )";
         }
 
