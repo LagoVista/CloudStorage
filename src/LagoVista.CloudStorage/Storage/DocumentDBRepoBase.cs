@@ -698,7 +698,7 @@ where c.id = @id";
 
             DocumentRequestCharge.WithLabels(GetCollectionName()).Set(upsertResult.RequestCharge);
 
-            if (_cacheProvider != null && _cacheAborter != null && !_cacheAborter.AbortCache)
+            if (_cacheProvider != null && (_cacheAborter == null ||  _cacheAborter != null && !_cacheAborter.AbortCache))
             {
                 await _cacheProvider.RemoveAsync(GetCacheKey(documentId));
                 await _cacheProvider.AddAsync(GetCacheKey(documentId), JsonConvert.SerializeObject(item));
