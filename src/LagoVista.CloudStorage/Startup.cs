@@ -2,6 +2,7 @@
 // ContentHash: fb6351dbc21fb32befd31cbcdb2f36abeb3a9628a825d24fd89d091ede688782
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Managers;
 using LagoVista.CloudStorage.Storage;
@@ -23,12 +24,17 @@ namespace LagoVista.CloudStorage
             services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
             services.AddScoped<ICategoryManager, CategoryManager>();
             services.AddScoped<ITableSizer, TableSizer>();
-            services.AddScoped<INodeLocatorTableWriterBatched,  NodeLocatorTableWriterBatched>();
+            services.AddScoped<INodeLocatorTableWriterBatched, NodeLocatorTableWriterBatched>();
             services.AddScoped<ISyncRepository, CosmosSyncRepository>();
             services.AddScoped<INodeLocatorTableReader, NodeLocatorTableReader>();
             services.AddScoped<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
             services.AddScoped<IEntityDetailResponseFactory, EntityDetailResponseFactory>();
             services.AddScoped<IEntityUtilsRepository, EntityUtilsRepository>();
+            services.AddScoped<IEntityListItemRepoFactory, EntityListItemRepoFactory>();
+            services.AddScoped<IEntityListItemManager, EntityListItemManager>();
+            services.AddScoped<EntityListItemCache>();
+            services.AddScoped<IEntityListItemCache>(provider => provider.GetRequiredService<EntityListItemCache>());
+            services.AddScoped<IEntityListCacheInvalidator>(provider => provider.GetRequiredService<EntityListItemCache>());
 
             services.AddSingleton<ICacheProvider, CacheProvider>();
             services.AddSingleton<ISyncConnectionSettings, SyncConnections>();
