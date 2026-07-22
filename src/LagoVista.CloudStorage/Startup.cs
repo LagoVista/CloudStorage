@@ -31,6 +31,7 @@ namespace LagoVista.CloudStorage
             services.AddScoped<IEntityDetailResponseFactory, EntityDetailResponseFactory>();
             services.AddScoped<IEntityUtilsRepository, EntityUtilsRepository>();
             services.AddScoped<IEntityListItemRepoFactory, EntityListItemRepoFactory>();
+            services.AddScoped<IEntityListResponseMetadataProvider, EntityListResponseMetadataProvider>();
             services.AddScoped<IEntityListItemManager, EntityListItemManager>();
             services.AddScoped<EntityListItemCache>();
             services.AddScoped<IEntityListItemCache>(provider => provider.GetRequiredService<EntityListItemCache>());

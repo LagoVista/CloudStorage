@@ -14,13 +14,15 @@ namespace LagoVista.CloudStorage.Managers
         private readonly IEntityTypeResolver _entityTypeResolver;
         private readonly IEntityListItemRepoFactory _repoFactory;
         private readonly IEntityListItemCache _cache;
+        private readonly IEntityListResponseMetadataProvider _metadataProvider;
         private readonly ISecurity _security;
 
-        public EntityListItemManager(IEntityTypeResolver entityTypeResolver, IEntityListItemRepoFactory repoFactory, IEntityListItemCache cache, ISecurity security)
+        public EntityListItemManager(IEntityTypeResolver entityTypeResolver, IEntityListItemRepoFactory repoFactory, IEntityListItemCache cache, IEntityListResponseMetadataProvider metadataProvider, ISecurity security)
         {
             _entityTypeResolver = entityTypeResolver ?? throw new ArgumentNullException(nameof(entityTypeResolver));
             _repoFactory = repoFactory ?? throw new ArgumentNullException(nameof(repoFactory));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _metadataProvider = metadataProvider ?? throw new ArgumentNullException(nameof(metadataProvider));
             _security = security ?? throw new ArgumentNullException(nameof(security));
         }
 
@@ -33,10 +35,14 @@ namespace LagoVista.CloudStorage.Managers
 
             var cachedResponse = await _cache.GetListItemsAsync(org.Id, modelType.Name, listRequest);
             if (cachedResponse != null)
+            {
+                _metadataProvider.Apply(cachedResponse, modelType);
                 return cachedResponse;
+            }
 
             var repo = _repoFactory.Create(modelType);
             var response = await repo.GetListItemsAsync(org.Id, listRequest);
+            _metadataProvider.Apply(response, modelType);
 
             if (response.Successful)
                 await _cache.SetListItemsAsync(org.Id, modelType.Name, listRequest, response);
@@ -53,10 +59,14 @@ namespace LagoVista.CloudStorage.Managers
 
             var cachedResponse = await _cache.GetEntityHeadersAsync(org.Id, modelType.Name, listRequest);
             if (cachedResponse != null)
+            {
+                _metadataProvider.Apply(cachedResponse, modelType);
                 return cachedResponse;
+            }
 
             var repo = _repoFactory.Create(modelType);
             var response = await repo.GetEntityHeadersAsync(org.Id, listRequest);
+            _metadataProvider.Apply(response, modelType);
 
             if (response.Successful)
                 await _cache.SetEntityHeadersAsync(org.Id, modelType.Name, listRequest, response);
