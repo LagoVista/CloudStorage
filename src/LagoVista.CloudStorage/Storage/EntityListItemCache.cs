@@ -13,7 +13,8 @@ namespace LagoVista.CloudStorage.Storage
 {
     public class EntityListItemCache : IEntityListItemCache, IEntityListCacheInvalidator
     {
-        private const string GenerationKeyPrefix = "entity-list-generation";
+        private const string OrganizationGenerationKeyPrefix = "entity-list-generation:org";
+        private const string EntityTypeGenerationKeyPrefix = "entity-list-generation:type";
         private const string ListItemsKeyPrefix = "entity-list-items";
         private const string EntityHeadersKeyPrefix = "entity-headers";
 
@@ -68,8 +69,11 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task InvalidateAsync(string orgId, string entityType)
         {
-            var generationKey = GetGenerationKey(orgId, entityType);
-            await _cacheProvider.IncrementAsync(generationKey);
+            var organizationGenerationKey = GetOrganizationGenerationKey(orgId, entityType);
+            var entityTypeGenerationKey = GetEntityTypeGenerationKey(entityType);
+
+            await _cacheProvider.IncrementAsync(organizationGenerationKey);
+            await _cacheProvider.IncrementAsync(entityTypeGenerationKey);
         }
 
         private async Task<string> GetCacheKeyAsync(string prefix, string orgId, string entityType, ListRequest request)
@@ -78,18 +82,26 @@ namespace LagoVista.CloudStorage.Storage
 
             var normalizedOrgId = NormalizeRequired(orgId, nameof(orgId));
             var normalizedEntityType = NormalizeRequired(entityType, nameof(entityType));
-            var generation = await _cacheProvider.GetLongAsync(GetGenerationKey(normalizedOrgId, normalizedEntityType));
+            var organizationGeneration = await _cacheProvider.GetLongAsync(GetOrganizationGenerationKey(normalizedOrgId, normalizedEntityType));
+            var entityTypeGeneration = await _cacheProvider.GetLongAsync(GetEntityTypeGenerationKey(normalizedEntityType));
             var requestHash = GetRequestHash(request);
 
-            return $"{prefix}:{normalizedOrgId}:{normalizedEntityType}:{generation}:{requestHash}";
+            return $"{prefix}:{normalizedOrgId}:{normalizedEntityType}:{organizationGeneration}:{entityTypeGeneration}:{requestHash}";
         }
 
-        private static string GetGenerationKey(string orgId, string entityType)
+        private static string GetOrganizationGenerationKey(string orgId, string entityType)
         {
             var normalizedOrgId = NormalizeRequired(orgId, nameof(orgId));
             var normalizedEntityType = NormalizeRequired(entityType, nameof(entityType));
 
-            return $"{GenerationKeyPrefix}:{normalizedOrgId}:{normalizedEntityType}";
+            return $"{OrganizationGenerationKeyPrefix}:{normalizedOrgId}:{normalizedEntityType}";
+        }
+
+        private static string GetEntityTypeGenerationKey(string entityType)
+        {
+            var normalizedEntityType = NormalizeRequired(entityType, nameof(entityType));
+
+            return $"{EntityTypeGenerationKeyPrefix}:{normalizedEntityType}";
         }
 
         private static string GetRequestHash(ListRequest request)

@@ -26,18 +26,20 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ICacheProvider _cacheProvider;
         private readonly IRagIndexingServices _ragIndexingServices;
         private readonly IDependencyManager _dependencyManager;
+        private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
         public const string ALL_MODULES_CACHE_KEY = "NUVIOT_ALL_MODULES";
         public const string MODULE_CACHE_KEY = "NUVIOT_MODULE_";
         private readonly string _dbName;
 
 
-        public EntityUtilsRepository(ISyncConnectionSettings options, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices)
+        public EntityUtilsRepository(ISyncConnectionSettings options, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ragIndexingServices = ragIndexingServices ?? throw new ArgumentNullException(nameof(ragIndexingServices));
+            _entityListCacheInvalidator = entityListCacheInvalidator ?? throw new ArgumentNullException(nameof(entityListCacheInvalidator));
             _dbName = _options.SyncConnectionSettings.ResourceName;
             _dependencyManager = dependencyManager ?? throw new ArgumentNullException(nameof(dependencyManager));
 
@@ -993,6 +995,19 @@ AND (
                 return;
 
             await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
+
+            var ownerOrgId = doc[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>()?.Trim();
+            if (!String.IsNullOrWhiteSpace(ownerOrgId))
+            {
+                try
+                {
+                    await _entityListCacheInvalidator.InvalidateAsync(ownerOrgId, entityType);
+                }
+                catch (Exception ex)
+                {
+                    _logger.AddException(this.Tag(), ex);
+                }
+            }
 
             if (entityType == "Module")
             {

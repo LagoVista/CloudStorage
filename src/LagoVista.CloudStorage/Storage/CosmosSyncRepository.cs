@@ -41,13 +41,14 @@ namespace LagoVista.CloudStorage.Storage
         private readonly IRagIndexingServices _ragIndexingServices;
         private readonly ICacheProvider _cacheProvider;
         private readonly IEntityDetailResponseFactory _entityDetailResponseFactory;
+        private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
         private readonly string _dbName;
 
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
         public CosmosSyncRepository(ISyncConnectionSettings options, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
-            INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider, ILogger logger)
+            INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider, ILogger logger, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -57,6 +58,7 @@ namespace LagoVista.CloudStorage.Storage
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
             _ragIndexingServices = ragIndexingServices ?? throw new ArgumentNullException(nameof(ragIndexingServices));
             _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
+            _entityListCacheInvalidator = entityListCacheInvalidator ?? throw new ArgumentNullException(nameof(entityListCacheInvalidator));
             _dbName = _options.SyncConnectionSettings.ResourceName;
             _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
             {
@@ -490,6 +492,9 @@ where c.id = @id";
             }
 
             await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
+
+            var ownerOrgId = doc[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>()?.Trim();
+            await InvalidateEntityListCacheAsync(ownerOrgId, entityType);
            
             _logger.Trace($"{this.Tag()} - Success", resp.StatusCode.ToString().ToKVP("responseCode"));
 
@@ -505,6 +510,21 @@ where c.id = @id";
         private string GetCacheKey(string entityType, string id)
         {
             return $"{_dbName}-{entityType}-{id}".ToLower();
+        }
+
+        private async Task InvalidateEntityListCacheAsync(string orgId, string entityType)
+        {
+            if (String.IsNullOrWhiteSpace(orgId) || String.IsNullOrWhiteSpace(entityType))
+                return;
+
+            try
+            {
+                await _entityListCacheInvalidator.InvalidateAsync(orgId, entityType);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+            }
         }
 
         public async Task<SyncUpsertResult> UpsertJsonAsync(string json, EntityHeader org, EntityHeader user, CancellationToken ct = default)
@@ -701,6 +721,9 @@ where c.id = @id";
             {
                 var resp = await _container.UpsertItemStreamAsync(ms, PartitionKey.None, requestOptions, ct).ConfigureAwait(false);
                 await _cacheProvider.RemoveAsync(cacheKey);
+
+                if (resp.IsSuccessStatusCode)
+                    await InvalidateEntityListCacheAsync(entity.OwnerOrganization?.Id, entity.EntityType);
 
                 return resp.IsSuccessStatusCode ? InvokeResult.Success : InvokeResult.FromError($"Error upserting entity with id {id} to set hash. Response code: {resp.StatusCode}");
             }

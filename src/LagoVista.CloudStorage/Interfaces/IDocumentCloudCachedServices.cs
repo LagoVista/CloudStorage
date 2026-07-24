@@ -10,5 +10,6 @@ namespace LagoVista.CloudStorage.Interfaces
     {
         ICacheProvider CacheProvider { get; }
         ICacheAborter CacheAborter { get; }
+        IEntityListCacheInvalidator EntityListCacheInvalidator { get; }
     }
 }

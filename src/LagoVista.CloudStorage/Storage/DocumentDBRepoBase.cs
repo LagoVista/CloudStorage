@@ -54,6 +54,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly IRagIndexingServices _ragIndexingServices;
         private readonly IProducedArtifactService _producedArtifactService;
         private readonly IFkIndexTableWriterBatched _fkeyIndexWriter;
+        private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
         private readonly IDocumentDBRepoBase<TEntity> _storage;
 
         private StorageProviderTypes _stoargeProvider = StorageProviderTypes.Original;
@@ -155,6 +156,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             _ragIndexingServices = cloudServices.RagIndexingServices;
             _cacheAborter = cloudServices.CacheAborter;
             _producedArtifactService = cloudServices.ProducedArtifactService;
+            _entityListCacheInvalidator = cloudServices.EntityListCacheInvalidator;
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudServices cloudServices) :
@@ -533,6 +535,23 @@ where c.id = @id";
             return $"{_dbName}-{typeof(TEntity).Name}-{id}".ToLower();
         }
 
+        private async Task InvalidateEntityListCacheAsync(string orgId)
+        {
+            if (_entityListCacheInvalidator == null || String.IsNullOrWhiteSpace(orgId))
+                return;
+
+            try
+            {
+                await _entityListCacheInvalidator.InvalidateAsync(orgId, typeof(TEntity));
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__InvalidateEntityListCacheAsync]", ex,
+                    typeof(TEntity).Name.ToKVP("entityType"),
+                    orgId.ToKVP("orgId"));
+            }
+        }
+
         /*               var ehPreviousNodes = existing.FindEntityHeaderNodes();
 
              foreach (var node in ehCurrentNodes)
@@ -711,6 +730,8 @@ where c.id = @id";
 
             if (_producedArtifactService != null)
                 await _producedArtifactService.CreateProducedArtifactsAsync(item);
+
+            await InvalidateEntityListCacheAsync(ownerOrgId);
 
             return new OperationResponse<TEntity>(upsertResult);
         }
@@ -930,6 +951,8 @@ where c.id = @id";
             _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id} in {sw.Elapsed.TotalMilliseconds} ms",
                 new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("recordId", id));
 
+            await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
+
             return new OperationResponse<TEntity>(result);
         }
 
@@ -967,6 +990,8 @@ where c.id = @id";
 
             _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id}, partition key {partitionKey} in {sw.Elapsed.TotalMilliseconds} ms",
                 new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("recordId", id));
+
+            await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
 
             return new OperationResponse<TEntity>(result);
         }
