@@ -61,6 +61,10 @@ namespace LagoVista.Relational
             catch (Exception ex)
             {
                 _adminlogger.AddException(this.Tag(), ex);
+                if (ex.InnerException != null)
+                {
+                    _adminlogger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Inner Exception: {ex.InnerException.Message}");
+                }
                 throw;
             }
         }
@@ -77,8 +81,20 @@ namespace LagoVista.Relational
 
         protected async Task AddWithContextAsync(EntityHeader org, EntityHeader user, Func<TContext, Task> work)
         {
-            await using var context = CreateContext();
+            try
+            {
+                await using var context = CreateContext();
             await work(context);
+            }
+            catch (Exception ex)
+            {
+                _adminlogger.AddException(this.Tag(), ex);
+                if(ex.InnerException != null)
+                {
+                    _adminlogger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Inner Exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
         }
 
         protected async Task UpdateWithContextAsync(EntityHeader org, EntityHeader user, Func<TContext, Task> work)
