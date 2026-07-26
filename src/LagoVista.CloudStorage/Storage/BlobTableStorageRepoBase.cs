@@ -1,5 +1,7 @@
 ﻿using Azure.Data.Tables;
+using Azure.Storage.Blobs;
 using LagoVista.CloudStorage.Utils;
+using LagoVista.Core;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.Validation;
@@ -104,6 +106,54 @@ namespace LagoVista.CloudStorage.Storage
             await _summaryTableClient.CreateIfNotExistsAsync();
 
             _initialized = true;
+        }
+
+        /// <summary>
+        /// Permanently deletes the detail blob container and summary table owned by this repository.
+        /// This operation affects every organization stored in the repository and should only be
+        /// exposed through an explicitly protected administrative workflow.
+        /// </summary>
+        protected async Task<InvokeResult> DropStorageAsync()
+        {
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountId};AccountKey={_accessKey}";
+            var detailBlobContainerName = GetDetailBlobContainerName();
+            var summaryTableName = GetSummaryTableName();
+
+            try
+            {
+                var blobServiceClient = new BlobServiceClient(connectionString);
+                var blobContainerClient = blobServiceClient.GetBlobContainerClient(detailBlobContainerName);
+                await blobContainerClient.DeleteIfExistsAsync();
+
+                var summaryTableClient = new TableClient(connectionString, summaryTableName);
+
+                try
+                {
+                    await summaryTableClient.DeleteAsync();
+                }
+                catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+                {
+                    // The desired end state has already been reached.
+                }
+
+                return InvokeResult.Success;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(
+                    $"{this.Tag()}__DropStorageAsync",
+                    ex,
+                    detailBlobContainerName.ToKVP("detailBlobContainerName"),
+                    summaryTableName.ToKVP("summaryTableName"));
+
+                return InvokeResult.FromException("BlobTableStorageRepoBase_DropStorageAsync", ex);
+            }
+            finally
+            {
+                _fileStorage = null;
+                _summaryTableClient = null;
+                _initialized = false;
+            }
         }
 
         protected async Task<TSummary> GetSummaryByRowKeyAsync(string rowKey)
