@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.Core;
 using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
 using Microsoft.Azure.Cosmos;
