@@ -2,15 +2,24 @@
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace LagoVista.Relational
 {
+    /// <summary>
+    /// Note this class is also in the BillingEvent class in the billing project, but we don't want to have a dependency on that project here, so we duplicate it.
+    /// </summary>
+
+    public static class BillingEventRollupTypes
+    {
+        public const string Detail = "Detail";
+        public const string Hourly = "Hourly";
+        public const string Daily = "Daily";
+        public const string Monthly = "Monthly";
+    }
+
     [Table("BillingEvents", Schema = "dbo")]
     public class BillingEventDTO 
     {
@@ -136,6 +145,13 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public SubscriptionDTO Subscription { get; set; }
 
+        /// <summary>
+        /// Defines the storage grain represented by this billing event.
+        /// Valid values are Detail, Hourly, Daily, and Monthly.
+        /// </summary>
+        [Required]
+        public string RollupType { get; set; } = BillingEventRollupTypes.Detail;
+
         public static void Configure(ModelBuilder modelBuilder)
         {
             var mb = modelBuilder;
@@ -174,6 +190,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.UnitPrice).HasColumnOrder(20);
             entity.Property(x => x.Tokens).HasColumnOrder(21);
             entity.Property(x => x.IdempotencyKey).HasColumnOrder(22);
+            entity.Property(x => x.RollupType).HasColumnOrder(23);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -189,15 +206,23 @@ namespace LagoVista.Relational
             entity.Property(x => x.BillingDate).HasColumnType(StandardDBTypes.CalendarDateStorage(provider));
             entity.Property(x => x.EndedByAppUserId).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
             entity.Property(x => x.HoursBilled).HasColumnType(StandardDBTypes.DecimalMedium(provider));
-            entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.MoneyStoragePrecise(provider));
             entity.Property(x => x.DiscountPercent).HasColumnType(StandardDBTypes.DecimalSmall(provider));
-            entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.Extended).HasColumnType(StandardDBTypes.MoneyStoragePrecise(provider));
             entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.Notes).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
-            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.MoneyStoragePrecise(provider));
             entity.Property(x => x.Tokens).HasColumnType(StandardDBTypes.LongStorage(provider));
             entity.Property(x => x.IdempotencyKey).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.RollupType).HasColumnType(StandardDBTypes.TextTiny(provider));
+
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_BillingEvents_RollupType",
+                    $"{nameof(BillingEventDTO.RollupType)} IN ('Detail', 'Hourly', 'Daily', 'Monthly')");
+            });
         }
     }
 }

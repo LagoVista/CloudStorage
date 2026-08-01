@@ -163,6 +163,14 @@ namespace LagoVista.Relational
             _ => "decimal(18,2)"
         };
 
+        public static string MoneyStoragePrecise(string provider) => provider switch
+        {
+            ModelBuilderProviderExtensions.Sqlite => "TEXT",
+            ModelBuilderProviderExtensions.Postgres => "numeric(18,6)",
+            _ => "decimal(18,6)"
+        };
+
+
         public static string StatusStorage(string provider) => provider switch
         {
             ModelBuilderProviderExtensions.Sqlite => "TEXT",

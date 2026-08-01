@@ -163,7 +163,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Name).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Sku).HasColumnType(StandardDBTypes.TextShort(provider));
             entity.Property(x => x.Status).HasColumnType(StandardDBTypes.StatusStorage(provider));
-            entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.UnitCost).HasColumnType(StandardDBTypes.MoneyStoragePrecise(provider));
             entity.Property(x => x.UnitTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
             entity.Property(x => x.Description).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.DetailsHTML).HasColumnType(StandardDBTypes.HtmlStorage(provider));
@@ -176,7 +176,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.ImageResourceName).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.PhysicalProduct).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.ShortSummaryHTML).HasColumnType(StandardDBTypes.HtmlStorage(provider));
-            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.MoneyStorage(provider));
+            entity.Property(x => x.UnitPrice).HasColumnType(StandardDBTypes.MoneyStoragePrecise(provider));
             entity.Property(x => x.IsPublic).HasColumnType(StandardDBTypes.FlagStorage(provider));
             entity.Property(x => x.RecurringCycleTypeId).HasColumnType(StandardDBTypes.IntStorage(provider));
         }
