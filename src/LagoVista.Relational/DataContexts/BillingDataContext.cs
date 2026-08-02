@@ -7,13 +7,21 @@ using System;
 
 namespace LagoVista.Relational.DataContexts
 {
-    public class BillingDataContext : DbContext
+    public interface IRelationalDiagnosticContext
+    {
+        bool SqlDiagnosticsEnabled { get; set; }
+    }
+
+
+    public class BillingDataContext : DbContext, IRelationalDiagnosticContext
     {
         public BillingDataContext(DbContextOptions<BillingDataContext> optionsContext) :
             base(optionsContext)
         {
 
         }
+
+        public bool SqlDiagnosticsEnabled { get; set; }
 
         public string GetBersion => this.GetType().Assembly.GetName().Version.ToString();
 

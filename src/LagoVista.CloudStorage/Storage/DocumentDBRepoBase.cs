@@ -456,7 +456,7 @@ where c.id = @id";
             {
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(CreateDocumentAsync)}] - Request Cost - {response.RequestCharge} - Elapsed {sw.Elapsed.TotalMilliseconds}ms");
 
-                if (_ragIndexingServices != null && item.ShouldVectorIndex)
+                if (_ragIndexingServices != null && (item is IRagableEntity || item.ShouldVectorIndex))
                     await _ragIndexingServices.IndexAsync(item);
 
                 if(_producedArtifactService != null)

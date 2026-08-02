@@ -117,6 +117,11 @@ namespace LagoVista.Relational
         public decimal? Extended { get; set; }
 
         /// <summary>
+        /// Quantity of the resource that was used
+        /// </summary>
+        public decimal? Quantity { get; set; }
+
+        /// <summary>
         /// Actual resource that was used
         /// </summary>
         [Required]
@@ -191,6 +196,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Tokens).HasColumnOrder(21);
             entity.Property(x => x.IdempotencyKey).HasColumnOrder(22);
             entity.Property(x => x.RollupType).HasColumnOrder(23);
+            entity.Property(x => x.Quantity).HasColumnOrder(23);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -216,6 +222,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Tokens).HasColumnType(StandardDBTypes.LongStorage(provider));
             entity.Property(x => x.IdempotencyKey).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.RollupType).HasColumnType(StandardDBTypes.TextTiny(provider));
+            entity.Property(x => x.Quantity).HasColumnType(StandardDBTypes.DecimalMedium(provider));
 
             entity.ToTable(table =>
             {

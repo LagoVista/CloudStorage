@@ -29,8 +29,6 @@ namespace LagoVista.Relational
 
         private readonly IDbContextFactory<TContext> _contextFactory;
 
-
-
         public RelationalBase(IDbContextFactory<TContext> factory, ILogger adminLogger, ISecureStorage secureStorage)
         {
             _contextFactory = factory ?? throw new ArgumentNullException(nameof(factory));
@@ -41,12 +39,18 @@ namespace LagoVista.Relational
         protected TContext CreateContext()
         {
             var context = _contextFactory.CreateDbContext();
-            if(context == null)
-            {
+                       
+            if (context == null)
                 throw new InvalidOperationException("Could not create instance of DbContext.");
-            }
+
+            if (context is IRelationalDiagnosticContext diagnosticContext)
+                diagnosticContext.SqlDiagnosticsEnabled = SqlDiagnosticsEnabled;
+
+            
             return context;
         }
+
+        public bool SqlDiagnosticsEnabled { get; set; }
 
         protected async Task AddWithContextAsync(EntityHeader org, EntityHeader user, string secretId, Func<EncryptedRepoContext<TContext>, Task> work)
         {
