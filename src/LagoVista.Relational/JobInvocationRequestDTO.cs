@@ -68,6 +68,11 @@ namespace LagoVista.Relational
         public string LastError { get; set; }
 
 
+        [Required]
+        public string InvocationTrigger { get; set; }
+
+
+
         [IgnoreOnMapTo()]
         public long Version { get; set; }
 
@@ -110,6 +115,7 @@ namespace LagoVista.Relational
             modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.BlockedTime).HasColumnOrder(20);
             modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.BlockedReason).HasColumnOrder(21);
             modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.Version).HasColumnOrder(22);
+            modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.InvocationTrigger).HasColumnOrder(23);
 
 
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -133,6 +139,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.BlockedTime).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
             entity.Property(x => x.BlockedReason).HasColumnType(StandardDBTypes.TextLong(provider));
             entity.Property(x => x.Version).HasColumnType(StandardDBTypes.LongStorage(provider));
+            entity.Property(x => x.InvocationTrigger).HasColumnType(StandardDBTypes.CategoryStorage(provider));
         }
     }
 }
