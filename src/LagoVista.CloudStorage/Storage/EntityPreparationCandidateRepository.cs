@@ -54,7 +54,10 @@ namespace LagoVista.CloudStorage.Storage
     c.ReadinessStatus AS ReadinessStatus,
     c.CreationDate AS CreationDate,
     c.LastUpdatedDate AS LastUpdatedDate,
-    c.Revision AS Revision
+    c.Revision AS Revision,
+    c.ChecklistStatus as ChecklistStatus,
+    c.ReadinessChecks as ReadinessChecks
+    
 FROM c
 WHERE c.EntityType = @entityType
 AND c.OwnerOrganization.Id = @orgId
