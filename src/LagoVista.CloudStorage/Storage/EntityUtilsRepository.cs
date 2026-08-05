@@ -420,6 +420,7 @@ AND ARRAY_CONTAINS(@entityTypes, c.EntityType)";
     c.EntityType,
     c.ChecklistStatus,
     c.ReadinessChecks,
+    c.MasterStatus,
     c._etag
 FROM c
 WHERE c.OwnerOrganization.Id = @orgId
