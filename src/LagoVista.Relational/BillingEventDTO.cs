@@ -30,6 +30,9 @@ namespace LagoVista.Relational
 
         public Guid ProductId { get; set; }
 
+        public Guid? ModelUsageRateId { get; set; }
+
+
         /// <summary>
         /// When the billing event started
         /// </summary>
@@ -102,6 +105,11 @@ namespace LagoVista.Relational
         public decimal? UnitCost { get; set; }
 
         /// <summary>
+        /// Total Consumed Custom calculated cost for this billing period, this is the actual cost of the resource used, not the price charged to the customer
+        /// </summary>
+        public decimal? ActualCost { get; set; }
+
+        /// <summary>
         /// ShareholderType of Unit (used for calculations)
         /// </summary>
         public int UnitTypeId { get; set; }
@@ -117,6 +125,11 @@ namespace LagoVista.Relational
         public decimal? Extended { get; set; }
 
         /// <summary>
+        /// Usage key to identify costs on usage events.
+        /// </summary>
+        public string VendorUsageKey { get; set; }
+
+        /// <summary>
         /// Quantity of the resource that was used
         /// </summary>
         public decimal? Quantity { get; set; }
@@ -126,6 +139,7 @@ namespace LagoVista.Relational
         /// </summary>
         [Required]
         public string ResourceId { get; set; }
+
 
         /// <summary>
         /// Name of the resource that was used
@@ -150,6 +164,9 @@ namespace LagoVista.Relational
         [IgnoreOnMapTo]
         public SubscriptionDTO Subscription { get; set; }
 
+        [IgnoreOnMapTo]
+        public ModelUsageRateDTO ModelUsageRate { get; set; }
+
         /// <summary>
         /// Defines the storage grain represented by this billing event.
         /// Valid values are Detail, Hourly, Daily, and Monthly.
@@ -168,6 +185,7 @@ namespace LagoVista.Relational
             entity.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.StartedByAppUser).WithMany().HasForeignKey(x => x.StartedByAppUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.EndedByAppUser).WithMany().HasForeignKey(x => x.EndedByAppUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ModelUsageRate).WithMany().HasForeignKey(x => x.ModelUsageRateId).OnDelete(DeleteBehavior.Restrict);
 
             // Key / indexes / concurrency
             entity.HasKey(x => x.Id);
@@ -197,6 +215,9 @@ namespace LagoVista.Relational
             entity.Property(x => x.IdempotencyKey).HasColumnOrder(22);
             entity.Property(x => x.RollupType).HasColumnOrder(23);
             entity.Property(x => x.Quantity).HasColumnOrder(23);
+            entity.Property(x => x.VendorUsageKey).HasColumnOrder(24);
+            entity.Property(x => x.ActualCost).HasColumnOrder(25);
+            entity.Property(x => x.ModelUsageRateId).HasColumnOrder(26);
 
             // Storage types
             entity.Property(x => x.Id).HasColumnType(StandardDBTypes.UuidStorage(provider));
@@ -223,6 +244,9 @@ namespace LagoVista.Relational
             entity.Property(x => x.IdempotencyKey).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.RollupType).HasColumnType(StandardDBTypes.TextTiny(provider));
             entity.Property(x => x.Quantity).HasColumnType(StandardDBTypes.DecimalMedium(provider));
+            entity.Property(x => x.VendorUsageKey).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.ActualCost).HasColumnType(StandardDBTypes.MoneyStoragePrecise(provider));
+            entity.Property(x => x.ModelUsageRateId).HasColumnType(StandardDBTypes.UuidStorage(provider));
 
             entity.ToTable(table =>
             {

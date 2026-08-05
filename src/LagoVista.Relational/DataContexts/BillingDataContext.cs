@@ -50,6 +50,7 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<AgreementLineItemDTO> AgreementLineItems { get; set; }
 
 
+        public DbSet<ModelUsageRateDTO> ModelUsageRates { get; set; }
         public DbSet<BillingEventDTO> BillingEvents { get; set; }
         public DbSet<BudgetItemDTO> BudgetItems { get; set; }
 
@@ -134,6 +135,8 @@ namespace LagoVista.Relational.DataContexts
 
             LicenseDTO.Configure(modelBuilder);
             LicenseUsageDTO.Configure(modelBuilder);
+
+            ModelUsageRateDTO.Configure(modelBuilder);
 
             JobInvocationRequestDTO.Configure(modelBuilder);
 
