@@ -129,9 +129,9 @@ namespace LagoVista.CloudStorage.DocumentDB
             _cacheProvider = cacheProvider;
             _dependencyManager = dependencyManager;
             _fkeyIndexWriter = fkWriter;
-            _cosmosClientProvider = cosmosClientProvider;
+            _cosmosClientProvider = cosmosClientProvider ?? Storage.CosmosClientProvider.Shared;
 
-            _storage = new StorageProviders.CosmosDBStorage<TEntity>(endpoint, sharedKey, dbName, logger, cacheProvider, dependencyManager, cosmosClientProvider);
+            _storage = new StorageProviders.CosmosDBStorage<TEntity>(endpoint, sharedKey, dbName, logger, cacheProvider, dependencyManager, _cosmosClientProvider);
 
             _defaultCollectionName = typeof(TEntity).Name;
             if (!_defaultCollectionName.ToLower().EndsWith("s"))
@@ -220,7 +220,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             return "/_partitionKey";
         }
 
-        protected async Task<CosmosClient> GetDocumentClientAsync()
+        protected Task<CosmosClient> GetDocumentClientAsync()
         {
             if (_endPointString == null)
             {
@@ -236,70 +236,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 throw ex;
             }
 
-            if (_cosmosClientProvider != null)
-                return _cosmosClientProvider.GetClient(_endPointString, _sharedKey);
-
-            if (_cosmosClient == null)
-            {
-                if (_isDBCheckComplete)
-                {
-                    _logger.Trace($"[DocumentDbRepo<{typeof(TEntity).Name}>__GetDocumentClientAsync] - static setting, db has been created, no need to check and create if necessary.");
-
-                    var connectionPolicy = new CosmosClientOptions();
-                    _cosmosClient = new CosmosClient(_endPointString, _sharedKey, connectionPolicy);
-                }
-                else
-                {
-                    var sw = Stopwatch.StartNew();
-
-                    var connectionPolicy = new CosmosClientOptions();
-                    _cosmosClient = new CosmosClient(_endPointString, _sharedKey, connectionPolicy);
-
-                    var dbCreateResponse = await _cosmosClient.CreateDatabaseIfNotExistsAsync(_dbName);
-                    if (dbCreateResponse == null)
-                    {
-                        var ex = new ArgumentNullException($"Could not crate database null response.");
-                        _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__etDocumentClientAsync]", ex);
-                        throw ex;
-                    }
-
-                    if (dbCreateResponse.StatusCode != System.Net.HttpStatusCode.OK &&
-                       dbCreateResponse.StatusCode != System.Net.HttpStatusCode.Created)
-                    {
-                        var ex = new ArgumentNullException($"Invalid status code from create database - {dbCreateResponse.StatusCode}.");
-                        _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>____GetDocumentClientAsync]", ex);
-                        throw ex;
-                    }
-
-
-                    var db = _cosmosClient.GetDatabase(_dbName);
-                    var containerResponse = await db.CreateContainerIfNotExistsAsync(GetCollectionName(), GetPartitionKey());
-                    if (containerResponse == null)
-                    {
-                        var ex = new ArgumentNullException($"Could not crate container null response.");
-                        _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__GetDocumentClientAsync]", ex);
-                        throw ex;
-                    }
-
-                    if (containerResponse.StatusCode != System.Net.HttpStatusCode.OK &&
-                       containerResponse.StatusCode != System.Net.HttpStatusCode.Created)
-                    {
-                        var ex = new ArgumentNullException($"Invalid status code from create container - {containerResponse.StatusCode}.");
-                        _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__GetDocumentClientAsync]", ex);
-                        throw ex;
-                    }
-
-                    _logger.Trace($"[DocumentDbRepo<{typeof(TEntity).Name}>__GetDocumentClientAsync] - Execution Time {sw.Elapsed.TotalMilliseconds}ms");
-                    _isDBCheckComplete = true;
-                }
-            }
-            else
-            {
-                if (_verboseLogging) _logger.Trace($"[DocumentDbRepo<{typeof(TEntity).Name}>__GetDocumentClientAsync] - reuse existing cosmos db connection");
-            }
-
-
-            return _cosmosClient;
+            return Task.FromResult(_cosmosClientProvider.GetClient(_endPointString, _sharedKey));
         }
 
         protected async Task<Container> GetContainerAsync()
@@ -309,7 +246,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
 
-        protected async Task<Database> GetDatabase(CosmosClient client)
+        protected Task<Database> GetDatabase(CosmosClient client)
         {
             if (String.IsNullOrEmpty(_dbName))
             {
@@ -318,10 +255,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 throw ex;
             }
 
-            if (_cosmosClientProvider != null)
-                return client.GetDatabase(_dbName);
-
-            return await client.CreateDatabaseIfNotExistsAsync(_dbName);
+            return Task.FromResult(client.GetDatabase(_dbName));
         }
 
         public virtual String GetCollectionName()

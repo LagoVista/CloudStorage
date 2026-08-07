@@ -7,6 +7,8 @@ namespace LagoVista.CloudStorage.Storage
 {
     public sealed class CosmosClientProvider : ICosmosClientProvider, IDisposable
     {
+        public static CosmosClientProvider Shared { get; } = new CosmosClientProvider();
+
         private readonly ConcurrentDictionary<string, CosmosClient> _clients = new ConcurrentDictionary<string, CosmosClient>(StringComparer.OrdinalIgnoreCase);
 
         public CosmosClient GetClient(string uri, string accessKey)
