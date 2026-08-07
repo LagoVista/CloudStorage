@@ -17,14 +17,17 @@ namespace LagoVista.CloudStorage.Storage
         private readonly Container _container;
         private readonly ILogger _logger;
 
-        public EntityPreparationCandidateRepository(ISyncConnectionSettings options, ILogger logger)
+        public EntityPreparationCandidateRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, ILogger logger)
         {
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
 
+            if (cosmosClientProvider == null)
+                throw new ArgumentNullException(nameof(cosmosClientProvider));
+
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            var client = new CosmosClient(options.SyncConnectionSettings.Uri, options.SyncConnectionSettings.AccessKey, new CosmosClientOptions());
+            var client = cosmosClientProvider.GetClient(options.SyncConnectionSettings.Uri, options.SyncConnectionSettings.AccessKey);
             _container = client.GetContainer(options.SyncConnectionSettings.ResourceName, $"{options.SyncConnectionSettings.ResourceName}_Collections");
         }
 

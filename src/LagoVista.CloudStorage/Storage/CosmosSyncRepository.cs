@@ -47,10 +47,11 @@ namespace LagoVista.CloudStorage.Storage
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
-        public CosmosSyncRepository(ISyncConnectionSettings options, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
+        public CosmosSyncRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
             INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider, ILogger logger, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            if (cosmosClientProvider == null) throw new ArgumentNullException(nameof(cosmosClientProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fkWriter = fkWriter ?? throw new ArgumentNullException(nameof(fkWriter));
             _nodeLocatorWriter = nodeLocatorWriter ?? throw new ArgumentNullException(nameof(nodeLocatorWriter));
@@ -60,10 +61,7 @@ namespace LagoVista.CloudStorage.Storage
             _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
             _entityListCacheInvalidator = entityListCacheInvalidator ?? throw new ArgumentNullException(nameof(entityListCacheInvalidator));
             _dbName = _options.SyncConnectionSettings.ResourceName;
-            _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
-            {
-            });
-
+            _client = cosmosClientProvider.GetClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey);
             _container = _client.GetContainer(_options.SyncConnectionSettings.ResourceName, $"{_options.SyncConnectionSettings.ResourceName}_Collections");
         }
 

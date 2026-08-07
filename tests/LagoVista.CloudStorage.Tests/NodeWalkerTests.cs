@@ -20,6 +20,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
         IFkIndexTableWriterBatched _fkeyWriter;
         INodeLocatorTableWriterBatched _nodeWriter;
         INodeLocatorTableReader _nodeReader;
+        CosmosClientProvider _cosmosClientProvider;
         IAdminLogger _logger;
 
         [SetUp]
@@ -29,7 +30,14 @@ namespace LagoVista.CloudStorage.IntegrationTests
             _fkeyWriter = new FkIndexTableWriterBatched(new SyncSettings(), _logger);
             _nodeWriter = new NodeLocatorTableWriterBatched(new SyncSettings(), _logger);
             _nodeReader = new NodeLocatorTableReader(new SyncSettings(), _logger);
-            _syncRepo = new CosmosSyncRepository(new SyncSettings(), _fkeyWriter, _nodeWriter, Mock.Of<IRagIndexingServices>(), Mock.Of<IEntityDetailResponseFactory>(), _nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()), Mock.Of<IEntityListCacheInvalidator>());
+            _cosmosClientProvider = new CosmosClientProvider();
+            _syncRepo = new CosmosSyncRepository(new SyncSettings(), _cosmosClientProvider, _fkeyWriter, _nodeWriter, Mock.Of<IRagIndexingServices>(), Mock.Of<IEntityDetailResponseFactory>(), _nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()), Mock.Of<IEntityListCacheInvalidator>());
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            _cosmosClientProvider?.Dispose();
         }
 
         [Test]
