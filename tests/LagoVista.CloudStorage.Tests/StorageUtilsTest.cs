@@ -25,6 +25,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
         IAdminLogger _logger;
         IStorageUtils _storageUtils;
         INodeLocatorTableReader _nodeLocator;
+        CosmosClientProvider _cosmosClientProvider;
         EntityHeader _orgEH;
         EntityHeader _userEH;
 
@@ -38,7 +39,14 @@ namespace LagoVista.CloudStorage.IntegrationTests
             var syncSettings = new SyncSettings();
             
             _nodeLocator = new NodeLocatorTableReader(syncSettings, _logger);
-            _storageUtils = new StorageUtils(syncSettings, _logger, _nodeLocator, new Mock<ICacheProvider>().Object);
+            _cosmosClientProvider = new CosmosClientProvider();
+            _storageUtils = new StorageUtils(syncSettings, _cosmosClientProvider, _logger, _nodeLocator, new Mock<ICacheProvider>().Object);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            _cosmosClientProvider?.Dispose();
         }
 
         [Test]

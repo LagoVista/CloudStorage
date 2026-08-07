@@ -31,23 +31,26 @@ namespace LagoVista.CloudStorage.Storage
         private readonly IAdminLogger _logger;
         private string _collectionName;
         private CosmosClient _client;
+        private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly ICacheProvider _cacheProvider;
         private readonly INodeLocatorTableReader _nodeLocator;
 
-        public StorageUtils(IDefaultConnectionSettings defaultConnectionSettings, IAdminLogger logger, INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider)
+        public StorageUtils(IDefaultConnectionSettings defaultConnectionSettings, ICosmosClientProvider cosmosClientProvider, IAdminLogger logger, INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));    
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
             _nodeLocator = nodeLocator ?? throw new ArgumentNullException(nameof(nodeLocator));
-        
+
             SetConnection(defaultConnectionSettings.DefaultDocDbSettings);
         }
 
 
-        public StorageUtils(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null)
+        public StorageUtils(Uri endpoint, String sharedKey, String dbName, ICosmosClientProvider cosmosClientProvider, IAdminLogger logger, ICacheProvider cacheProvider = null)
         {
             _sharedKey = sharedKey ?? throw new ArgumentNullException(nameof(sharedKey));
             _dbName = dbName ?? throw new ArgumentNullException(nameof(dbName));
+            _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cacheProvider = cacheProvider;
             _collectionName = _dbName + "_Collections";
@@ -65,12 +68,9 @@ namespace LagoVista.CloudStorage.Storage
 
         protected CosmosClient GetDocumentClient()
         {
-
             if (_client == null)
-            {
-                var connectionPolicy = new CosmosClientOptions();
-                _client = new CosmosClient(_endPoint, _sharedKey, connectionPolicy);
-            }
+                _client = _cosmosClientProvider.GetClient(_endPoint, _sharedKey);
+
             return _client;
         }
 
