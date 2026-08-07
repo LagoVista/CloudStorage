@@ -24,6 +24,7 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ILogger _logger;
         private readonly ISyncConnectionSettings _options;
         private readonly ICacheProvider _cacheProvider;
+        private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IRagIndexingServices _ragIndexingServices;
         private readonly IDependencyManager _dependencyManager;
         private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
@@ -32,9 +33,10 @@ namespace LagoVista.CloudStorage.Storage
         private readonly string _dbName;
 
 
-        public EntityUtilsRepository(ISyncConnectionSettings options, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
+        public EntityUtilsRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
             _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -43,10 +45,7 @@ namespace LagoVista.CloudStorage.Storage
             _dbName = _options.SyncConnectionSettings.ResourceName;
             _dependencyManager = dependencyManager ?? throw new ArgumentNullException(nameof(dependencyManager));
 
-            _client = new CosmosClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey, new CosmosClientOptions
-            {
-            });
-
+            _client = _cosmosClientProvider.GetClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey);
             _container = _client.GetContainer(_options.SyncConnectionSettings.ResourceName, $"{_options.SyncConnectionSettings.ResourceName}_Collections");
         }
 

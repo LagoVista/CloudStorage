@@ -41,6 +41,7 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<ICacheProvider, CacheProvider>();
             services.AddSingleton<ISyncConnectionSettings, SyncConnections>();
             services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
+            services.AddSingleton<ICosmosClientProvider, CosmosClientProvider>();
 
             LagoVista.Core.AutoMapper.Startup.ConfigureServices(services);
         }

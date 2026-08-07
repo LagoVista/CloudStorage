@@ -93,6 +93,8 @@ namespace LagoVista.Relational
             entity.HasIndex(x => x.ManifestId);
             entity.HasIndex(x => x.OrganizationId);
 
+            entity.Property(x => x.Version).IsConcurrencyToken();
+
             modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.Id).HasColumnOrder(1);
             modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.OrganizationId).HasColumnOrder(2);
             modelBuilder.Entity<JobInvocationRequestDTO>().Property(x => x.ManifestId).HasColumnOrder(3);

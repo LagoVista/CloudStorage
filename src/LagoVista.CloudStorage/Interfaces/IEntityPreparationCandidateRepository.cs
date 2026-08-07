@@ -7,6 +7,8 @@ namespace LagoVista.CloudStorage.Interfaces
 {
     public interface IEntityPreparationCandidateRepository
     {
+        Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, string orgId, CancellationToken ct = default);
+
         Task<List<EntityBaseSummary>> GetIncompleteEntityBasesAsync(string entityType, string orgId, int maxItems, CancellationToken ct = default);
     }
 }
