@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>LagoVista.Relational</id>
-    <version>3.0.3369.1050</version>
+    <version>3.0.3369.1256</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -12,7 +12,7 @@
     <copyright>Copyright Software Logistics - 2026</copyright>
     <tags>HomeAutomation IoT LagoVista</tags>
     <icon>LagoVistaIcon.png</icon>
-    <releaseNotes>Build Date: 8/7/2026 2:50:23 PM UTC</releaseNotes>
+    <releaseNotes>Build Date: 8/7/2026 4:56:21 PM UTC</releaseNotes>
     <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
       <group targetFramework="net9.0">
@@ -22,7 +22,7 @@
         <dependency id="Microsoft.EntityFrameworkCore.Design" version="9.0.13" />
         <dependency id="Microsoft.Extensions.Logging.Console" version="9.0.13" />
         <dependency id="Npgsql.EntityFrameworkCore.PostgreSQL" version="9.0.4" />
-        <dependency id="LagoVista.CloudStorage" version="3.0.3369.1050" />
+        <dependency id="LagoVista.CloudStorage" version="3.0.3369.1256" />
       </group>
     </dependencies>
   </metadata>
