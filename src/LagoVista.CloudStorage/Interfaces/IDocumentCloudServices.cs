@@ -10,6 +10,7 @@ namespace LagoVista.CloudStorage.Interfaces
     public interface IDocumentCloudServices 
     {
         IAdminLogger AdminLogger { get; }
+        ICosmosClientProvider CosmosClientProvider { get; }
         IDependencyManager DependencyManager { get;  }
         IProducedArtifactService ProducedArtifactService { get; }
 

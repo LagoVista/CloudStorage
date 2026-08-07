@@ -4,6 +4,7 @@
 // --- END CODE INDEX META ---
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Exceptions;
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -33,6 +34,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         private string _dbName;
         private string _defaultCollectionName;
         private CosmosClient _cosmosClient;
+        private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
@@ -105,7 +107,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         protected static readonly Counter DocumentCacheMiss = Metrics.CreateCounter("nuviot_document_cache_miss", "Document Cache Miss.", "entity");
         protected static readonly Counter DocumentNotCached = Metrics.CreateCounter("nuviot_document_not_cached", "Document Not Cached.", "entity");
 
-        public CosmosDBStorage(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null)
+        public CosmosDBStorage(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, ICosmosClientProvider cosmosClientProvider = null)
         {
             _endPointString = endpoint.ToString();
 
@@ -114,6 +116,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             _logger = logger;
             _cacheProvider = cacheProvider;
             _dependencyManager = dependencyManager;
+            _cosmosClientProvider = cosmosClientProvider;
 
             _defaultCollectionName = typeof(TEntity).Name;
             if (!_defaultCollectionName.ToLower().EndsWith("s"))
@@ -123,8 +126,8 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
 
-        public CosmosDBStorage(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null) :
-            this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager)
+        public CosmosDBStorage(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, ICosmosClientProvider cosmosClientProvider = null) :
+            this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager, cosmosClientProvider)
         {
 
         }
@@ -138,6 +141,9 @@ namespace LagoVista.CloudStorage.StorageProviders
                 _logger.AddException($"{GetType().Name}_CTor", ex);
                 throw ex;
             }
+
+            if (_cosmosClientProvider != null)
+                return client.GetDatabase(_dbName);
 
             return await client.CreateDatabaseIfNotExistsAsync(_dbName);
         }
@@ -158,6 +164,9 @@ namespace LagoVista.CloudStorage.StorageProviders
                 _logger.AddException($"[{GetType().Name}_GetDocumentClientAsync]", ex);
                 throw ex;
             }
+
+            if (_cosmosClientProvider != null)
+                return _cosmosClientProvider.GetClient(_endPointString, _sharedKey);
 
             if (_cosmosClient == null)
             {

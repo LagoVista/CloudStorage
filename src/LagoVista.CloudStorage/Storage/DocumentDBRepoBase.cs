@@ -47,6 +47,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private string _dbName;
         private string _defaultCollectionName;
         private static CosmosClient _cosmosClient;
+        private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly ICacheAborter _cacheAborter;
@@ -118,7 +119,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected static readonly Counter DocumentCacheMiss = Metrics.CreateCounter("nuviot_document_cache_miss", "Document Cache Miss.", "entity");
         protected static readonly Counter DocumentNotCached = Metrics.CreateCounter("nuviot_document_not_cached", "Document Not Cached.", "entity");
 
-        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null)
+        public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null, ICosmosClientProvider cosmosClientProvider = null)
         {
             _endPointString = endpoint.ToString();
 
@@ -128,8 +129,9 @@ namespace LagoVista.CloudStorage.DocumentDB
             _cacheProvider = cacheProvider;
             _dependencyManager = dependencyManager;
             _fkeyIndexWriter = fkWriter;
+            _cosmosClientProvider = cosmosClientProvider;
 
-            _storage = new StorageProviders.CosmosDBStorage<TEntity>(endpoint, sharedKey, dbName, logger, cacheProvider, dependencyManager);
+            _storage = new StorageProviders.CosmosDBStorage<TEntity>(endpoint, sharedKey, dbName, logger, cacheProvider, dependencyManager, cosmosClientProvider);
 
             _defaultCollectionName = typeof(TEntity).Name;
             if (!_defaultCollectionName.ToLower().EndsWith("s"))
@@ -138,8 +140,8 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null) :
-            this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager, fkWriter)
+        public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null, ICosmosClientProvider cosmosClientProvider = null) :
+            this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager, fkWriter, cosmosClientProvider)
         {
 
         }
@@ -151,7 +153,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudCachedServices cloudServices) :
-            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, cloudServices.CacheProvider, cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter)
+            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, cloudServices.CacheProvider, cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter, cosmosClientProvider: cloudServices.CosmosClientProvider)
         {
             _ragIndexingServices = cloudServices.RagIndexingServices;
             _cacheAborter = cloudServices.CacheAborter;
@@ -160,7 +162,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudServices cloudServices) :
-            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, dependencyManager: cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter)
+            this(endpoint, sharedKey, dbName, cloudServices.AdminLogger, dependencyManager: cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter, cosmosClientProvider: cloudServices.CosmosClientProvider)
         {
             _fkeyIndexWriter = cloudServices.FkIndexTableWriter;
             _producedArtifactService = cloudServices.ProducedArtifactService;
@@ -233,6 +235,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                 _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__GetDocumentClientAsync]", ex);
                 throw ex;
             }
+
+            if (_cosmosClientProvider != null)
+                return _cosmosClientProvider.GetClient(_endPointString, _sharedKey);
 
             if (_cosmosClient == null)
             {
@@ -312,6 +317,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                 _logger.AddException($"[{GetType().Name}_CTor]", ex);
                 throw ex;
             }
+
+            if (_cosmosClientProvider != null)
+                return client.GetDatabase(_dbName);
 
             return await client.CreateDatabaseIfNotExistsAsync(_dbName);
         }
