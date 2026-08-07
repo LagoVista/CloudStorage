@@ -89,6 +89,7 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<SerialNumberDTO> SerialNumbers { get; set; }
 
         public DbSet<SubscriptionDTO> Subscription { get; set; }
+        public DbSet<SubscriptionLevelDTO> SubscriptionLevels { get; set; }
 
         public DbSet<TimeEntryDTO> TimeEntries { get; set; }
         public DbSet<TimePeriodDTO> TimePeriods { get; set; }
@@ -168,6 +169,7 @@ namespace LagoVista.Relational.DataContexts
             SerialNumberDTO.Configure(modelBuilder);
 
             SubscriptionDTO.Configure(modelBuilder);
+            SubscriptionLevelDTO.Configure(modelBuilder);
 
             TimeEntryDTO.Configure(modelBuilder);
             TimePeriodDTO.Configure(modelBuilder);
