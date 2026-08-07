@@ -28,6 +28,68 @@ namespace LagoVista.CloudStorage.Storage
             _container = client.GetContainer(options.SyncConnectionSettings.ResourceName, $"{options.SyncConnectionSettings.ResourceName}_Collections");
         }
 
+        public async Task<EntityBaseSummary> GetEntityBaseAsync(string entityType, string entityId, string orgId, CancellationToken ct = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+
+            if (String.IsNullOrWhiteSpace(entityId))
+                throw new ArgumentException("entityId is required.", nameof(entityId));
+
+            if (String.IsNullOrWhiteSpace(orgId))
+                throw new ArgumentException("orgId is required.", nameof(orgId));
+
+            const string sql = @"SELECT TOP 1
+    c.id AS Id,
+    c.EntityType AS EntityType,
+    c.Name AS Name,
+    c.Key AS Key,
+    c.Description AS Description,
+    c.Icon AS Icon,
+    c.Category AS Category,
+    c.IsDraft AS IsDraft,
+    c.IsDeprecated AS IsDeprecated,
+    c.MasterStatus AS MasterStatus,
+    c.ReadinessStatus AS ReadinessStatus,
+    c.CreationDate AS CreationDate,
+    c.LastUpdatedDate AS LastUpdatedDate,
+    c.Revision AS Revision,
+    c.ChecklistStatus AS ChecklistStatus,
+    c.ReadinessChecks AS ReadinessChecks
+FROM c
+WHERE c.EntityType = @entityType
+AND c.id = @entityId
+AND c.OwnerOrganization.Id = @orgId";
+
+            var query = new QueryDefinition(sql)
+                .WithParameter("@entityType", entityType.Trim())
+                .WithParameter("@entityId", entityId.Trim())
+                .WithParameter("@orgId", orgId.Trim());
+
+            try
+            {
+                using var iterator = _container.GetItemQueryIterator<EntityBaseSummary>(
+                    query,
+                    requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+
+                while (iterator.HasMoreResults)
+                {
+                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+                    var entity = page.Resource.FirstOrDefault(item => item != null);
+
+                    if (entity != null)
+                        return entity;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                throw;
+            }
+        }
+
         public async Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, string orgId, CancellationToken ct = default)
         {
             if (String.IsNullOrWhiteSpace(entityType))
