@@ -25,9 +25,9 @@ namespace LagoVista.Relational
         [Required]
         public string StatusKey { get; set; }
 
-        public System.DateTime CreatedUtc { get; set; }
+        public System.DateTime CreationDate { get; set; }
 
-        public System.DateTime UpdatedUtc { get; set; }
+        public System.DateTime LastUpdatedDate { get; set; }
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -44,8 +44,8 @@ namespace LagoVista.Relational
             entity.Property(x => x.Name).HasColumnOrder(4).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Description).HasColumnOrder(5).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.StatusKey).HasColumnOrder(6).HasColumnType(StandardDBTypes.StatusStorage(provider));
-            entity.Property(x => x.CreatedUtc).HasColumnOrder(7).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.UpdatedUtc).HasColumnOrder(8).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.CreationDate).HasColumnOrder(7).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(8).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
     }
 }

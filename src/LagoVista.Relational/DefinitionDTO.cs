@@ -41,9 +41,9 @@ namespace LagoVista.Relational
         [Required]
         public string DefinitionSha256 { get; set; }
 
-        public System.DateTime CreatedUtc { get; set; }
+        public System.DateTime CreationDate { get; set; }
 
-        public System.DateTime UpdatedUtc { get; set; }
+        public System.DateTime LastUpdatedDate { get; set; }
 
         public static void Configure(ModelBuilder modelBuilder)
         {
@@ -71,8 +71,8 @@ namespace LagoVista.Relational
             entity.Property(x => x.Example3).HasColumnOrder(10).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.StatusKey).HasColumnOrder(11).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.DefinitionSha256).HasColumnOrder(12).HasColumnType(StandardDBTypes.KeyStorage(provider));
-            entity.Property(x => x.CreatedUtc).HasColumnOrder(13).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.UpdatedUtc).HasColumnOrder(14).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.CreationDate).HasColumnOrder(13).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(14).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
     }
 }
