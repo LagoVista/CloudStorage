@@ -12,6 +12,9 @@ namespace LagoVista.Relational
         public string Id { get; set; }
 
         [Required]
+        public string OwnerOrganizationId { get; set; }
+
+        [Required]
         public string SubjectId { get; set; }
 
         [Required]
@@ -48,6 +51,7 @@ namespace LagoVista.Relational
             var entity = modelBuilder.Entity<DefinitionDTO>();
 
             entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.OwnerOrganizationId).HasDatabaseName("IX_Definitions_OwnerOrganizationId");
             entity.HasIndex(x => x.QualifiedKey).IsUnique().HasDatabaseName("UX_Definitions_QualifiedKey");
             entity.HasIndex(x => x.SubjectId).HasDatabaseName("IX_Definitions_SubjectId");
             entity.HasIndex(x => x.ConceptId).HasDatabaseName("IX_Definitions_ConceptId");
@@ -56,18 +60,19 @@ namespace LagoVista.Relational
             entity.HasOne<ConceptDTO>().WithMany().HasForeignKey(x => x.ConceptId).OnDelete(DeleteBehavior.Restrict);
 
             entity.Property(x => x.Id).HasColumnOrder(1).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.SubjectId).HasColumnOrder(2).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.ConceptId).HasColumnOrder(3).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.QualifiedKey).HasColumnOrder(4).HasColumnType(StandardDBTypes.TextShort(provider));
-            entity.Property(x => x.Name).HasColumnOrder(5).HasColumnType(StandardDBTypes.NameStorage(provider));
-            entity.Property(x => x.Summary).HasColumnOrder(6).HasColumnType(StandardDBTypes.TextLong(provider));
-            entity.Property(x => x.Example1).HasColumnOrder(7).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.Example2).HasColumnOrder(8).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.Example3).HasColumnOrder(9).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.StatusKey).HasColumnOrder(10).HasColumnType(StandardDBTypes.StatusStorage(provider));
-            entity.Property(x => x.DefinitionSha256).HasColumnOrder(11).HasColumnType(StandardDBTypes.KeyStorage(provider));
-            entity.Property(x => x.CreatedUtc).HasColumnOrder(12).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.UpdatedUtc).HasColumnOrder(13).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.OwnerOrganizationId).HasColumnOrder(2).HasColumnType("varchar(32)").HasMaxLength(32);
+            entity.Property(x => x.SubjectId).HasColumnOrder(3).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.ConceptId).HasColumnOrder(4).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
+            entity.Property(x => x.QualifiedKey).HasColumnOrder(5).HasColumnType(StandardDBTypes.TextShort(provider));
+            entity.Property(x => x.Name).HasColumnOrder(6).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Summary).HasColumnOrder(7).HasColumnType(StandardDBTypes.TextLong(provider));
+            entity.Property(x => x.Example1).HasColumnOrder(8).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Example2).HasColumnOrder(9).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Example3).HasColumnOrder(10).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.StatusKey).HasColumnOrder(11).HasColumnType(StandardDBTypes.StatusStorage(provider));
+            entity.Property(x => x.DefinitionSha256).HasColumnOrder(12).HasColumnType(StandardDBTypes.KeyStorage(provider));
+            entity.Property(x => x.CreatedUtc).HasColumnOrder(13).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.UpdatedUtc).HasColumnOrder(14).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
     }
 }
