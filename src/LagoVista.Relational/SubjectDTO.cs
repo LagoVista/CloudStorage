@@ -1,13 +1,18 @@
+using LagoVista.Core.Attributes;
 using LagoVista.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace LagoVista.Relational
 {
     [Table("Subjects", Schema = "dbo")]
     public class SubjectDTO
     {
+        private string _aliasesSerialized;
+
         [Key]
         public string Id { get; set; }
 
@@ -21,6 +26,21 @@ namespace LagoVista.Relational
         public string Name { get; set; }
 
         public string Description { get; set; }
+
+        [NotMapped]
+        public List<string> Aliases
+        {
+            get => string.IsNullOrWhiteSpace(_aliasesSerialized) ? new List<string>() : JsonSerializer.Deserialize<List<string>>(_aliasesSerialized) ?? new List<string>();
+            set => _aliasesSerialized = JsonSerializer.Serialize(value ?? new List<string>());
+        }
+
+        [IgnoreOnMapTo("Persistence backing store for Aliases.")]
+        [Column("Aliases")]
+        public string AliasesSerialized
+        {
+            get => _aliasesSerialized;
+            set => _aliasesSerialized = value;
+        }
 
         [Required]
         public string StatusKey { get; set; }
@@ -43,9 +63,10 @@ namespace LagoVista.Relational
             entity.Property(x => x.Key).HasColumnOrder(3).HasColumnType(StandardDBTypes.KeyStorage(provider));
             entity.Property(x => x.Name).HasColumnOrder(4).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Description).HasColumnOrder(5).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.StatusKey).HasColumnOrder(6).HasColumnType(StandardDBTypes.StatusStorage(provider));
-            entity.Property(x => x.CreationDate).HasColumnOrder(7).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(8).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.AliasesSerialized).HasColumnOrder(6).HasColumnName("Aliases").HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.StatusKey).HasColumnOrder(7).HasColumnType(StandardDBTypes.StatusStorage(provider));
+            entity.Property(x => x.CreationDate).HasColumnOrder(8).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.LastUpdatedDate).HasColumnOrder(9).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
     }
 }
