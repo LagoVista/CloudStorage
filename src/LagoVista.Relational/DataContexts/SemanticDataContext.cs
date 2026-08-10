@@ -14,6 +14,7 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<SubjectDTO> Subjects { get; set; }
         public DbSet<ConceptDTO> Concepts { get; set; }
         public DbSet<DefinitionDTO> Definitions { get; set; }
+        public DbSet<SemanticDefinitionViewDTO> DefinitionView { get; set; }
         public DbSet<EmbeddingDTO> Embeddings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -24,6 +25,7 @@ namespace LagoVista.Relational.DataContexts
             SubjectDTO.Configure(modelBuilder);
             ConceptDTO.Configure(modelBuilder);
             DefinitionDTO.Configure(modelBuilder);
+            SemanticDefinitionViewDTO.Configure(modelBuilder);
             EmbeddingDTO.Configure(modelBuilder);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
