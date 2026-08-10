@@ -12,6 +12,9 @@ namespace LagoVista.Relational
         public string Id { get; set; }
 
         [Required]
+        public string OwnerOrganizationId { get; set; }
+
+        [Required]
         public string Key { get; set; }
 
         [Required]
@@ -32,15 +35,17 @@ namespace LagoVista.Relational
             var entity = modelBuilder.Entity<ConceptDTO>();
 
             entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.OwnerOrganizationId).HasDatabaseName("IX_Concepts_OwnerOrganizationId");
             entity.HasIndex(x => x.Key).IsUnique().HasDatabaseName("UX_Concepts_Key");
 
             entity.Property(x => x.Id).HasColumnOrder(1).HasColumnType(StandardDBTypes.NormalizedId32Storage(provider));
-            entity.Property(x => x.Key).HasColumnOrder(2).HasColumnType(StandardDBTypes.KeyStorage(provider));
-            entity.Property(x => x.Name).HasColumnOrder(3).HasColumnType(StandardDBTypes.NameStorage(provider));
-            entity.Property(x => x.Description).HasColumnOrder(4).HasColumnType(StandardDBTypes.TextMedium(provider));
-            entity.Property(x => x.StatusKey).HasColumnOrder(5).HasColumnType(StandardDBTypes.StatusStorage(provider));
-            entity.Property(x => x.CreatedUtc).HasColumnOrder(6).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
-            entity.Property(x => x.UpdatedUtc).HasColumnOrder(7).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.OwnerOrganizationId).HasColumnOrder(2).HasColumnType("varchar(32)").HasMaxLength(32);
+            entity.Property(x => x.Key).HasColumnOrder(3).HasColumnType(StandardDBTypes.KeyStorage(provider));
+            entity.Property(x => x.Name).HasColumnOrder(4).HasColumnType(StandardDBTypes.NameStorage(provider));
+            entity.Property(x => x.Description).HasColumnOrder(5).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.StatusKey).HasColumnOrder(6).HasColumnType(StandardDBTypes.StatusStorage(provider));
+            entity.Property(x => x.CreatedUtc).HasColumnOrder(7).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
+            entity.Property(x => x.UpdatedUtc).HasColumnOrder(8).HasColumnType(StandardDBTypes.UtcTimestampStorage(provider));
         }
     }
 }
