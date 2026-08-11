@@ -146,9 +146,10 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         }
 
-        public DocumentDBRepoBase(IAdminLogger logger)
+        public DocumentDBRepoBase(IAdminLogger logger, ICosmosClientProvider cosmosClientProvide)
         {
             _logger = logger;
+            _cosmosClientProvider = cosmosClientProvide;
 
         }
 
