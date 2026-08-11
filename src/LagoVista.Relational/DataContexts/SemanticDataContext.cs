@@ -16,6 +16,8 @@ namespace LagoVista.Relational.DataContexts
         public DbSet<DefinitionDTO> Definitions { get; set; }
         public DbSet<SemanticDefinitionViewDTO> DefinitionView { get; set; }
         public DbSet<EmbeddingDTO> Embeddings { get; set; }
+        public DbSet<ArtifactDTO> Artifacts { get; set; }
+        public DbSet<ArtifactInformationElementDTO> ArtifactInformationElements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -27,6 +29,8 @@ namespace LagoVista.Relational.DataContexts
             DefinitionDTO.Configure(modelBuilder);
             SemanticDefinitionViewDTO.Configure(modelBuilder);
             EmbeddingDTO.Configure(modelBuilder);
+            ArtifactDTO.Configure(modelBuilder);
+            ArtifactInformationElementDTO.Configure(modelBuilder);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
             modelBuilder.ApplyUtcDateTimeConvention();
