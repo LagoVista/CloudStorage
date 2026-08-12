@@ -65,7 +65,7 @@ namespace LagoVista.Relational
             entity.Property(x => x.Key).HasColumnOrder(3).HasColumnType(StandardDBTypes.KeyStorage(provider));
             entity.Property(x => x.Name).HasColumnOrder(4).HasColumnType(StandardDBTypes.NameStorage(provider));
             entity.Property(x => x.Tla).HasColumnOrder(5).HasColumnType("varchar(16)").HasMaxLength(16);
-            entity.Property(x => x.Description).HasColumnOrder(6).HasColumnType(StandardDBTypes.TextMedium(provider));
+            entity.Property(x => x.Description).HasColumnOrder(6).HasColumnType(StandardDBTypes.TextMax(provider));
             entity.Property(x => x.PurposeSummary).HasColumnOrder(7).HasColumnType(StandardDBTypes.TextMedium(provider));
             entity.Property(x => x.StatusKey).HasColumnOrder(8).HasColumnType(StandardDBTypes.StatusStorage(provider));
             entity.Property(x => x.ScopeTypeKey).HasColumnOrder(9).HasColumnType(StandardDBTypes.KeyStorage(provider));
