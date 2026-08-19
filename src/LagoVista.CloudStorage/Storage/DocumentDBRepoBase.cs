@@ -186,7 +186,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (String.IsNullOrEmpty(_dbName))
             {
                 var ex = new InvalidOperationException($"Invalid or missing database name information on {GetType().Name}");
-                _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__CTor]", ex);
+                _logger.AddException($"[{GetType().Name}_CTor]", ex);
                 throw ex;
             }
 
@@ -605,6 +605,7 @@ where c.id = @id";
             item.SetHash();
 
             var upsertResult = await container.UpsertItemAsync(item, requestOptions: requestOptions);
+            item.ETag = upsertResult.ETag;
 
             switch (upsertResult.StatusCode)
             {
@@ -1020,7 +1021,7 @@ where c.id = @id";
             DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
 
             _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]", $"Sql query in {sw.Elapsed.TotalMilliseconds} ms",
-                new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), sql.ToKVP("sql"));
+                new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), sql.ToKVP("sqlQuery"));
 
             return items;
         }
@@ -1248,7 +1249,7 @@ where c.id = @id";
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                         requestCharge += response.RequestCharge;
                         foreach (var item in response)
                         {
@@ -1318,7 +1319,7 @@ where c.id = @id";
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
+                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                         requestCharge += response.RequestCharge;
                         foreach (var item in response)
                         {
