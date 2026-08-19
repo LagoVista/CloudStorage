@@ -11,7 +11,8 @@ namespace LagoVista.CloudStorage
 {
     public interface ICacheProviderSettings
     {
-        bool UseCache { get;  }
+        bool UseCache { get; }
         IConnectionSettings CacheSettings { get; }
+        string Password { get; }
     }
 }
