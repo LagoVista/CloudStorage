@@ -32,13 +32,16 @@ namespace LagoVista.CloudStorage.Storage
 
                 try
                 {
+                    var configuration = ConfigurationOptions.Parse(uri);
+                    configuration.Password = settings.Password;
+
                     _logger.Trace($"{this.Tag()} - Initializing cache provider with settings: {uri} - Slot Title {appConfig.Environment}, {appConfig.AppId} ");
-                    _multiplexer = ConnectionMultiplexer.Connect(uri);
-                    _logger.Trace($"{this.Tag()} - Established connection to REDIS: {uri}");
+                    _multiplexer = ConnectionMultiplexer.Connect(configuration);
+                    _logger.Trace($"{this.Tag()} - Established connection to REDIS-compatible cache: {uri}");
                 }
                 catch (Exception ex)
                 {
-                    _logger.AddError(this.Tag(), $"Failed to connect to REDIS with settings: {uri}. Exception: {ex}.  You can disable remote cache by setting UseCache = false in AppSettings.  Or you can setup a SSH tunnel to dev cache server.");
+                    _logger.AddError(this.Tag(), $"Failed to connect to REDIS-compatible cache with settings: {uri}. Exception: {ex}. You can disable remote cache by setting UseCache = false in AppSettings.");
                     throw;
                 }
             }
