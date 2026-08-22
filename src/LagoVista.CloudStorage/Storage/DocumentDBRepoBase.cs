@@ -67,7 +67,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         private static readonly Gauge SQLInsertMetric = Metrics.CreateGauge("sql_insert", "Elapsed time for SQL insert.",
            new GaugeConfiguration
            {
-               // Here you specify only the names of the labels.
                LabelNames = new[] { "action" }
            });
 
@@ -75,7 +74,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected static readonly Histogram DocumentGet = Metrics.CreateHistogram("nuviot_document_get", "Elapsed time for document get.",
           new HistogramConfiguration
           {
-              // Here you specify only the names of the labels.
               LabelNames = new[] { "entity" },
               Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
           });
@@ -83,7 +81,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected static readonly Histogram DocumentInsert = Metrics.CreateHistogram("nuviot_document_insert", "Elapsed time for document insert.",
           new HistogramConfiguration
           {
-              // Here you specify only the names of the labels.
               LabelNames = new[] { "entity" },
               Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
           });
@@ -91,7 +88,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected static readonly Histogram DocumentUpdate = Metrics.CreateHistogram("nuviot_document_update", "Elapsed time for document update.",
           new HistogramConfiguration
           {
-              // Here you specify only the names of the labels.
               LabelNames = new[] { "entity" },
               Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
           });
@@ -99,7 +95,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected static readonly Histogram DocumentDelete = Metrics.CreateHistogram("nuviot_document_delete", "Elapsed time for document delete.",
           new HistogramConfiguration
           {
-              // Here you specify only the names of the labels.
               LabelNames = new[] { "entity" },
               Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
           });
@@ -107,11 +102,9 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected static readonly Histogram DocumentQuery = Metrics.CreateHistogram("nuviot_document_query", "Elapsed time for document query.",
           new HistogramConfiguration
           {
-              // Here you specify only the names of the labels.
               LabelNames = new[] { "entity" },
               Buckets = Histogram.ExponentialBuckets(0.250, 2, 8)
           });
-
 
         protected static readonly Counter DocumentErrors = Metrics.CreateCounter("nuviot_document_errors", "Error count in document store.", "entity");
         protected static readonly Counter DocumentNotFound = Metrics.CreateCounter("nuviot_document_record_not_found", "Record not found count.", "entity");
@@ -122,7 +115,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         public DocumentDBRepoBase(Uri endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null, ICosmosClientProvider cosmosClientProvider = null)
         {
             _endPointString = endpoint.ToString();
-
             _sharedKey = sharedKey;
             _dbName = dbName;
             _logger = logger;
@@ -130,7 +122,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             _dependencyManager = dependencyManager;
             _fkeyIndexWriter = fkWriter;
             _cosmosClientProvider = cosmosClientProvider ?? Storage.CosmosClientProvider.Shared;
-
             _storage = new StorageProviders.CosmosDBStorage<TEntity>(endpoint, sharedKey, dbName, logger, cacheProvider, dependencyManager, _cosmosClientProvider);
 
             _defaultCollectionName = typeof(TEntity).Name;
@@ -143,14 +134,12 @@ namespace LagoVista.CloudStorage.DocumentDB
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null, ICosmosClientProvider cosmosClientProvider = null) :
             this(new Uri(endpoint), sharedKey, dbName, logger, cacheProvider, dependencyManager, fkWriter, cosmosClientProvider)
         {
-
         }
 
         public DocumentDBRepoBase(IAdminLogger logger, ICosmosClientProvider cosmosClientProvide)
         {
             _logger = logger;
             _cosmosClientProvider = cosmosClientProvide;
-
         }
 
         public DocumentDBRepoBase(string endpoint, String sharedKey, String dbName, IDocumentCloudCachedServices cloudServices) :
@@ -169,11 +158,9 @@ namespace LagoVista.CloudStorage.DocumentDB
             _producedArtifactService = cloudServices.ProducedArtifactService;
         }
 
-
         public void SetConnection(String connectionString, string sharedKey, string dbName)
         {
             _endPointString = connectionString;
-
             _sharedKey = sharedKey;
             if (String.IsNullOrEmpty(_sharedKey))
             {
@@ -246,7 +233,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             return docClient.GetContainer(_dbName, GetCollectionName());
         }
 
-
         protected Task<Database> GetDatabase(CosmosClient client)
         {
             if (String.IsNullOrEmpty(_dbName))
@@ -261,7 +247,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public virtual String GetCollectionName()
         {
-
             if (IsRuntimeData)
             {
                 return _dbName + "_CollectionsRunTime";
@@ -272,7 +257,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public async Task<EntityHeader> GetEntityHeaderForRecordAsync(string id, CancellationToken ct = default)
         {
-
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
             _logger.Trace($"{this.Tag()} - Request object for id {id}");
             var sql = @"SELECT c.id, c.Key, c.Name, c.Namespace, c.UserName, c.EntityType, c.OwnerOrganization, c.IsPublic
@@ -280,7 +264,6 @@ FROM c
 where c.id = @id";
 
             var qd = new QueryDefinition(sql).WithParameter("@id", id);
-
             var requestOptions = new QueryRequestOptions
             {
                 MaxItemCount = Math.Min(1, 1)
@@ -293,7 +276,6 @@ where c.id = @id";
 
             var container = await GetContainerAsync();
             using var iterator = container.GetItemQueryIterator<EntityHeaderRow>(qd, requestOptions: requestOptions);
-
             if (iterator.HasMoreResults)
             {
                 var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
@@ -321,7 +303,6 @@ where c.id = @id";
                 OwnerOrgId = NOT_FOUND_OWNER_ORG_ID,
                 EntityType = NOT_FOUND_ENTITYTYPE
             };
-
             return notFoundEh;
         }
 
@@ -339,78 +320,28 @@ where c.id = @id";
             }
 
             var ehCache = new Dictionary<string, EntityHeader>();
-
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
-
             var container = await GetContainerAsync();
-
             var sw = Stopwatch.StartNew();
             item.SetHash();
-
             var response = await container.CreateItemAsync(item);
-
-            /*var ehNodes = item.FindEntityHeaderNodes();
-            foreach (var node in ehNodes)
-            {
-                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
-                     (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
-                {
-                    if (ehCache.ContainsKey(node.Id))
-                    {
-                        var eh = ehCache[node.Id];
-                        item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.EntityType);
-                    }
-                    else
-                    {
-                        var eh = await GetEntityHeaderForRecordAsync(node.Id);
-                        if (eh.Id == NOT_FOUND_ID)
-                        {
-                            if (_fkeyIndexWriter != null)
-                            {
-                                if (String.IsNullOrEmpty(node.Key))
-                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
-                                else
-                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
-                            }
-
-                            _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
-                        }
-                        else
-                        {
-                            ehCache.Add(node.Id, eh);
-                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                        }
-                    }
-                }
-            }*/
 
             if (response.StatusCode != System.Net.HttpStatusCode.Created)
             {
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
                 _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDbRepo<{typeof(TEntity).Name}>__CreateDocumentAsync]", "Error return code: " + response.StatusCode,
                     new KeyValuePair<string, string>("EntityType", typeof(TEntity).Name),
-                    new KeyValuePair<string, string>("Id", item.Id)
-                    );
+                    new KeyValuePair<string, string>("Id", item.Id));
                 throw new Exception("Could not insert entity");
             }
             else
             {
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(CreateDocumentAsync)}] - Request Cost - {response.RequestCharge} - Elapsed {sw.Elapsed.TotalMilliseconds}ms");
-
                 if (_ragIndexingServices != null && (item is IRagableEntity || item.ShouldVectorIndex))
                     await _ragIndexingServices.IndexAsync(item);
-
-                if(_producedArtifactService != null)
+                if (_producedArtifactService != null)
                     await _producedArtifactService.CreateProducedArtifactsAsync(item);
-
-                /*if (_fkeyIndexWriter != null)
-                {
-                    var fkNodes = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehNodes);
-                    await _fkeyIndexWriter.UpsertAllAsync(fkNodes);
-                }*/
-
                 DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
                 DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
             }
@@ -495,58 +426,24 @@ where c.id = @id";
             }
         }
 
-        /*               var ehPreviousNodes = existing.FindEntityHeaderNodes();
-
-             foreach (var node in ehCurrentNodes)
-              {
-                  if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
-                        (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
-                  {
-                      if (ehCache.ContainsKey(node.Id))
-                      {
-                          var eh = ehCache[node.Id];
-                          item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                      }
-                      else
-                      {
-                          var eh = await GetEntityHeaderForRecordAsync(node.Id);
-                          if (eh.Id == NOT_FOUND_ID)
-                          {
-                              eh.Resolved = false;
-                              _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
-                          }
-                          else
-                          {
-                              ehCache.Add(node.Id, eh);
-                              item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                          }
-                      }
-                  }
-              }*/
-
-
         protected async Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item, bool checkEtag = false, string idOverride = null)
         {
             if (item is IValidateable && !item.IsDraft)
             {
                 var validationResult = Validator.Validate(item as IValidateable, Actions.Update);
-
                 if (!validationResult.Successful)
                 {
                     foreach (var error in validationResult.Errors)
                         _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", $"Validation Error: {error.Message}", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", item.Id));
-
                     throw new ValidationException("Found invalid data at storage", validationResult.Errors);
                 }
             }
 
             ItemRequestOptions requestOptions = null;
-
             if (checkEtag)
             {
                 if (String.IsNullOrEmpty(item.ETag))
                     throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
-
                 requestOptions = new ItemRequestOptions { IfMatchEtag = item.ETag };
             }
 
@@ -554,7 +451,6 @@ where c.id = @id";
             item.RevisionTimeStamp = DateTime.UtcNow.ToJSONString();
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
-
             var documentId = idOverride ?? item.Id;
             var ownerOrgId = item.OwnerOrganization?.Id;
             var container = await GetContainerAsync();
@@ -562,28 +458,23 @@ where c.id = @id";
 
             DependentObjectCheckResult dependencyResult = null;
             var nameChanged = false;
-
             if (_dependencyManager != null)
             {
                 var existing = await GetDocumentAsync(documentId);
-
                 nameChanged = !String.Equals(existing.Name, item.Name, StringComparison.Ordinal);
-
                 if (nameChanged)
                 {
                     dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item);
-
                     if (item.AuditHistory == null)
                         item.AuditHistory = new List<EntityChangeSet>();
-
                     item.AuditHistory.Add(new EntityChangeSet
                     {
                         ChangeDate = DateTime.UtcNow.ToJSONString(),
                         ChangedBy = item.LastUpdatedBy,
                         Changes = new List<EntityChange>
-                {
-                    new EntityChange { OldValue = existing.Name, NewValue = item.Name, Field = nameof(item.Name) }
-                }
+                        {
+                            new EntityChange { OldValue = existing.Name, NewValue = item.Name, Field = nameof(item.Name) }
+                        }
                     });
                 }
                 else if (_verboseLogging)
@@ -603,7 +494,6 @@ where c.id = @id";
             }
 
             item.SetHash();
-
             var upsertResult = await container.UpsertItemAsync(item, requestOptions: requestOptions);
             item.ETag = upsertResult.ETag;
 
@@ -613,37 +503,30 @@ where c.id = @id";
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
                     _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "BadRequest", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
                     throw new Exception($"Bad Request on Upsert {typeof(TEntity).Name}");
-
                 case System.Net.HttpStatusCode.Forbidden:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
                     _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Forbidden", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
                     throw new Exception($"Forbidden on Upsert {typeof(TEntity).Name}");
-
                 case System.Net.HttpStatusCode.Conflict:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
                     _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "Conflict", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
                     throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
-
                 case System.Net.HttpStatusCode.PreconditionFailed:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
                     _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", "PreconditionFailed", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
                     throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
-
                 case System.Net.HttpStatusCode.RequestEntityTooLarge:
                     DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
                     _logger.AddError($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync", "RequestEntityTooLarge]", typeof(TEntity).Name.ToKVP("entityType"), documentId.ToKVP("id"));
                     throw new Exception($"RequestEntityTooLarge Upsert on type {typeof(TEntity).Name}");
-
                 case System.Net.HttpStatusCode.OK:
                 case System.Net.HttpStatusCode.Created:
                     _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Document Update {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {upsertResult.RequestCharge}");
-
                     if (nameChanged && _dependencyManager != null)
                     {
                         if (dependencyResult?.IsInUse == true)
                         {
                             _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Object {item.Name} has {dependencyResult.DependentObjects.Count} legacy dependencies.");
-
                             foreach (var dependentObject in dependencyResult.DependentObjects)
                                 await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, documentId, typeof(TEntity).Name, dependentObject.Id, dependentObject.RecordType, item.Name);
                         }
@@ -652,38 +535,30 @@ where c.id = @id";
                             await _dependencyManager.RenameRegisteredReferencesAsync(item.LastUpdatedBy, typeof(TEntity), documentId, ownerOrgId, item.Name);
                         else
                             _logger.AddCustomEvent(LogLevel.Warning, $"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", $"Could not update registered references for renamed entity '{documentId}' because OwnerOrganization.Id was missing.");
-
                         await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, documentId, typeof(TEntity).Name, item.Name);
                     }
-
                     break;
             }
 
             DocumentRequestCharge.WithLabels(GetCollectionName()).Set(upsertResult.RequestCharge);
-
-            if (_cacheProvider != null && (_cacheAborter == null ||  _cacheAborter != null && !_cacheAborter.AbortCache))
+            if (_cacheProvider != null && (_cacheAborter == null || _cacheAborter != null && !_cacheAborter.AbortCache))
             {
                 await _cacheProvider.RemoveAsync(GetCacheKey(documentId));
                 await _cacheProvider.AddAsync(GetCacheKey(documentId), JsonConvert.SerializeObject(item));
-
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Added {typeof(TEntity).Name} back to cache after update in {sw.Elapsed.TotalMilliseconds}ms");
             }
 
             if (_ragIndexingServices != null && item.ShouldVectorIndex)
                 await _ragIndexingServices.IndexAsync(item);
-
             if (_producedArtifactService != null)
                 await _producedArtifactService.CreateProducedArtifactsAsync(item);
-
             await InvalidateEntityListCacheAsync(ownerOrgId);
-
             return new OperationResponse<TEntity>(upsertResult);
         }
 
         protected async Task<TEntity> GetDocumentAsync(string id, bool throwOnNotFound = true)
         {
             var sw = Stopwatch.StartNew();
-
             if (_cacheProvider != null && (_cacheAborter == null || !_cacheAborter.AbortCache))
             {
                 var json = await _cacheProvider.GetAsync(GetCacheKey(id));
@@ -696,21 +571,15 @@ where c.id = @id";
                         {
                             if (throwOnNotFound)
                             {
-                                _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Type Mismatch", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("id", id));
+                                _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", "Type Mismatch", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("id", id));
                                 DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
                                 throw new RecordNotFoundException(typeof(TEntity).Name, id);
                             }
-                            else
-                            {
-                                return default;
-                            }
+                            return default;
                         }
-                        else
-                        {
-                            DocumentCacheHit.WithLabels(typeof(TEntity).Name).Inc();
-                            _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Get document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
-                            return entity;
-                        }
+                        DocumentCacheHit.WithLabels(typeof(TEntity).Name).Inc();
+                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Get document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
+                        return entity;
                     }
                     catch (Exception ex)
                     {
@@ -739,7 +608,6 @@ where c.id = @id";
                 await _cacheProvider.AddAsync(GetCacheKey(id), JsonConvert.SerializeObject(doc));
                 _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Added To Cache {typeof(TEntity).Name} {GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
             }
-
             return doc;
         }
 
@@ -748,73 +616,51 @@ where c.id = @id";
             try
             {
                 var container = await GetContainerAsync();
-
                 var sw = Stopwatch.StartNew();
                 var timer = DocumentGet.WithLabels(typeof(TEntity).Name).NewTimer();
                 var response = await container.ReadItemAsync<TEntity>(id, String.IsNullOrEmpty(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey));
                 timer.Dispose();
-
-
                 if (response == null)
                 {
-                    _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Empty Response", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", id));
+                    _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", "Empty Response", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", id));
                     DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
                 }
 
                 DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
-
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
                     var entity = response.Resource;
-
                     if (entity.EntityType != typeof(TEntity).Name)
                     {
                         if (throwOnNotFound)
                         {
-                            _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Type Mismatch", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("id", id));
+                            _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", "Type Mismatch", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("id", id));
                             DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
                             throw new RecordNotFoundException(typeof(TEntity).Name, id);
                         }
-                        else
-                        {
-                            return default;
-                        }
-                    }
-
-                    _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Load document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} from storage in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}",
-                        sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), response.RequestCharge.ToString().ToKVP("requestCharge"), id.ToKVP("recordId"), entity.Name.ToKVP("entityName"));
-
-                    return entity;
-                }
-                else
-                {
-                    DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
-                    if (throwOnNotFound)
-                    {
-                        _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Error requesting document", new KeyValuePair<string, string>("Invalid Status Code", response.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
-                        throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                    }
-                    else
-                    {
                         return default;
                     }
+
+                    _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Load document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} from storage in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), response.RequestCharge.ToString().ToKVP("requestCharge"), id.ToKVP("recordId"), entity.Name.ToKVP("entityName"));
+                    return entity;
                 }
+
+                DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
+                if (throwOnNotFound)
+                {
+                    _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", "Error requesting document", new KeyValuePair<string, string>("Invalid Status Code", response.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                    throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                }
+                return default;
             }
             catch (CosmosException ex)
             {
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
-                _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Error requesting document", new KeyValuePair<string, string>("DocumentClientException", ex.Message), new KeyValuePair<string, string>("StatusCode", ex.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", "Error requesting document", new KeyValuePair<string, string>("DocumentClientException", ex.Message), new KeyValuePair<string, string>("StatusCode", ex.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                 if (throwOnNotFound)
-                {
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                }
-                else
-                {
-                    return null;
-                }
-
+                return null;
             }
             catch (Exception ex)
             {
@@ -822,65 +668,41 @@ where c.id = @id";
                 _logger.Trace(ex.Message);
                 _logger.Trace(ex.StackTrace);
                 Console.ResetColor();
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
-                _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Error requesting document", new KeyValuePair<string, string>("Exception", ex.Message), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
+                _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", "Error requesting document", new KeyValuePair<string, string>("Exception", ex.Message), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                 if (throwOnNotFound)
-                {
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                }
-                else
-                {
-                    return null;
-                }
+                return null;
             }
         }
 
         protected async Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id, bool softDelete = true)
         {
             var sw = Stopwatch.StartNew();
-
             var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
             var doc = await GetDocumentAsync(id);
-
             if (_dependencyManager != null)
             {
                 var legacyResult = await _dependencyManager.CheckForDependenciesAsync(doc);
                 var registeredResult = await _dependencyManager.CheckRegisteredReferencesAsync(typeof(TEntity), doc.Id, doc.OwnerOrganization.Id, CancellationToken.None);
-
-                var dependentObjects = legacyResult.DependentObjects
-                    .Concat(registeredResult.DependentObjects)
-                    .GroupBy(record => $"{record.RecordType}:{record.Id}", StringComparer.OrdinalIgnoreCase)
-                    .Select(group => group.First())
-                    .ToArray();
-
+                var dependentObjects = legacyResult.DependentObjects.Concat(registeredResult.DependentObjects).GroupBy(record => $"{record.RecordType}:{record.Id}", StringComparer.OrdinalIgnoreCase).Select(group => group.First()).ToArray();
                 if (dependentObjects.Any())
                 {
-
                     timer.Dispose();
                     throw new InUseException(DependentObjectCheckResult.InUse(dependentObjects.ToArray()));
                 }
             }
 
             if (_cacheProvider != null)
-            {
-                var cacheKey = GetCacheKey(id);
-                await _cacheProvider.RemoveAsync(cacheKey);
-            }
+                await _cacheProvider.RemoveAsync(GetCacheKey(id));
 
             var container = await GetContainerAsync();
-
             ItemResponse<TEntity> result;
-
             if (!softDelete || (doc.IsDeleted.HasValue && doc.IsDeleted.Value))
             {
                 result = await container.DeleteItemAsync<TEntity>(doc.Id, PartitionKey.None);
-                if (_ragIndexingServices != null)
-                {
-                    if (!EntityHeader.IsNullOrEmpty(doc.OwnerOrganization))
-                        await _ragIndexingServices.RemoveIndexAsync(doc.OwnerOrganization.Id, doc.Id);
-                }
+                if (_ragIndexingServices != null && !EntityHeader.IsNullOrEmpty(doc.OwnerOrganization))
+                    await _ragIndexingServices.RemoveIndexAsync(doc.OwnerOrganization.Id, doc.Id);
             }
             else
             {
@@ -891,22 +713,16 @@ where c.id = @id";
                     await _ragIndexingServices.IndexAsync(doc);
             }
             timer.Dispose();
-
-            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id} in {sw.Elapsed.TotalMilliseconds} ms",
-                new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("recordId", id));
-
+            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id} in {sw.Elapsed.TotalMilliseconds} ms", new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("recordId", id));
             await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
-
             return new OperationResponse<TEntity>(result);
         }
 
         protected async Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id, string partitionKey)
         {
             var sw = Stopwatch.StartNew();
-
             var timer = DocumentDelete.WithLabels(typeof(TEntity).Name).NewTimer();
             var doc = await GetDocumentAsync(id, partitionKey);
-
             if (_dependencyManager != null)
             {
                 var dependencyies = await _dependencyManager.CheckForDependenciesAsync(doc);
@@ -916,27 +732,16 @@ where c.id = @id";
                     throw new InUseException(dependencyies);
                 }
             }
-
             if (_cacheProvider != null)
-            {
-                var cacheKey = GetCacheKey(id);
-                await _cacheProvider.RemoveAsync(cacheKey);
-            }
-
+                await _cacheProvider.RemoveAsync(GetCacheKey(id));
             var container = await GetContainerAsync();
             var partitionKeyValue = new PartitionKey(partitionKey);
-
-
             doc.IsDeleted = true;
             doc.DeletionDate = UtcTimestamp.Now;
             var result = await container.UpsertItemAsync(doc, partitionKeyValue);
             timer.Dispose();
-
-            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id}, partition key {partitionKey} in {sw.Elapsed.TotalMilliseconds} ms",
-                new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("recordId", id));
-
+            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id}, partition key {partitionKey} in {sw.Elapsed.TotalMilliseconds} ms", new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("recordId", id));
             await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
-
             return new OperationResponse<TEntity>(result);
         }
 
@@ -944,18 +749,11 @@ where c.id = @id";
         {
             var sw = Stopwatch.StartNew();
             var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
             var items = new List<TEntity>();
-
             var container = await GetContainerAsync();
-            var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                    .Where(query)
-                    .Where(itm => itm.EntityType == typeof(TEntity).Name);
-
+            var linqQuery = container.GetItemLinqQueryable<TEntity>().Where(query).Where(itm => itm.EntityType == typeof(TEntity).Name);
             var page = 1;
-
             var requestCharge = 0.0;
-
             using (var iterator = linqQuery.ToFeedIterator<TEntity>())
             {
                 while (iterator.HasMoreResults)
@@ -963,47 +761,30 @@ where c.id = @id";
                     var response = await iterator.ReadNextAsync();
                     if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                     requestCharge += response.RequestCharge;
-                    foreach (var item in response)
-                    {
-                        items.Add(item);
-                    }
+                    items.AddRange(response);
                 }
             }
-
             timer.Dispose();
             DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] in {sw.Elapsed.TotalMilliseconds} ms",
-                new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
-
-
+            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] in {sw.Elapsed.TotalMilliseconds} ms", new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
             return items;
         }
 
-        protected async Task<IEnumerable<TEntity>> QueryAsync(string sql, params QueryParameter[] sqlParams)
+        private async Task<IEnumerable<TEntity>> QueryAsync(string sql, params QueryParameter[] sqlParams)
         {
             var query = new QueryDefinition(sql);
-
-
             var bldr = new StringBuilder();
             bldr.AppendLine(sql);
-
-
             foreach (var param in sqlParams)
             {
                 query = query.WithParameter(param.Name, param.Value);
                 bldr.Append($"{param.Name}={param.Value};");
             }
-
             _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] {bldr}");
-
             var sw = Stopwatch.StartNew();
             var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
             var requestCharge = 0.0;
-
             var items = new List<TEntity>();
-
             var container = await GetContainerAsync();
             using (var resultSet = container.GetItemQueryIterator<TEntity>(query))
             {
@@ -1016,13 +797,9 @@ where c.id = @id";
                     items.AddRange(response);
                 }
             }
-
             timer.Dispose();
             DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]", $"Sql query in {sw.Elapsed.TotalMilliseconds} ms",
-                new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), sql.ToKVP("sql"));
-
+            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]", $"Sql query in {sw.Elapsed.TotalMilliseconds} ms", new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), sql.ToKVP("sql"));
             return items;
         }
 
@@ -1032,747 +809,358 @@ where c.id = @id";
             {
                 var sw = Stopwatch.StartNew();
                 var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TEntity>();
                 var requestCharge = 0.0;
-
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                        .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) &&
-                                       (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
-
-                var page = 1;
-
+                    .Where(query)
+                    .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
+                    .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                    .Take(listRequest.PageSize);
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
-
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                         requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
+                        items.AddRange(response);
                     }
                 }
-
                 var listResponse = ListResponse<TEntity>.Create(listRequest, items);
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest] in {sw.Elapsed.TotalMilliseconds} ms",
-                    new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
-
+                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest] in {sw.Elapsed.TotalMilliseconds} ms", new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
                 return listResponse;
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] (query, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
                 var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
 
-
-        protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
-                            System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
+        protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
         {
             try
             {
                 var sw = Stopwatch.StartNew();
                 var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TEntity>();
                 var requestCharge = 0.0;
-
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                        .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted)
-                                         && (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
-                        .OrderBy(sort)
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
-
-                var page = 1;
-
-                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QUeryAsync] Query {page++} Query Document {linqQuery}");
-
+                    .Where(query)
+                    .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
+                    .OrderBy(sort)
+                    .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                    .Take(listRequest.PageSize);
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
-
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QUeryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
-
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
                         requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
+                        items.AddRange(response);
                     }
                 }
-
                 var listResponse = ListResponse<TEntity>.Create(listRequest, items);
                 timer.Dispose();
                 DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted]",
-                    $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted] in {sw.Elapsed.TotalMilliseconds} ms",
-                    items.Count.ToString().ToKVP("recordCount"),
-                    new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
-
-
+                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted] in {sw.Elapsed.TotalMilliseconds} ms", items.Count.ToString().ToKVP("recordCount"), new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
                 return listResponse;
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] (query, sort, listRquest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
                 var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
 
-        protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
-                           System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ICategorized, ISummaryFactory, INoSQLEntity, INamedEntity, IRatedEntity, IAuditableEntity
+        protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query, System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ICategorized, ISummaryFactory, INoSQLEntity, INamedEntity, IRatedEntity, IAuditableEntity
         {
             try
             {
-                var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TEntityFactory>();
-                var requestCharge = 0.0;
-
                 if (listRequest.OrderBy != null && listRequest.OrderByDesc != null)
-                {
                     return ListResponse<TEntitySummary>.FromError("order by AND order by desc were both provided, must either be both empty or only provide one of the two.");
-                }
-
                 if (listRequest.OrderBy != null)
                 {
                     switch (listRequest.OrderBy.Value)
                     {
-                        case OrderByTypes.Name:
-                            sort = (ele => ele.Name);
-                            break;
-                        case OrderByTypes.Rating:
-                            sort = (ele => ele.Stars.ToString());
-                            break;
-                        case OrderByTypes.CreationDate:
-                            sort = (ele => ele.CreationDate);
-                            break;
-                        case OrderByTypes.LastUpdateDate:
-                            sort = (ele => ele.LastUpdatedDate);
-                            break;
+                        case OrderByTypes.Name: sort = ele => ele.Name; break;
+                        case OrderByTypes.Rating: sort = ele => ele.Stars.ToString(); break;
+                        case OrderByTypes.CreationDate: sort = ele => ele.CreationDate; break;
+                        case OrderByTypes.LastUpdateDate: sort = ele => ele.LastUpdatedDate; break;
                     }
                 }
-
                 System.Linq.Expressions.Expression<Func<TEntityFactory, string>> orderByDesc = null;
-
                 if (listRequest.OrderByDesc != null)
                 {
                     switch (listRequest.OrderByDesc.Value)
                     {
-                        case OrderByTypes.Name:
-                            orderByDesc = (ele => ele.Name);
-                            break;
-                        case OrderByTypes.Rating:
-                            orderByDesc = (ele => ele.Stars.ToString());
-                            break;
-                        case OrderByTypes.CreationDate:
-                            orderByDesc = (ele => ele.CreationDate);
-                            break;
-                        case OrderByTypes.LastUpdateDate:
-                            orderByDesc = (ele => ele.LastUpdatedDate);
-                            break;
+                        case OrderByTypes.Name: orderByDesc = ele => ele.Name; break;
+                        case OrderByTypes.Rating: orderByDesc = ele => ele.Stars.ToString(); break;
+                        case OrderByTypes.CreationDate: orderByDesc = ele => ele.CreationDate; break;
+                        case OrderByTypes.LastUpdateDate: orderByDesc = ele => ele.LastUpdatedDate; break;
                     }
                 }
-
-                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> entityTypeQuery = (qry) => qry.EntityType == typeof(TEntity).Name;
+                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> entityTypeQuery = qry => qry.EntityType == typeof(TEntity).Name;
                 System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> isDeletedQuery = qry => !qry.IsDeleted.IsDefined() || qry.IsDeleted == false;
-                if (listRequest.ShowDeleted)
-                    isDeletedQuery = qry => true;
-
-                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> isDraftQuery = (qry) => !qry.IsDraft.IsDefined() || qry.IsDraft == false;
-                if (listRequest.ShowDrafts)
-                    isDraftQuery = qry => true;
-
-                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> categoryQuery = (qry) => qry.Category.Key == listRequest.CategoryKey; ;
-                if (String.IsNullOrEmpty(listRequest.CategoryKey))
-                    categoryQuery = qry => true;
-
+                if (listRequest.ShowDeleted) isDeletedQuery = qry => true;
+                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> isDraftQuery = qry => !qry.IsDraft.IsDefined() || qry.IsDraft == false;
+                if (listRequest.ShowDrafts) isDraftQuery = qry => true;
+                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> categoryQuery = qry => qry.Category.Key == listRequest.CategoryKey;
+                if (String.IsNullOrEmpty(listRequest.CategoryKey)) categoryQuery = qry => true;
                 var container = await GetContainerAsync();
-                var baseQuery = container.GetItemLinqQueryable<TEntityFactory>();
-
-                var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
-                                                        .Where(query)
-                                                        .Where(entityTypeQuery)
-                                                        .Where(categoryQuery)
-                                                        .Where(isDeletedQuery)
-                                                        .Where(isDraftQuery);
-
-                if (orderByDesc != null)
-                    linqQuery = linqQuery.OrderByDescending(orderByDesc);
-                else if (sort != null)
-                    linqQuery = linqQuery.OrderBy(sort);
-
-                linqQuery = linqQuery.Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                                         .Take(listRequest.PageSize);
-
-                var page = 1;
-
+                var linqQuery = container.GetItemLinqQueryable<TEntityFactory>().Where(query).Where(entityTypeQuery).Where(categoryQuery).Where(isDeletedQuery).Where(isDraftQuery);
+                if (orderByDesc != null) linqQuery = linqQuery.OrderByDescending(orderByDesc);
+                else if (sort != null) linqQuery = linqQuery.OrderBy(sort);
+                linqQuery = linqQuery.Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize).Take(listRequest.PageSize);
                 using (var iterator = linqQuery.ToFeedIterator<TEntityFactory>())
                 {
-
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
-
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
+                        items.AddRange(response);
                     }
                 }
-
                 var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm => itm.CreateSummary() as TEntitySummary));
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
                 var categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).ToList();
                 var groupedCategories = categories.Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id);
                 listResponse.Categories = groupedCategories.Select(itm => itm.First()).ToList();
                 listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
-
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] in {sw.Elapsed.TotalMilliseconds} ms",
-                        items.Count.ToString().ToKVP("recordCount"),
-                        new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
-
                 return listResponse;
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
                 var listResponse = ListResponse<TEntitySummary>.Create(new List<TEntitySummary>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
 
-
-        protected async Task<ListResponse<TEntitySummary>> QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
-                   System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity
+        protected async Task<ListResponse<TEntitySummary>> QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query, System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity
         {
             try
             {
-                var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TEntityFactory>();
-                var requestCharge = 0.0;
-
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
-                        .Where(query)
-                        .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) || itm.Category.Key == listRequest.CategoryKey)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
-                        .OrderByDescending(sort)
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
-
-                var page = 1;
-
-
-
+                    .Where(query)
+                    .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) || itm.Category.Key == listRequest.CategoryKey)
+                    .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
+                    .OrderByDescending(sort)
+                    .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                    .Take(listRequest.PageSize);
                 using (var iterator = linqQuery.ToFeedIterator<TEntityFactory>())
                 {
-
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
-
                     while (iterator.HasMoreResults)
                     {
                         var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
+                        items.AddRange(response);
                     }
                 }
-
                 var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm => itm.CreateSummary() as TEntitySummary));
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
                 listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id).Select(itm => itm.First()).ToList();
-                if (listResponse.Categories.Any())
-                {
-                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
-                }
-
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] in {sw.Elapsed.TotalMilliseconds} ms",
-                        items.Count.ToString().ToKVP("recordCount"),
-                        new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
-
-
+                if (listResponse.Categories.Any()) listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
                 return listResponse;
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
                 var listResponse = ListResponse<TEntitySummary>.Create(new List<TEntitySummary>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
 
-        public async Task<ListResponse<TEntity>> QueryAsync(string sql, ListRequest listRequest, params QueryParameter[] sqlParams)
+        private async Task<ListResponse<TEntity>> QueryAsync(string sql, ListRequest listRequest, params QueryParameter[] sqlParams)
         {
             var query = new QueryDefinition(sql);
-
             Console.WriteLine(sql);
-
             foreach (var param in sqlParams)
             {
                 query = query.WithParameter(param.Name, param.Value);
                 Console.WriteLine($"\t{param.Name} - {param.Value}");
             }
-
-            var sw = Stopwatch.StartNew();
-            var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
-            var requestCharge = 0.0;
-
             var items = new List<TEntity>();
-
             var listResponse = ListResponse<TEntity>.Create(listRequest, items);
-
             var container = await GetContainerAsync();
             using (var resultSet = container.GetItemQueryIterator<TEntity>(query))
             {
-                var page = 1;
                 while (resultSet.HasMoreResults)
-                {
-                    var response = await resultSet.ReadNextAsync();
-                    if (_verboseLogging) Console.WriteLine($"[DocStorage] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                    requestCharge += response.RequestCharge;
-                    items.AddRange(response);
-                }
+                    items.AddRange(await resultSet.ReadNextAsync());
             }
-
-            timer.Dispose();
-            DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
             return listResponse;
         }
 
-        protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TEntitySummary : class, ISummaryData
+        private async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TEntitySummary : class, ISummaryData
         {
             try
             {
-                var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TEntitySummary>();
-                var requestCharge = 0.0;
-
                 var query = new QueryDefinition(sql);
-
                 foreach (var param in sqlParams)
-                {
                     query = query.WithParameter(param.Name, param.Value);
-                }
-
-                var page = 1;
-
-
                 var container = await GetContainerAsync();
-
                 using (var iterator = container.GetItemQueryIterator<TEntitySummary>(query))
                 {
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms");
-
                     while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
+                        items.AddRange(await iterator.ReadNextAsync());
                 }
-
-                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] Query {page++} Query Document {sql}; Timing {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {requestCharge}");
-
                 var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items);
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
                 listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id).Select(itm => itm.First()).ToList();
-                if (listResponse.Categories.Any())
-                {
-                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
-                }
-
+                if (listResponse.Categories.Any()) listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
                 return listResponse;
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
                 var listResponse = ListResponse<TEntitySummary>.Create(new List<TEntitySummary>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
 
-        protected async Task<ListResponse<TEntity>> QueryDescendingAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
-                          System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
+        protected async Task<ListResponse<TEntity>> QueryDescendingAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
         {
             try
             {
-                var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TEntity>();
-                var requestCharge = 0.0;
-
                 var container = await GetContainerAsync();
                 var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                        .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
-                        .OrderByDescending(sort)
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
-
-                var page = 1;
-
-
+                    .Where(query)
+                    .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
+                    .OrderByDescending(sort)
+                    .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
+                    .Take(listRequest.PageSize);
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
-
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryDescendingAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
-
                     while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryDescendingAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
+                        items.AddRange(await iterator.ReadNextAsync());
                 }
-
-                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryDescendingAsync] Query {page++} Query Document {linqQuery}; Timing {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {requestCharge}");
-
-
-                var listResponse = ListResponse<TEntity>.Create(listRequest, items);
-
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-                _logger.Trace(listRequest.ToString());
-                _logger.Trace(listResponse.ToString());
-                return listResponse;
+                return ListResponse<TEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryDescendingAsync] (query, sort, listRquest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
                 var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
 
-        public async Task<ListResponse<TMiscEntity>> QueryAsync<TMiscEntity>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TMiscEntity : class
+        private async Task<ListResponse<TMiscEntity>> QueryAsync<TMiscEntity>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TMiscEntity : class
         {
             try
             {
-                var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TMiscEntity>();
-                var requestCharge = 0.0;
-
                 var query = new QueryDefinition(sql);
-
                 foreach (var param in sqlParams)
-                {
                     query = query.WithParameter(param.Name, param.Value);
-                }
-
-                var page = 1;
                 var container = await GetContainerAsync();
                 using (var iterator = container.GetItemQueryIterator<TMiscEntity>(query))
                 {
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms");
-
                     while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
+                        items.AddRange(await iterator.ReadNextAsync());
                 }
-
-                var listResponse = ListResponse<TMiscEntity>.Create(listRequest, items);
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-                _logger.Trace($"[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] QUery {sql}, Record Count: {items.Count} in {sw.Elapsed.TotalMilliseconds}ms");
-                foreach (var param in sqlParams)
-                {
-                    _logger.Trace($"\t\t[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] {sql}");
-                    _logger.Trace($"\t\t[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] {param}");
-                }
-
-                _logger.Trace("--");
-
-
-                return listResponse;
+                return ListResponse<TMiscEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<MiscEntity>] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
                 var listResponse = ListResponse<TMiscEntity>.Create(new List<TMiscEntity>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
 
-        public async Task<List<TMiscEntity>> QueryAsync<TMiscEntity>(string sql, params QueryParameter[] sqlParams) where TMiscEntity : class
+        private async Task<List<TMiscEntity>> QueryAsync<TMiscEntity>(string sql, params QueryParameter[] sqlParams) where TMiscEntity : class
         {
             try
             {
-                var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TMiscEntity>();
-                var requestCharge = 0.0;
-
                 var query = new QueryDefinition(sql);
-
                 foreach (var param in sqlParams)
-                {
                     query = query.WithParameter(param.Name, param.Value);
-                }
-
-                var page = 1;
-
-                _logger.Trace($"[DocStorage__QueryAsync<TMiscEntity>]");
-                foreach (var param in sqlParams)
-                {
-                    _logger.Trace($"\t\t[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] {sql}");
-                    _logger.Trace($"\t\t[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] {param}");
-                }
-
                 var container = await GetContainerAsync();
-
-
                 using (var iterator = container.GetItemQueryIterator<TMiscEntity>(query))
                 {
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms");
-
                     while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] Page {page++} Query Document {sql} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
+                        items.AddRange(await iterator.ReadNextAsync());
                 }
-
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-                _logger.Trace($"\t\t[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<TMiscEntity>] Record Count: {items.Count} in {sw.Elapsed.TotalMilliseconds}ms");
-                _logger.Trace("--");
-
-
                 return items;
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TMiscEntity).Name}>__QueryAsync<MiscEntity>] (query, sort, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
                 throw;
             }
         }
 
-        /// <summary>
-        /// Return all objects, independent of entity type
-        /// </summary>
-        /// <param name="query"></param>
-        /// <param name="listRequest"></param>
-        /// <returns></returns>
         protected async Task<ListResponse<TEntity>> QueryAllAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
             if (_stoargeProvider == StorageProviderTypes.CosmosDB)
                 return await _storage.QueryAllAsync(query, listRequest);
-
             try
             {
-                var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TEntity>();
                 var container = await GetContainerAsync();
-                var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                        .Where(query)
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
-
-                var requestCharge = 0.0;
-
-                var page = 1;
-
+                var linqQuery = container.GetItemLinqQueryable<TEntity>().Where(query).Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize).Take(listRequest.PageSize);
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
                     while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAllAsync]  Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
+                        items.AddRange(await iterator.ReadNextAsync());
                 }
-
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
                 return ListResponse<TEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAllAsync] (query, listRequest)", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
-
                 var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
 
-        protected async Task<ListResponse<TEntity>> DescOrderQueryAsync<TKey>(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
-                                                    System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy,
-                                                    ListRequest listRequest)
+        protected async Task<ListResponse<TEntity>> DescOrderQueryAsync<TKey>(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy, ListRequest listRequest)
         {
             if (_stoargeProvider == StorageProviderTypes.CosmosDB)
                 return await _storage.DescOrderQueryAsync(query, orderBy, listRequest);
-
             try
             {
-                var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
                 var items = new List<TEntity>();
-
                 var container = await GetContainerAsync();
-                var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                        .Where(query)
-                        .OrderByDescending(orderBy)
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
-
-                var page = 1;
-                var requestCharge = 0.0;
-
+                var linqQuery = container.GetItemLinqQueryable<TEntity>().Where(query).OrderByDescending(orderBy).Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize).Take(listRequest.PageSize);
                 using (var iterator = linqQuery.ToFeedIterator<TEntity>())
                 {
                     while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__DescOrderQueryAsync<TKey>] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
+                        items.AddRange(await iterator.ReadNextAsync());
                 }
-
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
                 return ListResponse<TEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__DescOrderQueryAsync<TKey>]", ex, typeof(TEntity).Name.ToKVP("entityType"));
-
                 var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));
                 return listResponse;
             }
         }
-
-        //public void Dispose()
-        //{
-        //    if (_cosmosClient != null)
-        //    {
-        //        _cosmosClient.Dispose();
-        //        _cosmosClient = null;
-        //    }
-        //}
 
         protected bool Verbose
         {
