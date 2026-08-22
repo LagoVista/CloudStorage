@@ -23,7 +23,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
     /// <summary>
     /// Resolves the logical document storage provider without requiring changes to the
-    /// existing repository constructor signatures.  Cosmos remains the default so adding
+    /// existing repository constructor signatures. Cosmos remains the default so adding
     /// this seam is behavior preserving for every existing deployment.
     /// </summary>
     public static class DocumentStorageSettingsResolver
@@ -39,14 +39,10 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public static DocumentStorageSettings Resolve(string endpoint, string sharedKey, string databaseName, string providerSetting)
         {
-            if (String.IsNullOrWhiteSpace(endpoint))
-                throw new ArgumentNullException(nameof(endpoint));
-
-            if (String.IsNullOrWhiteSpace(databaseName))
-                throw new ArgumentNullException(nameof(databaseName));
+            if (String.IsNullOrWhiteSpace(endpoint)) throw new ArgumentNullException(nameof(endpoint));
+            if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
 
             var provider = ParseProvider(providerSetting);
-
             return new DocumentStorageSettings()
             {
                 Provider = provider,
@@ -58,8 +54,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public static DocumentStorageProviderType ParseProvider(string providerSetting)
         {
-            if (String.IsNullOrWhiteSpace(providerSetting))
-                return DocumentStorageProviderType.Cosmos;
+            if (String.IsNullOrWhiteSpace(providerSetting)) return DocumentStorageProviderType.Cosmos;
 
             switch (providerSetting.Trim().ToLowerInvariant())
             {
@@ -80,27 +75,20 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         private static string GetProviderSetting(string databaseName)
         {
-            var databaseSpecificSetting = Environment.GetEnvironmentVariable(
-                ProviderEnvironmentVariablePrefix + NormalizeEnvironmentKey(databaseName));
-
-            if (!String.IsNullOrWhiteSpace(databaseSpecificSetting))
-                return databaseSpecificSetting;
-
+            var databaseSpecificSetting = Environment.GetEnvironmentVariable(ProviderEnvironmentVariablePrefix + NormalizeEnvironmentKey(databaseName));
+            if (!String.IsNullOrWhiteSpace(databaseSpecificSetting)) return databaseSpecificSetting;
             return Environment.GetEnvironmentVariable(ProviderEnvironmentVariable);
         }
 
         private static string NormalizeEnvironmentKey(string value)
         {
-            if (String.IsNullOrWhiteSpace(value))
-                return String.Empty;
+            if (String.IsNullOrWhiteSpace(value)) return String.Empty;
 
             var result = new StringBuilder(value.Length);
             foreach (var ch in value)
             {
-                if (Char.IsLetterOrDigit(ch))
-                    result.Append(Char.ToUpperInvariant(ch));
-                else
-                    result.Append('_');
+                if (Char.IsLetterOrDigit(ch)) result.Append(Char.ToUpperInvariant(ch));
+                else result.Append('_');
             }
 
             return result.ToString();
@@ -108,39 +96,23 @@ namespace LagoVista.CloudStorage.DocumentDB
     }
 
     /// <summary>
-    /// Single construction point for document database implementations. Phase 1 keeps
-    /// Cosmos as the only active implementation; Mongo is deliberately recognized by the
-    /// resolver so the configuration contract is stable before the Mongo provider lands.
+    /// Construction point for the rich entity document repository implementation.
+    /// IDocumentCollection already supports Cosmos and Mongo; this factory remains Cosmos-only
+    /// until MongoDBStorage implements the full entity workflow contract used by DocumentDBRepoBase.
     /// </summary>
     public static class DocumentStorageFactory
     {
-        public static IDocumentDBRepoBase<TEntity> Create<TEntity>(
-            DocumentStorageSettings settings,
-            IAdminLogger logger,
-            ICacheProvider cacheProvider = null,
-            IDependencyManager dependencyManager = null,
-            ICosmosClientProvider cosmosClientProvider = null)
-            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public static IDocumentDBRepoBase<TEntity> Create<TEntity>(DocumentStorageSettings settings, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, ICosmosClientProvider cosmosClientProvider = null) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            if (settings == null)
-                throw new ArgumentNullException(nameof(settings));
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
 
             switch (settings.Provider)
             {
                 case DocumentStorageProviderType.Cosmos:
-                    return new CosmosDBStorage<TEntity>(
-                        settings.Endpoint,
-                        settings.SharedKey,
-                        settings.DatabaseName,
-                        logger,
-                        cacheProvider,
-                        dependencyManager,
-                        cosmosClientProvider);
+                    return new CosmosDBStorage<TEntity>(settings.Endpoint, settings.SharedKey, settings.DatabaseName, logger, cacheProvider, dependencyManager, cosmosClientProvider);
 
                 case DocumentStorageProviderType.Mongo:
-                    throw new NotSupportedException(
-                        "Mongo document storage is selected but the Mongo provider is not implemented yet. " +
-                        "Phase 1 intentionally adds the provider seam while retaining Cosmos behavior.");
+                    throw new NotSupportedException("Mongo IDocumentCollection support is available, but the rich IDocumentDBRepoBase provider used by DocumentDBRepoBase is not implemented yet.");
 
                 default:
                     throw new InvalidOperationException($"Unsupported document storage provider '{settings.Provider}'.");
