@@ -1,5 +1,7 @@
+using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
 using System;
 using System.Collections.Generic;
@@ -95,6 +97,37 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
 
             return items;
+        }
+
+        public async Task<IEnumerable<TResult>> QueryAsync<TResult>(DocumentQueryRequest request, CancellationToken cancellationToken = default) where TResult : class
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+
+            var query = CreateQueryDefinition(request);
+            var client = _cosmosClientProvider.GetClient(_endpoint, _sharedKey);
+            var container = client.GetContainer(_databaseName, _collectionName);
+            var iterator = container.GetItemQueryIterator<TResult>(query);
+            var items = new List<TResult>();
+
+            while (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+                items.AddRange(response);
+            }
+
+            return items;
+        }
+
+        private static QueryDefinition CreateQueryDefinition(DocumentQueryRequest request)
+        {
+            switch (request.QueryType)
+            {
+                case DocumentQueryType.CustomerIndustryNicheSalesStageCounts:
+                    return new QueryDefinition("SELECT c.Industry, c.IndustryNiche, c.SalesStage, COUNT(c.id) AS CountLeads FROM c WHERE c.EntityType = 'CustomerEntity' AND c.OwnerOrganization.Id = @orgId GROUP BY c.Industry, c.IndustryNiche, c.SalesStage").WithParameter("@orgId", request.GetRequired<string>("orgId"));
+
+                default:
+                    throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Cosmos provider.");
+            }
         }
     }
 }
