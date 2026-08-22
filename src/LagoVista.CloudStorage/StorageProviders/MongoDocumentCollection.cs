@@ -13,6 +13,11 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.StorageProviders
 {
+    /// <summary>
+    /// Provider-neutral document collection operations backed by MongoDB.
+    /// Mongo's standard CLR Id convention is intentional: during Cosmos-to-Mongo migration,
+    /// the Cosmos "id" value must become Mongo "_id" rather than retaining a duplicate "id" field.
+    /// </summary>
     public sealed class MongoDocumentCollection : IDocumentCollection
     {
         private static readonly ConcurrentDictionary<string, MongoClient> _clients = new ConcurrentDictionary<string, MongoClient>(StringComparer.Ordinal);
@@ -94,7 +99,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         private async Task<IEnumerable<TResult>> QueryCustomerIndustryNicheSalesStageCountsAsync<TResult>(DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
         {
             var orgId = request.GetRequired<string>("orgId");
-            var pipeline = new[]
+            PipelineDefinition<BsonDocument, BsonDocument> pipeline = new BsonDocument[]
             {
                 new BsonDocument("$match", new BsonDocument
                 {
@@ -122,7 +127,7 @@ namespace LagoVista.CloudStorage.StorageProviders
                 })
             };
 
-            var documents = await GetBsonCollection().Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false);
+            var documents = await GetBsonCollection().Aggregate(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false);
             var items = new List<TResult>(documents.Count);
             foreach (var document in documents) items.Add(BsonSerializer.Deserialize<TResult>(document));
             return items;
