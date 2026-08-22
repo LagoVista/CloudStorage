@@ -50,5 +50,30 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             return ListResponse<TDocument>.Create(listRequest, items);
         }
+
+        public async Task<ListResponse<TProjection>> QueryAsync<TDocument, TProjection, TSort>(Expression<Func<TDocument, bool>> query, Expression<Func<TDocument, TProjection>> projection, Expression<Func<TDocument, TSort>> sort, ListRequest listRequest, CancellationToken cancellationToken = default) where TDocument : class where TProjection : class
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (projection == null) throw new ArgumentNullException(nameof(projection));
+            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+
+            var client = _cosmosClientProvider.GetClient(_endpoint, _sharedKey);
+            var container = client.GetContainer(_databaseName, _collectionName);
+            var linqQuery = container.GetItemLinqQueryable<TDocument>().Where(query);
+            if (sort != null) linqQuery = linqQuery.OrderBy(sort);
+
+            var projectedQuery = linqQuery.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Take(listRequest.PageSize).Select(projection);
+            var items = new List<TProjection>();
+            using (var iterator = projectedQuery.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults)
+                {
+                    var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+                    items.AddRange(response);
+                }
+            }
+
+            return ListResponse<TProjection>.Create(listRequest, items);
+        }
     }
 }
