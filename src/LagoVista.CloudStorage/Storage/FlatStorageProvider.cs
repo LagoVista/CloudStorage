@@ -1,7 +1,3 @@
-// --- BEGIN CODE INDEX META (do not edit) ---
-// ContentHash: pending
-// IndexVersion: 2
-// --- END CODE INDEX META ---
 namespace LagoVista.CloudStorage.Storage
 {
     /// <summary>
