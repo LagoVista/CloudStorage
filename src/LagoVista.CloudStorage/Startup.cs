@@ -22,6 +22,7 @@ namespace LagoVista.CloudStorage
             services.AddScoped<IStorageUtils, StorageUtils>();
             services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
             services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
+            services.AddScoped<IDocumentCollectionFactory, DocumentCollectionFactory>();
             services.AddScoped<ICategoryManager, CategoryManager>();
             services.AddScoped<ITableSizer, TableSizer>();
             services.AddScoped<INodeLocatorTableWriterBatched, NodeLocatorTableWriterBatched>();
