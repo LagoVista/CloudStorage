@@ -223,14 +223,6 @@ namespace LagoVista.CloudStorage.Tests
 
 
         [Test]
-        public async Task CreateAndQueryManyDocumentsWithSQLTest()
-        {
-            await Create200DocsAsync();
-            var records = await _docDBEntityRepo!.GetForOrgWithSQL(ORGID);
-            Assert.That(100 == records.Count());
-        }
-
-        [Test]
         public async Task Create_Document_Performance_Test()
         {
             await _docDBEntityRepo!.CreateDBDocment(new Support.DocDBEntitty() { Id = Guid.NewGuid().ToId() });

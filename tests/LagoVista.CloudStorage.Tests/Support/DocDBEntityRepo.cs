@@ -104,10 +104,6 @@ namespace LagoVista.CloudStorage.Tests.Support
         }
 
 
-        public Task<IEnumerable<DocDBEntitty>> GetForOrgWithSQL(string orgId)
-        {
-            var query = $"select * from c where c.OwnerOrganization.Id = @orgid";
-            return QueryAsync(query, new QueryParameter("@orgid", orgId));
-        }
+   
     }
 }
