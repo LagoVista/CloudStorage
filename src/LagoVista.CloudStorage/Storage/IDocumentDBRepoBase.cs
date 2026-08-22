@@ -25,7 +25,10 @@ namespace LagoVista.CloudStorage.DocumentDB
         Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id);
         Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id, string partitionKey);
         Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query);
+
+        [Obsolete("Cosmos SQL queries are provider-specific. Use expression-based document queries instead.")]
         Task<IEnumerable<TEntity>> QueryAsync(string sql, params QueryParameter[] sqlParams);
+
         Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest);
         Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
                                 System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest);
@@ -35,7 +38,10 @@ namespace LagoVista.CloudStorage.DocumentDB
         Task<ListResponse<TEntitySummary>> QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
                    System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory :
             class, ISummaryFactory, INoSQLEntity;
+
+        [Obsolete("Cosmos SQL queries are provider-specific. Use expression-based summary/projection queries instead.")]
         Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TEntitySummary : class;
+
         Task<ListResponse<TEntity>> QueryDescendingAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
                       System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest);
         Task<ListResponse<TEntity>> QueryAllAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest);
@@ -43,6 +49,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                                                     System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy,
                                                     ListRequest listRequest);
 
+        [Obsolete("Cosmos SQL queries are provider-specific. Use expression-based projection queries instead.")]
         Task<ListResponse<TMiscEntity>> QueryAsync<TMiscEntity>(string sql, ListRequest listRequest, params QueryParameter[] sqlParams) where TMiscEntity : class;
     }
 }
