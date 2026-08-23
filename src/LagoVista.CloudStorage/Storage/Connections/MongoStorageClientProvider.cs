@@ -1,41 +1,32 @@
 using MongoDB.Driver;
 using System;
+using System.Collections.Concurrent;
 
 namespace LagoVista.CloudStorage.Storage
 {
-    public interface IMongoStorageClientProvider
+    public interface IMongoStorageClientFactory
     {
-        MongoStorageSettings Settings { get; }
-        IMongoClient Client { get; }
-        IMongoDatabase GetDatabase(string databaseName = null);
+        IMongoClient GetClient(string connectionString);
+        IMongoDatabase GetDatabase(string connectionString, string databaseName);
     }
 
-    public sealed class MongoStorageClientProvider : IMongoStorageClientProvider
+    public sealed class MongoStorageClientFactory : IMongoStorageClientFactory
     {
-        private readonly Lazy<IMongoClient> _client;
+        private readonly ConcurrentDictionary<string, IMongoClient> _clients =
+            new ConcurrentDictionary<string, IMongoClient>(StringComparer.Ordinal);
 
-        public MongoStorageClientProvider(MongoStorageSettings settings)
+        public IMongoClient GetClient(string connectionString)
         {
-            Settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _client = new Lazy<IMongoClient>(() => new MongoClient(Settings.ConnectionString), true);
+            if (String.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
+
+            return _clients.GetOrAdd(connectionString, value => new MongoClient(value));
         }
 
-        public MongoStorageSettings Settings { get; }
-
-        public IMongoClient Client => _client.Value;
-
-        public IMongoDatabase GetDatabase(string databaseName = null)
+        public IMongoDatabase GetDatabase(string connectionString, string databaseName)
         {
-            var resolvedDatabaseName = String.IsNullOrWhiteSpace(databaseName)
-                ? Settings.DefaultDatabaseName
-                : databaseName;
+            if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
 
-            if (String.IsNullOrWhiteSpace(resolvedDatabaseName))
-            {
-                throw new InvalidOperationException("A Mongo database name must be supplied explicitly or configured as DefaultDatabaseName.");
-            }
-
-            return Client.GetDatabase(resolvedDatabaseName);
+            return GetClient(connectionString).GetDatabase(databaseName);
         }
     }
 }
