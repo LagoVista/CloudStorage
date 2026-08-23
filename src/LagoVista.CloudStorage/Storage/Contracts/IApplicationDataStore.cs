@@ -8,12 +8,13 @@ namespace LagoVista.CloudStorage.Storage
     /// Insert and update remain explicit operations rather than being collapsed
     /// into scratch-store upsert semantics.
     /// </summary>
-    public interface IApplicationDataStore<TEntity>
+    public interface IApplicationDataStore<TRecord>
+        where TRecord : IApplicationDataRecord
     {
-        Task<TEntity> GetAsync(StorageKey key, CancellationToken cancellationToken = default);
-        Task InsertAsync(TEntity entity, CancellationToken cancellationToken = default);
-        Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
+        Task<TRecord> GetAsync(StorageKey key, CancellationToken cancellationToken = default);
+        Task InsertAsync(TRecord record, CancellationToken cancellationToken = default);
+        Task UpdateAsync(TRecord record, CancellationToken cancellationToken = default);
         Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default);
-        Task<StoragePageResult<TEntity>> QueryAsync(StorageQuery<TEntity> query, CancellationToken cancellationToken = default);
+        Task<StoragePageResult<TRecord>> QueryAsync(StorageQuery<TRecord> query, CancellationToken cancellationToken = default);
     }
 }
