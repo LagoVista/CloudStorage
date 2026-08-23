@@ -16,6 +16,8 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Tests
 {
+    [Category("Integration")]
+    [Category("Cosmos")]
     public class DocumentStorageTests
     {
         private string _accountId;
