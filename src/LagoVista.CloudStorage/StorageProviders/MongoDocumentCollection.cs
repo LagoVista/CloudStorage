@@ -159,7 +159,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (request.QueryType == DocumentQueryType.EntityListCategories)
             {
                 pipeline.Add(new BsonDocument("$group", new BsonDocument("_id", new BsonDocument { { "Id", "$Category.Id" }, { "Key", "$Category.Key" }, { "Text", "$Category.Text" } } )));
-                pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", "$_id.Id" }, { "Key", "$_id.Key" }, { "Text", "$_id.Text" } }));
+                pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", 0 }, { "Id", "$_id.Id" }, { "Key", "$_id.Key" }, { "Text", "$_id.Text" } }));
                 pipeline.Add(new BsonDocument("$sort", new BsonDocument("Text", 1)));
             }
             else
@@ -175,7 +175,7 @@ namespace LagoVista.CloudStorage.StorageProviders
                 if (request.QueryType == DocumentQueryType.EntityListItems)
                     pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", 1 }, { "Icon", 1 }, { "Name", 1 }, { "Key", 1 }, { "IsPublic", 1 }, { "IsDraft", 1 }, { "IsDeleted", 1 }, { "Category", "$Category.Text" }, { "Stars", 1 }, { "RatingsCount", 1 }, { "Labels", 1 }, { "Status", 1 } }));
                 else
-                    pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", 1 }, { "Key", 1 }, { "Text", "$Name" } }));
+                    pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", 0 }, { "Id", "$_id" }, { "Key", 1 }, { "Text", "$Name" } }));
             }
 
             return Deserialize<TResult>(await GetBsonCollection().Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false));
