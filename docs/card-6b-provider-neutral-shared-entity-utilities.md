@@ -142,13 +142,13 @@ For converted application-facing behavior, prefer semantic parity tests that run
 - [x] Add disposable Mongo + Cosmos emulator storage lab.
 - [x] Add repeatable direct Cosmos consumer audit script.
 - [x] Add gated finish-line runbook for sandbox parity, migration, configuration, and real non-production verification.
-- [ ] Add deterministic Cosmos emulator settings to `TestConnections` and prove basic SDK connectivity.
-- [ ] Add a `CosmosSandbox` NUnit category covering the Cosmos operations required by Card 6B.
+- [x] Add deterministic Cosmos emulator settings to `TestConnections` and prove basic SDK connectivity.
+- [x] Add a `CosmosSandbox` NUnit category covering the Cosmos operations required by Card 6B.
 - [ ] Complete a repo-wide inventory of every production CloudStorage direct Cosmos reference, not only shared-entity repositories.
 - [ ] Search by SDK namespace and Cosmos-specific types/operations so indirect direct-access paths are not missed.
 - [ ] Create a disposition table for every production Cosmos consumer: provider-neutralize, Cosmos provider implementation, intentional Cosmos-only infrastructure, or obsolete/deferred.
 - [ ] Refactor `EntityUtilsRepository` so all normal application reads and writes follow the selected document provider.
-- [ ] Refactor `EntityPreparationCandidateRepository` so candidate/summary reads follow the selected document provider.
+- [x] Refactor `EntityPreparationCandidateRepository` so candidate/summary reads follow the selected document provider.
 - [ ] Refactor `EntityListItemRepo<TEntity>` raw Cosmos list/header/category queries to provider-neutral query capabilities.
 - [ ] Refactor the application-facing portions of `StorageUtils` to follow the selected provider.
 - [ ] Classify and address `CosmosSyncRepository` method-by-method.
@@ -157,7 +157,7 @@ For converted application-facing behavior, prefer semantic parity tests that run
 - [ ] Add provider-neutral partial-update capability if required by existing patch semantics.
 - [ ] Add focused Mongo tests for every converted application-facing path.
 - [ ] Preserve/add Cosmos regression coverage for converted paths.
-- [ ] Add a `StorageParity` suite that executes equivalent shared-entity scenarios against local Cosmos and Mongo.
+- [x] Add a `StorageParity` suite that executes equivalent shared-entity scenarios against local Cosmos and Mongo.
 - [ ] Run the real Cosmos-to-Mongo migration service inside the storage lab and validate routing, transforms, idempotency, continuation, and counts where emulator support permits.
 - [ ] Verify cache invalidation, dependency updates, RAG side effects, revision behavior, and other workflow semantics remain correct after provider-neutralization.
 - [ ] Search consuming solution repositories for direct Cosmos access to the same document databases and capture additional cutover blockers.
