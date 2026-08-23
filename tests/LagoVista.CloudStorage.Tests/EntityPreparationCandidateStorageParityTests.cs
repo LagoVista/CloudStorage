@@ -30,9 +30,9 @@ namespace LagoVista.CloudStorage.Tests
         [Test]
         public async Task EntityPreparationCandidateRepository_CosmosAndMongo_ReturnEquivalentBusinessResults()
         {
-            var cosmosDatabaseName = $"CloudStorageCandidateParityCosmos_{Guid.NewGuid():N}";
+            var cosmosDatabaseName = $"CandidateParityCosmos_{Guid.NewGuid():N}";
             var mongoLogicalDatabaseName = $"CandidateParityMongo{Guid.NewGuid():N}";
-            var mongoDatabaseName = $"CloudStorageCandidateParityMongo_{Guid.NewGuid():N}";
+            var mongoDatabaseName = $"CandidateParityMongo_{Guid.NewGuid():N}";
             var mongoConnectionString = TestConnections.TestMongoDocumentStorage.BuildConnectionString();
             var normalizedMongoLogicalDatabaseName = mongoLogicalDatabaseName.ToUpperInvariant();
             var providerVariable = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + normalizedMongoLogicalDatabaseName;
