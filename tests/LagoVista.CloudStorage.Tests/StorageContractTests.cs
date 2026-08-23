@@ -21,6 +21,8 @@ namespace LagoVista.CloudStorage.Tests
 
         private class FakeAppendStore : IAppendHistoryStore<TestEntity>
         {
+            public FakeAppendStore() { }
+
             public Task InsertAsync(TestEntity entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
             public Task InsertBatchAsync(IEnumerable<TestEntity> entities, CancellationToken cancellationToken = default) => Task.CompletedTask;
             public Task<StoragePageResult<TestEntity>> QueryAsync(HistoryQuery<TestEntity> query, CancellationToken cancellationToken = default) =>
@@ -29,6 +31,8 @@ namespace LagoVista.CloudStorage.Tests
 
         private class FakeScratchStore : IScratchStore<TestEntity>
         {
+            public FakeScratchStore() { }
+
             public Task<TestEntity> GetAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.FromResult<TestEntity>(null);
             public Task UpsertAsync(TestEntity entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
             public Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -38,6 +42,8 @@ namespace LagoVista.CloudStorage.Tests
 
         private class FakeFlatDocumentStore : IFlatDocumentStore<TestEntity>
         {
+            public FakeFlatDocumentStore() { }
+
             public Task<TestEntity> GetAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.FromResult<TestEntity>(null);
             public Task InsertAsync(TestEntity entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
             public Task UpdateAsync(TestEntity entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
