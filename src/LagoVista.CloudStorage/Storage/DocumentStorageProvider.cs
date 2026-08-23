@@ -13,23 +13,34 @@ namespace LagoVista.CloudStorage.DocumentDB
         Mongo
     }
 
+    public sealed class MongoDocumentStorageSettings
+    {
+        public string ConnectionString { get; set; }
+        public string DatabaseName { get; set; }
+    }
+
     public sealed class DocumentStorageSettings
     {
         public DocumentStorageProviderType Provider { get; set; }
         public string Endpoint { get; set; }
         public string SharedKey { get; set; }
         public string DatabaseName { get; set; }
+        public MongoDocumentStorageSettings Mongo { get; set; }
     }
 
     /// <summary>
-    /// Resolves the logical document storage provider without requiring changes to the
-    /// existing repository constructor signatures. Cosmos remains the default so adding
-    /// this seam is behavior preserving for every existing deployment.
+    /// Resolves provider selection independently from provider credentials. Cosmos remains the
+    /// default and retains its existing constructor settings. Mongo uses explicit configuration
+    /// so both providers can be configured in the same process for migration and cutover.
     /// </summary>
     public static class DocumentStorageSettingsResolver
     {
         public const string ProviderEnvironmentVariable = "NUVIOT_DOCUMENT_STORAGE_PROVIDER";
         public const string ProviderEnvironmentVariablePrefix = "NUVIOT_DOCUMENT_STORAGE_PROVIDER_";
+        public const string MongoConnectionStringEnvironmentVariable = "NUVIOT_MONGO_CONNECTION_STRING";
+        public const string MongoConnectionStringEnvironmentVariablePrefix = "NUVIOT_MONGO_CONNECTION_STRING_";
+        public const string MongoDatabaseEnvironmentVariable = "NUVIOT_MONGO_DATABASE";
+        public const string MongoDatabaseEnvironmentVariablePrefix = "NUVIOT_MONGO_DATABASE_";
 
         public static DocumentStorageSettings Resolve(string endpoint, string sharedKey, string databaseName)
         {
@@ -39,17 +50,39 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public static DocumentStorageSettings Resolve(string endpoint, string sharedKey, string databaseName, string providerSetting)
         {
-            if (String.IsNullOrWhiteSpace(endpoint)) throw new ArgumentNullException(nameof(endpoint));
+            return Resolve(endpoint, sharedKey, databaseName, providerSetting, null);
+        }
+
+        public static DocumentStorageSettings Resolve(string endpoint, string sharedKey, string databaseName, string providerSetting, MongoDocumentStorageSettings mongoSettings)
+        {
             if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
 
             var provider = ParseProvider(providerSetting);
+            if (provider == DocumentStorageProviderType.Cosmos && String.IsNullOrWhiteSpace(endpoint)) throw new ArgumentNullException(nameof(endpoint));
+
             return new DocumentStorageSettings()
             {
                 Provider = provider,
                 Endpoint = endpoint,
                 SharedKey = sharedKey,
-                DatabaseName = databaseName
+                DatabaseName = databaseName,
+                Mongo = provider == DocumentStorageProviderType.Mongo ? ValidateMongoSettings(mongoSettings ?? ResolveMongo(databaseName)) : mongoSettings
             };
+        }
+
+        public static MongoDocumentStorageSettings ResolveMongo(string logicalDatabaseName)
+        {
+            if (String.IsNullOrWhiteSpace(logicalDatabaseName)) throw new ArgumentNullException(nameof(logicalDatabaseName));
+
+            var normalizedDatabaseName = NormalizeEnvironmentKey(logicalDatabaseName);
+            var connectionString = GetEnvironmentSetting(MongoConnectionStringEnvironmentVariablePrefix + normalizedDatabaseName, MongoConnectionStringEnvironmentVariable);
+            var databaseName = GetEnvironmentSetting(MongoDatabaseEnvironmentVariablePrefix + normalizedDatabaseName, MongoDatabaseEnvironmentVariable);
+
+            return ValidateMongoSettings(new MongoDocumentStorageSettings()
+            {
+                ConnectionString = connectionString,
+                DatabaseName = String.IsNullOrWhiteSpace(databaseName) ? logicalDatabaseName : databaseName
+            });
         }
 
         public static DocumentStorageProviderType ParseProvider(string providerSetting)
@@ -73,11 +106,25 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
+        private static MongoDocumentStorageSettings ValidateMongoSettings(MongoDocumentStorageSettings settings)
+        {
+            if (settings == null) throw new InvalidOperationException("Mongo document storage settings are required when Mongo is selected.");
+            if (String.IsNullOrWhiteSpace(settings.ConnectionString)) throw new InvalidOperationException($"Mongo document storage connection string is required. Configure {MongoConnectionStringEnvironmentVariable} or its database-specific override.");
+            if (!settings.ConnectionString.StartsWith("mongodb://", StringComparison.OrdinalIgnoreCase) && !settings.ConnectionString.StartsWith("mongodb+srv://", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Mongo document storage connection string must use mongodb:// or mongodb+srv://.");
+            if (String.IsNullOrWhiteSpace(settings.DatabaseName)) throw new InvalidOperationException("Mongo document storage database name is required.");
+            return settings;
+        }
+
         private static string GetProviderSetting(string databaseName)
         {
-            var databaseSpecificSetting = Environment.GetEnvironmentVariable(ProviderEnvironmentVariablePrefix + NormalizeEnvironmentKey(databaseName));
+            return GetEnvironmentSetting(ProviderEnvironmentVariablePrefix + NormalizeEnvironmentKey(databaseName), ProviderEnvironmentVariable);
+        }
+
+        private static string GetEnvironmentSetting(string specificVariableName, string globalVariableName)
+        {
+            var databaseSpecificSetting = Environment.GetEnvironmentVariable(specificVariableName);
             if (!String.IsNullOrWhiteSpace(databaseSpecificSetting)) return databaseSpecificSetting;
-            return Environment.GetEnvironmentVariable(ProviderEnvironmentVariable);
+            return Environment.GetEnvironmentVariable(globalVariableName);
         }
 
         private static string NormalizeEnvironmentKey(string value)
