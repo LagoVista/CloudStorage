@@ -1,9 +1,11 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Utils;
 using LagoVista.Core.Attributes;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
+using LagoVista.Core.Models.UIMetaData;
 using LagoVista.IoT.Logging.Loggers;
 using LagoVista.IoT.Logging.Utils;
 using Microsoft.Azure.Cosmos;
@@ -118,6 +120,17 @@ namespace LagoVista.CloudStorage.Tests
                 Assert.That(ToKeys(mongoLimited), Is.EqualTo(ToKeys(cosmosLimited)));
                 Assert.That(cosmosLimited.Count, Is.EqualTo(1));
                 Assert.That(cosmosLimited[0].Name, Is.EqualTo("Alpha"));
+
+                var listRequest = new ListRequest { PageIndex = 1, PageSize = 2 };
+                var org = EntityHeader.Create(OrganizationId, "Parity Organization");
+                var cosmosList = await cosmosRepository.GetAllEntitiesByTypeAsync(EntityType, listRequest, null, org);
+                var mongoList = await mongoRepository.GetAllEntitiesByTypeAsync(EntityType, listRequest, null, org);
+                Assert.That(ToKeys(mongoList.Model), Is.EqualTo(ToKeys(cosmosList.Model)));
+                Assert.That(ToKeys(cosmosList.Model), Is.EqualTo(new[]
+                {
+                    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA|Alpha",
+                    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC|Charlie"
+                }));
             }
             finally
             {
