@@ -71,7 +71,7 @@ namespace LagoVista.CloudStorage.Tests
         [Test]
         public async Task RepositoryMongoPath_CreateGetUpdateQuerySoftDeleteAndHardDelete_WorksEndToEnd()
         {
-            var entity = CreateEntity("ENTITY1", "Alpha", 1);
+            var entity = CreateEntity("4375241C737C4D25938E8C69B0C13E40", "Alpha", 1);
 
             var createResponse = await _repository.CreateAsync(entity);
             Assert.That(createResponse.Resource.Id, Is.EqualTo(entity.Id));
@@ -92,7 +92,7 @@ namespace LagoVista.CloudStorage.Tests
             Assert.That(updateResponse.Resource.Name, Is.EqualTo("Beta"));
             Assert.That(updateResponse.Resource.Revision, Is.GreaterThan(0));
 
-            await _repository.CreateAsync(CreateEntity("ENTITY2", "Gamma", 3));
+            await _repository.CreateAsync(CreateEntity("4375241C737C4D25938E8C69B0C1ACDC", "Gamma", 3));
             var listResponse = await _repository.QueryAsync(item => item.Rank >= 2, item => item.Name, new ListRequest { PageIndex = 1, PageSize = 10 });
             Assert.That(listResponse.Model.Select(item => item.Name), Is.EqualTo(new[] { "Beta", "Gamma" }));
 
