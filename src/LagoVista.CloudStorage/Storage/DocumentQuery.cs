@@ -24,7 +24,22 @@ namespace LagoVista.CloudStorage.DocumentDB
         /// <summary>
         /// Resolves the dynamic work-task set used by the Kanban view.
         /// </summary>
-        WorkTaskKanban
+        WorkTaskKanban,
+
+        /// <summary>
+        /// Returns one entity-preparation summary by entity type, entity ID, and organization.
+        /// </summary>
+        EntityPreparationCandidateById,
+
+        /// <summary>
+        /// Returns entity-preparation summaries by entity type and organization.
+        /// </summary>
+        EntityPreparationCandidatesByType,
+
+        /// <summary>
+        /// Returns entity-preparation summaries that are not production-ready.
+        /// </summary>
+        IncompleteEntityPreparationCandidatesByType
     }
 
     /// <summary>
