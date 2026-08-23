@@ -64,7 +64,7 @@ namespace LagoVista.CloudStorage.Utils
         {
             get
             {
-                var cs = new ConnectionSettings>()
+                var cs = new ConnectionSettings()
                 {
                     Uri = Environment.GetEnvironmentVariable("JobScheduler__Database__Url"),
                     UserName = Environment.GetEnvironmentVariable("JobScheduler__Database__UserName"),
