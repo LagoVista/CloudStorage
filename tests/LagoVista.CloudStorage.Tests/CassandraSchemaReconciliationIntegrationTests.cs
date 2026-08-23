@@ -137,7 +137,7 @@ CREATE TABLE wrong_primary_key_activity_record (
                 });
             }
 
-            var columns = await ReadColumnsAsync("additive_schema_activity_record");
+            var columns = (await ReadColumnsAsync("additive_schema_activity_record")).ToList();
             Assert.Multiple(() =>
             {
                 Assert.That(columns.Any(row => row.GetValue<string>("column_name") == "value" && row.GetValue<string>("type") == "int"), Is.True);
