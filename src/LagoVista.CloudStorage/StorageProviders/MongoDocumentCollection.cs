@@ -185,8 +185,10 @@ namespace LagoVista.CloudStorage.StorageProviders
                 })
             };
 
-            var maxItems = request.QueryType == DocumentQueryType.EntityPreparationCandidateById ? 1 : Math.Min(request.GetRequired<int>("maxItems"), 5000);
-            pipeline.Add(new BsonDocument("$limit", maxItems));
+            if (request.QueryType == DocumentQueryType.EntityPreparationCandidateById)
+                pipeline.Add(new BsonDocument("$limit", 1));
+            else if (request.QueryType == DocumentQueryType.IncompleteEntityPreparationCandidatesByType)
+                pipeline.Add(new BsonDocument("$limit", Math.Min(request.GetRequired<int>("maxItems"), 5000)));
 
             var documents = await GetBsonCollection().Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false);
             return Deserialize<TResult>(documents);
