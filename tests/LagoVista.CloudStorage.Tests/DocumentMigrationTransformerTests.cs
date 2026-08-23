@@ -33,7 +33,7 @@ namespace LagoVista.CloudStorage.Tests
             Assert.That(target.Contains("_ts"), Is.False);
             Assert.That(target["EntityType"].AsString, Is.EqualTo("WorkTask"));
             Assert.That(target["Name"].AsString, Is.EqualTo("Test"));
-            Assert.That(target["Nested"]["Id"].AsString, Is.EqualTo("NESTED-ID"));
+            Assert.That(target["Nested"].AsBsonDocument["Id"].AsString, Is.EqualTo("NESTED-ID"));
         }
 
         [Test]
@@ -68,8 +68,8 @@ namespace LagoVista.CloudStorage.Tests
 
             DocumentMigrationTransformer.TryTransform(source, out _);
 
-            Assert.That(source["id"].Value<string>(), Is.EqualTo("ABC123"));
-            Assert.That(source["_etag"].Value<string>(), Is.EqualTo("etag-value"));
+            Assert.That(source.Value<string>("id"), Is.EqualTo("ABC123"));
+            Assert.That(source.Value<string>("_etag"), Is.EqualTo("etag-value"));
         }
     }
 }
