@@ -14,7 +14,7 @@ for ($attempt = 1; $attempt -le 30; $attempt++) {
     $health = (docker inspect --format "{{.State.Health.Status}}" $containerName 2>$null | Out-String).Trim()
     if ($health -eq "healthy") {
         Write-Host "Mongo integration-test container is healthy on localhost:27018."
-        exit 0
+        return
     }
 
     Write-Host "  Mongo health=$health attempt=$attempt/30"
