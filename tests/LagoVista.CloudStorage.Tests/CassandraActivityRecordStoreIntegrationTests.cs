@@ -16,6 +16,8 @@ namespace LagoVista.CloudStorage.Tests
         private IServiceProvider _services;
         private IActivityRecordStore<TestActivityRecord> _store;
         private IActivityRecordStore<BucketedActivityRecord> _bucketedStore;
+        private IActivityRecordStore<RetainedActivityRecord> _retainedStore;
+        private ICassandraSessionFactory _sessionFactory;
         private ICassandraStorageSettings _settings;
 
         public sealed class TestActivityRecord : IActivityRecord
@@ -36,6 +38,15 @@ namespace LagoVista.CloudStorage.Tests
             public DateTime CreationDate { get; set; }
             public string Category { get; set; }
             public int Value { get; set; }
+        }
+
+        public sealed class RetainedActivityRecord : IActivityRecord
+        {
+            public string Id { get; set; }
+            public string OrganizationId { get; set; }
+            public string Organization { get; set; }
+            public DateTime CreationDate { get; set; }
+            public string Category { get; set; }
         }
 
         [OneTimeSetUp]
@@ -64,10 +75,16 @@ namespace LagoVista.CloudStorage.Tests
                 definition => definition
                     .PartitionBy(record => record.OrganizationId)
                     .BucketBy(StoragePeriod.Month));
+            services.AddActivityRecordStore<RetainedActivityRecord, CassandraActivityRecordStore<RetainedActivityRecord>>(
+                definition => definition
+                    .PartitionBy(record => record.OrganizationId)
+                    .RetainFor(TimeSpan.FromSeconds(120)));
 
             _services = services.BuildServiceProvider();
             _store = _services.GetRequiredService<IActivityRecordStore<TestActivityRecord>>();
             _bucketedStore = _services.GetRequiredService<IActivityRecordStore<BucketedActivityRecord>>();
+            _retainedStore = _services.GetRequiredService<IActivityRecordStore<RetainedActivityRecord>>();
+            _sessionFactory = _services.GetRequiredService<ICassandraSessionFactory>();
         }
 
         [OneTimeTearDown]
@@ -190,6 +207,44 @@ namespace LagoVista.CloudStorage.Tests
                 .Where(record => record.OrganizationId, StorageFilterOperator.Equal, "ORG1");
 
             Assert.ThrowsAsync<InvalidOperationException>(() => _bucketedStore.QueryAsync(query));
+        }
+
+        [Test]
+        public async Task RetainedStore_AppliesTableDefaultTtlToInsertedRows()
+        {
+            var record = new RetainedActivityRecord
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                OrganizationId = $"ORG-{Guid.NewGuid():N}",
+                Organization = "Retention Test Organization",
+                CreationDate = DateTime.UtcNow,
+                Category = "retention"
+            };
+
+            await _retainedStore.InsertAsync(record);
+
+            var session = await _sessionFactory.GetSessionAsync();
+            var tableStatement = await session.PrepareAsync(
+                "SELECT default_time_to_live FROM system_schema.tables WHERE keyspace_name = ? AND table_name = ?");
+            var tableRows = await session.ExecuteAsync(tableStatement.Bind(_settings.Keyspace, "retained_activity_record"));
+            var tableTtl = tableRows.Single().GetValue<int>("default_time_to_live");
+
+            var ttlStatement = await session.PrepareAsync(@"
+SELECT TTL(organization) AS remaining_ttl
+FROM retained_activity_record
+WHERE organization_id = ? AND creation_date = ? AND id = ?");
+            var ttlRows = await session.ExecuteAsync(ttlStatement.Bind(
+                record.OrganizationId,
+                new DateTimeOffset(record.CreationDate),
+                record.Id));
+            var remainingTtl = ttlRows.Single().GetValue<int>("remaining_ttl");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(tableTtl, Is.EqualTo(120));
+                Assert.That(remainingTtl, Is.GreaterThan(0));
+                Assert.That(remainingTtl, Is.LessThanOrEqualTo(120));
+            });
         }
 
         private static TestActivityRecord CreateRecord(string organizationId, string category, DateTime creationDate, int value)
