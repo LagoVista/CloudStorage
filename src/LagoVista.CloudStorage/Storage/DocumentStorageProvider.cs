@@ -144,6 +144,12 @@ namespace LagoVista.CloudStorage.DocumentDB
 
     public static class DocumentStorageFactory
     {
+        public static IDocumentDBRepoBase<TEntity> ResolveAndCreate<TEntity>(string endpoint, string sharedKey, string databaseName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, ICosmosClientProvider cosmosClientProvider = null, IDocumentCollectionNameResolver collectionNameResolver = null) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
+            var settings = DocumentStorageSettingsResolver.Resolve(endpoint, sharedKey, databaseName);
+            return Create<TEntity>(settings, logger, cacheProvider, dependencyManager, cosmosClientProvider, collectionNameResolver);
+        }
+
         public static IDocumentDBRepoBase<TEntity> Create<TEntity>(DocumentStorageSettings settings, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, ICosmosClientProvider cosmosClientProvider = null, IDocumentCollectionNameResolver collectionNameResolver = null) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
