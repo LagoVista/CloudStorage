@@ -1,3 +1,23 @@
+<#
+Examples:
+  # Authoritative full Card 6B baseline
+  ./run-storage-lab-baseline.ps1
+
+  # Fast loop for the consumer currently being converted
+  ./run-storage-lab-baseline.ps1 -Gate Build,Parity -ParityTarget EntityPreparationCandidate
+
+  # Run only all parity contracts
+  ./run-storage-lab-baseline.ps1 -Gate Parity
+
+  # Show only the application-facing Cosmos conversion queue
+  ./run-storage-lab-baseline.ps1 -Gate Audit -AuditScope Application
+
+  # Show only consumers already carrying parity coverage
+  ./run-storage-lab-baseline.ps1 -Gate Audit -AuditScope Tracked
+
+  # Reuse an already-running local lab
+  ./run-storage-lab-baseline.ps1 -Gate Parity -ParityTarget EntityPreparationCandidate -SkipLabStart
+#>
 param(
     [ValidateSet("All", "Build", "Mongo", "Cosmos", "Parity", "Audit")]
     [string[]]$Gate = @("All"),
