@@ -7,10 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="LagoVista.Core.TestBase" Version="3.0.3385.1352" />
+    <PackageReference Include="LagoVista.Core.TestBase" Version="3.0.3385.1610" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.13" />
-    <PackageReference Include="LagoVista.Crypto" Version="3.0.3385.1352" />
+    <PackageReference Include="LagoVista.Crypto" Version="3.0.3385.1610" />
 
   </ItemGroup>
 

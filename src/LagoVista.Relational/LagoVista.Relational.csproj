@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="LagoVista.Core" Version="3.0.3385.1352" />
-    <PackageReference Include="LagoVista.Core.Configuration" Version="3.0.3385.1352" />
+    <PackageReference Include="LagoVista.Core" Version="3.0.3385.1610" />
+    <PackageReference Include="LagoVista.Core.Configuration" Version="3.0.3385.1610" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.13" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.13" />
