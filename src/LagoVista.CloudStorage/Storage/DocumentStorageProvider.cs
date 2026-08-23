@@ -161,6 +161,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
                 case DocumentStorageProviderType.Mongo:
                     if (settings.Mongo == null) throw new InvalidOperationException("Mongo settings are required when the Mongo document storage provider is selected.");
+                    MongoBsonSerialization.Configure();
                     return new MongoDBStorage<TEntity>(settings.Mongo.ConnectionString, settings.Mongo.DatabaseName, logger, cacheProvider, dependencyManager, collectionNameResolver);
 
                 default:
