@@ -3,7 +3,6 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using System;
-using System.Runtime.CompilerServices;
 
 namespace LagoVista.CloudStorage.StorageProviders
 {
@@ -11,12 +10,6 @@ namespace LagoVista.CloudStorage.StorageProviders
     {
         private static readonly object _syncRoot = new object();
         private static bool _configured;
-
-        [ModuleInitializer]
-        internal static void Initialize()
-        {
-            Configure();
-        }
 
         public static void Configure()
         {
