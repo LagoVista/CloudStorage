@@ -19,7 +19,7 @@ namespace LagoVista.CloudStorage.Utils
         public const string DevSLOrgId = "C8AD4589F26842E7A1AEFBAEFC979C9B";
 
         public static MongoDocumentStorageConnectionSettings ProductionMongoDocumentStorage => CreateMongoDocumentStorageSettings("PROD");
-        public static MongoDocumentStorageConnectionSettings TestMongoDocumentStorage => CreateMongoDocumentStorageSettings("TEST");
+        public static MongoDocumentStorageConnectionSettings TestMongoDocumentStorage => CreateLocalTestMongoDocumentStorageSettings();
 
         public static ConnectionSettings ProductionDocDB
         {
@@ -64,7 +64,7 @@ namespace LagoVista.CloudStorage.Utils
         {
             get
             {
-                var cs = new ConnectionSettings()
+                var cs = new ConnectionSettings>()
                 {
                     Uri = Environment.GetEnvironmentVariable("JobScheduler__Database__Url"),
                     UserName = Environment.GetEnvironmentVariable("JobScheduler__Database__UserName"),
@@ -258,6 +258,22 @@ namespace LagoVista.CloudStorage.Utils
                 ["MongoDocumentStorage:AuthenticationDatabase"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_AUTHENTICATION_DATABASE"),
                 ["MongoDocumentStorage:ReplicaSet"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_REPLICA_SET"),
                 ["MongoDocumentStorage:UseTls"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_USE_TLS")
+            };
+
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+            return new MongoDocumentStorageConnectionSettings(configuration);
+        }
+
+        private static MongoDocumentStorageConnectionSettings CreateLocalTestMongoDocumentStorageSettings()
+        {
+            var values = new Dictionary<string, string>
+            {
+                ["MongoDocumentStorage:Hosts"] = "localhost",
+                ["MongoDocumentStorage:Port"] = "27018",
+                ["MongoDocumentStorage:UserName"] = "nuviot-test",
+                ["MongoDocumentStorage:Password"] = "nuviot-test-password",
+                ["MongoDocumentStorage:AuthenticationDatabase"] = "admin",
+                ["MongoDocumentStorage:UseTls"] = "false"
             };
 
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
