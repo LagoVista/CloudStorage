@@ -6,7 +6,7 @@ Implement the Mongo provider for the full `IDocumentDBRepoBase<TEntity>` contrac
 
 ## Status
 
-Core rich Mongo provider implementation is complete and wired through `DocumentStorageFactory`. Local build and live Mongo parity validation remain.
+Core implementation and primary live parity validation are complete. Cache-provider, dependency-manager, and summary-factory-specific integration cases remain as targeted follow-up validation rather than blockers for the basic Mongo repository path.
 
 ## Implemented
 
@@ -18,77 +18,51 @@ Core rich Mongo provider implementation is complete and wired through `DocumentS
 - [x] Implement generic descending-key queries.
 - [x] Implement typed summary queries using `ISummaryFactory.CreateSummary()`.
 - [x] Stamp `DatabaseName` and `EntityType` before writes.
-- [x] Preserve cache read/write/invalidation behavior.
+- [x] Preserve cache read/write/invalidation behavior in the provider contract.
 - [x] Preserve dependency checks before deletes.
 - [x] Preserve dependency rename propagation during upsert when names change.
 - [x] Route Mongo documents by `EntityDescriptionAttribute.Domain` through `IDocumentCollectionNameResolver`.
-- [x] Use CLR `Id`/Mongo `_id` conventions rather than maintaining a duplicate `id` field.
+- [x] Use CLR root `Id` / Mongo `_id` mapping without maintaining a duplicate top-level `id` field.
+- [x] Preserve nested `EntityHeader.Id` as `Id` so new Mongo writes match migrated document shape.
+- [x] Add BSON serializers for LagoVista wire value types encountered by real entity graphs: `UtcTimestamp`, `NormalizedId32`, and `LagoVistaKey`.
 - [x] Make `OperationResponse<TEntity>` provider-neutral while retaining its Cosmos constructor.
 - [x] Wire the Mongo provider through `DocumentStorageFactory`.
 - [x] Define partition-key behavior: Mongo has no partition key and partition-key overloads perform normal ID operations.
 - [x] Add non-live contract tests for factory construction, domain collection routing, partition behavior, and provider-neutral operation responses.
 
-## Provider behavior
+## Live validation
 
-### Create and upsert
+The August 23, 2026 Docker-backed Mongo 8 integration suite proves the real repository path can:
 
-Mongo writes preserve the entity workflow expected by existing repositories:
+- create and read a domain entity
+- upsert changes and revision state
+- execute filtered/sorted list queries
+- execute lower-level projections and paging
+- execute the server-side `CustomerIndustryNicheSalesStageCounts` aggregate
+- soft delete and honor `ShowDeleted`
+- hard delete and return not-found
+- use a database-specific Mongo provider override without a Cosmos shared key
 
-```text
-item.DatabaseName = configured Mongo database
-item.EntityType   = typeof(TEntity).Name
-```
-
-Creates use `InsertOneAsync`. Upserts use replacement upserts filtered by the entity ID, which maps to Mongo `_id` through the standard Mongo C# driver conventions.
-
-### Get and delete
-
-Reads constrain both ID and `EntityType`, preserving the protection Cosmos previously provided when different entity types shared a physical container.
-
-Delete operations preserve dependency checking and cache invalidation. The Mongo partition-key overload intentionally ignores the partition-key argument because Mongo does not expose Cosmos partition semantics.
-
-### Queries
-
-Normal entity queries automatically add:
+Validation result:
 
 ```text
-EntityType == typeof(TEntity).Name
+Test summary: total: 6, failed: 0, succeeded: 6, skipped: 0, duration: 1.1s
 ```
 
-and support paging plus ascending/descending sorts.
+## Remaining targeted validation
 
-Summary queries read the same domain collection using `TEntityFactory`, then call `CreateSummary()` as the Cosmos provider does today.
-
-### Collections
-
-Mongo `GetCollectionName()` resolves:
-
-```text
-TEntity -> EntityDescriptionAttribute.Domain -> Mongo collection
-```
-
-If metadata cannot be resolved, the existing `{DatabaseName}_Collections` fallback remains available through the collection resolver.
-
-`DeleteCollectionAsync` drops the resolved Mongo collection. It does not drop the Mongo database.
-
-## Remaining validation
-
-- [ ] Build `LagoVista.CloudStorage` after the rich provider changes.
-- [ ] Run non-live provider tests.
-- [ ] Add/run live Mongo CRUD parity tests.
-- [ ] Validate create -> get -> upsert -> get -> delete -> not found.
-- [ ] Validate ascending and descending paging against representative entities.
-- [ ] Validate summary queries against an entity implementing `ISummaryFactory`.
-- [ ] Validate cache behavior with the real cache provider where practical.
-- [ ] Validate dependency behavior with a representative repository where practical.
+- [ ] Validate summary queries against a representative real entity implementing `ISummaryFactory`.
+- [ ] Validate cache behavior with the real cache provider.
+- [ ] Validate dependency behavior with a representative dependency manager/repository.
+- [ ] Add targeted descending-sort coverage if a consuming repository is selected for staged cutover and relies on it heavily.
 
 ## Acceptance criteria
 
-- All `IDocumentDBRepoBase<TEntity>` methods used by current repositories have a Mongo implementation.
-- CRUD and typed query behavior match Cosmos semantics closely enough for existing callers.
-- Existing derived repository constructors do not need Mongo-specific changes.
-- Mongo documents are written to domain collections.
-- No raw Cosmos SQL is required by the Mongo provider.
+- [x] All `IDocumentDBRepoBase<TEntity>` methods used by current repositories have a Mongo implementation.
+- [x] Core CRUD and typed query behavior match Cosmos semantics closely enough for existing callers.
+- [x] Existing derived repository constructors do not need Mongo-specific changes.
+- [x] Mongo documents are written to domain collections.
+- [x] No raw Cosmos SQL is required by the Mongo provider.
 
 ## Explicit migration islands
 
