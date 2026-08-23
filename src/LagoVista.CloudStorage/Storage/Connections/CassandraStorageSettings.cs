@@ -1,3 +1,4 @@
+using LagoVista;
 using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -16,6 +17,7 @@ namespace LagoVista.CloudStorage.Storage
         string LocalDataCenter { get; }
     }
 
+    [CriticalCoverage]
     public sealed class CassandraStorageSettings : ICassandraStorageSettings
     {
         public const string SectionName = "CassandraStorage";
