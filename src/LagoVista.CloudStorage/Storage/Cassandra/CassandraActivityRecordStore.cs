@@ -12,7 +12,8 @@ namespace LagoVista.CloudStorage.Storage
     /// <summary>
     /// Cassandra implementation for immutable activity records. Supports additive table
     /// creation/schema reconciliation, insert/batch insert, declared partition equality filters,
-    /// CreationDate ranges, optional time buckets, retention, and opaque provider paging cursors.
+    /// declared SAI indexes, CreationDate ranges, optional time buckets, retention, and opaque
+    /// provider paging cursors.
     /// </summary>
     [CriticalCoverage]
     public sealed class CassandraActivityRecordStore<TRecord> : IActivityRecordStore<TRecord>
@@ -75,11 +76,11 @@ namespace LagoVista.CloudStorage.Storage
             cancellationToken.ThrowIfCancellationRequested();
 
             var partitionValues = ResolvePartitionValues(query);
-            ValidateUnsupportedFilters(query);
+            var indexedFilters = ResolveIndexedFilters(query);
 
             if (!_map.UsesTimeBuckets)
             {
-                return await QueryPartitionAsync(query, partitionValues, null, query.Page.ContinuationToken, cancellationToken)
+                return await QueryPartitionAsync(query, partitionValues, indexedFilters, null, query.Page.ContinuationToken, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -102,6 +103,7 @@ namespace LagoVista.CloudStorage.Storage
                 var bucketResult = await QueryBucketAsync(
                     query,
                     partitionValues,
+                    indexedFilters,
                     buckets[bucketIndex],
                     remaining,
                     bucketPagingState,
@@ -130,6 +132,7 @@ namespace LagoVista.CloudStorage.Storage
         private async Task<StoragePageResult<TRecord>> QueryPartitionAsync(
             HistoryQuery<TRecord> query,
             Dictionary<string, object> partitionValues,
+            IReadOnlyList<IndexedFilter> indexedFilters,
             string bucket,
             string continuationToken,
             CancellationToken cancellationToken)
@@ -150,6 +153,7 @@ namespace LagoVista.CloudStorage.Storage
             var result = await QueryBucketAsync(
                 query,
                 partitionValues,
+                indexedFilters,
                 bucket,
                 query.Page.PageSize,
                 pagingState,
@@ -165,6 +169,7 @@ namespace LagoVista.CloudStorage.Storage
         private async Task<BucketQueryResult> QueryBucketAsync(
             HistoryQuery<TRecord> query,
             Dictionary<string, object> partitionValues,
+            IReadOnlyList<IndexedFilter> indexedFilters,
             string bucket,
             int pageSize,
             byte[] pagingState,
@@ -198,6 +203,12 @@ namespace LagoVista.CloudStorage.Storage
                 values.Add(new DateTimeOffset(query.EndUtc.Value));
             }
 
+            foreach (var indexedFilter in indexedFilters)
+            {
+                clauses.Add($"{indexedFilter.Property.ColumnName} = ?");
+                values.Add(_map.DriverValue(indexedFilter.Property, indexedFilter.Value));
+            }
+
             cql += String.Join(" AND ", clauses);
 
             var session = await GetReadySessionAsync().ConfigureAwait(false);
@@ -228,6 +239,7 @@ namespace LagoVista.CloudStorage.Storage
                 {
                     await session.ExecuteAsync(new SimpleStatement(_map.CreateTableCql())).ConfigureAwait(false);
                     await ReconcileSchemaAsync(session).ConfigureAwait(false);
+                    await ReconcileIndexesAsync(session).ConfigureAwait(false);
                     await session.ExecuteAsync(new SimpleStatement(_map.ReconcileRetentionCql())).ConfigureAwait(false);
                     _schemaReady = true;
                 }
@@ -286,6 +298,63 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
             }
         }
 
+        private async Task ReconcileIndexesAsync(ISession session)
+        {
+            if (_map.IndexedProperties.Count == 0) return;
+
+            foreach (var property in _map.IndexedProperties)
+            {
+                var indexName = IndexName(property);
+                var existing = await ReadIndexAsync(session, indexName).ConfigureAwait(false);
+
+                if (existing == null)
+                {
+                    await session.ExecuteAsync(new SimpleStatement(
+                        $"CREATE INDEX IF NOT EXISTS {indexName} ON {_map.TableName} ({property.ColumnName}) USING 'sai'")).ConfigureAwait(false);
+                    existing = await ReadIndexAsync(session, indexName).ConfigureAwait(false);
+                }
+
+                if (existing == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Cassandra activity SAI index {indexName} could not be created for {_map.TableName}.{property.ColumnName}. The index name may conflict with another table in keyspace {session.Keyspace}.");
+                }
+
+                if (!String.Equals(existing.TableName, _map.TableName, StringComparison.OrdinalIgnoreCase) ||
+                    !String.Equals(existing.Target, property.ColumnName, StringComparison.OrdinalIgnoreCase) ||
+                    !existing.IsSai)
+                {
+                    throw new InvalidOperationException(
+                        $"Cassandra activity index {indexName} does not match expected SAI target {_map.TableName}.{property.ColumnName}. Index changes require an explicit migration.");
+                }
+            }
+        }
+
+        private async Task<ExistingIndex> ReadIndexAsync(ISession session, string indexName)
+        {
+            var prepared = await session.PrepareAsync(@"
+SELECT table_name, index_name, kind, options
+FROM system_schema.indexes
+WHERE keyspace_name = ?").ConfigureAwait(false);
+            var rows = await session.ExecuteAsync(prepared.Bind(session.Keyspace)).ConfigureAwait(false);
+
+            foreach (var row in rows)
+            {
+                if (!String.Equals(row.GetValue<string>("index_name"), indexName, StringComparison.OrdinalIgnoreCase)) continue;
+
+                var options = row.GetValue<IDictionary<string, string>>("options");
+                options.TryGetValue("target", out var target);
+                options.TryGetValue("class_name", out var className);
+                return new ExistingIndex(
+                    row.GetValue<string>("table_name"),
+                    target,
+                    row.GetValue<string>("kind"),
+                    className);
+            }
+
+            return null;
+        }
+
         private IReadOnlyList<ExpectedColumn> ExpectedColumns()
         {
             var expected = new List<ExpectedColumn>();
@@ -324,12 +393,6 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
             return expected;
         }
 
-        private static string NormalizeCqlType(string type)
-        {
-            if (String.IsNullOrWhiteSpace(type)) return String.Empty;
-            return type.Replace(" ", String.Empty).ToLowerInvariant();
-        }
-
         private async Task<PreparedStatement> GetInsertAsync(ISession session)
         {
             if (_insert != null) return _insert;
@@ -353,24 +416,51 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
                         $"Cassandra activity queries require exactly one equality filter for partition field {partition.Property.Name}.");
                 }
 
-                result[partition.Property.Name] = matches[0].Value;
+                result[partition.Property.Name] = _map.DriverValue(partition, matches[0].Value);
             }
 
             return result;
         }
 
-        private void ValidateUnsupportedFilters(HistoryQuery<TRecord> query)
+        private IReadOnlyList<IndexedFilter> ResolveIndexedFilters(HistoryQuery<TRecord> query)
         {
             var partitionNames = new HashSet<string>(
                 _map.PartitionProperties.Select(property => property.Property.Name),
                 StringComparer.OrdinalIgnoreCase);
+            var indexedByName = _map.IndexedProperties.ToDictionary(
+                property => property.Property.Name,
+                StringComparer.OrdinalIgnoreCase);
+            var result = new List<IndexedFilter>();
 
-            var unsupported = query.Filters.FirstOrDefault(filter => !partitionNames.Contains(filter.Field));
-            if (unsupported != null)
+            foreach (var filter in query.Filters.Where(filter => !partitionNames.Contains(filter.Field)))
             {
-                throw new NotSupportedException(
-                    $"Filter {unsupported.Field} is not supported by the core Cassandra activity query path yet. Declare/query indexes explicitly in the indexed-query increment.");
+                if (!indexedByName.TryGetValue(filter.Field, out var property))
+                {
+                    throw new NotSupportedException(
+                        $"Filter {filter.Field} is not declared as an indexed Cassandra activity field. Register it with Index(...) before querying it.");
+                }
+
+                if (filter.Operator != StorageFilterOperator.Equal)
+                {
+                    throw new NotSupportedException(
+                        $"Indexed Cassandra activity filter {filter.Field} currently supports equality only.");
+                }
+
+                result.Add(new IndexedFilter(property, filter.Value));
             }
+
+            return result.AsReadOnly();
+        }
+
+        private string IndexName(CassandraRecordProperty property)
+        {
+            return $"{_map.TableName}_{property.ColumnName}_sai_idx";
+        }
+
+        private static string NormalizeCqlType(string type)
+        {
+            if (String.IsNullOrWhiteSpace(type)) return String.Empty;
+            return type.Replace(" ", String.Empty).ToLowerInvariant();
         }
 
         private static BucketCursor DecodeBucketCursor(string continuationToken, int bucketCount)
@@ -432,6 +522,38 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
             public string Type { get; }
             public string Kind { get; }
             public int Position { get; }
+        }
+
+        private sealed class ExistingIndex
+        {
+            public ExistingIndex(string tableName, string target, string kind, string className)
+            {
+                TableName = tableName;
+                Target = target;
+                Kind = kind;
+                ClassName = className;
+            }
+
+            public string TableName { get; }
+            public string Target { get; }
+            public string Kind { get; }
+            public string ClassName { get; }
+            public bool IsSai => String.Equals(Kind, "CUSTOM", StringComparison.OrdinalIgnoreCase) &&
+                (String.Equals(ClassName, "sai", StringComparison.OrdinalIgnoreCase) ||
+                 String.Equals(ClassName, "StorageAttachedIndex", StringComparison.OrdinalIgnoreCase) ||
+                 (!String.IsNullOrWhiteSpace(ClassName) && ClassName.EndsWith(".StorageAttachedIndex", StringComparison.OrdinalIgnoreCase)));
+        }
+
+        private sealed class IndexedFilter
+        {
+            public IndexedFilter(CassandraRecordProperty property, object value)
+            {
+                Property = property;
+                Value = value;
+            }
+
+            public CassandraRecordProperty Property { get; }
+            public object Value { get; }
         }
 
         private sealed class BucketCursor
