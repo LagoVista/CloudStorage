@@ -6,9 +6,9 @@ Prove Mongo parity with representative production workloads, document rollback, 
 
 ## Status
 
-Runtime validation has started. The first opt-in integration fixture now exercises the actual `DocumentDBRepoBase<TEntity>` provider-selection path against Mongo rather than testing only the lower-level Mongo adapter.
+Runtime validation has started. The first integration fixtures exercise both the lower-level Mongo document collection and the actual `DocumentDBRepoBase<TEntity>` provider-selection path.
 
-Set `NUVIOT_TEST_MONGO_CONNECTION_STRING` to enable live Mongo integration tests. The fixture creates and drops its own isolated Mongo database.
+Local Mongo integration testing is Docker-backed and does not require access to the Kubernetes Mongo deployment. The fixtures use `TestConnections.TestMongoDocumentStorage`, create isolated random databases, and remove those databases during teardown.
 
 ## Validation matrix
 
@@ -33,14 +33,30 @@ Set `NUVIOT_TEST_MONGO_CONNECTION_STRING` to enable live Mongo integration tests
 | Performance-sensitive paths | Representative high-volume/large-document queries | Pending |
 | Rollback | Provider configuration switched back to Cosmos with data retained | Pending |
 
-## Initial live test command
+## Local Docker Mongo integration tests
+
+The integration-test project owns a local Docker Mongo harness:
+
+- `tests/LagoVista.CloudStorage.Tests/docker-compose.mongo.yml`
+- `tests/LagoVista.CloudStorage.Tests/start-mongo-tests.ps1`
+- `tests/LagoVista.CloudStorage.Tests/run-mongo-tests.ps1`
+- `tests/LagoVista.CloudStorage.Tests/stop-mongo-tests.ps1`
+
+The Docker instance runs Mongo 8 on `localhost:27018` with disposable local-test credentials. `run-mongo-tests.ps1` starts Mongo, waits for its health check, sets process-scoped `TEST_MONGO_*` configuration, and runs only the NUnit `Mongo` category.
+
+Run the Mongo integration suite with:
 
 ```powershell
-$env:NUVIOT_TEST_MONGO_CONNECTION_STRING = "mongodb://..."
-dotnet test tests/LagoVista.CloudStorage.Tests/LagoVista.CloudStorage.IntegrationTests.csproj --filter "Mongo"
+./tests/LagoVista.CloudStorage.Tests/run-mongo-tests.ps1
 ```
 
-Do not commit the connection string. Clear the environment variable after the run if it contains credentials.
+Stop and remove the local Mongo test container with:
+
+```powershell
+./tests/LagoVista.CloudStorage.Tests/stop-mongo-tests.ps1
+```
+
+The Docker credentials are test-only and intentionally deterministic. Production credentials are not used by these scripts.
 
 ## Tasks
 
