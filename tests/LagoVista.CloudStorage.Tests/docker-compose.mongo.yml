@@ -1,0 +1,15 @@
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: nuviot-cloudstorage-mongo-tests
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: nuviot-test
+      MONGO_INITDB_ROOT_PASSWORD: nuviot-test-password
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--username", "nuviot-test", "--password", "nuviot-test-password", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
