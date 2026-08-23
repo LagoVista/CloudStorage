@@ -80,6 +80,11 @@ namespace LagoVista.CloudStorage.StorageProviders
                 case DocumentQueryType.CustomerIndustryNicheSalesStageCounts:
                     return await QueryCustomerIndustryNicheSalesStageCountsAsync<TResult>(request, cancellationToken).ConfigureAwait(false);
 
+                case DocumentQueryType.EntityPreparationCandidateById:
+                case DocumentQueryType.EntityPreparationCandidatesByType:
+                case DocumentQueryType.IncompleteEntityPreparationCandidatesByType:
+                    return await QueryEntityPreparationCandidatesAsync<TResult>(request, cancellationToken).ConfigureAwait(false);
+
                 default:
                     throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Mongo provider.");
             }
@@ -136,7 +141,62 @@ namespace LagoVista.CloudStorage.StorageProviders
             };
 
             var documents = await GetBsonCollection().Aggregate(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false);
-            var items = new List<TResult>(documents.Count);
+            return Deserialize<TResult>(documents);
+        }
+
+        private async Task<IEnumerable<TResult>> QueryEntityPreparationCandidatesAsync<TResult>(DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            var entityType = request.GetRequired<string>("entityType");
+            var orgId = request.GetRequired<string>("orgId");
+            var match = new BsonDocument
+            {
+                { "EntityType", entityType },
+                { "OwnerOrganization.Id", orgId }
+            };
+
+            if (request.QueryType == DocumentQueryType.EntityPreparationCandidateById)
+                match.Add("_id", request.GetRequired<string>("entityId"));
+
+            if (request.QueryType == DocumentQueryType.IncompleteEntityPreparationCandidatesByType)
+                match.Add("MasterStatus.IsProductionReady", new BsonDocument("$ne", true));
+
+            var pipeline = new List<BsonDocument>
+            {
+                new BsonDocument("$match", match),
+                new BsonDocument("$sort", new BsonDocument("Name", 1)),
+                new BsonDocument("$project", new BsonDocument
+                {
+                    { "_id", 1 },
+                    { "EntityType", 1 },
+                    { "Name", 1 },
+                    { "Key", 1 },
+                    { "Description", 1 },
+                    { "Icon", 1 },
+                    { "Category", 1 },
+                    { "IsDraft", 1 },
+                    { "IsDeprecated", 1 },
+                    { "MasterStatus", 1 },
+                    { "ReadinessStatus", 1 },
+                    { "CreationDate", 1 },
+                    { "LastUpdatedDate", 1 },
+                    { "Revision", 1 },
+                    { "ChecklistStatus", 1 },
+                    { "ReadinessChecks", 1 }
+                })
+            };
+
+            if (request.QueryType == DocumentQueryType.EntityPreparationCandidateById)
+                pipeline.Add(new BsonDocument("$limit", 1));
+            else if (request.QueryType == DocumentQueryType.IncompleteEntityPreparationCandidatesByType)
+                pipeline.Add(new BsonDocument("$limit", Math.Min(request.GetRequired<int>("maxItems"), 5000)));
+
+            var documents = await GetBsonCollection().Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false);
+            return Deserialize<TResult>(documents);
+        }
+
+        private static IEnumerable<TResult> Deserialize<TResult>(IEnumerable<BsonDocument> documents) where TResult : class
+        {
+            var items = new List<TResult>();
             foreach (var document in documents) items.Add(BsonSerializer.Deserialize<TResult>(document));
             return items;
         }
