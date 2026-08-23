@@ -21,6 +21,12 @@ From the repository root:
 ./tests/LagoVista.CloudStorage.Tests/start-storage-lab.ps1
 ```
 
+Run the complete current baseline:
+
+```powershell
+./tests/LagoVista.CloudStorage.Tests/run-storage-lab-baseline.ps1
+```
+
 Stop and delete lab data:
 
 ```powershell
@@ -31,23 +37,27 @@ The existing Mongo-only harness remains available and should stay green independ
 
 ## Gate 0 - Baseline
 
-Before changing provider-neutral behavior:
+The baseline runner currently performs:
 
-```powershell
-./tests/LagoVista.CloudStorage.Tests/run-mongo-tests.ps1
-./tests/LagoVista.CloudStorage.Tests/audit-cosmos-consumers.ps1
-```
+1. CloudStorage build
+2. Mongo integration suite
+3. Cosmos emulator SDK smoke test
+4. direct-Cosmos production consumer audit
 
 Required state:
 
+- CloudStorage builds.
 - Mongo integration suite remains green.
+- Cosmos emulator create/read/delete smoke test passes through the shared `CosmosClientProvider`.
 - Every production direct-Cosmos file is listed and assigned a Card 6B disposition.
 
-## Gate 1 - Cosmos emulator connectivity
+The Cosmos lab endpoint/key are deterministic test-only values in `StorageLabConnections`. Production/dev secrets are not used.
 
-Add deterministic emulator settings under `TestConnections` and a `CosmosSandbox` NUnit category.
+## Gate 1 - Cosmos emulator capability validation
 
-Prove against the emulator:
+The first `CosmosSandbox` test is implemented and exercises the real `CosmosClientProvider`. Loopback Cosmos endpoints use gateway mode because the Linux vNext emulator supports gateway mode rather than the production Direct-mode path.
+
+Expand `CosmosSandbox` coverage to prove:
 
 - create database/container
 - create/get/update/delete document
@@ -56,7 +66,7 @@ Prove against the emulator:
 - patch operations required by `EntityUtilsRepository` and `StorageUtils`
 - cleanup of isolated test resources
 
-Do not proceed until these operations are known to work in the emulator version used by the lab.
+Do not proceed to shared-entity conversion until the required operation for that slice is known to work in the emulator version used by the lab.
 
 ## Gate 2 - Provider-neutral shared-entity utilities
 
@@ -71,11 +81,13 @@ For each application/shared-entity class:
 5. preserve cache/dependency/RAG side effects
 6. mark the direct Cosmos reference as classified or removed
 
+Recommended first conversion: `EntityPreparationCandidateRepository`. It is read-only and projection-heavy, making it a good first proof of the provider-neutral query pattern before partial-update semantics are introduced.
+
 Headline classes include:
 
-- `EntityUtilsRepository`
 - `EntityPreparationCandidateRepository`
 - `EntityListItemRepo<TEntity>`
+- `EntityUtilsRepository`
 - shared-entity portions of `StorageUtils`
 - `CosmosSyncRepository` after classification
 
