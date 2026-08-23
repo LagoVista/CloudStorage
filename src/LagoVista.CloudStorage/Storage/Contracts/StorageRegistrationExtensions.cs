@@ -31,14 +31,14 @@ namespace LagoVista.CloudStorage.Storage
         public FlatStorageDefinition<TEntity> Definition { get; }
     }
 
-    public sealed class FlatDocumentStoreOptions<TEntity>
+    public sealed class ApplicationDataStoreOptions<TEntity>
     {
-        internal FlatDocumentStoreOptions(FlatStorageDefinition<TEntity> definition)
+        internal ApplicationDataStoreOptions(FlatStorageDefinition<TEntity> definition)
         {
             Definition = definition ?? throw new ArgumentNullException(nameof(definition));
             if (String.IsNullOrWhiteSpace(definition.KeyField))
             {
-                throw new InvalidOperationException($"Flat document storage for {typeof(TEntity).Name} requires a KeyBy(...) field.");
+                throw new InvalidOperationException($"Application data storage for {typeof(TEntity).Name} requires a KeyBy(...) field.");
             }
         }
 
@@ -79,17 +79,17 @@ namespace LagoVista.CloudStorage.Storage
             return services;
         }
 
-        public static IServiceCollection AddFlatDocumentStore<TEntity, TStore>(
+        public static IServiceCollection AddApplicationDataStore<TEntity, TStore>(
             this IServiceCollection services,
             Action<FlatStorageDefinition<TEntity>> configure)
-            where TStore : class, IFlatDocumentStore<TEntity>
+            where TStore : class, IApplicationDataStore<TEntity>
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
 
             var definition = BuildDefinition(configure);
-            services.AddSingleton(new FlatDocumentStoreOptions<TEntity>(definition));
-            services.AddScoped<IFlatDocumentStore<TEntity>, TStore>();
+            services.AddSingleton(new ApplicationDataStoreOptions<TEntity>(definition));
+            services.AddScoped<IApplicationDataStore<TEntity>, TStore>();
             return services;
         }
 
