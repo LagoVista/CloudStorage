@@ -142,14 +142,9 @@ namespace LagoVista.CloudStorage.DocumentDB
         }
     }
 
-    /// <summary>
-    /// Construction point for the rich entity document repository implementation.
-    /// IDocumentCollection already supports Cosmos and Mongo; this factory remains Cosmos-only
-    /// until MongoDBStorage implements the full entity workflow contract used by DocumentDBRepoBase.
-    /// </summary>
     public static class DocumentStorageFactory
     {
-        public static IDocumentDBRepoBase<TEntity> Create<TEntity>(DocumentStorageSettings settings, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, ICosmosClientProvider cosmosClientProvider = null) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public static IDocumentDBRepoBase<TEntity> Create<TEntity>(DocumentStorageSettings settings, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, ICosmosClientProvider cosmosClientProvider = null, IDocumentCollectionNameResolver collectionNameResolver = null) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
 
@@ -159,7 +154,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                     return new CosmosDBStorage<TEntity>(settings.Endpoint, settings.SharedKey, settings.DatabaseName, logger, cacheProvider, dependencyManager, cosmosClientProvider);
 
                 case DocumentStorageProviderType.Mongo:
-                    throw new NotSupportedException("Mongo IDocumentCollection support is available, but the rich IDocumentDBRepoBase provider used by DocumentDBRepoBase is not implemented yet.");
+                    if (settings.Mongo == null) throw new InvalidOperationException("Mongo settings are required when the Mongo document storage provider is selected.");
+                    return new MongoDBStorage<TEntity>(settings.Mongo.ConnectionString, settings.Mongo.DatabaseName, logger, cacheProvider, dependencyManager, collectionNameResolver);
 
                 default:
                     throw new InvalidOperationException($"Unsupported document storage provider '{settings.Provider}'.");
