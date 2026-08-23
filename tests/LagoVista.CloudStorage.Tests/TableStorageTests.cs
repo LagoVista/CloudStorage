@@ -136,5 +136,5 @@ namespace LagoVista.CloudStorage.IntegrationTests
         //     await tableClient.DeleteAsync();
         //}
 
-    }*/
+    }
 }
