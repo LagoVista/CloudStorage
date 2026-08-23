@@ -60,6 +60,12 @@ namespace LagoVista.CloudStorage.Storage
                 throw new InvalidOperationException("Cassandra partition fields cannot be the activity Id or CreationDate fields.");
             }
 
+            if (Definition.Retention.HasValue && Definition.Retention.Value.TotalSeconds > Int32.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    $"Cassandra activity retention for {typeof(TRecord).Name} cannot exceed {Int32.MaxValue} seconds.");
+            }
+
             TableName = ToSnakeCase(typeof(TRecord).Name);
         }
 
@@ -70,6 +76,9 @@ namespace LagoVista.CloudStorage.Storage
         public CassandraRecordProperty Key { get; }
         public CassandraRecordProperty Time { get; }
         public bool UsesTimeBuckets => Definition.BucketPeriod != StoragePeriod.All;
+        public int RetentionSeconds => Definition.Retention.HasValue
+            ? (int)Math.Ceiling(Definition.Retention.Value.TotalSeconds)
+            : 0;
 
         public string CreateTableCql()
         {
@@ -85,7 +94,13 @@ namespace LagoVista.CloudStorage.Storage
             return $@"CREATE TABLE IF NOT EXISTS {TableName} (
     {columnText},
     PRIMARY KEY (({partition}), {Time.ColumnName}, {Key.ColumnName})
-) WITH CLUSTERING ORDER BY ({Time.ColumnName} DESC, {Key.ColumnName} ASC)";
+) WITH CLUSTERING ORDER BY ({Time.ColumnName} DESC, {Key.ColumnName} ASC)
+AND default_time_to_live = {RetentionSeconds}";
+        }
+
+        public string ReconcileRetentionCql()
+        {
+            return $"ALTER TABLE {TableName} WITH default_time_to_live = {RetentionSeconds}";
         }
 
         public string InsertCql()
