@@ -1,8 +1,7 @@
+using LagoVista.CloudStorage.Storage;
 using Microsoft.Azure.Cosmos;
 using NUnit.Framework;
 using System;
-using System.Net.Http;
-using System.Net.Security;
 using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Tests
@@ -17,12 +16,15 @@ namespace LagoVista.CloudStorage.Tests
         {
             var settings = StorageLabConnections.TestCosmosDocumentStorage;
             var databaseName = $"CloudStorageLab_{Guid.NewGuid():N}";
-            using var client = CreateClient(settings.Uri, settings.AccessKey);
+            using var provider = new CosmosClientProvider();
+            var client = provider.GetClient(settings.Uri, settings.AccessKey);
+            Database database = null;
 
             try
             {
                 var databaseResponse = await client.CreateDatabaseIfNotExistsAsync(databaseName);
-                var containerResponse = await databaseResponse.Database.CreateContainerIfNotExistsAsync("Documents", "/pk");
+                database = databaseResponse.Database;
+                var containerResponse = await database.CreateContainerIfNotExistsAsync("Documents", "/pk");
                 var container = containerResponse.Container;
                 var document = new SandboxDocument { id = Guid.NewGuid().ToString("N"), pk = "sandbox", Name = "Cosmos Sandbox" };
 
@@ -34,20 +36,8 @@ namespace LagoVista.CloudStorage.Tests
             }
             finally
             {
-                await client.GetDatabase(databaseName).DeleteAsync();
+                if (database != null) await database.DeleteAsync();
             }
-        }
-
-        private static CosmosClient CreateClient(string endpoint, string key)
-        {
-            return new CosmosClient(endpoint, key, new CosmosClientOptions
-            {
-                ConnectionMode = ConnectionMode.Gateway,
-                HttpClientFactory = () => new HttpClient(new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = (request, certificate, chain, errors) => request.RequestUri != null && request.RequestUri.IsLoopback && (errors == SslPolicyErrors.None || certificate != null)
-                })
-            });
         }
 
         private sealed class SandboxDocument
