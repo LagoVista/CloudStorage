@@ -33,6 +33,10 @@ namespace LagoVista.CloudStorage.StorageProviders
             var reader = context.Reader;
             switch (reader.GetCurrentBsonType())
             {
+                case BsonType.Null:
+                    reader.ReadNull();
+                    return default(UtcTimestamp);
+
                 case BsonType.String:
                     return UtcTimestamp.Parse(reader.ReadString());
 
@@ -47,6 +51,13 @@ namespace LagoVista.CloudStorage.StorageProviders
         public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, UtcTimestamp value)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
+
+            if (value.IsEmpty)
+            {
+                context.Writer.WriteNull();
+                return;
+            }
+
             context.Writer.WriteString(value.ToString());
         }
     }
