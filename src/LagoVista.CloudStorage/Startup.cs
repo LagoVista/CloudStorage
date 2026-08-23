@@ -45,6 +45,7 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<ISyncConnectionSettings, SyncConnections>();
             services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
             services.AddSingleton<ICosmosClientProvider>(CosmosClientProvider.Shared);
+            services.AddMongoDocumentStorageConnection();
 
             LagoVista.Core.AutoMapper.Startup.ConfigureServices(services);
         }
