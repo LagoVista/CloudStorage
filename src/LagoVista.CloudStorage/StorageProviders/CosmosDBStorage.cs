@@ -33,7 +33,6 @@ namespace LagoVista.CloudStorage.StorageProviders
         private string _sharedKey;
         private string _dbName;
         private string _defaultCollectionName;
-        private CosmosClient _cosmosClient;
         private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
@@ -49,7 +48,6 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         private bool _verboseLogging = false;
 
-        private static bool _isDBCheckComplete = false;
 
         private static readonly Gauge SQLInsertMetric = Metrics.CreateGauge("sql_insert", "Elapsed time for SQL insert.",
    new GaugeConfiguration

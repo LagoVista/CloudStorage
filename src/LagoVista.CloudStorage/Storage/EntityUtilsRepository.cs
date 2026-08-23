@@ -165,8 +165,6 @@ namespace LagoVista.CloudStorage.Storage
 
             _logger.Trace($"{this.Tag()} - Found {result.Found} {entityType} entities with Status.Id in [{String.Join(", ", statusIds)}] for organization '{orgId}'.");
 
-            var idx = 1;
-
             foreach (var doc in candidatesResult.Result)
             {
                 ct.ThrowIfCancellationRequested();
