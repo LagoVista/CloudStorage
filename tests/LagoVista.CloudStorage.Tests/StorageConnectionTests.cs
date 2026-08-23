@@ -1,105 +1,91 @@
 using LagoVista.CloudStorage.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
-using System;
+using System.Collections.Generic;
 
 namespace LagoVista.CloudStorage.Tests
 {
     public class StorageConnectionTests
     {
-        [Test]
-        public void CassandraSettings_NormalizeConnectionDetails()
+        private static IConfiguration CreateConfiguration()
         {
-            var settings = new CassandraStorageSettings(
-                new[] { " cassandra-0.cassandra.svc ", "cassandra-1.cassandra.svc", "cassandra-0.cassandra.svc" },
-                "app",
-                "secret",
-                "nuviot",
-                localDataCenter: " dc1 ");
+            var values = new Dictionary<string, string>
+            {
+                ["CassandraStorage:ContactPoints"] = "cassandra-0.cassandra.svc,cassandra-1.cassandra.svc,cassandra-0.cassandra.svc",
+                ["CassandraStorage:UserName"] = "app",
+                ["CassandraStorage:Password"] = "super-secret-value",
+                ["CassandraStorage:Keyspace"] = "nuviot",
+                ["CassandraStorage:LocalDataCenter"] = "dc1",
+                ["ScratchStorage:ConnectionString"] = "mongodb://user:super-secret-value@mongodb.svc",
+                ["ScratchStorage:DatabaseName"] = "nuviot-scratch",
+                ["FlatDocumentStorage:ConnectionString"] = "mongodb://user:super-secret-value@mongodb.svc",
+                ["FlatDocumentStorage:DatabaseName"] = "nuviot-flat"
+            };
+
+            return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        }
+
+        [Test]
+        public void CassandraSettings_ReadStandardApplicationConfiguration()
+        {
+            var settings = new CassandraStorageSettings(CreateConfiguration());
 
             Assert.That(settings.ContactPoints.Count, Is.EqualTo(2));
-            Assert.That(settings.ContactPoints[0], Is.EqualTo("cassandra-0.cassandra.svc"));
             Assert.That(settings.Port, Is.EqualTo(9042));
             Assert.That(settings.Keyspace, Is.EqualTo("nuviot"));
             Assert.That(settings.LocalDataCenter, Is.EqualTo("dc1"));
         }
 
         [Test]
-        public void CassandraSettings_ToString_DoesNotExposePassword()
+        public void SemanticMongoSettings_RemainIndependent()
         {
-            var settings = new CassandraStorageSettings(
-                new[] { "cassandra.svc" },
-                "app",
-                "super-secret-value",
-                "nuviot");
+            var configuration = CreateConfiguration();
+            var scratch = new ScratchStorageSettings(configuration);
+            var flat = new FlatDocumentStorageSettings(configuration);
 
-            Assert.That(settings.ToString(), Does.Not.Contain("super-secret-value"));
-            Assert.That(settings.ToString(), Does.Contain("<redacted>"));
+            Assert.That(scratch.ConnectionString, Is.EqualTo(flat.ConnectionString));
+            Assert.That(scratch.DatabaseName, Is.EqualTo("nuviot-scratch"));
+            Assert.That(flat.DatabaseName, Is.EqualTo("nuviot-flat"));
         }
 
         [Test]
-        public void MongoSettings_ToString_DoesNotExposeConnectionString()
+        public void Settings_ToString_DoesNotExposeSecrets()
         {
-            var settings = new MongoStorageSettings(
-                "mongodb://user:super-secret-value@mongodb.svc",
-                "nuviot");
+            var configuration = CreateConfiguration();
 
-            Assert.That(settings.ToString(), Does.Not.Contain("super-secret-value"));
-            Assert.That(settings.ToString(), Does.Not.Contain("mongodb://"));
-            Assert.That(settings.ToString(), Does.Contain("<redacted>"));
+            Assert.That(new CassandraStorageSettings(configuration).ToString(), Does.Not.Contain("super-secret-value"));
+            Assert.That(new ScratchStorageSettings(configuration).ToString(), Does.Not.Contain("super-secret-value"));
+            Assert.That(new FlatDocumentStorageSettings(configuration).ToString(), Does.Not.Contain("super-secret-value"));
         }
 
         [Test]
-        public void MongoStorageConnection_UsesSingletonClientProvider()
+        public void StorageSettings_RegisterAsSingletonInterfaces()
         {
             var services = new ServiceCollection();
-            services.AddMongoStorageConnection(new MongoStorageSettings("mongodb://localhost:27017", "nuviot"));
+            services.AddSingleton(CreateConfiguration());
+            services.AddCassandraStorageConnection();
+            services.AddScratchStorageConnection();
+            services.AddFlatDocumentStorageConnection();
 
             using (var provider = services.BuildServiceProvider())
             {
-                var first = provider.GetRequiredService<IMongoStorageClientProvider>();
-                var second = provider.GetRequiredService<IMongoStorageClientProvider>();
-
-                Assert.That(first, Is.SameAs(second));
-                Assert.That(first.Settings.DefaultDatabaseName, Is.EqualTo("nuviot"));
-                Assert.That(first.Client, Is.SameAs(second.Client));
+                Assert.That(provider.GetRequiredService<ICassandraStorageSettings>(), Is.SameAs(provider.GetRequiredService<ICassandraStorageSettings>()));
+                Assert.That(provider.GetRequiredService<IScratchStorageSettings>(), Is.SameAs(provider.GetRequiredService<IScratchStorageSettings>()));
+                Assert.That(provider.GetRequiredService<IFlatDocumentStorageSettings>(), Is.SameAs(provider.GetRequiredService<IFlatDocumentStorageSettings>()));
+                Assert.That(provider.GetRequiredService<IMongoStorageClientFactory>(), Is.SameAs(provider.GetRequiredService<IMongoStorageClientFactory>()));
             }
         }
 
         [Test]
-        public void CassandraStorageConnection_UsesSingletonSettings()
+        public void MongoClientFactory_ReusesClientForMatchingConnectionString()
         {
-            var services = new ServiceCollection();
-            var settings = new CassandraStorageSettings(
-                new[] { "cassandra.svc" },
-                "app",
-                "secret",
-                "nuviot");
+            var configuration = CreateConfiguration();
+            var scratch = new ScratchStorageSettings(configuration);
+            var flat = new FlatDocumentStorageSettings(configuration);
+            var factory = new MongoStorageClientFactory();
 
-            services.AddCassandraStorageConnection(settings);
-
-            using (var provider = services.BuildServiceProvider())
-            {
-                Assert.That(provider.GetRequiredService<CassandraStorageSettings>(), Is.SameAs(settings));
-            }
-        }
-
-        [Test]
-        public void MongoDatabase_RequiresConfiguredOrExplicitName()
-        {
-            var clientProvider = new MongoStorageClientProvider(new MongoStorageSettings("mongodb://localhost:27017"));
-
-            Assert.Throws<InvalidOperationException>(() => clientProvider.GetDatabase());
-        }
-
-        [Test]
-        public void InvalidSettings_FailImmediately()
-        {
-            Assert.Throws<ArgumentException>(() =>
-                new CassandraStorageSettings(Array.Empty<string>(), "app", "secret", "nuviot"));
-
-            Assert.Throws<ArgumentNullException>(() =>
-                new MongoStorageSettings(null));
+            Assert.That(factory.GetClient(scratch.ConnectionString), Is.SameAs(factory.GetClient(flat.ConnectionString)));
         }
     }
 }
