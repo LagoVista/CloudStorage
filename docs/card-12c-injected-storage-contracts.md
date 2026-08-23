@@ -7,12 +7,12 @@ Storage is a composed capability, not a repository base class.
 Business repositories should be ordinary classes and request exactly one semantic storage contract through constructor injection:
 
 ```text
-IAppendHistoryStore<TEntity>  append-only, time-oriented history
-IScratchStore<TEntity>        small mutable durable-cache/scratch data
-IFlatDocumentStore<TEntity>   mutable flat application data with indexed queries
+IAppendHistoryStore<TEntity>   append-only, time-oriented history
+IScratchStore<TEntity>         small mutable durable-cache/scratch data
+IApplicationDataStore<TEntity> durable mutable application data with indexed queries
 ```
 
-Initial provider mappings are Cassandra for append history and MongoDB for Scratch and Flat Document. Those mappings belong in dependency-injection/provider registration, not in business repositories.
+Initial provider mappings are Cassandra for append history and MongoDB for Scratch and Application Data. Those mappings belong in dependency-injection/provider registration, not in business repositories.
 
 `TableStorageBase<TEntity>` remains legacy infrastructure for repositories that have not yet migrated. New repositories should not inherit from it or from a replacement common storage base class.
 
@@ -46,14 +46,14 @@ public sealed class WorkingStateRepo
 }
 ```
 
-Flat document storage:
+Application data storage:
 
 ```csharp
 public sealed class DeviceStateRepo
 {
-    private readonly IFlatDocumentStore<DeviceState> _store;
+    private readonly IApplicationDataStore<DeviceState> _store;
 
-    public DeviceStateRepo(IFlatDocumentStore<DeviceState> store)
+    public DeviceStateRepo(IApplicationDataStore<DeviceState> store)
     {
         _store = store;
     }
@@ -61,8 +61,6 @@ public sealed class DeviceStateRepo
 ```
 
 ## Registration
-
-Provider cards supply concrete implementations and register them through the capability-specific extensions:
 
 ```csharp
 services.AddAppendHistoryStore<DeviceLog, CassandraAppendHistoryStore<DeviceLog>>(storage => storage
@@ -77,7 +75,7 @@ services.AddScratchStore<WorkingState, MongoScratchStore<WorkingState>>(storage 
     .KeyBy(x => x.Id)
     .Index(x => x.OrganizationId));
 
-services.AddFlatDocumentStore<DeviceState, MongoFlatDocumentStore<DeviceState>>(storage => storage
+services.AddApplicationDataStore<DeviceState, MongoApplicationDataStore<DeviceState>>(storage => storage
     .KeyBy(x => x.Id)
     .Index(x => x.OrganizationId)
     .Index(x => x.DeviceId));
@@ -97,9 +95,9 @@ Append-history queries expose canonical time windows plus declared filters. Muta
 
 `IScratchStore<TEntity>` exposes upsert semantics because scratch data is replaceable working state.
 
-`IFlatDocumentStore<TEntity>` keeps insert and update separate because it represents durable mutable application data rather than a cache-like scratch surface.
+`IApplicationDataStore<TEntity>` keeps insert and update separate because it represents durable mutable application data rather than a cache-like scratch surface.
 
-Keeping Scratch and Flat Document separate preserves intent even though both initially use MongoDB and prevents backend capability from defining application semantics.
+Keeping Scratch and Application Data separate preserves intent even though both initially use MongoDB and prevents backend capability from defining application semantics.
 
 ## Migration boundary
 
