@@ -27,6 +27,16 @@ namespace LagoVista.CloudStorage.Tests
             public int Value { get; set; }
         }
 
+        public sealed class IdempotentSchemaActivityRecord : IActivityRecord
+        {
+            public string Id { get; set; }
+            public string OrganizationId { get; set; }
+            public string Organization { get; set; }
+            public DateTime CreationDate { get; set; }
+            public string Category { get; set; }
+            public int Value { get; set; }
+        }
+
         public sealed class WrongTypeActivityRecord : IActivityRecord
         {
             public string Id { get; set; }
@@ -72,6 +82,17 @@ CREATE TABLE additive_schema_activity_record (
     PRIMARY KEY ((organization_id), creation_date, id)
 ) WITH CLUSTERING ORDER BY (creation_date DESC, id ASC)");
 
+            await RecreateTableAsync("idempotent_schema_activity_record", @"
+CREATE TABLE idempotent_schema_activity_record (
+    organization_id text,
+    creation_date timestamp,
+    id text,
+    organization text,
+    category text,
+    value int,
+    PRIMARY KEY ((organization_id), creation_date, id)
+) WITH CLUSTERING ORDER BY (creation_date DESC, id ASC)");
+
             await RecreateTableAsync("wrong_type_activity_record", @"
 CREATE TABLE wrong_type_activity_record (
     organization_id text,
@@ -105,7 +126,7 @@ CREATE TABLE wrong_primary_key_activity_record (
             using (var provider = BuildProvider<AdditiveSchemaActivityRecord>())
             {
                 var store = provider.GetRequiredService<IActivityRecordStore<AdditiveSchemaActivityRecord>>();
-                var record = new AdditiveSchemaActivityRecord
+                await store.InsertAsync(new AdditiveSchemaActivityRecord
                 {
                     Id = Guid.NewGuid().ToString("N"),
                     OrganizationId = $"ORG-{Guid.NewGuid():N}",
@@ -113,9 +134,7 @@ CREATE TABLE wrong_primary_key_activity_record (
                     CreationDate = DateTime.UtcNow,
                     Category = "additive",
                     Value = 42
-                };
-
-                await store.InsertAsync(record);
+                });
             }
 
             var columns = await ReadColumnsAsync("additive_schema_activity_record");
@@ -129,16 +148,16 @@ CREATE TABLE wrong_primary_key_activity_record (
         [Test]
         public async Task Reconciliation_IsIdempotentOnFreshStoreInstance()
         {
-            using (var firstProvider = BuildProvider<AdditiveSchemaActivityRecord>())
+            using (var firstProvider = BuildProvider<IdempotentSchemaActivityRecord>())
             {
-                var firstStore = firstProvider.GetRequiredService<IActivityRecordStore<AdditiveSchemaActivityRecord>>();
-                await firstStore.InsertAsync(CreateAdditiveRecord(1));
+                var firstStore = firstProvider.GetRequiredService<IActivityRecordStore<IdempotentSchemaActivityRecord>>();
+                await firstStore.InsertAsync(CreateIdempotentRecord(1));
             }
 
-            using (var secondProvider = BuildProvider<AdditiveSchemaActivityRecord>())
+            using (var secondProvider = BuildProvider<IdempotentSchemaActivityRecord>())
             {
-                var secondStore = secondProvider.GetRequiredService<IActivityRecordStore<AdditiveSchemaActivityRecord>>();
-                Assert.DoesNotThrowAsync(() => secondStore.InsertAsync(CreateAdditiveRecord(2)));
+                var secondStore = secondProvider.GetRequiredService<IActivityRecordStore<IdempotentSchemaActivityRecord>>();
+                Assert.DoesNotThrowAsync(() => secondStore.InsertAsync(CreateIdempotentRecord(2)));
             }
         }
 
@@ -148,16 +167,14 @@ CREATE TABLE wrong_primary_key_activity_record (
             using (var provider = BuildProvider<WrongTypeActivityRecord>())
             {
                 var store = provider.GetRequiredService<IActivityRecordStore<WrongTypeActivityRecord>>();
-                var record = new WrongTypeActivityRecord
+                var exception = Assert.ThrowsAsync<InvalidOperationException>(() => store.InsertAsync(new WrongTypeActivityRecord
                 {
                     Id = Guid.NewGuid().ToString("N"),
                     OrganizationId = $"ORG-{Guid.NewGuid():N}",
                     Organization = "Wrong Type",
                     CreationDate = DateTime.UtcNow,
                     Value = 42
-                };
-
-                var exception = Assert.ThrowsAsync<InvalidOperationException>(() => store.InsertAsync(record));
+                }));
                 Assert.That(exception.Message, Does.Contain("Type changes require an explicit migration"));
             }
         }
@@ -168,21 +185,18 @@ CREATE TABLE wrong_primary_key_activity_record (
             using (var provider = BuildProvider<WrongPrimaryKeyActivityRecord>())
             {
                 var store = provider.GetRequiredService<IActivityRecordStore<WrongPrimaryKeyActivityRecord>>();
-                var record = new WrongPrimaryKeyActivityRecord
+                var exception = Assert.ThrowsAsync<InvalidOperationException>(() => store.InsertAsync(new WrongPrimaryKeyActivityRecord
                 {
                     Id = Guid.NewGuid().ToString("N"),
                     OrganizationId = $"ORG-{Guid.NewGuid():N}",
                     Organization = "Wrong Primary Key",
                     CreationDate = DateTime.UtcNow
-                };
-
-                var exception = Assert.ThrowsAsync<InvalidOperationException>(() => store.InsertAsync(record));
+                }));
                 Assert.That(exception.Message, Does.Contain("Primary-key changes require an explicit migration"));
             }
         }
 
-        private ServiceProvider BuildProvider<TRecord>()
-            where TRecord : IActivityRecord, new()
+        private ServiceProvider BuildProvider<TRecord>() where TRecord : IActivityRecord, new()
         {
             var services = new ServiceCollection();
             services.AddSingleton(_settings);
@@ -208,9 +222,9 @@ WHERE keyspace_name = ? AND table_name = ?");
             return await _session.ExecuteAsync(prepared.Bind(_settings.Keyspace, tableName));
         }
 
-        private static AdditiveSchemaActivityRecord CreateAdditiveRecord(int value)
+        private static IdempotentSchemaActivityRecord CreateIdempotentRecord(int value)
         {
-            return new AdditiveSchemaActivityRecord
+            return new IdempotentSchemaActivityRecord
             {
                 Id = Guid.NewGuid().ToString("N"),
                 OrganizationId = $"ORG-{Guid.NewGuid():N}",
