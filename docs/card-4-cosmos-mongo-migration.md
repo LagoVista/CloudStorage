@@ -4,34 +4,109 @@
 
 Provide a safe, repeatable utility that copies raw documents from Cosmos into Mongo using the final domain-based collection routing rules.
 
+## Status
+
+Initial migration engine implemented. Local build/API validation and end-to-end migration testing remain.
+
 ## Migration shape
 
-`Cosmos consolidated collection -> raw document -> transform -> domain resolver -> Mongo collection`
+`Cosmos consolidated collection -> raw JObject -> transform -> domain resolver -> Mongo collection -> bulk upsert`
 
-The migrator should not depend on application entity deserialization.
+The migrator does not deserialize documents into application entity types.
 
-## Required transforms
+## Implemented transforms
 
 - Move Cosmos `id` to Mongo `_id`.
 - Do not retain a duplicate top-level `id` field.
-- Strip Cosmos system metadata such as `_rid`, `_self`, `_etag`, `_attachments`, and `_ts`.
-- Preserve the remaining document shape and nested values.
+- Strip `_rid`, `_self`, `_etag`, `_attachments`, and `_ts`.
+- Preserve the remaining raw JSON document shape and nested values.
 
-## Tasks
+## Request model
 
-- Add migration request/result models.
-- Support explicit source Cosmos and target Mongo settings.
-- Stream Cosmos documents rather than loading an entire database into memory.
-- Support configurable batch size.
-- Route each document by `EntityType` through the domain collection resolver.
-- Bulk upsert Mongo documents by `_id` so reruns are idempotent.
-- Add optional `EntityType` filtering for incremental migrations.
-- Add dry-run mode that reports counts and target collections without writing.
-- Return/document continuation/checkpoint information sufficient to resume interrupted migrations.
-- Count read, written, skipped, failed, and unresolved-route documents.
-- Include per-entity-type and per-destination-collection statistics.
-- Add validation mode comparing source and destination counts.
-- Ensure secrets never appear in reports or logs.
+`CosmosToMongoMigrationRequest` accepts:
+
+- explicit Cosmos source `DocumentStorageSettings`
+- explicit Mongo target `MongoDocumentStorageSettings`
+- optional source collection override
+- optional `EntityType` filter
+- configurable `BatchSize`
+- optional `ContinuationToken`
+- optional `MaxPages`
+- `DryRun`
+
+`MaxPages` plus `ContinuationToken` provides a controlled checkpoint/resume mechanism. A migration can intentionally process a small number of Cosmos pages, inspect its result, then continue using the returned token.
+
+## Routing
+
+Each raw Cosmos document is inspected for `EntityType` and routed through `IDocumentCollectionNameResolver`.
+
+Resolved entities are written to their `EntityDescriptionAttribute.Domain` collection. Unknown or ambiguous entity types are counted as unresolved and routed to the safe fallback:
+
+```text
+{MongoDatabaseName}_Collections
+```
+
+Documents are never dropped solely because route metadata cannot be resolved.
+
+## Mongo writes
+
+Documents are grouped by destination collection for each Cosmos page and written with unordered Mongo bulk writes.
+
+Each write is a replacement upsert filtered by `_id`, making normal reruns idempotent.
+
+Dry-run mode executes source reading, transforms, routing, and statistics collection without opening a Mongo connection or writing data.
+
+## Result model
+
+`CosmosToMongoMigrationResult` currently reports:
+
+- pages read
+- documents read
+- documents written
+- documents skipped
+- documents failed
+- unresolved routes
+- continuation token
+- completed flag
+- dry-run flag
+- per-entity-type/per-destination route statistics
+
+No credentials or connection strings are included in the result.
+
+## Completed tasks
+
+- [x] Add migration request/result models.
+- [x] Support explicit source Cosmos and target Mongo settings.
+- [x] Stream Cosmos documents page-by-page.
+- [x] Support configurable Cosmos page/batch size.
+- [x] Route each document by `EntityType` using domain collection routing.
+- [x] Transform `id` to `_id`.
+- [x] Strip Cosmos system metadata.
+- [x] Bulk upsert Mongo documents by `_id`.
+- [x] Support optional `EntityType` filtering.
+- [x] Add dry-run mode.
+- [x] Add continuation token input/output and bounded `MaxPages` execution.
+- [x] Count read, written, skipped, failed, and unresolved-route documents.
+- [x] Include per-entity-type/per-destination statistics.
+- [x] Register migration service with dependency injection.
+- [x] Keep secrets out of migration reports.
+
+## Remaining tasks
+
+- [ ] Build against current Cosmos and Mongo SDK versions and clear any API signature mismatches.
+- [ ] Add transform-focused unit tests for `id -> _id` and Cosmos metadata removal.
+- [ ] Run a dry-run against a real Cosmos database and review route inventory.
+- [ ] Run a small bounded migration into dev Mongo.
+- [ ] Add validation mode comparing Cosmos and Mongo counts by entity type.
+- [ ] Validate continuation/resume behavior against a real Cosmos feed.
+- [ ] Validate rerunning the same page does not create duplicates.
+
+## Local validation
+
+```powershell
+dotnet build src/LagoVista.CloudStorage/LagoVista.CloudStorage.csproj
+dotnet test tests/LagoVista.CloudStorage.Tests/LagoVista.CloudStorage.IntegrationTests.csproj
+```
 
 ## Acceptance criteria
 
