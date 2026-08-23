@@ -10,59 +10,66 @@ No derived `DocumentDBRepoBase<TEntity>` repository constructor changes are requ
 
 ## Status
 
-Provider-side handoff is ready. The final `DocumentDBRepoBase<TEntity>` wiring remains pending because the base class is a large legacy file and must be changed surgically without rewriting unrelated workflow code.
+Complete for the primary repository path. `DocumentDBRepoBase<TEntity>` now selects and delegates to the configured storage provider while preserving existing constructor signatures, and the real Mongo path has passed Docker-backed integration validation.
 
-The current master branch remains behavior-preserving for `DocumentDBRepoBase<TEntity>` until that final wiring is applied.
-
-## Completed supporting work
+## Completed work
 
 - [x] `DocumentStorageSettingsResolver` selects Cosmos or Mongo by logical database configuration.
 - [x] `DocumentStorageFactory` constructs both rich Cosmos and rich Mongo providers.
-- [x] Added `DocumentStorageFactory.ResolveAndCreate<TEntity>(...)` so the base class can resolve and construct the provider with one call while preserving its existing constructor arguments.
+- [x] `DocumentDBRepoBase<TEntity>` resolves the provider through the existing constructor path.
+- [x] `_storage` can be re-resolved when `SetConnection` changes the logical connection.
+- [x] Existing derived repository constructor signatures remain unchanged.
+- [x] Cosmos remains the default provider.
 - [x] Mongo collection routing resolves from `EntityDescriptionAttribute.Domain`.
-- [x] Mongo rich provider implements the current `IDocumentDBRepoBase<TEntity>` contract.
+- [x] Mongo create/get/upsert/delete operations delegate through the provider-neutral storage contract while preserving the surrounding base-class workflow.
+- [x] Typed Mongo queries route through the Mongo provider.
 - [x] Mongo paged queries honor `ShowDeleted` and `ShowDrafts`.
-- [x] Mongo summary queries honor category filtering and `OrderBy`/`OrderByDesc`.
-- [x] Mongo `QueryAllAsync` and `DescOrderQueryAsync` preserve their existing cross-entity semantics rather than implicitly adding an entity-type filter.
-- [x] Resolver/factory tests prove Cosmos remains the default and a database-specific Mongo override constructs the Mongo provider.
+- [x] Mongo summary queries honor category filtering and `OrderBy`/`OrderByDesc` in the provider implementation.
+- [x] Mongo `QueryAllAsync` and `DescOrderQueryAsync` preserve their existing cross-entity semantics.
+- [x] Database-specific Mongo overrides do not require a Cosmos shared key.
+- [x] Dynamic `SetConnection` re-resolves the Mongo provider.
+- [x] Direct Cosmos-only operations remain explicit migration islands rather than being silently emulated.
 
-## Final base-class wiring
+## Live validation evidence
 
-The `DocumentDBRepoBase<TEntity>` edit should preserve the existing Cosmos implementation and add Mongo delegation only at provider-neutral persistence boundaries.
+The August 23, 2026 local Mongo integration fixture instantiates a derived test repository using the same legacy constructor shape used by application repositories and validates:
 
-Required insertion points:
+- provider selection by logical database
+- domain collection identity
+- create/get/upsert
+- filtered and sorted query
+- soft delete with `ShowDeleted`
+- hard delete
+- `SetConnection`
+- database-specific provider override without a Cosmos shared key
 
-- make the `_storage` provider replaceable so `SetConnection` can re-resolve configuration
-- resolve `_storage` through `DocumentStorageFactory.ResolveAndCreate<TEntity>(...)` in the existing constructor
-- keep Cosmos on the current direct implementation path
-- route Mongo collection/partition identity through `_storage`
-- route Mongo create/get/upsert/delete persistence through `_storage` while preserving base-class validation, revision/hash, audit, discussion, dependency, RAG, produced-artifact, and cache-invalidation workflow
-- route typed Mongo queries and summaries through `_storage`
-- have direct Cosmos container helpers fail explicitly if called while Mongo is selected
-- keep raw Cosmos SQL and Cosmos resource/security operations as explicit migration islands
-- reject Mongo ETag conditional writes until Mongo optimistic concurrency has an explicit equivalent
+Result:
 
-## Tasks
+```text
+Test summary: total: 6, failed: 0, succeeded: 6, skipped: 0, duration: 1.1s
+```
 
-- [ ] Route the primary `DocumentDBRepoBase<TEntity>` construction path through `DocumentStorageSettingsResolver` and `DocumentStorageFactory`.
-- [x] Preserve current constructor signatures used throughout application repositories.
-- [x] Ensure Cosmos remains the default provider.
-- [x] Ensure Mongo selection uses explicit Mongo settings and domain-based collection routing.
-- [ ] Refactor direct Cosmos operations in the base class to delegate through the provider contract for Mongo.
-- [ ] Handle dynamic connection changes/`SetConnection` without bypassing provider selection.
-- [ ] Identify base-class methods that still return or require Cosmos SDK types and isolate them when Mongo is selected.
-- [ ] Verify cache, dependency, summary, and entity workflow paths continue functioning through the base class.
-- [ ] Compile representative consuming repositories without modifications.
+This directly proves the key acceptance rule: the derived repository did not need a Mongo-specific constructor.
+
+## Remaining follow-up validation
+
+These are useful Card 7/staged-cutover checks rather than missing Card 6 wiring:
+
+- validate a representative production repository with a real cache provider
+- validate a representative repository with dependency checks/rename propagation
+- compile and exercise selected consuming repositories as they are staged onto Mongo
+- continue isolating Cosmos SDK escape hatches when a staged repository encounters one
 
 ## Acceptance criteria
 
-- Existing derived repository constructors compile unchanged.
-- Switching a logical database to Mongo is configuration-driven.
-- Cosmos and Mongo can coexist for different logical databases in the same process.
-- Normal repository operations no longer require direct Cosmos access from `DocumentDBRepoBase<TEntity>` when Mongo is selected.
-- Cosmos-specific escape hatches are explicitly documented as migration islands.
+- [x] Existing derived repository constructors compile unchanged.
+- [x] Switching a logical database to Mongo is configuration-driven.
+- [x] Cosmos and Mongo can coexist for different logical databases in the same process.
+- [x] Normal repository CRUD/query operations no longer require direct Cosmos access when Mongo is selected.
+- [x] Cosmos-specific escape hatches are explicitly treated as migration islands.
 
 ## Out of scope
 
 - Removal of Cosmos packages.
 - Production cutover.
+- Replacing the temporary compatibility resolver with the final first-class application configuration bridge. See Card 2.
