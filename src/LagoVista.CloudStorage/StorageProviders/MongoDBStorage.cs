@@ -13,6 +13,7 @@ using LagoVista.IoT.Logging.Loggers;
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -22,14 +23,15 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     internal class MongoDBStorage<TEntity> : IDocumentDBRepoBase<TEntity> where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
     {
-        private string _connectionString;
-        private string _dbName;
-        private MongoClient _mongoClient;
-        private IMongoDatabase _mongoDb;
+        private static readonly ConcurrentDictionary<string, MongoClient> _clients = new ConcurrentDictionary<string, MongoClient>(StringComparer.Ordinal);
+
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
+        private string _connectionString;
+        private string _dbName;
+        private IMongoDatabase _mongoDb;
 
         public MongoDBStorage(string connectionString, string dbName, IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IDocumentCollectionNameResolver collectionNameResolver = null)
         {
@@ -42,11 +44,18 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         public async Task<OperationResponse<TEntity>> CreateDocumentAsync(TEntity item)
         {
-            ValidateEntity(item);
-            PrepareEntity(item);
-            await GetCollection<TEntity>().InsertOneAsync(item).ConfigureAwait(false);
-            await AddToCacheAsync(item).ConfigureAwait(false);
-            return new OperationResponse<TEntity>(item);
+            ValidateItem(item);
+            PrepareItem(item);
+            try
+            {
+                await GetCollection<TEntity>().InsertOneAsync(item).ConfigureAwait(false);
+                await AddToCacheAsync(item).ConfigureAwait(false);
+                return new OperationResponse<TEntity>(item);
+            }
+            catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            {
+                throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
+            }
         }
 
         public async Task DeleteCollectionAsync()
@@ -54,24 +63,24 @@ namespace LagoVista.CloudStorage.StorageProviders
             await GetDatabase().DropCollectionAsync(GetCollectionName()).ConfigureAwait(false);
         }
 
-        public async Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id)
+        public Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id)
         {
-            return await DeleteDocumentAsync(id, null).ConfigureAwait(false);
+            return DeleteDocumentAsync(id, null);
         }
 
         public async Task<OperationResponse<TEntity>> DeleteDocumentAsync(string id, string partitionKey)
         {
-            var existing = await GetDocumentAsync(id).ConfigureAwait(false);
+            var doc = await GetDocumentAsync(id).ConfigureAwait(false);
             if (_dependencyManager != null)
             {
-                var dependencies = await _dependencyManager.CheckForDependenciesAsync(existing).ConfigureAwait(false);
+                var dependencies = await _dependencyManager.CheckForDependenciesAsync(doc).ConfigureAwait(false);
                 if (dependencies.IsInUse) throw new InUseException(dependencies);
             }
 
-            await RemoveFromCacheAsync(id).ConfigureAwait(false);
-            var result = await GetCollection<TEntity>().DeleteOneAsync(Builders<TEntity>.Filter.Eq(entity => entity.Id, id)).ConfigureAwait(false);
-            if (result.DeletedCount == 0) throw new RecordNotFoundException(typeof(TEntity).Name, id);
-            return new OperationResponse<TEntity>(existing);
+            if (_cacheProvider != null) await _cacheProvider.RemoveAsync(GetCacheKey(id)).ConfigureAwait(false);
+            var result = await GetCollection<TEntity>().DeleteOneAsync(entity => entity.Id == id).ConfigureAwait(false);
+            if (!result.IsAcknowledged || result.DeletedCount == 0) throw new RecordNotFoundException(typeof(TEntity).Name, id);
+            return new OperationResponse<TEntity>(doc);
         }
 
         public async Task<ListResponse<TEntity>> DescOrderQueryAsync<TKey>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, TKey>> orderBy, ListRequest listRequest)
@@ -92,18 +101,22 @@ namespace LagoVista.CloudStorage.StorageProviders
             return _collectionNameResolver.Resolve(_dbName, typeof(TEntity));
         }
 
-        public async Task<TEntity> GetDocumentAsync(string id, bool throwOnNotFound = true)
+        public Task<TEntity> GetDocumentAsync(string id, bool throwOnNotFound = true)
+        {
+            return GetDocumentAsync(id, null, throwOnNotFound);
+        }
+
+        public async Task<TEntity> GetDocumentAsync(string id, string partitionKey, bool throwOnNotFound = true)
         {
             if (_cacheProvider != null)
             {
-                var cached = await _cacheProvider.GetAsync(GetCacheKey(id)).ConfigureAwait(false);
-                if (!String.IsNullOrWhiteSpace(cached))
+                var cachedJson = await _cacheProvider.GetAsync(GetCacheKey(id)).ConfigureAwait(false);
+                if (!String.IsNullOrWhiteSpace(cachedJson))
                 {
                     try
                     {
-                        var cachedEntity = JsonConvert.DeserializeObject<TEntity>(cached);
-                        if (cachedEntity != null && String.Equals(cachedEntity.EntityType, typeof(TEntity).Name, StringComparison.Ordinal)) return cachedEntity;
-                        await _cacheProvider.RemoveAsync(GetCacheKey(id)).ConfigureAwait(false);
+                        var cached = JsonConvert.DeserializeObject<TEntity>(cachedJson);
+                        if (cached != null && cached.EntityType == typeof(TEntity).Name) return cached;
                     }
                     catch
                     {
@@ -112,31 +125,15 @@ namespace LagoVista.CloudStorage.StorageProviders
                 }
             }
 
-            var entity = await GetDocumentAsync(id, null, throwOnNotFound).ConfigureAwait(false);
-            if (entity != null) await AddToCacheAsync(entity).ConfigureAwait(false);
-            return entity;
-        }
+            var entity = await GetCollection<TEntity>().Find(CreateEntityFilter(item => item.Id == id)).FirstOrDefaultAsync().ConfigureAwait(false);
+            if (entity == null)
+            {
+                if (throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                return null;
+            }
 
-        public async Task<TEntity> GetDocumentAsync(string id, string partitionKey, bool throwOnNotFound = true)
-        {
-            try
-            {
-                var filter = Builders<TEntity>.Filter.Eq(entity => entity.Id, id) & Builders<TEntity>.Filter.Eq(entity => entity.EntityType, typeof(TEntity).Name);
-                var entity = await GetCollection<TEntity>().Find(filter).FirstOrDefaultAsync().ConfigureAwait(false);
-                if (entity != null) return entity;
-                if (throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                return null;
-            }
-            catch (RecordNotFoundException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger?.AddException("MongoDBStorage_GetDocumentAsync", ex);
-                if (throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                return null;
-            }
+            await AddToCacheAsync(entity).ConfigureAwait(false);
+            return entity;
         }
 
         public string GetPartitionKey()
@@ -146,7 +143,15 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         public async Task<ListResponse<TEntity>> QueryAllAsync(Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
-            return await QueryAsync(query, listRequest).ConfigureAwait(false);
+            try
+            {
+                var items = await GetCollection<TEntity>().Find(CreateEntityFilter(query)).Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
+                return ListResponse<TEntity>.Create(listRequest, items);
+            }
+            catch (Exception ex)
+            {
+                return CreateErrorResponse<TEntity>(ex, listRequest);
+            }
         }
 
         public async Task<IEnumerable<TEntity>> QueryAsync(Expression<Func<TEntity, bool>> query)
@@ -229,23 +234,24 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         public void SetConnection(string connectionString, string sharedKey, string dbName)
         {
-            if (String.IsNullOrWhiteSpace(connectionString)) throw new InvalidOperationException($"Invalid or missing Mongo connection string on {GetType().Name}");
-            if (String.IsNullOrWhiteSpace(dbName)) throw new InvalidOperationException($"Invalid or missing database name on {GetType().Name}");
+            if (String.IsNullOrWhiteSpace(connectionString)) throw new InvalidOperationException("Mongo connection string is required.");
+            if (String.IsNullOrWhiteSpace(dbName)) throw new InvalidOperationException("Mongo database name is required.");
+
             _connectionString = connectionString;
             _dbName = dbName;
-            _mongoClient = new MongoClient(_connectionString);
-            _mongoDb = _mongoClient.GetDatabase(_dbName);
+            var client = _clients.GetOrAdd(_connectionString, value => new MongoClient(value));
+            _mongoDb = client.GetDatabase(_dbName);
         }
 
         public async Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item)
         {
-            ValidateEntity(item);
-            PrepareEntity(item);
+            ValidateItem(item);
+            PrepareItem(item);
 
             if (_dependencyManager != null)
             {
                 var existing = await GetDocumentAsync(item.Id, false).ConfigureAwait(false);
-                if (existing != null && !String.Equals(existing.Name, item.Name, StringComparison.Ordinal))
+                if (existing != null && existing.Name != item.Name)
                 {
                     var dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item).ConfigureAwait(false);
                     if (dependencyResult.IsInUse)
@@ -279,7 +285,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             return query == null ? entityTypeFilter : Builders<TEntityFactory>.Filter.Where(query) & entityTypeFilter;
         }
 
-        private ListResponse<TItem> CreateErrorResponse<TItem>(Exception ex, ListRequest listRequest)
+        private ListResponse<TItem> CreateErrorResponse<TItem>(Exception ex, ListRequest listRequest) where TItem : class
         {
             _logger?.AddException("MongoDBStorage_Query", ex);
             var response = ListResponse<TItem>.Create(new List<TItem>());
@@ -309,18 +315,13 @@ namespace LagoVista.CloudStorage.StorageProviders
             return Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize;
         }
 
-        private async Task RemoveFromCacheAsync(string id)
-        {
-            if (_cacheProvider != null) await _cacheProvider.RemoveAsync(GetCacheKey(id)).ConfigureAwait(false);
-        }
-
-        private void PrepareEntity(TEntity item)
+        private void PrepareItem(TEntity item)
         {
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
         }
 
-        private static void ValidateEntity(TEntity item)
+        private static void ValidateItem(TEntity item)
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
             if (item is IValidateable validateable)
