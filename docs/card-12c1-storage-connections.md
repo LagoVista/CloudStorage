@@ -2,43 +2,77 @@
 
 Card 12 storage repositories receive semantic storage capabilities through dependency injection. They do not receive provider credentials, endpoints, connection strings, or Kubernetes Secret names.
 
-## Configuration sections
+## Configuration pattern
 
-The default application configuration sections are:
+Card 12 follows the existing LagoVista `I*Settings` convention. Each settings implementation accepts `IConfiguration`, reads its named section, and is registered in DI through its interface.
+
+The three new application configuration contracts are intentionally independent:
 
 ```text
-Storage:Cassandra
-Storage:Mongo
+CassandraStorage
+ScratchStorage
+FlatDocumentStorage
 ```
 
-Cassandra shape:
+The existing primary Mongo / DocumentDB configuration remains separate from both new Mongo-backed mechanisms.
+
+This means Scratch and Flat Document may point at the same Mongo server today while still having independent configuration keys, credentials, and database names. They can therefore be split later without changing repository constructors or storage contracts.
+
+## Cassandra configuration
 
 ```json
 {
-  "Storage": {
-    "Cassandra": {
-      "ContactPoints": [ "cassandra-0", "cassandra-1", "cassandra-2" ],
-      "Port": 9042,
-      "UserName": "app-user",
-      "Password": "<secret>",
-      "Keyspace": "nuviot",
-      "LocalDataCenter": "dc1"
-    }
+  "CassandraStorage": {
+    "ContactPoints": "cassandra-0,cassandra-1,cassandra-2",
+    "Port": 9042,
+    "UserName": "app-user",
+    "Password": "<secret>",
+    "Keyspace": "nuviot",
+    "LocalDataCenter": "dc1"
   }
 }
 ```
 
-Mongo shape:
+Registered as:
+
+```csharp
+services.AddSingleton<ICassandraStorageSettings, CassandraStorageSettings>();
+```
+
+`AddCassandraStorageConnection()` provides the canonical registration helper.
+
+## Scratch configuration
 
 ```json
 {
-  "Storage": {
-    "Mongo": {
-      "ConnectionString": "<secret-bearing connection string>",
-      "DefaultDatabaseName": "nuviot"
-    }
+  "ScratchStorage": {
+    "ConnectionString": "<secret-bearing Mongo connection string>",
+    "DatabaseName": "nuviot-scratch"
   }
 }
+```
+
+Registered as:
+
+```csharp
+services.AddSingleton<IScratchStorageSettings, ScratchStorageSettings>();
+```
+
+## Flat Document configuration
+
+```json
+{
+  "FlatDocumentStorage": {
+    "ConnectionString": "<secret-bearing Mongo connection string>",
+    "DatabaseName": "nuviot-flat"
+  }
+}
+```
+
+Registered as:
+
+```csharp
+services.AddSingleton<IFlatDocumentStorageSettings, FlatDocumentStorageSettings>();
 ```
 
 The values above are examples of shape only. Secret values must come from the normal environment/application secret path and must never be committed to Git.
@@ -46,28 +80,35 @@ The values above are examples of shape only. Secret values must come from the no
 ## Registration
 
 ```csharp
-services.AddCassandraStorageConnection(configuration);
-services.AddMongoStorageConnection(configuration);
+services.AddCassandraStorageConnection();
+services.AddScratchStorageConnection();
+services.AddFlatDocumentStorageConnection();
 ```
 
-Local development can supply the same sections with workstation-reachable endpoints such as a port-forward. In-cluster deployments supply internal service endpoints. Repository code is unchanged between environments.
+These helpers register the semantic settings interfaces. The host's normal `IConfiguration` registration supplies the environment-specific values.
 
-Tests and hosts that already possess typed values may register them directly:
+Local development can supply the same keys with workstation-reachable endpoints such as a port-forward. In-cluster deployments supply internal service endpoints. Repository code is unchanged between environments.
 
-```csharp
-services.AddCassandraStorageConnection(cassandraSettings);
-services.AddMongoStorageConnection(mongoSettings);
-```
+## Mongo lifecycle ownership
 
-## Lifecycle ownership
+`IMongoStorageClientFactory` is registered as a singleton. It caches clients by connection string.
 
-`MongoStorageClientProvider` is registered as a singleton and owns one lazily-created `MongoClient` for the configured Mongo connection. Scratch and Flat Document providers will share this client while selecting their own logical databases/collections.
+Therefore:
 
-Cassandra settings are registered as a singleton. Card 12d selects the Cassandra driver and adds the corresponding singleton cluster/session provider. Session creation does not belong in Card 12c1 because choosing and referencing the Cassandra driver is intentionally part of Card 12d.
+- Scratch and Flat Document remain independent configuration contracts.
+- They may use different Mongo servers with no architectural change.
+- If they currently contain the same connection string, both resolve to the same pooled `MongoClient`.
+- The existing primary Mongo/DocumentDB settings remain independent.
+
+This preserves semantic/configuration separation without creating duplicate physical Mongo connection pools unnecessarily.
+
+## Cassandra lifecycle ownership
+
+Cassandra settings are registered as a singleton through `ICassandraStorageSettings`. Card 12d selects the Cassandra driver and adds the corresponding singleton cluster/session provider. Session creation does not belong in Card 12c1 because choosing and referencing the Cassandra driver is intentionally part of Card 12d.
 
 ## Secret safety
 
-Typed settings retain credentials because providers need them, but their `ToString()` representations redact passwords/connection strings. Validation exceptions identify the missing setting name and never include the supplied secret value.
+Typed settings retain credentials because providers need them, but their `ToString()` representations redact passwords/connection strings. Configuration validation identifies the missing setting and does not emit supplied secret values.
 
 ## Ownership boundary
 
