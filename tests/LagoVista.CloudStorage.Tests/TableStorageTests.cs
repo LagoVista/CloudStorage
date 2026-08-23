@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.IntegrationTests
 {
+    [Category("Integration")]
+    [Category("TableStorage")]
     public class TableStorageTests
     {
         private string _accountId;
