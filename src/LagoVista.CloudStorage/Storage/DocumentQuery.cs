@@ -11,41 +11,23 @@ namespace LagoVista.CloudStorage.DocumentDB
     /// </summary>
     public enum DocumentQueryType
     {
-        /// <summary>
-        /// Projects video-composition source fields for one entity type and organization.
-        /// </summary>
         EntityVideoCompositionSourcesByTypeAndOrganization,
-
-        /// <summary>
-        /// Aggregates customer counts by industry, niche, and sales stage for an organization.
-        /// </summary>
         CustomerIndustryNicheSalesStageCounts,
-
-        /// <summary>
-        /// Resolves the dynamic work-task set used by the Kanban view.
-        /// </summary>
         WorkTaskKanban,
-
-        /// <summary>
-        /// Returns one entity-preparation summary by entity type, entity ID, and organization.
-        /// </summary>
         EntityPreparationCandidateById,
-
-        /// <summary>
-        /// Returns entity-preparation summaries by entity type and organization.
-        /// </summary>
         EntityPreparationCandidatesByType,
+        IncompleteEntityPreparationCandidatesByType,
 
-        /// <summary>
-        /// Returns entity-preparation summaries that are not production-ready.
-        /// </summary>
-        IncompleteEntityPreparationCandidatesByType
+        /// <summary>Returns projected list items using the standard entity-list filters, sort, and paging.</summary>
+        EntityListItems,
+
+        /// <summary>Returns entity headers using the standard entity-list filters, sort, and paging.</summary>
+        EntityListHeaders,
+
+        /// <summary>Returns distinct category headers visible to the organization under the standard entity-list filters.</summary>
+        EntityListCategories
     }
 
-    /// <summary>
-    /// Provider-neutral named parameter supplied to a registered document query.
-    /// Parameter names intentionally omit provider-specific prefix requirements.
-    /// </summary>
     public sealed class DocumentQueryParameter
     {
         public DocumentQueryParameter(string name, object value)
@@ -61,9 +43,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         public object Value { get; }
     }
 
-    /// <summary>
-    /// Provider-neutral request for one registered document query shape.
-    /// </summary>
     public sealed class DocumentQueryRequest
     {
         private readonly Dictionary<string, object> _parameters =
