@@ -177,13 +177,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             _endPointString = connectionString;
 
             _sharedKey = sharedKey;
-            if (String.IsNullOrEmpty(_sharedKey))
-            {
-                var ex = new InvalidOperationException($"Invalid or missing shared key information on {GetType().Name}");
-                _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__CTor]", ex);
-                throw ex;
-            }
-
             _dbName = dbName;
             if (String.IsNullOrEmpty(_dbName))
             {
@@ -199,6 +192,13 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
 
             var storageSettings = DocumentStorageSettingsResolver.Resolve(connectionString, sharedKey, dbName);
+            if (storageSettings.Provider == DocumentStorageProviderType.Cosmos && String.IsNullOrEmpty(_sharedKey))
+            {
+                var ex = new InvalidOperationException($"Invalid or missing shared key information on {GetType().Name}");
+                _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__CTor]", ex);
+                throw ex;
+            }
+
             _stoargeProvider = storageSettings.Provider == DocumentStorageProviderType.Mongo ? StorageProviderTypes.Mongo : StorageProviderTypes.Original;
             _storage = DocumentStorageFactory.Create<TEntity>(storageSettings, _logger, null, null, _cosmosClientProvider);
         }
