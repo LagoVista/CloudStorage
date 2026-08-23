@@ -1,5 +1,6 @@
 using LagoVista;
 using LagoVista.Core;
+using LagoVista.Core.Models;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
@@ -19,6 +20,17 @@ namespace LagoVista.CloudStorage.StorageProviders
             lock (_syncRoot)
             {
                 if (_configured) return;
+
+                if (!BsonClassMap.IsClassMapRegistered(typeof(EntityHeader)))
+                {
+                    BsonClassMap.RegisterClassMap<EntityHeader>(classMap =>
+                    {
+                        classMap.AutoMap();
+                        classMap.SetIdMember(null);
+                        classMap.GetMemberMap(nameof(EntityHeader.Id)).SetElementName(nameof(EntityHeader.Id));
+                    });
+                }
+
                 BsonSerializer.RegisterSerializer(typeof(LagoVistaKey), new LagoVistaKeyBsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(NormalizedId32), new NormalizedId32BsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(UtcTimestamp), new UtcTimestampBsonSerializer());
