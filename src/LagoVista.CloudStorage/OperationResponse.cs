@@ -3,17 +3,18 @@
 // IndexVersion: 2
 // --- END CODE INDEX META ---
 using Microsoft.Azure.Cosmos;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LagoVista.CloudStorage
 {
     public class OperationResponse<TEntity>
     {
-        public OperationResponse(ItemResponse<TEntity> itemResponse)
+        public OperationResponse(TEntity resource)
         {
-            Resource = itemResponse.Resource;
+            Resource = resource;
+        }
+
+        public OperationResponse(ItemResponse<TEntity> itemResponse) : this(itemResponse.Resource)
+        {
         }
 
         public TEntity Resource { get; }
