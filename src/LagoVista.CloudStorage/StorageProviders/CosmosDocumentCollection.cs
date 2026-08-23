@@ -33,23 +33,14 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
-
             var client = _cosmosClientProvider.GetClient(_endpoint, _sharedKey);
             var container = client.GetContainer(_databaseName, _collectionName);
             var linqQuery = container.GetItemLinqQueryable<TDocument>().Where(query);
             if (sort != null) linqQuery = linqQuery.OrderBy(sort);
             linqQuery = linqQuery.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Take(listRequest.PageSize);
-
             var items = new List<TDocument>();
             using (var iterator = linqQuery.ToFeedIterator())
-            {
-                while (iterator.HasMoreResults)
-                {
-                    var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
-                    items.AddRange(response);
-                }
-            }
-
+                while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
             return ListResponse<TDocument>.Create(listRequest, items);
         }
 
@@ -58,63 +49,36 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (projection == null) throw new ArgumentNullException(nameof(projection));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
-
             var client = _cosmosClientProvider.GetClient(_endpoint, _sharedKey);
             var container = client.GetContainer(_databaseName, _collectionName);
             var linqQuery = container.GetItemLinqQueryable<TDocument>().Where(query);
             if (sort != null) linqQuery = linqQuery.OrderBy(sort);
-
             var projectedQuery = linqQuery.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Take(listRequest.PageSize).Select(projection);
             var items = new List<TProjection>();
             using (var iterator = projectedQuery.ToFeedIterator())
-            {
-                while (iterator.HasMoreResults)
-                {
-                    var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
-                    items.AddRange(response);
-                }
-            }
-
+                while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
             return ListResponse<TProjection>.Create(listRequest, items);
         }
 
         public async Task<IEnumerable<TProjection>> QueryAsync<TDocument, TProjection>(Expression<Func<TDocument, bool>> query, Expression<Func<TDocument, TProjection>> projection, CancellationToken cancellationToken = default) where TDocument : class where TProjection : class
         {
-            if (query == null) throw new ArgumentNullException(nameof(query));
-            if (projection == null) throw new ArgumentNullException(nameof(projection));
-
             var client = _cosmosClientProvider.GetClient(_endpoint, _sharedKey);
             var container = client.GetContainer(_databaseName, _collectionName);
             var projectedQuery = container.GetItemLinqQueryable<TDocument>().Where(query).Select(projection);
             var items = new List<TProjection>();
             using (var iterator = projectedQuery.ToFeedIterator())
-            {
-                while (iterator.HasMoreResults)
-                {
-                    var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
-                    items.AddRange(response);
-                }
-            }
-
+                while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
             return items;
         }
 
         public async Task<IEnumerable<TResult>> QueryAsync<TResult>(DocumentQueryRequest request, CancellationToken cancellationToken = default) where TResult : class
         {
-            if (request == null) throw new ArgumentNullException(nameof(request));
-
             var query = CreateQueryDefinition(request);
             var client = _cosmosClientProvider.GetClient(_endpoint, _sharedKey);
             var container = client.GetContainer(_databaseName, _collectionName);
             var iterator = container.GetItemQueryIterator<TResult>(query);
             var items = new List<TResult>();
-
-            while (iterator.HasMoreResults)
-            {
-                var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
-                items.AddRange(response);
-            }
-
+            while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
             return items;
         }
 
@@ -124,21 +88,27 @@ namespace LagoVista.CloudStorage.StorageProviders
             {
                 case DocumentQueryType.CustomerIndustryNicheSalesStageCounts:
                     return new QueryDefinition("SELECT c.Industry, c.IndustryNiche, c.SalesStage, COUNT(c.id) AS CountLeads FROM c WHERE c.EntityType = 'CustomerEntity' AND c.OwnerOrganization.Id = @orgId GROUP BY c.Industry, c.IndustryNiche, c.SalesStage").WithParameter("@orgId", request.GetRequired<string>("orgId"));
-
                 case DocumentQueryType.EntityPreparationCandidateById:
                     return CreateEntityPreparationCandidateByIdQuery(request);
-
                 case DocumentQueryType.EntityPreparationCandidatesByType:
                     return CreateEntityPreparationCandidatesByTypeQuery(request, false);
-
                 case DocumentQueryType.IncompleteEntityPreparationCandidatesByType:
                     return CreateEntityPreparationCandidatesByTypeQuery(request, true);
-
                 case DocumentQueryType.EntityListItems:
                 case DocumentQueryType.EntityListHeaders:
                 case DocumentQueryType.EntityListCategories:
                     return CreateEntityListQuery(request);
-
+                case DocumentQueryType.EntityUtilsDocumentsByType:
+                    return new QueryDefinition("SELECT * FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId ORDER BY c.Name ASC")
+                        .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                        .WithParameter("@orgId", request.GetRequired<string>("orgId"));
+                case DocumentQueryType.EntityUtilsDocumentById:
+                    return new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @entityId")
+                        .WithParameter("@entityId", request.GetRequired<string>("entityId"));
+                case DocumentQueryType.EntityUtilsCountByType:
+                    return new QueryDefinition("SELECT COUNT(1) AS Count FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId")
+                        .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                        .WithParameter("@orgId", request.GetRequired<string>("orgId"));
                 default:
                     throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Cosmos provider.");
             }
@@ -166,34 +136,22 @@ namespace LagoVista.CloudStorage.StorageProviders
                 : queryType == DocumentQueryType.EntityListHeaders
                     ? @"SELECT VALUE {""Id"": c.id, ""Key"": c.Key, ""Text"": c.Name} FROM c"
                     : @"SELECT DISTINCT VALUE {""Id"": c.Category.Id, ""Key"": c.Category.Key, ""Text"": c.Category.Text} FROM c";
-
             sql += " WHERE c.EntityType = @entityType AND (c.IsPublic = true OR c.OwnerOrganization.Id = @orgId)";
-
-            if (queryType == DocumentQueryType.EntityListCategories)
-                sql += " AND IS_DEFINED(c.Category) AND IS_DEFINED(c.Category.Key)";
-
-            if (!request.GetRequired<bool>("showDeleted"))
-                sql += " AND (NOT IS_DEFINED(c.IsDeleted) OR c.IsDeleted = false)";
-            if (!request.GetRequired<bool>("showDrafts"))
-                sql += " AND (NOT IS_DEFINED(c.IsDraft) OR c.IsDraft = false)";
-
+            if (queryType == DocumentQueryType.EntityListCategories) sql += " AND IS_DEFINED(c.Category) AND IS_DEFINED(c.Category.Key)";
+            if (!request.GetRequired<bool>("showDeleted")) sql += " AND (NOT IS_DEFINED(c.IsDeleted) OR c.IsDeleted = false)";
+            if (!request.GetRequired<bool>("showDrafts")) sql += " AND (NOT IS_DEFINED(c.IsDraft) OR c.IsDraft = false)";
             if (queryType != DocumentQueryType.EntityListCategories)
             {
                 var categoryKey = request.GetRequired<string>("categoryKey");
                 var statusKey = request.GetRequired<string>("statusKey");
                 var labelKey = request.GetRequired<string>("labelKey");
                 var searchText = request.GetRequired<string>("searchText");
-
                 if (!String.IsNullOrWhiteSpace(categoryKey)) sql += " AND c.Category.Key = @categoryKey";
                 if (!String.IsNullOrWhiteSpace(statusKey)) sql += " AND c.Status.Key = @statusKey";
                 if (!String.IsNullOrWhiteSpace(labelKey)) sql += " AND ARRAY_CONTAINS(c.Labels, {\"Key\": @labelKey}, true)";
                 if (!String.IsNullOrWhiteSpace(searchText)) sql += " AND CONTAINS(c.Name, @searchText, true)";
             }
-
-            if (queryType == DocumentQueryType.EntityListCategories)
-            {
-                sql += " ORDER BY c.Category.Text";
-            }
+            if (queryType == DocumentQueryType.EntityListCategories) sql += " ORDER BY c.Category.Text";
             else
             {
                 var orderBy = (OrderByTypes)request.GetRequired<int>("orderBy");
@@ -203,11 +161,7 @@ namespace LagoVista.CloudStorage.StorageProviders
                 var pageSize = Math.Max(1, request.GetRequired<int>("pageSize"));
                 sql += $" OFFSET {(pageIndex - 1) * pageSize} LIMIT {pageSize}";
             }
-
-            var query = new QueryDefinition(sql)
-                .WithParameter("@entityType", request.GetRequired<string>("entityType"))
-                .WithParameter("@orgId", request.GetRequired<string>("orgId"));
-
+            var query = new QueryDefinition(sql).WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
             if (queryType != DocumentQueryType.EntityListCategories)
             {
                 var categoryKey = request.GetRequired<string>("categoryKey");
@@ -219,7 +173,6 @@ namespace LagoVista.CloudStorage.StorageProviders
                 if (!String.IsNullOrWhiteSpace(labelKey)) query.WithParameter("@labelKey", labelKey);
                 if (!String.IsNullOrWhiteSpace(searchText)) query.WithParameter("@searchText", searchText);
             }
-
             return query;
         }
 
