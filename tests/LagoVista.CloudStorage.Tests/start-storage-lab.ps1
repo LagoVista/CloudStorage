@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $composeFile = Join-Path $PSScriptRoot "docker-compose.storage-lab.yml"
 $mongoContainer = "nuviot-cloudstorage-lab-mongo"
-$cosmosReadyUrl = "http://localhost:8080/ready"
+$cosmosReadyUrl = "http://localhost:18080/ready"
 
 Write-Host "Starting local CloudStorage lab (Mongo + Cosmos emulator)..."
 docker info | Out-Null
@@ -27,7 +27,7 @@ for ($attempt = 1; $attempt -le 60; $attempt++) {
     try {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $cosmosReadyUrl -TimeoutSec 2
         if ($response.StatusCode -eq 200) {
-            Write-Host "Cosmos emulator is ready on https://localhost:8081."
+            Write-Host "Cosmos emulator is ready on https://localhost:18081."
             Write-Host "Cosmos Data Explorer: http://localhost:1234"
             return
         }
