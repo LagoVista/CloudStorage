@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Storage;
+using LagoVista.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
@@ -11,79 +12,86 @@ namespace LagoVista.CloudStorage.Tests
 {
     public class StorageContractTests
     {
-        private class TestEntity
+        private class ActivityRecord : IActivityRecord
         {
             public string Id { get; set; }
             public string OrganizationId { get; set; }
+            public string Organization { get; set; }
+            public DateTime CreationDate { get; set; }
             public string Category { get; set; }
-            public DateTime Timestamp { get; set; }
         }
 
-        private class FakeAppendStore : IAppendHistoryStore<TestEntity>
+        private class ScratchRecord : IScratchDataRecord
         {
-            public FakeAppendStore() { }
-            public Task InsertAsync(TestEntity entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task InsertBatchAsync(IEnumerable<TestEntity> entities, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task<StoragePageResult<TestEntity>> QueryAsync(HistoryQuery<TestEntity> query, CancellationToken cancellationToken = default) => Task.FromResult(new StoragePageResult<TestEntity>(Array.Empty<TestEntity>()));
+            public string Id { get; set; }
+            public EntityHeader Organization { get; set; }
+            public string Category { get; set; }
         }
 
-        private class FakeScratchStore : IScratchStore<TestEntity>
+        private class ApplicationDataRecord : IApplicationDataRecord
         {
-            public FakeScratchStore() { }
-            public Task<TestEntity> GetAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.FromResult<TestEntity>(null);
-            public Task UpsertAsync(TestEntity entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public string Id { get; set; }
+            public EntityHeader Organization { get; set; }
+            public DateTime CreationDate { get; set; }
+            public DateTime LastUpdatedDate { get; set; }
+            public string Category { get; set; }
+        }
+
+        private class FakeActivityStore : IActivityRecordStore<ActivityRecord>
+        {
+            public Task InsertAsync(ActivityRecord record, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public Task InsertBatchAsync(IEnumerable<ActivityRecord> records, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public Task<StoragePageResult<ActivityRecord>> QueryAsync(HistoryQuery<ActivityRecord> query, CancellationToken cancellationToken = default) => Task.FromResult(new StoragePageResult<ActivityRecord>(Array.Empty<ActivityRecord>()));
+        }
+
+        private class FakeScratchStore : IScratchStore<ScratchRecord>
+        {
+            public Task<ScratchRecord> GetAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.FromResult<ScratchRecord>(null);
+            public Task UpsertAsync(ScratchRecord record, CancellationToken cancellationToken = default) => Task.CompletedTask;
             public Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task<StoragePageResult<TestEntity>> QueryAsync(StorageQuery<TestEntity> query, CancellationToken cancellationToken = default) => Task.FromResult(new StoragePageResult<TestEntity>(Array.Empty<TestEntity>()));
+            public Task<StoragePageResult<ScratchRecord>> QueryAsync(StorageQuery<ScratchRecord> query, CancellationToken cancellationToken = default) => Task.FromResult(new StoragePageResult<ScratchRecord>(Array.Empty<ScratchRecord>()));
         }
 
-        private class FakeApplicationDataStore : IApplicationDataStore<TestEntity>
+        private class FakeApplicationDataStore : IApplicationDataStore<ApplicationDataRecord>
         {
-            public FakeApplicationDataStore() { }
-            public Task<TestEntity> GetAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.FromResult<TestEntity>(null);
-            public Task InsertAsync(TestEntity entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task UpdateAsync(TestEntity entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public Task<ApplicationDataRecord> GetAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.FromResult<ApplicationDataRecord>(null);
+            public Task InsertAsync(ApplicationDataRecord record, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            public Task UpdateAsync(ApplicationDataRecord record, CancellationToken cancellationToken = default) => Task.CompletedTask;
             public Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task<StoragePageResult<TestEntity>> QueryAsync(StorageQuery<TestEntity> query, CancellationToken cancellationToken = default) => Task.FromResult(new StoragePageResult<TestEntity>(Array.Empty<TestEntity>()));
+            public Task<StoragePageResult<ApplicationDataRecord>> QueryAsync(StorageQuery<ApplicationDataRecord> query, CancellationToken cancellationToken = default) => Task.FromResult(new StoragePageResult<ApplicationDataRecord>(Array.Empty<ApplicationDataRecord>()));
         }
 
         [Test]
-        public void AddAppendHistoryStore_ResolvesCapabilityAndTypedOptions()
+        public void AddActivityRecordStore_UsesHouseIdentityAndCreationDate()
         {
             var services = new ServiceCollection();
-            services.AddAppendHistoryStore<TestEntity, FakeAppendStore>(storage => storage.PartitionBy(x => x.OrganizationId).TimeBy(x => x.Timestamp).BucketBy(StoragePeriod.Month).Index(x => x.Category));
+            services.AddActivityRecordStore<ActivityRecord, FakeActivityStore>(storage => storage.PartitionBy(x => x.OrganizationId).BucketBy(StoragePeriod.Month).Index(x => x.Category));
 
             using (var provider = services.BuildServiceProvider())
             using (var scope = provider.CreateScope())
             {
-                Assert.That(scope.ServiceProvider.GetRequiredService<IAppendHistoryStore<TestEntity>>(), Is.TypeOf<FakeAppendStore>());
-                var options = scope.ServiceProvider.GetRequiredService<AppendHistoryStoreOptions<TestEntity>>();
-                Assert.That(options.Definition.TimeField, Is.EqualTo(nameof(TestEntity.Timestamp)));
-                Assert.That(options.Definition.PartitionFields, Does.Contain(nameof(TestEntity.OrganizationId)));
-                Assert.That(options.Definition.IndexedFields, Does.Contain(nameof(TestEntity.Category)));
+                Assert.That(scope.ServiceProvider.GetRequiredService<IActivityRecordStore<ActivityRecord>>(), Is.TypeOf<FakeActivityStore>());
+                var options = scope.ServiceProvider.GetRequiredService<ActivityRecordStoreOptions<ActivityRecord>>();
+                Assert.That(options.Definition.KeyField, Is.EqualTo(nameof(ActivityRecord.Id)));
+                Assert.That(options.Definition.TimeField, Is.EqualTo(nameof(ActivityRecord.CreationDate)));
+                Assert.That(options.Definition.PartitionFields, Does.Contain(nameof(ActivityRecord.OrganizationId)));
+                Assert.That(options.Definition.IndexedFields, Does.Contain(nameof(ActivityRecord.Category)));
                 Assert.That(options.Definition.BucketPeriod, Is.EqualTo(StoragePeriod.Month));
             }
-        }
-
-        [Test]
-        public void AddAppendHistoryStore_WithoutTimeField_FailsFast()
-        {
-            var services = new ServiceCollection();
-            var ex = Assert.Throws<InvalidOperationException>(() => services.AddAppendHistoryStore<TestEntity, FakeAppendStore>(storage => storage.PartitionBy(x => x.OrganizationId)));
-            Assert.That(ex.Message, Does.Contain("TimeBy"));
         }
 
         [Test]
         public void ScratchAndApplicationData_RemainSeparateCapabilities()
         {
             var services = new ServiceCollection();
-            services.AddScratchStore<TestEntity, FakeScratchStore>(storage => storage.KeyBy(x => x.Id));
-            services.AddApplicationDataStore<TestEntity, FakeApplicationDataStore>(storage => storage.KeyBy(x => x.Id).Index(x => x.Category));
+            services.AddScratchStore<ScratchRecord, FakeScratchStore>(storage => storage.KeyBy(x => x.Id));
+            services.AddApplicationDataStore<ApplicationDataRecord, FakeApplicationDataStore>(storage => storage.KeyBy(x => x.Id).Index(x => x.Category));
 
             using (var provider = services.BuildServiceProvider())
             using (var scope = provider.CreateScope())
             {
-                Assert.That(scope.ServiceProvider.GetRequiredService<IScratchStore<TestEntity>>(), Is.TypeOf<FakeScratchStore>());
-                Assert.That(scope.ServiceProvider.GetRequiredService<IApplicationDataStore<TestEntity>>(), Is.TypeOf<FakeApplicationDataStore>());
+                Assert.That(scope.ServiceProvider.GetRequiredService<IScratchStore<ScratchRecord>>(), Is.TypeOf<FakeScratchStore>());
+                Assert.That(scope.ServiceProvider.GetRequiredService<IApplicationDataStore<ApplicationDataRecord>>(), Is.TypeOf<FakeApplicationDataStore>());
             }
         }
 
@@ -93,25 +101,25 @@ namespace LagoVista.CloudStorage.Tests
             var scratchServices = new ServiceCollection();
             var applicationServices = new ServiceCollection();
 
-            Assert.Throws<InvalidOperationException>(() => scratchServices.AddScratchStore<TestEntity, FakeScratchStore>(storage => storage.Index(x => x.Category)));
-            Assert.Throws<InvalidOperationException>(() => applicationServices.AddApplicationDataStore<TestEntity, FakeApplicationDataStore>(storage => storage.Index(x => x.Category)));
+            Assert.Throws<InvalidOperationException>(() => scratchServices.AddScratchStore<ScratchRecord, FakeScratchStore>(storage => storage.Index(x => x.Category)));
+            Assert.Throws<InvalidOperationException>(() => applicationServices.AddApplicationDataStore<ApplicationDataRecord, FakeApplicationDataStore>(storage => storage.Index(x => x.Category)));
         }
 
         [Test]
         public void QueryModels_UseTypedSelectorsAndOpaquePaging()
         {
-            var query = new StorageQuery<TestEntity>().Where(x => x.Category, StorageFilterOperator.Equal, "telemetry").OrderBy(x => x.Timestamp, StorageSortDirection.Descending).WithPage(new StoragePageRequest(250, "opaque-token"));
+            var query = new StorageQuery<ApplicationDataRecord>().Where(x => x.Category, StorageFilterOperator.Equal, "telemetry").OrderBy(x => x.CreationDate, StorageSortDirection.Descending).WithPage(new StoragePageRequest(250, "opaque-token"));
 
-            Assert.That(query.Filters.Single().Field, Is.EqualTo(nameof(TestEntity.Category)));
-            Assert.That(query.Sorts.Single().Field, Is.EqualTo(nameof(TestEntity.Timestamp)));
+            Assert.That(query.Filters.Single().Field, Is.EqualTo(nameof(ApplicationDataRecord.Category)));
+            Assert.That(query.Sorts.Single().Field, Is.EqualTo(nameof(ApplicationDataRecord.CreationDate)));
             Assert.That(query.Page.PageSize, Is.EqualTo(250));
             Assert.That(query.Page.ContinuationToken, Is.EqualTo("opaque-token"));
         }
 
         [Test]
-        public void AppendHistoryContract_DoesNotExposeMutationOperations()
+        public void ActivityRecordContract_DoesNotExposeMutationOperations()
         {
-            var methodNames = typeof(IAppendHistoryStore<TestEntity>).GetMethods().Select(method => method.Name).ToList();
+            var methodNames = typeof(IActivityRecordStore<ActivityRecord>).GetMethods().Select(method => method.Name).ToList();
             Assert.That(methodNames, Does.Not.Contain("UpdateAsync"));
             Assert.That(methodNames, Does.Not.Contain("DeleteAsync"));
             Assert.That(methodNames, Does.Contain("InsertAsync"));
