@@ -56,7 +56,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly IProducedArtifactService _producedArtifactService;
         private readonly IFkIndexTableWriterBatched _fkeyIndexWriter;
         private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
-        private readonly IDocumentDBRepoBase<TEntity> _storage;
+        private IDocumentDBRepoBase<TEntity> _storage;
 
         private StorageProviderTypes _stoargeProvider = StorageProviderTypes.Original;
 
@@ -131,7 +131,9 @@ namespace LagoVista.CloudStorage.DocumentDB
             _fkeyIndexWriter = fkWriter;
             _cosmosClientProvider = cosmosClientProvider ?? Storage.CosmosClientProvider.Shared;
 
-            _storage = new StorageProviders.CosmosDBStorage<TEntity>(endpoint, sharedKey, dbName, logger, cacheProvider, dependencyManager, _cosmosClientProvider);
+            var storageSettings = DocumentStorageSettingsResolver.Resolve(_endPointString, sharedKey, dbName);
+            _stoargeProvider = storageSettings.Provider == DocumentStorageProviderType.Mongo ? StorageProviderTypes.Mongo : StorageProviderTypes.Original;
+            _storage = DocumentStorageFactory.Create<TEntity>(storageSettings, logger, null, null, _cosmosClientProvider);
 
             _defaultCollectionName = typeof(TEntity).Name;
             if (!_defaultCollectionName.ToLower().EndsWith("s"))
@@ -196,10 +198,9 @@ namespace LagoVista.CloudStorage.DocumentDB
                 _defaultCollectionName += "s";
             }
 
-            if (_stoargeProvider == StorageProviderTypes.CosmosDB)
-            {
-                _storage.SetConnection(connectionString, sharedKey, dbName);
-            }
+            var storageSettings = DocumentStorageSettingsResolver.Resolve(connectionString, sharedKey, dbName);
+            _stoargeProvider = storageSettings.Provider == DocumentStorageProviderType.Mongo ? StorageProviderTypes.Mongo : StorageProviderTypes.Original;
+            _storage = DocumentStorageFactory.Create<TEntity>(storageSettings, _logger, null, null, _cosmosClientProvider);
         }
 
         public async Task DeleteCollectionAsync()
@@ -218,6 +219,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public virtual string GetPartitionKey()
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo) return _storage.GetPartitionKey();
             return "/_partitionKey";
         }
 
@@ -242,6 +244,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<Container> GetContainerAsync()
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo) throw new InvalidOperationException($"Cosmos container access is not available when {typeof(TEntity).Name} is configured for Mongo.");
             var docClient = await GetDocumentClientAsync();
             return docClient.GetContainer(_dbName, GetCollectionName());
         }
@@ -261,6 +264,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public virtual String GetCollectionName()
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo) return _storage.GetCollectionName();
 
             if (IsRuntimeData)
             {
@@ -343,10 +347,22 @@ where c.id = @id";
             item.DatabaseName = _dbName;
             item.EntityType = typeof(TEntity).Name;
 
-            var container = await GetContainerAsync();
-
             var sw = Stopwatch.StartNew();
             item.SetHash();
+
+            if (_stoargeProvider == StorageProviderTypes.Mongo)
+            {
+                var mongoResponse = await _storage.CreateDocumentAsync(item);
+
+                if (_ragIndexingServices != null && (item is IRagableEntity || item.ShouldVectorIndex)) await _ragIndexingServices.IndexAsync(item);
+                if (_producedArtifactService != null) await _producedArtifactService.CreateProducedArtifactsAsync(item);
+                DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
+
+                if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache)) await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item));
+                return mongoResponse;
+            }
+
+            var container = await GetContainerAsync();
 
             var response = await container.CreateItemAsync(item);
 
@@ -557,7 +573,7 @@ where c.id = @id";
 
             var documentId = idOverride ?? item.Id;
             var ownerOrgId = item.OwnerOrganization?.Id;
-            var container = await GetContainerAsync();
+            var container = _stoargeProvider == StorageProviderTypes.Mongo ? null : await GetContainerAsync();
             var sw = Stopwatch.StartNew();
 
             DependentObjectCheckResult dependencyResult = null;
@@ -603,6 +619,38 @@ where c.id = @id";
             }
 
             item.SetHash();
+
+            if (_stoargeProvider == StorageProviderTypes.Mongo)
+            {
+                if (checkEtag) throw new NotSupportedException("Mongo optimistic concurrency is not implemented for DocumentDBRepoBase yet.");
+                if (!String.IsNullOrWhiteSpace(idOverride) && !String.Equals(idOverride, item.Id, StringComparison.Ordinal)) throw new NotSupportedException("Mongo idOverride upserts are not implemented for DocumentDBRepoBase yet.");
+
+                var mongoResponse = await _storage.UpsertDocumentAsync(item);
+
+                if (nameChanged && _dependencyManager != null)
+                {
+                    if (dependencyResult?.IsInUse == true)
+                    {
+                        foreach (var dependentObject in dependencyResult.DependentObjects) await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, documentId, typeof(TEntity).Name, dependentObject.Id, dependentObject.RecordType, item.Name);
+                    }
+
+                    if (!String.IsNullOrWhiteSpace(ownerOrgId)) await _dependencyManager.RenameRegisteredReferencesAsync(item.LastUpdatedBy, typeof(TEntity), documentId, ownerOrgId, item.Name);
+                    else _logger.AddCustomEvent(LogLevel.Warning, $"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", $"Could not update registered references for renamed entity '{documentId}' because OwnerOrganization.Id was missing.");
+
+                    await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, documentId, typeof(TEntity).Name, item.Name);
+                }
+
+                if (_cacheProvider != null && (_cacheAborter == null || !_cacheAborter.AbortCache))
+                {
+                    await _cacheProvider.RemoveAsync(GetCacheKey(documentId));
+                    await _cacheProvider.AddAsync(GetCacheKey(documentId), JsonConvert.SerializeObject(item));
+                }
+
+                if (_ragIndexingServices != null && item.ShouldVectorIndex) await _ragIndexingServices.IndexAsync(item);
+                if (_producedArtifactService != null) await _producedArtifactService.CreateProducedArtifactsAsync(item);
+                await InvalidateEntityListCacheAsync(ownerOrgId);
+                return mongoResponse;
+            }
 
             var upsertResult = await container.UpsertItemAsync(item, requestOptions: requestOptions);
             item.ETag = upsertResult.ETag;
@@ -745,6 +793,8 @@ where c.id = @id";
 
         protected async Task<TEntity> GetDocumentAsync(string id, string partitionKey, bool throwOnNotFound = true)
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.GetDocumentAsync(id, partitionKey, throwOnNotFound);
+
             try
             {
                 var container = await GetContainerAsync();
@@ -869,6 +919,28 @@ where c.id = @id";
                 await _cacheProvider.RemoveAsync(cacheKey);
             }
 
+            if (_stoargeProvider == StorageProviderTypes.Mongo)
+            {
+                OperationResponse<TEntity> mongoResult;
+
+                if (!softDelete || (doc.IsDeleted.HasValue && doc.IsDeleted.Value))
+                {
+                    mongoResult = await _storage.DeleteDocumentAsync(doc.Id);
+                    if (_ragIndexingServices != null && !EntityHeader.IsNullOrEmpty(doc.OwnerOrganization)) await _ragIndexingServices.RemoveIndexAsync(doc.OwnerOrganization.Id, doc.Id);
+                }
+                else
+                {
+                    doc.IsDeleted = true;
+                    doc.DeletionDate = UtcTimestamp.Now;
+                    mongoResult = await _storage.UpsertDocumentAsync(doc);
+                    if (_ragIndexingServices != null && doc.ShouldVectorIndex) await _ragIndexingServices.IndexAsync(doc);
+                }
+
+                timer.Dispose();
+                await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
+                return mongoResult;
+            }
+
             var container = await GetContainerAsync();
 
             ItemResponse<TEntity> result;
@@ -923,6 +995,16 @@ where c.id = @id";
                 await _cacheProvider.RemoveAsync(cacheKey);
             }
 
+            if (_stoargeProvider == StorageProviderTypes.Mongo)
+            {
+                doc.IsDeleted = true;
+                doc.DeletionDate = UtcTimestamp.Now;
+                var mongoResult = await _storage.UpsertDocumentAsync(doc);
+                timer.Dispose();
+                await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
+                return mongoResult;
+            }
+
             var container = await GetContainerAsync();
             var partitionKeyValue = new PartitionKey(partitionKey);
 
@@ -942,6 +1024,8 @@ where c.id = @id";
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.QueryAsync(query);
+
             var sw = Stopwatch.StartNew();
             var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
@@ -1028,6 +1112,8 @@ where c.id = @id";
 
         protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.QueryAsync(query, listRequest);
+
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1088,6 +1174,8 @@ where c.id = @id";
         protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
                             System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.QueryAsync(query, sort, listRequest);
+
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1154,6 +1242,16 @@ where c.id = @id";
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
                            System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ICategorized, ISummaryFactory, INoSQLEntity, INamedEntity, IRatedEntity, IAuditableEntity
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo)
+            {
+                var mongoResponse = await _storage.QuerySummaryAsync<TEntitySummary, TEntityFactory>(query, sort, listRequest);
+                var categories = mongoResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).ToList();
+                var groupedCategories = categories.Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id);
+                mongoResponse.Categories = groupedCategories.Select(itm => itm.First()).ToList();
+                mongoResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
+                return mongoResponse;
+            }
+
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1289,6 +1387,14 @@ where c.id = @id";
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
                    System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo)
+            {
+                var mongoResponse = await _storage.QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(query, sort, listRequest);
+                mongoResponse.Categories = mongoResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id).Select(itm => itm.First()).ToList();
+                if (mongoResponse.Categories.Any()) mongoResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
+                return mongoResponse;
+            }
+
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1463,6 +1569,8 @@ where c.id = @id";
         protected async Task<ListResponse<TEntity>> QueryDescendingAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
                           System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
         {
+            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.QueryDescendingAsync(query, sort, listRequest);
+
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1661,7 +1769,7 @@ where c.id = @id";
         /// <returns></returns>
         protected async Task<ListResponse<TEntity>> QueryAllAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
-            if (_stoargeProvider == StorageProviderTypes.CosmosDB)
+            if (_stoargeProvider == StorageProviderTypes.Mongo)
                 return await _storage.QueryAllAsync(query, listRequest);
 
             try
@@ -1716,7 +1824,7 @@ where c.id = @id";
                                                     System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy,
                                                     ListRequest listRequest)
         {
-            if (_stoargeProvider == StorageProviderTypes.CosmosDB)
+            if (_stoargeProvider == StorageProviderTypes.Mongo)
                 return await _storage.DescOrderQueryAsync(query, orderBy, listRequest);
 
             try
