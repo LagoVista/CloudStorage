@@ -6,7 +6,7 @@ Use each entity's required `EntityDescriptionAttribute` domain as the default Mo
 
 ## Status
 
-Core implementation complete pending local build/test validation.
+Complete. Domain routing is implemented and has now been exercised through the live `DocumentDBRepoBase<TEntity>` Mongo integration path.
 
 ## Design
 
@@ -20,41 +20,21 @@ Cosmos intentionally continues using the consolidated `{DatabaseName}_Collection
 
 `IDocumentCollectionNameResolver` provides the provider-neutral collection naming policy.
 
-Typed Mongo factory calls use the entity's `EntityDescriptionAttribute.Domain` by default:
+Typed Mongo factory calls use the entity's `EntityDescriptionAttribute.Domain` by default. Two different CLR entity types with the same domain therefore land in the same Mongo collection.
 
-```csharp
-var collection = documentCollectionFactory.Create<WorkTask>(settings);
-```
-
-If `WorkTask` has domain `ProjectManagement`, the Mongo collection is `ProjectManagement`.
-
-Two different CLR entity types with the same domain therefore land in the same Mongo collection.
-
-An explicit collection name always wins:
-
-```csharp
-var collection = documentCollectionFactory.Create<WorkTask>(settings, "SpecialCollection");
-```
-
-The existing non-generic factory remains available for arbitrary-document callers that already choose or know their physical collection.
+An explicit collection name still wins when one is supplied.
 
 ## Migration routing
 
-Raw Cosmos documents contain `EntityType`. The resolver supports:
+Raw Cosmos documents contain `EntityType`. The resolver maps that type to domain metadata without deserializing the document.
 
-```csharp
-var resolved = resolver.TryResolve(databaseName, entityTypeName, out var collectionName);
-```
-
-The lookup scans loaded CLR entity types and reads `EntityDescriptionAttribute.Domain` without deserializing the raw document.
-
-If the entity type cannot be resolved, lacks domain metadata, or is ambiguous across loaded assemblies, `TryResolve` returns `false` and returns the safe fallback collection:
+If the entity type cannot be resolved, lacks domain metadata, or is ambiguous across loaded assemblies, routing falls back safely to:
 
 ```text
 {DatabaseName}_Collections
 ```
 
-Migration code must report these unresolved/fallback cases. It must not discard the document.
+Migration code reports these unresolved/fallback cases and does not discard the document.
 
 ## Collection-name normalization
 
@@ -72,28 +52,24 @@ Domain values retain their semantic name. Mongo-reserved/problematic characters 
 - [x] Normalize domain values into stable Mongo collection names.
 - [x] Allow explicit collection override.
 - [x] Fall back to `{DatabaseName}_Collections` when metadata cannot be resolved.
-- [x] Expose unresolved raw entity types through a `false` result so migration can report them.
+- [x] Expose unresolved raw entity types so migration can report them.
 - [x] Add typed `IDocumentCollectionFactory` overloads.
 - [x] Keep existing Cosmos consolidated collection behavior unchanged.
 - [x] Register collection-name resolver with dependency injection.
 - [x] Add tests for shared domain, explicit override, unresolved metadata, raw entity lookup, fallback, and normalization.
+- [x] Validate a real `DocumentDBRepoBase<TEntity>` Mongo write lands in the entity domain collection.
 
-## Validation remaining
+## Validation evidence
 
-Run locally:
-
-```powershell
-dotnet build src/LagoVista.CloudStorage/LagoVista.CloudStorage.csproj
-dotnet test tests/LagoVista.CloudStorage.Tests/LagoVista.CloudStorage.IntegrationTests.csproj
-```
+The August 23, 2026 local Mongo integration run confirmed the test entity routes to its `EntityDescriptionAttribute.Domain` collection (`RichMongoDomain`) and the full six-test Mongo suite passes.
 
 ## Acceptance criteria
 
-- Two different entity types with the same domain resolve to the same Mongo collection.
-- Domain is the normal/default Mongo routing rule.
-- Existing Cosmos collection behavior remains unchanged.
-- Raw migration code can resolve a destination collection from a document's `EntityType`.
-- Unknown entity types remain migratable through a visible fallback path.
+- [x] Two different entity types with the same domain resolve to the same Mongo collection.
+- [x] Domain is the normal/default Mongo routing rule.
+- [x] Existing Cosmos collection behavior remains unchanged.
+- [x] Raw migration code can resolve a destination collection from a document's `EntityType`.
+- [x] Unknown entity types remain migratable through a visible fallback path.
 
 ## Out of scope
 
