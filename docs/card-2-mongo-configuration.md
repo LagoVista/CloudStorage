@@ -2,109 +2,91 @@
 
 ## Objective
 
-Define explicit Mongo configuration instead of overloading Cosmos-oriented endpoint/access-key settings.
+Define explicit Mongo configuration instead of overloading Cosmos-oriented endpoint/access-key settings, while preserving configuration-driven provider selection for existing repositories.
 
 ## Status
 
-Implementation complete pending local build/test validation.
+Core configuration model is implemented and locally validated. One cleanup remains before dev cutover: bridge the new first-class structured Mongo settings into the legacy `DocumentStorageSettingsResolver` provider-selection path so primary Mongo runtime configuration no longer depends on ad-hoc `NUVIOT_MONGO_*` connection-string variables.
 
-## Configuration model
+## First-class Mongo connection settings
 
-Mongo now has a first-class configuration object:
+Primary Mongo now has a LagoVista-style application configuration contract:
 
-```csharp
-public sealed class MongoDocumentStorageSettings
-{
-    public string ConnectionString { get; set; }
-    public string DatabaseName { get; set; }
-}
+```text
+MongoDocumentStorage
 ```
 
-`DocumentStorageSettings` retains the existing Cosmos-oriented `Endpoint`, `SharedKey`, and logical `DatabaseName` values and adds a separate `Mongo` settings object. This allows Cosmos source credentials and Mongo target credentials to coexist in the same process.
+The structured settings expose:
 
-## Provider selection
+- `Hosts`
+- `Port` (default `27017`)
+- `UserName`
+- `Password`
+- `AuthenticationDatabase` (default `admin`)
+- optional `ReplicaSet`
+- `UseTls` (default `false`)
 
-Existing provider selection remains unchanged:
+The settings build the driver connection string internally and redact credentials from diagnostic output.
+
+`IMongoDocumentStorageConnectionSettings` and `IMongoStorageClientFactory` are registered through the normal CloudStorage DI setup.
+
+## Local test configuration
+
+`TestConnections.TestMongoDocumentStorage` is intentionally deterministic and matches the repository-owned Docker Mongo harness:
+
+```text
+Host: localhost
+Port: 27018
+User: nuviot-test
+Authentication database: admin
+TLS: false
+Replica set: none
+```
+
+The local runner therefore does not need `TEST_MONGO_*` environment variables.
+
+Production/test deployment credentials remain configuration/secret driven; deterministic credentials are only for the disposable local Docker test instance.
+
+## Existing provider selection
+
+The compatibility resolver still supports:
 
 ```text
 NUVIOT_DOCUMENT_STORAGE_PROVIDER=mongo
 NUVIOT_DOCUMENT_STORAGE_PROVIDER_<LOGICAL_DATABASE>=mongo
 ```
 
-Database-specific values take precedence over the global value. If no provider is configured, Cosmos remains the default.
+and the older Mongo connection/database resolver variables. Database-specific values take precedence and Cosmos remains the default when no provider is selected.
 
-## Mongo settings
-
-Global Mongo settings:
-
-```text
-NUVIOT_MONGO_CONNECTION_STRING=mongodb://localhost:27017
-NUVIOT_MONGO_DATABASE=Nuviot
-```
-
-Database-specific overrides:
-
-```text
-NUVIOT_MONGO_CONNECTION_STRING_PROJECTMANAGEMENT=mongodb://localhost:27017
-NUVIOT_MONGO_DATABASE_PROJECTMANAGEMENT=ProjectManagement
-```
-
-`NUVIOT_MONGO_CONNECTION_STRING` is required when Mongo is selected. `NUVIOT_MONGO_DATABASE` is optional; when omitted, the existing logical database name is used.
-
-Both `mongodb://` and `mongodb+srv://` connection strings are accepted.
-
-Do not commit real connection strings containing credentials. Supply secrets through the deployment configuration or secret-store mechanism used by the host application.
-
-## Explicit application configuration
-
-Applications are not required to use environment variables. `IDocumentCollectionFactory` also accepts a fully resolved `DocumentStorageSettings` instance:
-
-```csharp
-var settings = new DocumentStorageSettings
-{
-    Provider = DocumentStorageProviderType.Mongo,
-    DatabaseName = "ProjectManagement",
-    Mongo = new MongoDocumentStorageSettings
-    {
-        ConnectionString = mongoConnectionString,
-        DatabaseName = "ProjectManagement"
-    }
-};
-
-var collection = documentCollectionFactory.Create(settings);
-```
-
-This path is intended for hosts that bind settings from configuration providers or secret stores and for migration code that needs explicit Cosmos source and Mongo target settings simultaneously.
+This compatibility path is what currently lets existing `DocumentDBRepoBase<TEntity>` constructors switch to Mongo without changes.
 
 ## Completed tasks
 
-- [x] Define Mongo document storage settings with connection string and database name.
-- [x] Define global and database-specific environment variable names.
-- [x] Preserve existing global and database-specific provider selection.
-- [x] Resolve provider selection independently from provider credentials.
-- [x] Preserve existing Cosmos configuration behavior and default.
-- [x] Support explicit application-supplied settings.
-- [x] Support both `mongodb://` and `mongodb+srv://` connection strings.
-- [x] Fail fast when Mongo is selected without a connection string.
-- [x] Add tests for Cosmos default, Mongo selection, database-specific overrides, missing Mongo configuration, invalid provider values, and Mongo URI schemes.
-- [x] Keep connection strings out of diagnostic/error output.
-- [x] Document local/dev configuration without credentials.
+- [x] Define explicit Mongo document storage settings separate from Cosmos endpoint/shared-key values.
+- [x] Add first-class structured `MongoDocumentStorage` application settings.
+- [x] Register structured Mongo settings through dependency injection.
+- [x] Add singleton Mongo client lifecycle management.
+- [x] Build Mongo connection strings from structured host/auth/TLS/replica-set values.
+- [x] Keep credentials out of diagnostic/error output.
+- [x] Preserve global and database-specific provider selection.
+- [x] Preserve Cosmos as the default provider.
+- [x] Support explicit application-supplied provider settings for migration code.
+- [x] Add deterministic local Docker test settings through `TestConnections`.
+- [x] Validate the Mongo settings path through the local integration suite.
 
-## Validation remaining
+## Remaining task
 
-Run locally:
+- [ ] Configure `DocumentStorageSettingsResolver` from the host `IConfiguration` / `IMongoDocumentStorageConnectionSettings` seam so primary runtime Mongo credentials come from the first-class configuration model rather than the legacy connection-string environment variables.
 
-```powershell
-dotnet build src/LagoVista.CloudStorage/LagoVista.CloudStorage.csproj
-dotnet test tests/LagoVista.CloudStorage.Tests/LagoVista.CloudStorage.IntegrationTests.csproj
-```
+The existing `CloudStorageModule.AddCloudStorageModule(IServiceCollection, IConfigurationRoot, ILogger)` already receives the host configuration and is the preferred compatibility seam. Derived repository constructors should remain unchanged.
 
 ## Acceptance criteria
 
-- Cosmos and Mongo connection information can coexist in one process.
-- Selecting Mongo does not require repurposing a Cosmos access-key field.
-- Migration code can receive explicit source Cosmos and target Mongo settings simultaneously.
-- Existing Cosmos-only deployments continue working without configuration changes.
+- [x] Cosmos and Mongo connection information can coexist in one process.
+- [x] Selecting Mongo does not require repurposing a Cosmos access-key field.
+- [x] Migration code can receive explicit source Cosmos and target Mongo settings simultaneously.
+- [x] Existing Cosmos-only deployments continue working without configuration changes.
+- [ ] Primary Mongo runtime credentials are sourced through the first-class LagoVista configuration model during normal host startup.
 
 ## Out of scope
 
