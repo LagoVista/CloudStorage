@@ -12,7 +12,7 @@ namespace LagoVista.CloudStorage.Storage
     /// <summary>
     /// Cassandra implementation for immutable activity records. Supports additive table
     /// creation, insert/batch insert, declared partition equality filters, CreationDate
-    /// ranges, optional time buckets, and opaque provider paging cursors.
+    /// ranges, optional time buckets, retention, and opaque provider paging cursors.
     /// </summary>
     [CriticalCoverage]
     public sealed class CassandraActivityRecordStore<TRecord> : IActivityRecordStore<TRecord>
@@ -227,6 +227,7 @@ namespace LagoVista.CloudStorage.Storage
                 if (!_schemaReady)
                 {
                     await session.ExecuteAsync(new SimpleStatement(_map.CreateTableCql())).ConfigureAwait(false);
+                    await session.ExecuteAsync(new SimpleStatement(_map.ReconcileRetentionCql())).ConfigureAwait(false);
                     _schemaReady = true;
                 }
             }
