@@ -17,6 +17,7 @@ namespace LagoVista.CloudStorage.Storage
         public IReadOnlyList<string> PartitionFields => _partitionFields;
         public IReadOnlyList<string> IndexedFields => _indexedFields;
 
+        public string KeyField { get; private set; }
         public string TimeField { get; private set; }
 
         /// <summary>
@@ -27,6 +28,12 @@ namespace LagoVista.CloudStorage.Storage
         public StoragePeriod BucketPeriod { get; private set; } = StoragePeriod.All;
 
         public TimeSpan? Retention { get; private set; }
+
+        public FlatStorageDefinition<TEntity> KeyBy<TValue>(Expression<Func<TEntity, TValue>> selector)
+        {
+            KeyField = GetPropertyName(selector);
+            return this;
+        }
 
         public FlatStorageDefinition<TEntity> PartitionBy<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
