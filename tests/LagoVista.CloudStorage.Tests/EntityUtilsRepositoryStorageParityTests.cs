@@ -81,8 +81,8 @@ namespace LagoVista.CloudStorage.Tests
                 var cosmosWrongType = await cosmos.GetEntityByIdAsync("OtherEntityType", id, OrganizationId, CancellationToken.None);
                 var mongoWrongType = await mongo.GetEntityByIdAsync("OtherEntityType", id, OrganizationId, CancellationToken.None);
 
-                Assert.That(mongoFound?["id"]?.Value<string>(), Is.EqualTo(cosmosFound?["id"]?.Value<string>()));
-                Assert.That(cosmosFound?["Name"]?.Value<string>(), Is.EqualTo("Alpha"));
+                Assert.That((string)mongoFound?["id"], Is.EqualTo((string)cosmosFound?["id"]));
+                Assert.That((string)cosmosFound?["Name"], Is.EqualTo("Alpha"));
                 Assert.That(cosmosWrongOrg, Is.Null);
                 Assert.That(mongoWrongOrg, Is.Null);
                 Assert.That(cosmosWrongType, Is.Null);
@@ -194,7 +194,7 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         private static string[] ToRawKeys(IEnumerable<Newtonsoft.Json.Linq.JObject> documents) =>
-            documents.Select(doc => $"{doc["id"]?.Value<string>()}|{doc["Name"]?.Value<string>()}").ToArray();
+            documents.Select(doc => $"{(string)doc["id"]}|{(string)doc["Name"]}").ToArray();
 
         private static string[] ToCoreKeys(IEnumerable<EntityCoreSummary> entities) =>
             entities.Select(entity => $"{entity.Name}|{entity.Key}|{entity.Tla}").ToArray();
