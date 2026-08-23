@@ -28,7 +28,77 @@ namespace LagoVista.CloudStorage.Tests
         private const string OrganizationId = "ORG-PARITY";
 
         [Test]
-        public async Task EntityPreparationCandidateRepository_CosmosAndMongo_ReturnEquivalentBusinessResults()
+        public Task GetEntityBaseAsync_CosmosAndMongo_ReturnSameCandidateById() =>
+            WithRepositoriesAsync(async (cosmosRepository, mongoRepository) =>
+            {
+                var cosmos = await cosmosRepository.GetEntityBaseAsync(EntityType, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", OrganizationId);
+                var mongo = await mongoRepository.GetEntityBaseAsync(EntityType, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", OrganizationId);
+
+                Assert.That(ToKey(mongo), Is.EqualTo(ToKey(cosmos)));
+                Assert.That(ToKey(cosmos), Is.EqualTo("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA|Alpha"));
+            });
+
+        [Test]
+        public Task GetEntityBasesAsync_CosmosAndMongo_ReturnSameOrganizationCandidates() =>
+            WithRepositoriesAsync(async (cosmosRepository, mongoRepository) =>
+            {
+                var cosmos = await cosmosRepository.GetEntityBasesAsync(EntityType, OrganizationId);
+                var mongo = await mongoRepository.GetEntityBasesAsync(EntityType, OrganizationId);
+
+                Assert.That(ToKeys(mongo), Is.EqualTo(ToKeys(cosmos)));
+                Assert.That(ToKeys(cosmos), Is.EqualTo(new[]
+                {
+                    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA|Alpha",
+                    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB|Beta",
+                    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC|Charlie"
+                }));
+            });
+
+        [Test]
+        public Task GetIncompleteEntityBasesAsync_CosmosAndMongo_TreatMissingMasterStatusAsIncomplete() =>
+            WithRepositoriesAsync(async (cosmosRepository, mongoRepository) =>
+            {
+                var cosmos = await cosmosRepository.GetIncompleteEntityBasesAsync(EntityType, OrganizationId, 10);
+                var mongo = await mongoRepository.GetIncompleteEntityBasesAsync(EntityType, OrganizationId, 10);
+
+                Assert.That(ToKeys(mongo), Is.EqualTo(ToKeys(cosmos)));
+                Assert.That(ToKeys(cosmos), Is.EqualTo(new[]
+                {
+                    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA|Alpha",
+                    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC|Charlie"
+                }));
+            });
+
+        [Test]
+        public Task GetIncompleteEntityBasesAsync_CosmosAndMongo_ApplySameMaxItemsLimit() =>
+            WithRepositoriesAsync(async (cosmosRepository, mongoRepository) =>
+            {
+                var cosmos = await cosmosRepository.GetIncompleteEntityBasesAsync(EntityType, OrganizationId, 1);
+                var mongo = await mongoRepository.GetIncompleteEntityBasesAsync(EntityType, OrganizationId, 1);
+
+                Assert.That(ToKeys(mongo), Is.EqualTo(ToKeys(cosmos)));
+                Assert.That(cosmos.Count, Is.EqualTo(1));
+                Assert.That(cosmos[0].Name, Is.EqualTo("Alpha"));
+            });
+
+        [Test]
+        public Task GetAllEntitiesByTypeAsync_CosmosAndMongo_ReturnSamePagedIncompleteCandidates() =>
+            WithRepositoriesAsync(async (cosmosRepository, mongoRepository) =>
+            {
+                var listRequest = new ListRequest { PageIndex = 1, PageSize = 2 };
+                var org = EntityHeader.Create(OrganizationId, "Parity Organization");
+                var cosmos = await cosmosRepository.GetAllEntitiesByTypeAsync(EntityType, listRequest, null, org);
+                var mongo = await mongoRepository.GetAllEntitiesByTypeAsync(EntityType, listRequest, null, org);
+
+                Assert.That(ToKeys(mongo.Model), Is.EqualTo(ToKeys(cosmos.Model)));
+                Assert.That(ToKeys(cosmos.Model), Is.EqualTo(new[]
+                {
+                    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA|Alpha",
+                    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC|Charlie"
+                }));
+            });
+
+        private static async Task WithRepositoriesAsync(Func<EntityPreparationCandidateRepository, EntityPreparationCandidateRepository, Task> assertion)
         {
             var cosmosDatabaseName = $"CandidateParityCosmos_{Guid.NewGuid():N}";
             var mongoLogicalDatabaseName = $"CandidateParityMongo{Guid.NewGuid():N}";
@@ -92,45 +162,7 @@ namespace LagoVista.CloudStorage.Tests
                     cosmosProvider,
                     logger);
 
-                var cosmosById = await cosmosRepository.GetEntityBaseAsync(EntityType, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", OrganizationId);
-                var mongoById = await mongoRepository.GetEntityBaseAsync(EntityType, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", OrganizationId);
-                Assert.That(ToKey(mongoById), Is.EqualTo(ToKey(cosmosById)));
-
-                var cosmosAll = await cosmosRepository.GetEntityBasesAsync(EntityType, OrganizationId);
-                var mongoAll = await mongoRepository.GetEntityBasesAsync(EntityType, OrganizationId);
-                Assert.That(ToKeys(mongoAll), Is.EqualTo(ToKeys(cosmosAll)));
-                Assert.That(ToKeys(cosmosAll), Is.EqualTo(new[]
-                {
-                    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA|Alpha",
-                    "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB|Beta",
-                    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC|Charlie"
-                }));
-
-                var cosmosIncomplete = await cosmosRepository.GetIncompleteEntityBasesAsync(EntityType, OrganizationId, 10);
-                var mongoIncomplete = await mongoRepository.GetIncompleteEntityBasesAsync(EntityType, OrganizationId, 10);
-                Assert.That(ToKeys(mongoIncomplete), Is.EqualTo(ToKeys(cosmosIncomplete)));
-                Assert.That(ToKeys(cosmosIncomplete), Is.EqualTo(new[]
-                {
-                    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA|Alpha",
-                    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC|Charlie"
-                }));
-
-                var cosmosLimited = await cosmosRepository.GetIncompleteEntityBasesAsync(EntityType, OrganizationId, 1);
-                var mongoLimited = await mongoRepository.GetIncompleteEntityBasesAsync(EntityType, OrganizationId, 1);
-                Assert.That(ToKeys(mongoLimited), Is.EqualTo(ToKeys(cosmosLimited)));
-                Assert.That(cosmosLimited.Count, Is.EqualTo(1));
-                Assert.That(cosmosLimited[0].Name, Is.EqualTo("Alpha"));
-
-                var listRequest = new ListRequest { PageIndex = 1, PageSize = 2 };
-                var org = EntityHeader.Create(OrganizationId, "Parity Organization");
-                var cosmosList = await cosmosRepository.GetAllEntitiesByTypeAsync(EntityType, listRequest, null, org);
-                var mongoList = await mongoRepository.GetAllEntitiesByTypeAsync(EntityType, listRequest, null, org);
-                Assert.That(ToKeys(mongoList.Model), Is.EqualTo(ToKeys(cosmosList.Model)));
-                Assert.That(ToKeys(cosmosList.Model), Is.EqualTo(new[]
-                {
-                    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA|Alpha",
-                    "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC|Charlie"
-                }));
+                await assertion(cosmosRepository, mongoRepository);
             }
             finally
             {
