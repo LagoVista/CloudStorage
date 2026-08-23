@@ -21,10 +21,10 @@ namespace LagoVista.CloudStorage
 
             UseCache = Convert.ToBoolean(cacheSection.Require("UseCache"));
 
-            var useAuthenticationValue = cacheSection["UseAuthentication"];
+            var useAuthenticationValue = cacheSection.Require("UseAuthentication");
+            Password = cacheSection.Require("Password");
             UseAuthentication = !String.IsNullOrWhiteSpace(useAuthenticationValue) && Convert.ToBoolean(useAuthenticationValue);
-            Password = UseAuthentication ? cacheSection.Require("Password") : cacheSection["Password"];
-
+          
             CacheSettings = new ConnectionSettings
             {
                 Uri = cacheSection.Require("Uri"),

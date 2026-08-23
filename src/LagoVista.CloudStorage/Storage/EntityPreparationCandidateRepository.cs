@@ -2,10 +2,12 @@ using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
+using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.PlatformSupport;
 using Microsoft.Azure.Cosmos;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -218,6 +220,80 @@ ORDER BY c.Name ASC";
 
                 _logger.Trace($"{this.Tag()} - Found {results.Count} incomplete entities of type '{entityType}' for organization '{orgId}'.");
                 return results;
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                throw;
+            }
+        }
+
+        public async Task<ListResponse<EntityBaseSummary>> GetAllEntitiesByTypeAsync(string entityType, ListRequest listRequest, EntityHeader user, EntityHeader org, CancellationToken ct = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+
+            
+
+            var take = Math.Min(listRequest.PageSize, 5000);
+            var sql = $@"SELECT TOP {take}
+    c.id AS Id,
+    c.EntityType AS EntityType,
+    c.Name AS Name,
+    c.Key AS Key,
+    c.Description AS Description,
+    c.Icon AS Icon,
+    c.Category AS Category,
+    c.IsDraft AS IsDraft,
+    c.IsDeprecated AS IsDeprecated,
+    c.MasterStatus AS MasterStatus,
+    c.ReadinessStatus AS ReadinessStatus,
+    c.CreationDate AS CreationDate,
+    c.LastUpdatedDate AS LastUpdatedDate,
+    c.Revision AS Revision,
+    c.ChecklistStatus as ChecklistStatus,
+    c.ReadinessChecks as ReadinessChecks
+    
+FROM c
+WHERE c.EntityType = @entityType
+AND c.OwnerOrganization.Id = @orgId
+AND (
+    NOT IS_DEFINED(c.MasterStatus)
+    OR IS_NULL(c.MasterStatus)
+    OR NOT IS_DEFINED(c.MasterStatus.IsProductionReady)
+    OR IS_NULL(c.MasterStatus.IsProductionReady)
+    OR c.MasterStatus.IsProductionReady != true
+)
+ORDER BY c.Name ASC";
+
+            var query = new QueryDefinition(sql)
+                .WithParameter("@entityType", entityType.Trim())
+                .WithParameter("@orgId", org.Id.Trim());
+
+            var results = new ListResponse<EntityBaseSummary>();
+            var requestOptions = new QueryRequestOptions { MaxItemCount = Math.Min(take, 100) };
+
+            var items = new List<EntityBaseSummary>();
+
+            try
+            {
+                using var iterator = _container.GetItemQueryIterator<EntityBaseSummary>(query, requestOptions: requestOptions);
+
+                while (iterator.HasMoreResults && items.Count() < take)
+                {
+                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
+
+                    foreach (var entity in page.Resource.Where(item => item != null))
+                    {
+                        items.Add(entity);
+
+                        if (items.Count >= take)
+                            break;
+                    }
+                }
+
+                _logger.Trace($"{this.Tag()} - Found {items.Count} incomplete entities of type '{entityType}' for organization '{org.Text}'.");
+                return ListResponse <EntityBaseSummary>.Create(items);
             }
             catch (Exception ex)
             {
