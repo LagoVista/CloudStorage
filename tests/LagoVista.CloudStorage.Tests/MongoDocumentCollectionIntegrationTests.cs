@@ -1,5 +1,6 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.CloudStorage.Utils;
 using LagoVista.Core.Models.UIMetaData;
 using MongoDB.Driver;
 using NUnit.Framework;
@@ -14,7 +15,6 @@ namespace LagoVista.CloudStorage.Tests
     [Category("Mongo")]
     public class MongoDocumentCollectionIntegrationTests
     {
-        private const string ConnectionStringEnvironmentVariable = "NUVIOT_TEST_MONGO_CONNECTION_STRING";
         private const string CollectionName = "DocumentCollectionTests";
         private string _connectionString;
         private string _databaseName;
@@ -24,9 +24,7 @@ namespace LagoVista.CloudStorage.Tests
         [OneTimeSetUp]
         public async Task SetupAsync()
         {
-            _connectionString = Environment.GetEnvironmentVariable(ConnectionStringEnvironmentVariable);
-            if (String.IsNullOrWhiteSpace(_connectionString)) Assert.Ignore($"Set {ConnectionStringEnvironmentVariable} to run Mongo integration tests.");
-
+            _connectionString = GetTestConnectionString();
             _databaseName = $"CloudStorageTests_{Guid.NewGuid():N}";
             _client = new MongoClient(_connectionString);
             _documentCollection = new MongoDocumentCollection(_connectionString, _databaseName, CollectionName);
@@ -81,6 +79,19 @@ namespace LagoVista.CloudStorage.Tests
             var results = (await _documentCollection.QueryAsync<TestCustomerMetrics>(request)).ToList();
             Assert.That(results.Sum(result => result.CountLeads), Is.EqualTo(3));
             Assert.That(results.Single(result => result.Industry.Id == "IND1" && result.IndustryNiche.Id == "NICHE1" && result.SalesStage.Id == "QUALIFIED").CountLeads, Is.EqualTo(2));
+        }
+
+        private static string GetTestConnectionString()
+        {
+            try
+            {
+                return TestConnections.TestMongoDocumentStorage.BuildConnectionString();
+            }
+            catch (Exception ex)
+            {
+                Assert.Ignore($"Configure TEST_MONGO_* settings or run run-mongo-tests.ps1. {ex.Message}");
+                return null;
+            }
         }
 
         private static TestDocument CreateDocument(string id, string name, int rank, string entityType, string orgId)
