@@ -1,4 +1,5 @@
 using Cassandra;
+using LagoVista;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,6 +22,7 @@ namespace LagoVista.CloudStorage.Storage
         public string CqlType { get; }
     }
 
+    [CriticalCoverage]
     internal sealed class CassandraRecordMap<TRecord>
         where TRecord : IActivityRecord, new()
     {
