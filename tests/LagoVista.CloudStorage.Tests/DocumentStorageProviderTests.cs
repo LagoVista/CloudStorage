@@ -9,6 +9,7 @@ using System.Linq;
 
 namespace LagoVista.CloudStorage.Tests
 {
+    [NonParallelizable]
     public class DocumentStorageProviderTests
     {
         [Test]
@@ -47,36 +48,39 @@ namespace LagoVista.CloudStorage.Tests
         [Test]
         public void DocumentCollectionFactory_WithDefaultProvider_ReturnsCosmosAdapter()
         {
-            var variableName = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + "TESTDB";
-            var priorValue = Environment.GetEnvironmentVariable(variableName);
+            var databaseVariableName = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + "TESTDB";
+            var priorDatabaseValue = Environment.GetEnvironmentVariable(databaseVariableName);
+            var priorGlobalValue = Environment.GetEnvironmentVariable(DocumentStorageSettingsResolver.ProviderEnvironmentVariable);
             try
             {
-                Environment.SetEnvironmentVariable(variableName, null);
+                Environment.SetEnvironmentVariable(databaseVariableName, null);
+                Environment.SetEnvironmentVariable(DocumentStorageSettingsResolver.ProviderEnvironmentVariable, null);
                 var factory = new DocumentCollectionFactory(CosmosClientProvider.Shared);
                 var collection = factory.Create("https://example.documents.azure.com:443/", "key", "TestDb");
                 Assert.That(collection, Is.TypeOf<CosmosDocumentCollection>());
             }
             finally
             {
-                Environment.SetEnvironmentVariable(variableName, priorValue);
+                Environment.SetEnvironmentVariable(databaseVariableName, priorDatabaseValue);
+                Environment.SetEnvironmentVariable(DocumentStorageSettingsResolver.ProviderEnvironmentVariable, priorGlobalValue);
             }
         }
 
         [Test]
         public void DocumentCollectionFactory_WithMongoProvider_ReturnsMongoAdapter()
         {
-            var variableName = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + "TESTDB";
-            var priorValue = Environment.GetEnvironmentVariable(variableName);
+            var databaseVariableName = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + "TESTDB";
+            var priorDatabaseValue = Environment.GetEnvironmentVariable(databaseVariableName);
             try
             {
-                Environment.SetEnvironmentVariable(variableName, "mongo");
+                Environment.SetEnvironmentVariable(databaseVariableName, "mongo");
                 var factory = new DocumentCollectionFactory(CosmosClientProvider.Shared);
                 var collection = factory.Create("mongodb://localhost:27017", null, "TestDb");
                 Assert.That(collection, Is.TypeOf<MongoDocumentCollection>());
             }
             finally
             {
-                Environment.SetEnvironmentVariable(variableName, priorValue);
+                Environment.SetEnvironmentVariable(databaseVariableName, priorDatabaseValue);
             }
         }
 
