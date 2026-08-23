@@ -5,13 +5,14 @@ namespace LagoVista.CloudStorage.Storage
 {
     /// <summary>
     /// Small mutable durable-cache / scratch storage capability.
-    /// Kept distinct from flat-document storage even when both are backed by MongoDB.
+    /// Kept distinct from application-data storage even when both are backed by MongoDB.
     /// </summary>
-    public interface IScratchStore<TEntity>
+    public interface IScratchStore<TRecord>
+        where TRecord : IScratchDataRecord
     {
-        Task<TEntity> GetAsync(StorageKey key, CancellationToken cancellationToken = default);
-        Task UpsertAsync(TEntity entity, CancellationToken cancellationToken = default);
+        Task<TRecord> GetAsync(StorageKey key, CancellationToken cancellationToken = default);
+        Task UpsertAsync(TRecord record, CancellationToken cancellationToken = default);
         Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default);
-        Task<StoragePageResult<TEntity>> QueryAsync(StorageQuery<TEntity> query, CancellationToken cancellationToken = default);
+        Task<StoragePageResult<TRecord>> QueryAsync(StorageQuery<TRecord> query, CancellationToken cancellationToken = default);
     }
 }
