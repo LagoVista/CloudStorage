@@ -111,7 +111,7 @@ namespace LagoVista.CloudStorage.Tests
         public async Task RepositoryMongoPath_DatabaseSpecificProviderOverride_DoesNotRequireSharedKey()
         {
             _repository.SetConnection("https://cosmos.example:443/", null, _logicalDatabaseName);
-            var entity = CreateEntity("SETCONNECTION", "Set Connection", 10);
+            var entity = CreateEntity("ACDC241C737C4D25938E8C69B0C1ACDC", "Set Connection", 10);
             await _repository.CreateAsync(entity);
             Assert.That((await _repository.GetAsync(entity.Id)).Name, Is.EqualTo("Set Connection"));
         }
