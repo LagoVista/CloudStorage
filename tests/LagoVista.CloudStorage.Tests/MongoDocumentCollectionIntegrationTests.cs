@@ -1,6 +1,7 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.CloudStorage.Utils;
+using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using MongoDB.Driver;
 using NUnit.Framework;
@@ -102,7 +103,7 @@ namespace LagoVista.CloudStorage.Tests
                 Name = name,
                 Rank = rank,
                 EntityType = entityType,
-                OwnerOrganization = new TestHeader { Id = orgId, Text = orgId }
+                OwnerOrganization = EntityHeader.Create(orgId, orgId)
             };
         }
 
@@ -113,10 +114,10 @@ namespace LagoVista.CloudStorage.Tests
                 Id = id,
                 Name = name,
                 EntityType = "CustomerEntity",
-                OwnerOrganization = new TestHeader { Id = orgId, Text = orgId },
-                Industry = new TestHeader { Id = industryId, Text = industryId },
-                IndustryNiche = new TestHeader { Id = nicheId, Text = nicheId },
-                SalesStage = new TestHeader { Id = salesStageId, Text = salesStageId }
+                OwnerOrganization = EntityHeader.Create(orgId, orgId),
+                Industry = EntityHeader.Create(industryId, industryId),
+                IndustryNiche = EntityHeader.Create(nicheId, nicheId),
+                SalesStage = EntityHeader.Create(salesStageId, salesStageId)
             };
         }
 
@@ -126,10 +127,10 @@ namespace LagoVista.CloudStorage.Tests
             public string EntityType { get; set; }
             public string Name { get; set; }
             public int Rank { get; set; }
-            public TestHeader OwnerOrganization { get; set; }
-            public TestHeader Industry { get; set; }
-            public TestHeader IndustryNiche { get; set; }
-            public TestHeader SalesStage { get; set; }
+            public EntityHeader OwnerOrganization { get; set; }
+            public EntityHeader Industry { get; set; }
+            public EntityHeader IndustryNiche { get; set; }
+            public EntityHeader SalesStage { get; set; }
         }
 
         private sealed class TestProjection
@@ -140,16 +141,10 @@ namespace LagoVista.CloudStorage.Tests
 
         private sealed class TestCustomerMetrics
         {
-            public TestHeader Industry { get; set; }
-            public TestHeader IndustryNiche { get; set; }
-            public TestHeader SalesStage { get; set; }
+            public EntityHeader Industry { get; set; }
+            public EntityHeader IndustryNiche { get; set; }
+            public EntityHeader SalesStage { get; set; }
             public int CountLeads { get; set; }
-        }
-
-        private sealed class TestHeader
-        {
-            public string Id { get; set; }
-            public string Text { get; set; }
         }
     }
 }
