@@ -2,7 +2,6 @@ using LagoVista.CloudStorage.Interfaces;
 using Microsoft.Azure.Cosmos;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -14,8 +13,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
     public sealed class DocumentMigrationService : IDocumentMigrationService
     {
-        private static readonly string[] _cosmosSystemFields = { "_rid", "_self", "_etag", "_attachments", "_ts" };
-
         private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
 
@@ -56,7 +53,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     route.Read++;
                     if (!routeResolved) route.UnresolvedRoute++;
 
-                    if (!TryTransform(sourceDocument, out var targetDocument))
+                    if (!DocumentMigrationTransformer.TryTransform(sourceDocument, out var targetDocument))
                     {
                         result.DocumentsSkipped++;
                         result.DocumentsFailed++;
@@ -98,25 +95,50 @@ namespace LagoVista.CloudStorage.DocumentDB
             return result;
         }
 
+        public async Task<CosmosToMongoValidationResult> ValidateCosmosToMongoAsync(CosmosToMongoMigrationRequest request, CancellationToken cancellationToken = default)
+        {
+            ValidateRequest(request);
+
+            var inventoryRequest = new CosmosToMongoMigrationRequest
+            {
+                Source = request.Source,
+                Target = request.Target,
+                SourceCollectionName = request.SourceCollectionName,
+                EntityType = request.EntityType,
+                BatchSize = request.BatchSize,
+                DryRun = true
+            };
+
+            var inventory = await MigrateCosmosToMongoAsync(inventoryRequest, cancellationToken).ConfigureAwait(false);
+            var mongoClient = new MongoClient(request.Target.ConnectionString);
+            var mongoDatabase = mongoClient.GetDatabase(request.Target.DatabaseName);
+            var result = new CosmosToMongoValidationResult();
+
+            foreach (var route in inventory.Routes)
+            {
+                var collection = mongoDatabase.GetCollection<BsonDocument>(route.CollectionName);
+                var filter = String.IsNullOrWhiteSpace(route.EntityType) ? Builders<BsonDocument>.Filter.Empty : Builders<BsonDocument>.Filter.Eq("EntityType", route.EntityType);
+                var destinationCount = await collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken).ConfigureAwait(false);
+                var item = new DocumentMigrationValidationStatistics
+                {
+                    EntityType = route.EntityType,
+                    CollectionName = route.CollectionName,
+                    SourceCount = route.Read,
+                    DestinationCount = destinationCount
+                };
+                result.Routes.Add(item);
+            }
+
+            result.SourceCount = result.Routes.Sum(item => item.SourceCount);
+            result.DestinationCount = result.Routes.Sum(item => item.DestinationCount);
+            result.Matches = result.Routes.All(item => item.Matches);
+            return result;
+        }
+
         private static QueryDefinition CreateQuery(string entityType)
         {
             if (String.IsNullOrWhiteSpace(entityType)) return new QueryDefinition("SELECT * FROM c");
             return new QueryDefinition("SELECT * FROM c WHERE c.EntityType = @entityType").WithParameter("@entityType", entityType);
-        }
-
-        private static bool TryTransform(JObject source, out BsonDocument target)
-        {
-            target = null;
-            var id = GetString(source, "id");
-            if (String.IsNullOrWhiteSpace(id)) return false;
-
-            var copy = (JObject)source.DeepClone();
-            RemoveProperty(copy, "id");
-            foreach (var field in _cosmosSystemFields) RemoveProperty(copy, field);
-
-            target = BsonDocument.Parse(copy.ToString(Formatting.None));
-            target.InsertAt(0, new BsonElement("_id", id));
-            return true;
         }
 
         private static DocumentMigrationRouteStatistics GetRoute(CosmosToMongoMigrationResult result, string entityType, string collectionName)
@@ -137,12 +159,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             var property = document.Properties().FirstOrDefault(item => String.Equals(item.Name, propertyName, StringComparison.OrdinalIgnoreCase));
             return property?.Value?.Type == JTokenType.Null ? null : property?.Value?.ToString();
-        }
-
-        private static void RemoveProperty(JObject document, string propertyName)
-        {
-            var property = document.Properties().FirstOrDefault(item => String.Equals(item.Name, propertyName, StringComparison.OrdinalIgnoreCase));
-            property?.Remove();
         }
 
         private static void ValidateRequest(CosmosToMongoMigrationRequest request)
