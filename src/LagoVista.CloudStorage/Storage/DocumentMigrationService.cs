@@ -117,7 +117,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             foreach (var route in inventory.Routes)
             {
                 var collection = mongoDatabase.GetCollection<BsonDocument>(route.CollectionName);
-                var filter = String.IsNullOrWhiteSpace(route.EntityType) ? Builders<BsonDocument>.Filter.Empty : Builders<BsonDocument>.Filter.Eq("EntityType", route.EntityType);
+                var filter = CreateMongoEntityTypeFilter(route.EntityType);
                 var destinationCount = await collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken).ConfigureAwait(false);
                 var item = new DocumentMigrationValidationStatistics
                 {
@@ -139,6 +139,12 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             if (String.IsNullOrWhiteSpace(entityType)) return new QueryDefinition("SELECT * FROM c");
             return new QueryDefinition("SELECT * FROM c WHERE c.EntityType = @entityType").WithParameter("@entityType", entityType);
+        }
+
+        private static FilterDefinition<BsonDocument> CreateMongoEntityTypeFilter(string entityType)
+        {
+            if (!String.IsNullOrWhiteSpace(entityType)) return Builders<BsonDocument>.Filter.Eq("EntityType", entityType);
+            return Builders<BsonDocument>.Filter.Or(Builders<BsonDocument>.Filter.Exists("EntityType", false), Builders<BsonDocument>.Filter.Eq("EntityType", BsonNull.Value), Builders<BsonDocument>.Filter.Eq("EntityType", String.Empty));
         }
 
         private static DocumentMigrationRouteStatistics GetRoute(CosmosToMongoMigrationResult result, string entityType, string collectionName)
