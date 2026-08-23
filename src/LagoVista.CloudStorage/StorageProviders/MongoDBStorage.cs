@@ -87,7 +87,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var items = await GetCollection<TEntity>().Find(CreateEntityFilter(query)).Sort(Builders<TEntity>.Sort.Descending(ToObjectExpression(orderBy))).Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
+                var items = await GetCollection<TEntity>().Find(CreateQueryFilter(query)).Sort(Builders<TEntity>.Sort.Descending(ToObjectExpression(orderBy))).Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
@@ -145,7 +145,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var items = await GetCollection<TEntity>().Find(CreateEntityFilter(query)).Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
+                var items = await GetCollection<TEntity>().Find(CreateQueryFilter(query)).Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
@@ -163,7 +163,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var items = await GetCollection<TEntity>().Find(CreateEntityFilter(query)).Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
+                var items = await GetCollection<TEntity>().Find(CreateEntityFilter(query, listRequest)).Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
@@ -176,7 +176,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var find = GetCollection<TEntity>().Find(CreateEntityFilter(query));
+                var find = GetCollection<TEntity>().Find(CreateEntityFilter(query, listRequest));
                 if (sort != null) find = find.Sort(Builders<TEntity>.Sort.Ascending(ToObjectExpression(sort)));
                 var items = await find.Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntity>.Create(listRequest, items);
@@ -191,7 +191,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var find = GetCollection<TEntity>().Find(CreateEntityFilter(query));
+                var find = GetCollection<TEntity>().Find(CreateEntityFilter(query, listRequest));
                 if (sort != null) find = find.Sort(Builders<TEntity>.Sort.Descending(ToObjectExpression(sort)));
                 var items = await find.Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntity>.Create(listRequest, items);
@@ -206,8 +206,9 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var find = GetCollection<TEntityFactory>().Find(CreateFactoryFilter(query));
-                if (sort != null) find = find.Sort(Builders<TEntityFactory>.Sort.Ascending(ToObjectExpression(sort)));
+                var find = GetCollection<TEntityFactory>().Find(CreateFactoryFilter(query, listRequest));
+                var sortDefinition = CreateSummarySort(sort, listRequest, false);
+                if (sortDefinition != null) find = find.Sort(sortDefinition);
                 var items = await find.Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntitySummary>.Create(listRequest, items.Select(item => item.CreateSummary() as TEntitySummary));
             }
@@ -221,8 +222,9 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var find = GetCollection<TEntityFactory>().Find(CreateFactoryFilter(query));
-                if (sort != null) find = find.Sort(Builders<TEntityFactory>.Sort.Descending(ToObjectExpression(sort)));
+                var find = GetCollection<TEntityFactory>().Find(CreateFactoryFilter(query, listRequest));
+                var sortDefinition = CreateSummarySort(sort, listRequest, true);
+                if (sortDefinition != null) find = find.Sort(sortDefinition);
                 var items = await find.Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntitySummary>.Create(listRequest, items.Select(item => item.CreateSummary() as TEntitySummary));
             }
@@ -273,16 +275,59 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (_cacheProvider != null) await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item)).ConfigureAwait(false);
         }
 
-        private FilterDefinition<TEntity> CreateEntityFilter(Expression<Func<TEntity, bool>> query)
+        private FilterDefinition<TEntity> CreateEntityFilter(Expression<Func<TEntity, bool>> query, ListRequest listRequest = null)
         {
-            var entityTypeFilter = Builders<TEntity>.Filter.Eq(entity => entity.EntityType, typeof(TEntity).Name);
-            return query == null ? entityTypeFilter : Builders<TEntity>.Filter.Where(query) & entityTypeFilter;
+            var filter = CreateQueryFilter(query) & Builders<TEntity>.Filter.Eq(entity => entity.EntityType, typeof(TEntity).Name);
+            if (listRequest != null && !listRequest.ShowDeleted) filter &= Builders<TEntity>.Filter.Ne("IsDeleted", true);
+            if (listRequest != null && !listRequest.ShowDrafts) filter &= Builders<TEntity>.Filter.Ne("IsDraft", true);
+            return filter;
         }
 
-        private FilterDefinition<TEntityFactory> CreateFactoryFilter<TEntityFactory>(Expression<Func<TEntityFactory, bool>> query) where TEntityFactory : class, ISummaryFactory, INoSQLEntity
+        private FilterDefinition<TEntityFactory> CreateFactoryFilter<TEntityFactory>(Expression<Func<TEntityFactory, bool>> query, ListRequest listRequest) where TEntityFactory : class, ISummaryFactory, INoSQLEntity
         {
-            var entityTypeFilter = Builders<TEntityFactory>.Filter.Eq("EntityType", typeof(TEntity).Name);
-            return query == null ? entityTypeFilter : Builders<TEntityFactory>.Filter.Where(query) & entityTypeFilter;
+            var filter = CreateQueryFilter(query) & Builders<TEntityFactory>.Filter.Eq("EntityType", typeof(TEntity).Name);
+            if (listRequest != null && !listRequest.ShowDeleted) filter &= Builders<TEntityFactory>.Filter.Ne("IsDeleted", true);
+            if (listRequest != null && !listRequest.ShowDrafts) filter &= Builders<TEntityFactory>.Filter.Ne("IsDraft", true);
+            if (listRequest != null && !String.IsNullOrWhiteSpace(listRequest.CategoryKey)) filter &= Builders<TEntityFactory>.Filter.Eq("Category.Key", listRequest.CategoryKey);
+            return filter;
+        }
+
+        private static FilterDefinition<TDocument> CreateQueryFilter<TDocument>(Expression<Func<TDocument, bool>> query) where TDocument : class
+        {
+            return query == null ? Builders<TDocument>.Filter.Empty : Builders<TDocument>.Filter.Where(query);
+        }
+
+        private static SortDefinition<TEntityFactory> CreateSummarySort<TEntityFactory>(Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest, bool descending) where TEntityFactory : class
+        {
+            if (listRequest?.OrderBy != null && listRequest?.OrderByDesc != null) throw new InvalidOperationException("order by AND order by desc were both provided, must either be both empty or only provide one of the two.");
+
+            if (listRequest?.OrderByDesc != null) return CreateNamedSort<TEntityFactory>(listRequest.OrderByDesc.Value, true);
+            if (listRequest?.OrderBy != null) return CreateNamedSort<TEntityFactory>(listRequest.OrderBy.Value, false);
+            if (sort == null) return null;
+            return descending ? Builders<TEntityFactory>.Sort.Descending(ToObjectExpression(sort)) : Builders<TEntityFactory>.Sort.Ascending(ToObjectExpression(sort));
+        }
+
+        private static SortDefinition<TDocument> CreateNamedSort<TDocument>(OrderByTypes orderBy, bool descending) where TDocument : class
+        {
+            string fieldName;
+            switch (orderBy)
+            {
+                case OrderByTypes.Name:
+                    fieldName = "Name";
+                    break;
+                case OrderByTypes.Rating:
+                    fieldName = "Stars";
+                    break;
+                case OrderByTypes.CreationDate:
+                    fieldName = "CreationDate";
+                    break;
+                case OrderByTypes.LastUpdateDate:
+                    fieldName = "LastUpdatedDate";
+                    break;
+                default:
+                    return null;
+            }
+            return descending ? Builders<TDocument>.Sort.Descending(fieldName) : Builders<TDocument>.Sort.Ascending(fieldName);
         }
 
         private ListResponse<TItem> CreateErrorResponse<TItem>(Exception ex, ListRequest listRequest) where TItem : class
