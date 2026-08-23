@@ -21,6 +21,6 @@ services:
     container_name: nuviot-cloudstorage-lab-cosmos
     command: ["--protocol", "https"]
     ports:
-      - "8081:8081"
-      - "8080:8080"
+      - "18081:8081"
+      - "18080:8080"
       - "1234:1234"
