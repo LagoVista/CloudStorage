@@ -32,6 +32,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
             if (String.IsNullOrWhiteSpace(collectionName)) throw new ArgumentNullException(nameof(collectionName));
 
+            MongoBsonSerialization.Configure();
             _connectionString = connectionString;
             _databaseName = databaseName;
             _collectionName = collectionName;
