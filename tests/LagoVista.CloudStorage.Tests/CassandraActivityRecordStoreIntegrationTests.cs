@@ -3,6 +3,7 @@ using LagoVista.CloudStorage.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -17,6 +18,8 @@ namespace LagoVista.CloudStorage.Tests
         private IActivityRecordStore<TestActivityRecord> _store;
         private IActivityRecordStore<BucketedActivityRecord> _bucketedStore;
         private IActivityRecordStore<RetainedActivityRecord> _retainedStore;
+        private IActivityRecordStore<IndexedActivityRecord> _indexedStore;
+        private IActivityRecordStore<BucketedIndexedActivityRecord> _bucketedIndexedStore;
         private ICassandraSessionFactory _sessionFactory;
         private ICassandraStorageSettings _settings;
 
@@ -49,6 +52,26 @@ namespace LagoVista.CloudStorage.Tests
             public string Category { get; set; }
         }
 
+        public sealed class IndexedActivityRecord : IActivityRecord
+        {
+            public string Id { get; set; }
+            public string OrganizationId { get; set; }
+            public string Organization { get; set; }
+            public DateTime CreationDate { get; set; }
+            public string Category { get; set; }
+            public int Value { get; set; }
+        }
+
+        public sealed class BucketedIndexedActivityRecord : IActivityRecord
+        {
+            public string Id { get; set; }
+            public string OrganizationId { get; set; }
+            public string Organization { get; set; }
+            public DateTime CreationDate { get; set; }
+            public string Category { get; set; }
+            public int Value { get; set; }
+        }
+
         [OneTimeSetUp]
         public async Task SetupAsync()
         {
@@ -79,11 +102,22 @@ namespace LagoVista.CloudStorage.Tests
                 definition => definition
                     .PartitionBy(record => record.OrganizationId)
                     .RetainFor(TimeSpan.FromSeconds(120)));
+            services.AddActivityRecordStore<IndexedActivityRecord, CassandraActivityRecordStore<IndexedActivityRecord>>(
+                definition => definition
+                    .PartitionBy(record => record.OrganizationId)
+                    .Index(record => record.Category));
+            services.AddActivityRecordStore<BucketedIndexedActivityRecord, CassandraActivityRecordStore<BucketedIndexedActivityRecord>>(
+                definition => definition
+                    .PartitionBy(record => record.OrganizationId)
+                    .Index(record => record.Category)
+                    .BucketBy(StoragePeriod.Month));
 
             _services = services.BuildServiceProvider();
             _store = _services.GetRequiredService<IActivityRecordStore<TestActivityRecord>>();
             _bucketedStore = _services.GetRequiredService<IActivityRecordStore<BucketedActivityRecord>>();
             _retainedStore = _services.GetRequiredService<IActivityRecordStore<RetainedActivityRecord>>();
+            _indexedStore = _services.GetRequiredService<IActivityRecordStore<IndexedActivityRecord>>();
+            _bucketedIndexedStore = _services.GetRequiredService<IActivityRecordStore<BucketedIndexedActivityRecord>>();
             _sessionFactory = _services.GetRequiredService<ICassandraSessionFactory>();
         }
 
@@ -247,6 +281,82 @@ WHERE organization_id = ? AND creation_date = ? AND id = ?");
             });
         }
 
+        [Test]
+        public async Task IndexedQuery_DeclaredField_ReturnsOnlyMatches()
+        {
+            var organizationId = $"ORG-{Guid.NewGuid():N}";
+            var now = DateTime.UtcNow;
+            var matchingOlder = CreateIndexedRecord(organizationId, "match", now.AddSeconds(-3), 1);
+            var ignored = CreateIndexedRecord(organizationId, "ignore", now.AddSeconds(-2), 2);
+            var matchingNewer = CreateIndexedRecord(organizationId, "match", now.AddSeconds(-1), 3);
+
+            await _indexedStore.InsertBatchAsync(new[] { matchingOlder, ignored, matchingNewer });
+
+            var query = new HistoryQuery<IndexedActivityRecord>()
+                .Where(record => record.OrganizationId, StorageFilterOperator.Equal, organizationId)
+                .Where(record => record.Category, StorageFilterOperator.Equal, "match")
+                .Between(now.AddMinutes(-1), now);
+
+            var result = await _indexedStore.QueryAsync(query);
+
+            Assert.That(result.Items.Select(record => record.Id), Is.EqualTo(new[] { matchingNewer.Id, matchingOlder.Id }));
+        }
+
+        [Test]
+        public void IndexedQuery_UndeclaredField_FailsFast()
+        {
+            var query = new HistoryQuery<IndexedActivityRecord>()
+                .Where(record => record.OrganizationId, StorageFilterOperator.Equal, "ORG1")
+                .Where(record => record.Value, StorageFilterOperator.Equal, 42);
+
+            var exception = Assert.ThrowsAsync<NotSupportedException>(() => _indexedStore.QueryAsync(query));
+            Assert.That(exception.Message, Does.Contain("Register it with Index(...)"));
+        }
+
+        [Test]
+        public async Task IndexedStore_CreatesSaiIndexMetadata()
+        {
+            await _indexedStore.InsertAsync(CreateIndexedRecord(
+                $"ORG-{Guid.NewGuid():N}", "metadata", DateTime.UtcNow, 1));
+
+            var session = await _sessionFactory.GetSessionAsync();
+            var prepared = await session.PrepareAsync(@"
+SELECT index_name, kind, options
+FROM system_schema.indexes
+WHERE keyspace_name = ? AND table_name = ?");
+            var rows = (await session.ExecuteAsync(prepared.Bind(_settings.Keyspace, "indexed_activity_record"))).ToList();
+            var index = rows.Single(row => row.GetValue<string>("index_name") == "indexed_activity_record_category_sai_idx");
+            var options = index.GetValue<IDictionary<string, string>>("options");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(index.GetValue<string>("kind"), Is.EqualTo("CUSTOM"));
+                Assert.That(options["target"], Is.EqualTo("category"));
+                Assert.That(options["class_name"].ToLowerInvariant(), Does.Contain("sai").Or.Contain("storageattachedindex"));
+            });
+        }
+
+        [Test]
+        public async Task BucketedIndexedQuery_AcrossBuckets_FiltersDeclaredIndex()
+        {
+            var organizationId = $"ORG-{Guid.NewGuid():N}";
+            var julyMatch = CreateBucketedIndexedRecord(organizationId, "match", new DateTime(2026, 7, 31, 23, 59, 0, DateTimeKind.Utc), 1);
+            var augustIgnored = CreateBucketedIndexedRecord(organizationId, "ignore", new DateTime(2026, 8, 1, 0, 1, 0, DateTimeKind.Utc), 2);
+            var augustMatch = CreateBucketedIndexedRecord(organizationId, "match", new DateTime(2026, 8, 1, 0, 2, 0, DateTimeKind.Utc), 3);
+
+            await _bucketedIndexedStore.InsertBatchAsync(new[] { julyMatch, augustIgnored, augustMatch });
+
+            var query = new HistoryQuery<BucketedIndexedActivityRecord>()
+                .Where(record => record.OrganizationId, StorageFilterOperator.Equal, organizationId)
+                .Where(record => record.Category, StorageFilterOperator.Equal, "match")
+                .Between(
+                    new DateTime(2026, 7, 31, 23, 58, 0, DateTimeKind.Utc),
+                    new DateTime(2026, 8, 1, 0, 3, 0, DateTimeKind.Utc));
+
+            var result = await _bucketedIndexedStore.QueryAsync(query);
+            Assert.That(result.Items.Select(record => record.Id), Is.EqualTo(new[] { augustMatch.Id, julyMatch.Id }));
+        }
+
         private static TestActivityRecord CreateRecord(string organizationId, string category, DateTime creationDate, int value)
         {
             return new TestActivityRecord
@@ -267,6 +377,32 @@ WHERE organization_id = ? AND creation_date = ? AND id = ?");
                 Id = Guid.NewGuid().ToString("N"),
                 OrganizationId = organizationId,
                 Organization = "Integration Test Organization",
+                CreationDate = creationDate,
+                Category = category,
+                Value = value
+            };
+        }
+
+        private static IndexedActivityRecord CreateIndexedRecord(string organizationId, string category, DateTime creationDate, int value)
+        {
+            return new IndexedActivityRecord
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                OrganizationId = organizationId,
+                Organization = "Indexed Integration Test Organization",
+                CreationDate = creationDate,
+                Category = category,
+                Value = value
+            };
+        }
+
+        private static BucketedIndexedActivityRecord CreateBucketedIndexedRecord(string organizationId, string category, DateTime creationDate, int value)
+        {
+            return new BucketedIndexedActivityRecord
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                OrganizationId = organizationId,
+                Organization = "Bucketed Indexed Integration Test Organization",
                 CreationDate = creationDate,
                 Category = category,
                 Value = value
