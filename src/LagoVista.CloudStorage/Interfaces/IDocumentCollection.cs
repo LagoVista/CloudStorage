@@ -19,5 +19,6 @@ namespace LagoVista.CloudStorage.Interfaces
     public interface IDocumentCollectionFactory
     {
         IDocumentCollection Create(string endpoint, string sharedKey, string databaseName, string collectionName = null);
+        IDocumentCollection Create(DocumentStorageSettings settings, string collectionName = null);
     }
 }
