@@ -17,7 +17,7 @@ namespace LagoVista.CloudStorage.Tests
         {
             var values = new Dictionary<string, string>
             {
-                ["CassandraStorage:ContactPoints:0"] = "localhost",
+                ["CassandraStorage:ContactPoints"] = "localhost",
                 ["CassandraStorage:Port"] = "19042",
                 ["CassandraStorage:UserName"] = "cassandra",
                 ["CassandraStorage:Password"] = "cassandra",
