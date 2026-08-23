@@ -81,6 +81,16 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
+        public void InterfaceConstrainedActivitySelectors_AreAccepted()
+        {
+            var definition = BuildActivityDefinition<ActivityRecord>();
+
+            Assert.That(definition.KeyField, Is.EqualTo(nameof(IActivityRecord.Id)));
+            Assert.That(definition.TimeField, Is.EqualTo(nameof(IActivityRecord.CreationDate)));
+            Assert.That(definition.PartitionFields, Does.Contain(nameof(IActivityRecord.OrganizationId)));
+        }
+
+        [Test]
         public void ScratchAndApplicationData_RemainSeparateCapabilities()
         {
             var services = new ServiceCollection();
@@ -124,6 +134,15 @@ namespace LagoVista.CloudStorage.Tests
             Assert.That(methodNames, Does.Not.Contain("DeleteAsync"));
             Assert.That(methodNames, Does.Contain("InsertAsync"));
             Assert.That(methodNames, Does.Contain("InsertBatchAsync"));
+        }
+
+        private static FlatStorageDefinition<TRecord> BuildActivityDefinition<TRecord>()
+            where TRecord : IActivityRecord
+        {
+            return new FlatStorageDefinition<TRecord>()
+                .KeyBy(record => record.Id)
+                .TimeBy(record => record.CreationDate)
+                .PartitionBy(record => record.OrganizationId);
         }
     }
 }
