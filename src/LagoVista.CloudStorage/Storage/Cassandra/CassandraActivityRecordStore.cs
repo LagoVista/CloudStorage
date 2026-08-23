@@ -1,4 +1,5 @@
 using Cassandra;
+using LagoVista;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,7 @@ namespace LagoVista.CloudStorage.Storage
     /// creation, insert/batch insert, declared partition equality filters, CreationDate
     /// ranges, optional time buckets, and opaque provider paging cursors.
     /// </summary>
+    [CriticalCoverage]
     public sealed class CassandraActivityRecordStore<TRecord> : IActivityRecordStore<TRecord>
         where TRecord : IActivityRecord, new()
     {
