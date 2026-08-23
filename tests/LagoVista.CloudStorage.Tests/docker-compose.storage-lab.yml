@@ -1,0 +1,24 @@
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: nuviot-cloudstorage-lab-mongo
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: nuviot-test
+      MONGO_INITDB_ROOT_PASSWORD: nuviot-test-password
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--username", "nuviot-test", "--password", "nuviot-test-password", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  cosmos:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
+    container_name: nuviot-cloudstorage-lab-cosmos
+    command: ["--protocol", "https"]
+    ports:
+      - "8081:8081"
+      - "8080:8080"
+      - "1234:1234"
