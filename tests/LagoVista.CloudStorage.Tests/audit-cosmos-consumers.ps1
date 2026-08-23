@@ -24,6 +24,7 @@ $patterns = @(
 # application-facing Cosmos consumer, record its named StorageParity coverage here.
 $parityProgress = @{
     "src\LagoVista.CloudStorage\Storage\EntityPreparationCandidateRepository.cs" = "5/5"
+    "src\LagoVista.CloudStorage\Storage\EntityListItemRepo.cs" = "5/5"
 }
 
 # Application-facing consumers are the Card 6B conversion queue. Infrastructure
