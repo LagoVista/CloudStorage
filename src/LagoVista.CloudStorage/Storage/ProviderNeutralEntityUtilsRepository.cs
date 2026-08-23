@@ -52,11 +52,14 @@ namespace LagoVista.CloudStorage.Storage
             try
             {
                 ValidateTypeAndOrg(entityType, orgId);
+                if (!TryGetCollection(entityType, out var collection))
+                    return InvokeResult<List<JObject>>.Create(new List<JObject>());
+
                 var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByType)
                     .WithParameter("entityType", entityType.Trim())
                     .WithParameter("orgId", orgId.Trim());
 
-                var documents = (await GetCollection(entityType).QueryAsync<JObject>(request, ct).ConfigureAwait(false)).ToList();
+                var documents = (await collection.QueryAsync<JObject>(request, ct).ConfigureAwait(false)).ToList();
                 return InvokeResult<List<JObject>>.Create(documents);
             }
             catch (Exception ex)
@@ -95,13 +98,15 @@ namespace LagoVista.CloudStorage.Storage
         {
             ValidateTypeAndOrg(entityType, orgId);
             if (String.IsNullOrWhiteSpace(entityId)) throw new ArgumentException("Entity id is required.", nameof(entityId));
+            if (!TryGetCollection(entityType, out var collection))
+                return null;
 
             var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentById)
                 .WithParameter("entityType", entityType.Trim())
                 .WithParameter("entityId", entityId.Trim())
                 .WithParameter("orgId", orgId.Trim());
 
-            return (await GetCollection(entityType).QueryAsync<JObject>(request, token).ConfigureAwait(false)).FirstOrDefault();
+            return (await collection.QueryAsync<JObject>(request, token).ConfigureAwait(false)).FirstOrDefault();
         }
 
         public new async Task<InvokeResult<int>> CountEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct)
@@ -109,11 +114,14 @@ namespace LagoVista.CloudStorage.Storage
             try
             {
                 ValidateTypeAndOrg(entityType, orgId);
+                if (!TryGetCollection(entityType, out var collection))
+                    return InvokeResult<int>.Create(0);
+
                 var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsCountByType)
                     .WithParameter("entityType", entityType.Trim())
                     .WithParameter("orgId", orgId.Trim());
 
-                var result = (await GetCollection(entityType).QueryAsync<DocumentCountResult>(request, ct).ConfigureAwait(false)).FirstOrDefault();
+                var result = (await collection.QueryAsync<DocumentCountResult>(request, ct).ConfigureAwait(false)).FirstOrDefault();
                 return InvokeResult<int>.Create(result?.Count ?? 0);
             }
             catch (Exception ex)
@@ -128,16 +136,23 @@ namespace LagoVista.CloudStorage.Storage
         Task<JObject> IEntityUtilsRepository.GetEntityByIdAsync(string entityType, string entityId, string orgId, CancellationToken token) => GetEntityByIdAsync(entityType, entityId, orgId, token);
         Task<InvokeResult<int>> IEntityUtilsRepository.CountEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct) => CountEntitiesByTypeAsync(entityType, orgId, ct);
 
-        private IDocumentCollection GetCollection(string entityType)
+        private bool TryGetCollection(string entityType, out IDocumentCollection collection)
         {
             if (_storageSettings.Provider == DocumentStorageProviderType.Cosmos)
-                return _collectionFactory.Create(_storageSettings, $"{_storageSettings.DatabaseName}_Collections");
+            {
+                collection = _collectionFactory.Create(_storageSettings, $"{_storageSettings.DatabaseName}_Collections");
+                return true;
+            }
 
             var mongoDatabaseName = _storageSettings.Mongo?.DatabaseName ?? _storageSettings.DatabaseName;
             if (!_collectionNameResolver.TryResolve(mongoDatabaseName, entityType, out var collectionName))
-                throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+            {
+                collection = null;
+                return false;
+            }
 
-            return _collectionFactory.Create(_storageSettings, collectionName);
+            collection = _collectionFactory.Create(_storageSettings, collectionName);
+            return true;
         }
 
         private static void ValidateTypeAndOrg(string entityType, string orgId)
