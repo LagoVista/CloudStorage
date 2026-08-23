@@ -100,7 +100,9 @@ namespace LagoVista.CloudStorage.Storage
 
             var session = await GetReadySessionAsync().ConfigureAwait(false);
             var prepared = await session.PrepareAsync(cql).ConfigureAwait(false);
-            var statement = prepared.Bind(values.ToArray()).SetPageSize(query.Page.PageSize);
+            var statement = prepared.Bind(values.ToArray())
+                .SetPageSize(query.Page.PageSize)
+                .SetAutoPage(false);
 
             if (!String.IsNullOrWhiteSpace(query.Page.ContinuationToken))
             {
