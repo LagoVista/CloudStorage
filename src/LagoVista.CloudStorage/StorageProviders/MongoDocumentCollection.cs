@@ -4,9 +4,11 @@ using LagoVista.Core.Models.UIMetaData;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -75,6 +77,11 @@ namespace LagoVista.CloudStorage.StorageProviders
                 case DocumentQueryType.EntityListHeaders:
                 case DocumentQueryType.EntityListCategories:
                     return await QueryEntityListAsync<TResult>(request, cancellationToken).ConfigureAwait(false);
+                case DocumentQueryType.EntityUtilsDocumentsByType:
+                case DocumentQueryType.EntityUtilsDocumentById:
+                    return await QueryEntityUtilsDocumentsAsync<TResult>(request, cancellationToken).ConfigureAwait(false);
+                case DocumentQueryType.EntityUtilsCountByType:
+                    return await QueryEntityUtilsCountAsync<TResult>(request, cancellationToken).ConfigureAwait(false);
                 default:
                     throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Mongo provider.");
             }
@@ -115,7 +122,6 @@ namespace LagoVista.CloudStorage.StorageProviders
             var match = new BsonDocument { { "EntityType", request.GetRequired<string>("entityType") }, { "OwnerOrganization.Id", request.GetRequired<string>("orgId") } };
             if (request.QueryType == DocumentQueryType.EntityPreparationCandidateById) match.Add("_id", request.GetRequired<string>("entityId"));
             if (request.QueryType == DocumentQueryType.IncompleteEntityPreparationCandidatesByType) match.Add("MasterStatus.IsProductionReady", new BsonDocument("$ne", true));
-
             var pipeline = new List<BsonDocument>
             {
                 new BsonDocument("$match", match),
@@ -127,6 +133,51 @@ namespace LagoVista.CloudStorage.StorageProviders
             return Deserialize<TResult>(await GetBsonCollection().Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false));
         }
 
+        private async Task<IEnumerable<TResult>> QueryEntityUtilsDocumentsAsync<TResult>(DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            var filter = request.QueryType == DocumentQueryType.EntityUtilsDocumentById
+                ? new BsonDocument("_id", request.GetRequired<string>("entityId"))
+                : new BsonDocument
+                {
+                    { "EntityType", request.GetRequired<string>("entityType") },
+                    { "OwnerOrganization.Id", request.GetRequired<string>("orgId") }
+                };
+
+            var find = GetBsonCollection().Find(filter);
+            if (request.QueryType == DocumentQueryType.EntityUtilsDocumentsByType)
+                find = find.Sort(new BsonDocument("Name", 1));
+
+            var documents = await find.Limit(request.QueryType == DocumentQueryType.EntityUtilsDocumentById ? 1 : 0).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            if (typeof(TResult) == typeof(JObject))
+                return documents.Select(ToJObject).Cast<TResult>().ToList();
+
+            return Deserialize<TResult>(documents);
+        }
+
+        private async Task<IEnumerable<TResult>> QueryEntityUtilsCountAsync<TResult>(DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            var filter = new BsonDocument
+            {
+                { "EntityType", request.GetRequired<string>("entityType") },
+                { "OwnerOrganization.Id", request.GetRequired<string>("orgId") }
+            };
+            var count = await GetBsonCollection().CountDocumentsAsync(filter, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var result = new DocumentCountResult { Count = checked((int)count) };
+            return new[] { (TResult)(object)result };
+        }
+
+        private static JObject ToJObject(BsonDocument document)
+        {
+            var clone = document.DeepClone().AsBsonDocument;
+            if (clone.TryGetValue("_id", out var id))
+            {
+                clone.Remove("_id");
+                clone.InsertAt(0, new BsonElement("id", id));
+            }
+            return JObject.Parse(clone.ToJson());
+        }
+
         private async Task<IEnumerable<TResult>> QueryEntityListAsync<TResult>(DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
         {
             var clauses = new BsonArray
@@ -134,12 +185,8 @@ namespace LagoVista.CloudStorage.StorageProviders
                 new BsonDocument("EntityType", request.GetRequired<string>("entityType")),
                 new BsonDocument("$or", new BsonArray { new BsonDocument("IsPublic", true), new BsonDocument("OwnerOrganization.Id", request.GetRequired<string>("orgId")) })
             };
-
-            if (!request.GetRequired<bool>("showDeleted"))
-                clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDeleted", new BsonDocument("$exists", false)), new BsonDocument("IsDeleted", false) }));
-            if (!request.GetRequired<bool>("showDrafts"))
-                clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDraft", new BsonDocument("$exists", false)), new BsonDocument("IsDraft", false) }));
-
+            if (!request.GetRequired<bool>("showDeleted")) clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDeleted", new BsonDocument("$exists", false)), new BsonDocument("IsDeleted", false) }));
+            if (!request.GetRequired<bool>("showDrafts")) clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDraft", new BsonDocument("$exists", false)), new BsonDocument("IsDraft", false) }));
             if (request.QueryType == DocumentQueryType.EntityListCategories)
             {
                 clauses.Add(new BsonDocument("Category", new BsonDocument("$exists", true)));
@@ -153,9 +200,7 @@ namespace LagoVista.CloudStorage.StorageProviders
                 var searchText = request.GetRequired<string>("searchText");
                 if (!String.IsNullOrWhiteSpace(searchText)) clauses.Add(new BsonDocument("Name", new BsonRegularExpression(Regex.Escape(searchText), "i")));
             }
-
             var pipeline = new List<BsonDocument> { new BsonDocument("$match", new BsonDocument("$and", clauses)) };
-
             if (request.QueryType == DocumentQueryType.EntityListCategories)
             {
                 pipeline.Add(new BsonDocument("$group", new BsonDocument("_id", new BsonDocument { { "Id", "$Category.Id" }, { "Key", "$Category.Key" }, { "Text", "$Category.Text" } } )));
@@ -171,13 +216,11 @@ namespace LagoVista.CloudStorage.StorageProviders
                 var pageSize = Math.Max(1, request.GetRequired<int>("pageSize"));
                 pipeline.Add(new BsonDocument("$skip", (pageIndex - 1) * pageSize));
                 pipeline.Add(new BsonDocument("$limit", pageSize));
-
                 if (request.QueryType == DocumentQueryType.EntityListItems)
                     pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", 1 }, { "Icon", 1 }, { "Name", 1 }, { "Key", 1 }, { "IsPublic", 1 }, { "IsDraft", 1 }, { "IsDeleted", 1 }, { "Category", "$Category.Text" }, { "Stars", 1 }, { "RatingsCount", 1 }, { "Labels", 1 }, { "Status", 1 } }));
                 else
                     pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", 0 }, { "Id", "$_id" }, { "Key", 1 }, { "Text", "$Name" } }));
             }
-
             return Deserialize<TResult>(await GetBsonCollection().Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false));
         }
 
