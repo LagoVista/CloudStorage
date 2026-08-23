@@ -15,7 +15,7 @@ services:
         sed -ri 's/^authenticator: .*/authenticator: PasswordAuthenticator/' "$CASSANDRA_CONF/cassandra.yaml"
         exec docker-entrypoint.sh cassandra -f
     healthcheck:
-      test: ["CMD-SHELL", "cqlsh -u cassandra -p cassandra -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "nodetool status 2>/dev/null | grep -Eq '^UN[[:space:]]' || exit 1"]
       interval: 3s
       timeout: 10s
       retries: 40
