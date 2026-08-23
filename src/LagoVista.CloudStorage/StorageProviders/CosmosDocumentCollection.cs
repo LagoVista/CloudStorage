@@ -125,9 +125,34 @@ namespace LagoVista.CloudStorage.StorageProviders
                 case DocumentQueryType.CustomerIndustryNicheSalesStageCounts:
                     return new QueryDefinition("SELECT c.Industry, c.IndustryNiche, c.SalesStage, COUNT(c.id) AS CountLeads FROM c WHERE c.EntityType = 'CustomerEntity' AND c.OwnerOrganization.Id = @orgId GROUP BY c.Industry, c.IndustryNiche, c.SalesStage").WithParameter("@orgId", request.GetRequired<string>("orgId"));
 
+                case DocumentQueryType.EntityPreparationCandidateById:
+                    return CreateEntityPreparationCandidateByIdQuery(request);
+
+                case DocumentQueryType.EntityPreparationCandidatesByType:
+                    return CreateEntityPreparationCandidatesByTypeQuery(request, false);
+
+                case DocumentQueryType.IncompleteEntityPreparationCandidatesByType:
+                    return CreateEntityPreparationCandidatesByTypeQuery(request, true);
+
                 default:
                     throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Cosmos provider.");
             }
         }
+
+        private static QueryDefinition CreateEntityPreparationCandidateByIdQuery(DocumentQueryRequest request)
+        {
+            var sql = $"SELECT TOP 1 {EntityPreparationProjection} FROM c WHERE c.EntityType = @entityType AND c.id = @entityId AND c.OwnerOrganization.Id = @orgId";
+            return new QueryDefinition(sql).WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@entityId", request.GetRequired<string>("entityId")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
+        }
+
+        private static QueryDefinition CreateEntityPreparationCandidatesByTypeQuery(DocumentQueryRequest request, bool incompleteOnly)
+        {
+            var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
+            var incompleteClause = incompleteOnly ? " AND (NOT IS_DEFINED(c.MasterStatus) OR IS_NULL(c.MasterStatus) OR NOT IS_DEFINED(c.MasterStatus.IsProductionReady) OR IS_NULL(c.MasterStatus.IsProductionReady) OR c.MasterStatus.IsProductionReady != true)" : String.Empty;
+            var sql = $"SELECT TOP {maxItems} {EntityPreparationProjection} FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId{incompleteClause} ORDER BY c.Name ASC";
+            return new QueryDefinition(sql).WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
+        }
+
+        private const string EntityPreparationProjection = "c.id AS Id, c.EntityType AS EntityType, c.Name AS Name, c.Key AS Key, c.Description AS Description, c.Icon AS Icon, c.Category AS Category, c.IsDraft AS IsDraft, c.IsDeprecated AS IsDeprecated, c.MasterStatus AS MasterStatus, c.ReadinessStatus AS ReadinessStatus, c.CreationDate AS CreationDate, c.LastUpdatedDate AS LastUpdatedDate, c.Revision AS Revision, c.ChecklistStatus AS ChecklistStatus, c.ReadinessChecks AS ReadinessChecks";
     }
 }
