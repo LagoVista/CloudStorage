@@ -25,6 +25,7 @@ $patterns = @(
 $parityProgress = @{
     "src\LagoVista.CloudStorage\Storage\EntityPreparationCandidateRepository.cs" = "5/5"
     "src\LagoVista.CloudStorage\Storage\EntityListItemRepo.cs" = "5/5"
+    "src\LagoVista.CloudStorage\Storage\EntityUtilsRepository.cs" = "5/5 reads"
 }
 
 # Application-facing consumers are the Card 6B conversion queue. Infrastructure
