@@ -8,7 +8,23 @@ Prove Mongo parity with representative production workloads, document rollback, 
 
 Local Mongo integration validation is green. The repository-owned Docker Mongo 8 harness now proves both the lower-level `MongoDocumentCollection` adapter and the actual `DocumentDBRepoBase<TEntity>` provider-selection path.
 
-The next phase is staged environment validation: finish the first-class runtime configuration bridge, exercise representative cache/dependency repositories, run real Cosmos-to-Mongo migration/reconciliation, and then select a dev logical database for controlled cutover.
+Staged dev cutover is **blocked on Card 6B**. Direct Cosmos utilities that operate on the same entity records as normal repositories must be provider-neutral before a logical database can safely switch to Mongo. Otherwise normal repository operations could read/write Mongo while utility paths continue reading or mutating the Cosmos copy of the same entities.
+
+After Card 6B is complete, the next phase is staged environment validation: finish the first-class runtime configuration bridge, exercise representative cache/dependency repositories, run real Cosmos-to-Mongo migration/reconciliation, and then select a dev logical database for controlled cutover.
+
+## Prerequisite - shared-entity provider consistency
+
+See [Card 6B - Provider-Neutral Shared-Entity Utilities](card-6b-provider-neutral-shared-entity-utilities.md).
+
+Before any dev logical database is cut over:
+
+- `EntityUtilsRepository` shared-entity reads and mutations must follow the selected provider.
+- `EntityPreparationCandidateRepository` candidate/summary reads must follow the selected provider.
+- `EntityListItemRepo<TEntity>` list/header/category paths must not bypass provider selection through direct Cosmos queries.
+- shared-entity operations in `StorageUtils` must follow the selected provider.
+- any additional direct Cosmos consumer operating on the same migrated entity set must be classified and addressed.
+
+Intentional Cosmos provider/migration infrastructure is not a blocker merely because it references the Cosmos SDK.
 
 ## Validation matrix
 
@@ -27,6 +43,7 @@ The next phase is staged environment validation: finish the first-class runtime 
 | LagoVista BSON wire types | `UtcTimestamp`, `NormalizedId32`, `LagoVistaKey` | **PASS - focused + live path** |
 | Projections | Lower-level `IDocumentCollection` live fixture | **PASS - local Mongo 8** |
 | Semantic queries | Customer aggregate live fixture | **PASS - local Mongo 8** |
+| Shared-entity utility consistency | Card 6B direct Cosmos consumers follow selected provider | **BLOCKER - pending** |
 | Cache | Representative base repository with real cache provider | Pending |
 | Dependency checks | Representative base repository with dependency manager | Pending |
 | Migration counts | Cosmos dry-run and Mongo reconciliation | Pending |
@@ -93,6 +110,7 @@ Most importantly, the derived test repository used the existing constructor shap
 - [x] Validate primary CRUD/query/delete semantics through `DocumentDBRepoBase<TEntity>`.
 - [x] Validate domain collection routing and root/nested identity shape.
 - [x] Validate lower-level semantic aggregation against real Mongo.
+- [ ] Complete Card 6B and prove shared-entity utilities follow the selected provider.
 - [ ] Bridge first-class `MongoDocumentStorage` configuration into runtime provider resolution.
 - [ ] Select representative logical databases and entity domains for staged validation.
 - [ ] Validate a representative repository with the real cache provider.
@@ -110,6 +128,7 @@ Most importantly, the derived test repository used the existing constructor shap
 
 ## Acceptance criteria
 
+- [ ] Card 6B confirms no shared-entity utility silently accesses Cosmos when its logical database is configured for Mongo.
 - [ ] Migration reports reconcile source and target counts.
 - [ ] Representative application workflows pass against Mongo in dev.
 - [ ] Known performance-sensitive queries do not regress materially.
