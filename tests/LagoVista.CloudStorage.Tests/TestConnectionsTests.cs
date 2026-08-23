@@ -26,22 +26,17 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
-        public void TestMongoDocumentStorage_ReadsTestEnvironmentVariablesAndDefaults()
+        public void TestMongoDocumentStorage_UsesDeterministicLocalDockerSettings()
         {
-            WithMongoEnvironment("TEST", () =>
-            {
-                Environment.SetEnvironmentVariable("TEST_MONGO_PORT", null);
-                Environment.SetEnvironmentVariable("TEST_MONGO_AUTHENTICATION_DATABASE", null);
-                Environment.SetEnvironmentVariable("TEST_MONGO_REPLICA_SET", null);
-                Environment.SetEnvironmentVariable("TEST_MONGO_USE_TLS", null);
-
-                var settings = TestConnections.TestMongoDocumentStorage;
-                Assert.That(settings.Hosts, Is.EqualTo(new[] { "mongo-0.mongo.svc", "mongo-1.mongo.svc" }));
-                Assert.That(settings.Port, Is.EqualTo(27017));
-                Assert.That(settings.AuthenticationDatabase, Is.EqualTo("admin"));
-                Assert.That(settings.ReplicaSet, Is.Null);
-                Assert.That(settings.UseTls, Is.False);
-            });
+            var settings = TestConnections.TestMongoDocumentStorage;
+            Assert.That(settings.Hosts, Is.EqualTo(new[] { "localhost" }));
+            Assert.That(settings.Port, Is.EqualTo(27018));
+            Assert.That(settings.UserName, Is.EqualTo("nuviot-test"));
+            Assert.That(settings.Password, Is.EqualTo("nuviot-test-password"));
+            Assert.That(settings.AuthenticationDatabase, Is.EqualTo("admin"));
+            Assert.That(settings.ReplicaSet, Is.Null);
+            Assert.That(settings.UseTls, Is.False);
+            Assert.That(settings.BuildConnectionString(), Is.EqualTo("mongodb://nuviot-test:nuviot-test-password@localhost:27018/?authSource=admin"));
         }
 
         private static void WithMongoEnvironment(string prefix, Action action)
@@ -50,10 +45,10 @@ namespace LagoVista.CloudStorage.Tests
             {
                 [$"{prefix}_MONGO_HOSTS"] = "mongo-0.mongo.svc,mongo-1.mongo.svc",
                 [$"{prefix}_MONGO_PORT"] = "27018",
-                [$"{prefix}_MONGO_USERNAME"] = prefix == "PROD" ? "prod-user" : "test-user",
-                [$"{prefix}_MONGO_PASSWORD"] = prefix == "PROD" ? "prod-password" : "test-password",
-                [$"{prefix}_MONGO_AUTHENTICATION_DATABASE"] = prefix == "PROD" ? "admin-prod" : "admin-test",
-                [$"{prefix}_MONGO_REPLICA_SET"] = prefix == "PROD" ? "rs-prod" : "rs-test",
+                [$"{prefix}_MONGO_USERNAME"] = "prod-user",
+                [$"{prefix}_MONGO_PASSWORD"] = "prod-password",
+                [$"{prefix}_MONGO_AUTHENTICATION_DATABASE"] = "admin-prod",
+                [$"{prefix}_MONGO_REPLICA_SET"] = "rs-prod",
                 [$"{prefix}_MONGO_USE_TLS"] = "true"
             };
 
