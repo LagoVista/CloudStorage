@@ -17,6 +17,7 @@ namespace LagoVista.CloudStorage.IntegrationTests
     [Category("Integration")]
     [Category("TableStorage")]
     public class TableStorageTests
+
     {
         private string _accountId;
         private string _accountKey;
@@ -135,5 +136,5 @@ namespace LagoVista.CloudStorage.IntegrationTests
         //     await tableClient.DeleteAsync();
         //}
 
-    }
+    }*/
 }

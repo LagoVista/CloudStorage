@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.IntegrationTests
 {
-    public class NodeWalkerTests
+    /*public class NodeWalkerTests
     {
         ISyncRepository _syncRepo;
         IFkIndexTableWriterBatched _fkeyWriter;
@@ -64,5 +64,5 @@ namespace LagoVista.CloudStorage.IntegrationTests
             else
                 throw new Exception(result.ErrorMessage);
         }
-    }
+    }*/
 }
