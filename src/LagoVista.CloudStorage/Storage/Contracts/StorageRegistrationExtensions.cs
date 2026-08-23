@@ -3,46 +3,45 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LagoVista.CloudStorage.Storage
 {
-    public sealed class AppendHistoryStoreOptions<TEntity>
+    public sealed class ActivityRecordStoreOptions<TRecord>
+        where TRecord : IActivityRecord
     {
-        internal AppendHistoryStoreOptions(FlatStorageDefinition<TEntity> definition)
+        internal ActivityRecordStoreOptions(FlatStorageDefinition<TRecord> definition)
         {
             Definition = definition ?? throw new ArgumentNullException(nameof(definition));
-            if (String.IsNullOrWhiteSpace(definition.TimeField))
-            {
-                throw new InvalidOperationException($"Append history storage for {typeof(TEntity).Name} requires a canonical TimeBy(...) field.");
-            }
         }
 
-        public FlatStorageDefinition<TEntity> Definition { get; }
+        public FlatStorageDefinition<TRecord> Definition { get; }
     }
 
-    public sealed class ScratchStoreOptions<TEntity>
+    public sealed class ScratchStoreOptions<TRecord>
+        where TRecord : IScratchDataRecord
     {
-        internal ScratchStoreOptions(FlatStorageDefinition<TEntity> definition)
+        internal ScratchStoreOptions(FlatStorageDefinition<TRecord> definition)
         {
             Definition = definition ?? throw new ArgumentNullException(nameof(definition));
             if (String.IsNullOrWhiteSpace(definition.KeyField))
             {
-                throw new InvalidOperationException($"Scratch storage for {typeof(TEntity).Name} requires a KeyBy(...) field.");
+                throw new InvalidOperationException($"Scratch storage for {typeof(TRecord).Name} requires a KeyBy(...) field.");
             }
         }
 
-        public FlatStorageDefinition<TEntity> Definition { get; }
+        public FlatStorageDefinition<TRecord> Definition { get; }
     }
 
-    public sealed class ApplicationDataStoreOptions<TEntity>
+    public sealed class ApplicationDataStoreOptions<TRecord>
+        where TRecord : IApplicationDataRecord
     {
-        internal ApplicationDataStoreOptions(FlatStorageDefinition<TEntity> definition)
+        internal ApplicationDataStoreOptions(FlatStorageDefinition<TRecord> definition)
         {
             Definition = definition ?? throw new ArgumentNullException(nameof(definition));
             if (String.IsNullOrWhiteSpace(definition.KeyField))
             {
-                throw new InvalidOperationException($"Application data storage for {typeof(TEntity).Name} requires a KeyBy(...) field.");
+                throw new InvalidOperationException($"Application data storage for {typeof(TRecord).Name} requires a KeyBy(...) field.");
             }
         }
 
-        public FlatStorageDefinition<TEntity> Definition { get; }
+        public FlatStorageDefinition<TRecord> Definition { get; }
     }
 
     /// <summary>
@@ -51,51 +50,67 @@ namespace LagoVista.CloudStorage.Storage
     /// </summary>
     public static class StorageRegistrationExtensions
     {
-        public static IServiceCollection AddAppendHistoryStore<TEntity, TStore>(
+        public static IServiceCollection AddActivityRecordStore<TRecord, TStore>(
             this IServiceCollection services,
-            Action<FlatStorageDefinition<TEntity>> configure)
-            where TStore : class, IAppendHistoryStore<TEntity>
+            Action<FlatStorageDefinition<TRecord>> configure = null)
+            where TRecord : IActivityRecord
+            where TStore : class, IActivityRecordStore<TRecord>
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            var definition = new FlatStorageDefinition<TRecord>()
+                .KeyBy(record => record.Id)
+                .TimeBy(record => record.CreationDate);
+
+            configure?.Invoke(definition);
+
+            services.AddSingleton(new ActivityRecordStoreOptions<TRecord>(definition));
+            services.AddScoped<IActivityRecordStore<TRecord>, TStore>();
+            return services;
+        }
+
+        public static IServiceCollection AddScratchStore<TRecord, TStore>(
+            this IServiceCollection services,
+            Action<FlatStorageDefinition<TRecord>> configure)
+            where TRecord : IScratchDataRecord
+            where TStore : class, IScratchStore<TRecord>
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
 
             var definition = BuildDefinition(configure);
-            services.AddSingleton(new AppendHistoryStoreOptions<TEntity>(definition));
-            services.AddScoped<IAppendHistoryStore<TEntity>, TStore>();
+            services.AddSingleton(new ScratchStoreOptions<TRecord>(definition));
+            services.AddScoped<IScratchStore<TRecord>, TStore>();
             return services;
         }
 
-        public static IServiceCollection AddScratchStore<TEntity, TStore>(
+        public static IServiceCollection AddApplicationDataStore<TRecord, TStore>(
             this IServiceCollection services,
-            Action<FlatStorageDefinition<TEntity>> configure)
-            where TStore : class, IScratchStore<TEntity>
+            Action<FlatStorageDefinition<TRecord>> configure)
+            where TRecord : IApplicationDataRecord
+            where TStore : class, IApplicationDataStore<TRecord>
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
 
             var definition = BuildDefinition(configure);
-            services.AddSingleton(new ScratchStoreOptions<TEntity>(definition));
-            services.AddScoped<IScratchStore<TEntity>, TStore>();
+            services.AddSingleton(new ApplicationDataStoreOptions<TRecord>(definition));
+            services.AddScoped<IApplicationDataStore<TRecord>, TStore>();
             return services;
         }
 
-        public static IServiceCollection AddApplicationDataStore<TEntity, TStore>(
-            this IServiceCollection services,
-            Action<FlatStorageDefinition<TEntity>> configure)
-            where TStore : class, IApplicationDataStore<TEntity>
+        public static IServiceCollection AddAccountLedgerStore<TRecord, TStore>(this IServiceCollection services)
+            where TRecord : IAccountLedgerRecord
+            where TStore : class, IAccountLedgerStore<TRecord>
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
-            if (configure == null) throw new ArgumentNullException(nameof(configure));
-
-            var definition = BuildDefinition(configure);
-            services.AddSingleton(new ApplicationDataStoreOptions<TEntity>(definition));
-            services.AddScoped<IApplicationDataStore<TEntity>, TStore>();
+            services.AddScoped<IAccountLedgerStore<TRecord>, TStore>();
             return services;
         }
 
-        private static FlatStorageDefinition<TEntity> BuildDefinition<TEntity>(Action<FlatStorageDefinition<TEntity>> configure)
+        private static FlatStorageDefinition<TRecord> BuildDefinition<TRecord>(Action<FlatStorageDefinition<TRecord>> configure)
         {
-            var definition = new FlatStorageDefinition<TEntity>();
+            var definition = new FlatStorageDefinition<TRecord>();
             configure(definition);
             return definition;
         }
