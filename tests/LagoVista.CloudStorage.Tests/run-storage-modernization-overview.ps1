@@ -20,8 +20,8 @@ $work = @(
     },
     [PSCustomObject]@{
         Class = "EntityUtilsRepository"
-        Status = "READ SLICE READY"
-        Parity = "0/5 reads"
+        Status = "READ SLICE GREEN"
+        Parity = "5/5 reads"
         Test = ".\test-EntityUtilsRepository.ps1"
     },
     [PSCustomObject]@{
@@ -42,7 +42,7 @@ $work | Format-Table Class, Status, Parity, Test -AutoSize
 
 Write-Host ""
 Write-Host "COMPLETE         = provider-neutral conversion implemented and parity coverage green."
-Write-Host "READ SLICE READY = a coherent provider-neutral slice is ready for its focused parity run; the class is not complete yet."
+Write-Host "READ SLICE GREEN = provider-neutral read slice is parity green; remaining class behavior is still in progress."
 Write-Host "PENDING          = not yet converted / parity-tested."
 Write-Host ""
 Write-Host "Run the script shown in the Test column when you want to validate one class."
