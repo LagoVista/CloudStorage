@@ -21,6 +21,7 @@ namespace LagoVista.CloudStorage.Tests
             Assert.That(settings.Endpoint, Is.EqualTo("https://example.documents.azure.com:443/"));
             Assert.That(settings.SharedKey, Is.EqualTo("key"));
             Assert.That(settings.DatabaseName, Is.EqualTo("TestDb"));
+            Assert.That(settings.Mongo, Is.Null);
         }
 
         [TestCase("cosmos")]
@@ -46,42 +47,110 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
-        public void DocumentCollectionFactory_WithDefaultProvider_ReturnsCosmosAdapter()
+        public void Resolve_WithExplicitMongoSettings_KeepsCosmosAndMongoCredentialsSeparate()
         {
-            var databaseVariableName = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + "TESTDB";
-            var priorDatabaseValue = Environment.GetEnvironmentVariable(databaseVariableName);
-            var priorGlobalValue = Environment.GetEnvironmentVariable(DocumentStorageSettingsResolver.ProviderEnvironmentVariable);
-            try
+            var mongoSettings = new MongoDocumentStorageSettings
             {
-                Environment.SetEnvironmentVariable(databaseVariableName, null);
-                Environment.SetEnvironmentVariable(DocumentStorageSettingsResolver.ProviderEnvironmentVariable, null);
-                var factory = new DocumentCollectionFactory(CosmosClientProvider.Shared);
-                var collection = factory.Create("https://example.documents.azure.com:443/", "key", "TestDb");
-                Assert.That(collection, Is.TypeOf<CosmosDocumentCollection>());
-            }
-            finally
+                ConnectionString = "mongodb://mongo.example:27017",
+                DatabaseName = "MongoTarget"
+            };
+
+            var settings = DocumentStorageSettingsResolver.Resolve("https://cosmos.example:443/", "cosmos-key", "LogicalDb", "mongo", mongoSettings);
+
+            Assert.That(settings.Provider, Is.EqualTo(DocumentStorageProviderType.Mongo));
+            Assert.That(settings.Endpoint, Is.EqualTo("https://cosmos.example:443/"));
+            Assert.That(settings.SharedKey, Is.EqualTo("cosmos-key"));
+            Assert.That(settings.DatabaseName, Is.EqualTo("LogicalDb"));
+            Assert.That(settings.Mongo.ConnectionString, Is.EqualTo("mongodb://mongo.example:27017"));
+            Assert.That(settings.Mongo.DatabaseName, Is.EqualTo("MongoTarget"));
+        }
+
+        [TestCase("mongodb://localhost:27017")]
+        [TestCase("mongodb+srv://cluster.example")]
+        public void Resolve_WithSupportedMongoConnectionString_AcceptsConnectionString(string connectionString)
+        {
+            var settings = new MongoDocumentStorageSettings
             {
-                Environment.SetEnvironmentVariable(databaseVariableName, priorDatabaseValue);
-                Environment.SetEnvironmentVariable(DocumentStorageSettingsResolver.ProviderEnvironmentVariable, priorGlobalValue);
-            }
+                ConnectionString = connectionString,
+                DatabaseName = "MongoTarget"
+            };
+
+            var resolved = DocumentStorageSettingsResolver.Resolve(null, null, "LogicalDb", "mongo", settings);
+            Assert.That(resolved.Mongo.ConnectionString, Is.EqualTo(connectionString));
         }
 
         [Test]
-        public void DocumentCollectionFactory_WithMongoProvider_ReturnsMongoAdapter()
+        public void Resolve_WithInvalidMongoConnectionString_FailsFast()
+        {
+            var settings = new MongoDocumentStorageSettings
+            {
+                ConnectionString = "https://not-mongo.example",
+                DatabaseName = "MongoTarget"
+            };
+
+            var ex = Assert.Throws<InvalidOperationException>(() => DocumentStorageSettingsResolver.Resolve(null, null, "LogicalDb", "mongo", settings));
+            Assert.That(ex.Message, Does.Contain("mongodb:// or mongodb+srv://"));
+        }
+
+        [Test]
+        public void ResolveMongo_WithGlobalSettings_UsesLogicalDatabaseNameByDefault()
+        {
+            WithEnvironment(DocumentStorageSettingsResolver.MongoConnectionStringEnvironmentVariable, "mongodb://global.example:27017", () => WithEnvironment(DocumentStorageSettingsResolver.MongoDatabaseEnvironmentVariable, null, () =>
+            {
+                var settings = DocumentStorageSettingsResolver.ResolveMongo("LogicalDb");
+                Assert.That(settings.ConnectionString, Is.EqualTo("mongodb://global.example:27017"));
+                Assert.That(settings.DatabaseName, Is.EqualTo("LogicalDb"));
+            }));
+        }
+
+        [Test]
+        public void ResolveMongo_WithDatabaseSpecificSettings_OverridesGlobalSettings()
+        {
+            var connectionVariable = DocumentStorageSettingsResolver.MongoConnectionStringEnvironmentVariablePrefix + "LOGICALDB";
+            var databaseVariable = DocumentStorageSettingsResolver.MongoDatabaseEnvironmentVariablePrefix + "LOGICALDB";
+
+            WithEnvironment(DocumentStorageSettingsResolver.MongoConnectionStringEnvironmentVariable, "mongodb://global.example:27017", () => WithEnvironment(DocumentStorageSettingsResolver.MongoDatabaseEnvironmentVariable, "GlobalDb", () => WithEnvironment(connectionVariable, "mongodb://specific.example:27017", () => WithEnvironment(databaseVariable, "SpecificDb", () =>
+            {
+                var settings = DocumentStorageSettingsResolver.ResolveMongo("LogicalDb");
+                Assert.That(settings.ConnectionString, Is.EqualTo("mongodb://specific.example:27017"));
+                Assert.That(settings.DatabaseName, Is.EqualTo("SpecificDb"));
+            }))));
+        }
+
+        [Test]
+        public void ResolveMongo_WithMissingConnectionString_FailsFast()
+        {
+            var connectionVariable = DocumentStorageSettingsResolver.MongoConnectionStringEnvironmentVariablePrefix + "LOGICALDB";
+            WithEnvironment(DocumentStorageSettingsResolver.MongoConnectionStringEnvironmentVariable, null, () => WithEnvironment(connectionVariable, null, () =>
+            {
+                var ex = Assert.Throws<InvalidOperationException>(() => DocumentStorageSettingsResolver.ResolveMongo("LogicalDb"));
+                Assert.That(ex.Message, Does.Contain(DocumentStorageSettingsResolver.MongoConnectionStringEnvironmentVariable));
+            }));
+        }
+
+        [Test]
+        public void DocumentCollectionFactory_WithDefaultProvider_ReturnsCosmosAdapter()
         {
             var databaseVariableName = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + "TESTDB";
-            var priorDatabaseValue = Environment.GetEnvironmentVariable(databaseVariableName);
-            try
+            WithEnvironment(databaseVariableName, null, () => WithEnvironment(DocumentStorageSettingsResolver.ProviderEnvironmentVariable, null, () =>
             {
-                Environment.SetEnvironmentVariable(databaseVariableName, "mongo");
                 var factory = new DocumentCollectionFactory(CosmosClientProvider.Shared);
-                var collection = factory.Create("mongodb://localhost:27017", null, "TestDb");
-                Assert.That(collection, Is.TypeOf<MongoDocumentCollection>());
-            }
-            finally
+                var collection = factory.Create("https://example.documents.azure.com:443/", "key", "TestDb");
+                Assert.That(collection, Is.TypeOf<CosmosDocumentCollection>());
+            }));
+        }
+
+        [Test]
+        public void DocumentCollectionFactory_WithDatabaseSpecificMongoProvider_ReturnsMongoAdapter()
+        {
+            var providerVariable = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + "TESTDB";
+            var connectionVariable = DocumentStorageSettingsResolver.MongoConnectionStringEnvironmentVariablePrefix + "TESTDB";
+            WithEnvironment(DocumentStorageSettingsResolver.ProviderEnvironmentVariable, "cosmos", () => WithEnvironment(providerVariable, "mongo", () => WithEnvironment(connectionVariable, "mongodb://localhost:27017", () =>
             {
-                Environment.SetEnvironmentVariable(databaseVariableName, priorDatabaseValue);
-            }
+                var factory = new DocumentCollectionFactory(CosmosClientProvider.Shared);
+                var collection = factory.Create("https://example.documents.azure.com:443/", "cosmos-key", "TestDb");
+                Assert.That(collection, Is.TypeOf<MongoDocumentCollection>());
+            })));
         }
 
         [Test]
@@ -99,6 +168,20 @@ namespace LagoVista.CloudStorage.Tests
             var cosmosType = typeof(Microsoft.Azure.Cosmos.CosmosClient);
             var methods = typeof(IDocumentCollection).GetMethods();
             Assert.That(methods.Any(method => ContainsType(method.ReturnType, cosmosType.Namespace) || method.GetParameters().Any(parameter => ContainsType(parameter.ParameterType, cosmosType.Namespace))), Is.False);
+        }
+
+        private static void WithEnvironment(string variableName, string value, Action action)
+        {
+            var priorValue = Environment.GetEnvironmentVariable(variableName);
+            try
+            {
+                Environment.SetEnvironmentVariable(variableName, value);
+                action();
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(variableName, priorValue);
+            }
         }
 
         private static bool ContainsType(Type type, string namespacePrefix)
