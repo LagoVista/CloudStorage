@@ -14,8 +14,8 @@ $work = @(
     },
     [PSCustomObject]@{
         Class = "EntityListItemRepo"
-        Status = "READY TO VERIFY"
-        Parity = "0/5"
+        Status = "COMPLETE"
+        Parity = "5/5"
         Test = ".\test-EntityListItemRepo.ps1"
     },
     [PSCustomObject]@{
