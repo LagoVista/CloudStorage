@@ -11,6 +11,7 @@ namespace LagoVista.CloudStorage.Storage
             if (services == null) throw new ArgumentNullException(nameof(services));
 
             services.TryAddSingleton<ICassandraStorageSettings, CassandraStorageSettings>();
+            services.TryAddSingleton<ICassandraSessionFactory, CassandraSessionFactory>();
             return services;
         }
 
