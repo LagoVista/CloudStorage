@@ -1,3 +1,4 @@
+using LagoVista;
 using LagoVista.Core;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -18,9 +19,25 @@ namespace LagoVista.CloudStorage.StorageProviders
             lock (_syncRoot)
             {
                 if (_configured) return;
+                BsonSerializer.RegisterSerializer(typeof(NormalizedId32), new NormalizedId32BsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(UtcTimestamp), new UtcTimestampBsonSerializer());
                 _configured = true;
             }
+        }
+    }
+
+    internal sealed class NormalizedId32BsonSerializer : SerializerBase<NormalizedId32>
+    {
+        public override NormalizedId32 Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            return NormalizedId32.Parse(context.Reader.ReadString());
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, NormalizedId32 value)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            context.Writer.WriteString(value.Value);
         }
     }
 
