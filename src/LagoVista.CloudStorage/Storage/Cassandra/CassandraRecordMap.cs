@@ -24,6 +24,7 @@ namespace LagoVista.CloudStorage.Storage
     internal sealed class CassandraRecordMap<TRecord>
         where TRecord : IActivityRecord, new()
     {
+        public const string BucketColumnName = "time_bucket";
         private readonly Dictionary<string, CassandraRecordProperty> _byPropertyName;
 
         public CassandraRecordMap(ActivityRecordStoreOptions<TRecord> options)
@@ -66,28 +67,85 @@ namespace LagoVista.CloudStorage.Storage
         public IReadOnlyList<CassandraRecordProperty> PartitionProperties { get; }
         public CassandraRecordProperty Key { get; }
         public CassandraRecordProperty Time { get; }
+        public bool UsesTimeBuckets => Definition.BucketPeriod != StoragePeriod.All;
 
         public string CreateTableCql()
         {
-            var columns = String.Join(",\n    ", Properties.Select(property => $"{property.ColumnName} {property.CqlType}"));
-            var partition = String.Join(", ", PartitionProperties.Select(property => property.ColumnName));
+            var columns = Properties.Select(property => $"{property.ColumnName} {property.CqlType}").ToList();
+            if (UsesTimeBuckets) columns.Add($"{BucketColumnName} text");
+
+            var partitionFields = PartitionProperties.Select(property => property.ColumnName).ToList();
+            if (UsesTimeBuckets) partitionFields.Add(BucketColumnName);
+
+            var columnText = String.Join(",\n    ", columns);
+            var partition = String.Join(", ", partitionFields);
 
             return $@"CREATE TABLE IF NOT EXISTS {TableName} (
-    {columns},
+    {columnText},
     PRIMARY KEY (({partition}), {Time.ColumnName}, {Key.ColumnName})
 ) WITH CLUSTERING ORDER BY ({Time.ColumnName} DESC, {Key.ColumnName} ASC)";
         }
 
         public string InsertCql()
         {
-            var columns = String.Join(", ", Properties.Select(property => property.ColumnName));
-            var markers = String.Join(", ", Properties.Select(_ => "?"));
-            return $"INSERT INTO {TableName} ({columns}) VALUES ({markers})";
+            var columns = Properties.Select(property => property.ColumnName).ToList();
+            if (UsesTimeBuckets) columns.Add(BucketColumnName);
+            var markers = String.Join(", ", columns.Select(_ => "?"));
+            return $"INSERT INTO {TableName} ({String.Join(", ", columns)}) VALUES ({markers})";
         }
 
         public object[] Values(TRecord record)
         {
-            return Properties.Select(property => ToDriverValue(property.Property.GetValue(record), property.Property.PropertyType)).ToArray();
+            var values = Properties
+                .Select(property => ToDriverValue(property.Property.GetValue(record), property.Property.PropertyType))
+                .ToList();
+
+            if (UsesTimeBuckets)
+            {
+                values.Add(GetBucket(record.CreationDate));
+            }
+
+            return values.ToArray();
+        }
+
+        public string GetBucket(DateTime value)
+        {
+            var utc = NormalizeUtc(value);
+            switch (Definition.BucketPeriod)
+            {
+                case StoragePeriod.Month:
+                    return utc.ToString("yyyy-MM");
+                case StoragePeriod.Quarter:
+                    return $"{utc:yyyy}-Q{((utc.Month - 1) / 3) + 1}";
+                case StoragePeriod.Year:
+                    return utc.ToString("yyyy");
+                case StoragePeriod.All:
+                    return null;
+                default:
+                    throw new NotSupportedException($"Storage period {Definition.BucketPeriod} is not supported for Cassandra activity bucketing.");
+            }
+        }
+
+        public IReadOnlyList<string> GetBuckets(DateTime start, DateTime end)
+        {
+            if (!UsesTimeBuckets) return Array.Empty<string>();
+
+            var startUtc = NormalizeUtc(start);
+            var endUtc = NormalizeUtc(end);
+            if (startUtc > endUtc) throw new ArgumentException("Bucket range start cannot be after end.");
+
+            var buckets = new List<string>();
+            var cursor = BucketStart(startUtc);
+            var final = BucketStart(endUtc);
+
+            while (cursor <= final)
+            {
+                buckets.Add(GetBucket(cursor));
+                cursor = NextBucket(cursor);
+            }
+
+            buckets.Reverse();
+            return buckets.AsReadOnly();
         }
 
         public TRecord Read(Row row)
@@ -110,6 +168,44 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             return property;
+        }
+
+        private DateTime BucketStart(DateTime value)
+        {
+            switch (Definition.BucketPeriod)
+            {
+                case StoragePeriod.Month:
+                    return new DateTime(value.Year, value.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                case StoragePeriod.Quarter:
+                    var quarterMonth = (((value.Month - 1) / 3) * 3) + 1;
+                    return new DateTime(value.Year, quarterMonth, 1, 0, 0, 0, DateTimeKind.Utc);
+                case StoragePeriod.Year:
+                    return new DateTime(value.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                default:
+                    throw new NotSupportedException($"Storage period {Definition.BucketPeriod} is not supported for Cassandra activity bucketing.");
+            }
+        }
+
+        private DateTime NextBucket(DateTime value)
+        {
+            switch (Definition.BucketPeriod)
+            {
+                case StoragePeriod.Month:
+                    return value.AddMonths(1);
+                case StoragePeriod.Quarter:
+                    return value.AddMonths(3);
+                case StoragePeriod.Year:
+                    return value.AddYears(1);
+                default:
+                    throw new NotSupportedException($"Storage period {Definition.BucketPeriod} is not supported for Cassandra activity bucketing.");
+            }
+        }
+
+        private static DateTime NormalizeUtc(DateTime value)
+        {
+            if (value.Kind == DateTimeKind.Utc) return value;
+            if (value.Kind == DateTimeKind.Unspecified) return DateTime.SpecifyKind(value, DateTimeKind.Utc);
+            return value.ToUniversalTime();
         }
 
         private static CassandraRecordProperty CreateProperty(PropertyInfo property)
