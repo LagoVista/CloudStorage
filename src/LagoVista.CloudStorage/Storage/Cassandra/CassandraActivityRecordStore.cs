@@ -19,6 +19,7 @@ namespace LagoVista.CloudStorage.Storage
     public sealed class CassandraActivityRecordStore<TRecord> : IActivityRecordStore<TRecord>
         where TRecord : IActivityRecord, new()
     {
+        private const int BatchInsertConcurrency = 16;
         private readonly ICassandraSessionFactory _sessionFactory;
         private readonly CassandraRecordMap<TRecord> _map;
         private readonly SemaphoreSlim _schemaLock = new SemaphoreSlim(1, 1);
@@ -56,15 +57,22 @@ namespace LagoVista.CloudStorage.Storage
 
             var session = await GetReadySessionAsync().ConfigureAwait(false);
             var insert = await GetInsertAsync(session).ConfigureAwait(false);
-            var batch = new BatchStatement();
 
-            foreach (var record in materialized)
+            for (var offset = 0; offset < materialized.Count; offset += BatchInsertConcurrency)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                batch.Add(insert.Bind(_map.Values(record)));
+
+                var count = Math.Min(BatchInsertConcurrency, materialized.Count - offset);
+                var writes = new Task<RowSet>[count];
+                for (var index = 0; index < count; index++)
+                {
+                    var record = materialized[offset + index];
+                    writes[index] = session.ExecuteAsync(insert.Bind(_map.Values(record)));
+                }
+
+                await Task.WhenAll(writes).ConfigureAwait(false);
             }
 
-            await session.ExecuteAsync(batch).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
         }
 
