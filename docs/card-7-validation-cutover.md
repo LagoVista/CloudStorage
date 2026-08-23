@@ -6,31 +6,33 @@ Prove Mongo parity with representative production workloads, document rollback, 
 
 ## Status
 
-Runtime validation has started. The first integration fixtures exercise both the lower-level Mongo document collection and the actual `DocumentDBRepoBase<TEntity>` provider-selection path.
+Local Mongo integration validation is green. The repository-owned Docker Mongo 8 harness now proves both the lower-level `MongoDocumentCollection` adapter and the actual `DocumentDBRepoBase<TEntity>` provider-selection path.
 
-Local Mongo integration testing is Docker-backed and does not require access to the Kubernetes Mongo deployment. The fixtures use `TestConnections.TestMongoDocumentStorage`, create isolated random databases, and remove those databases during teardown.
+The next phase is staged environment validation: finish the first-class runtime configuration bridge, exercise representative cache/dependency repositories, run real Cosmos-to-Mongo migration/reconciliation, and then select a dev logical database for controlled cutover.
 
 ## Validation matrix
 
 | Area | Coverage | Status |
 | --- | --- | --- |
-| Provider selection | Database-specific Mongo override through existing `DocumentDBRepoBase<TEntity>` constructor | Implemented, live run pending |
-| Dynamic connection | `SetConnection` re-resolves Mongo without requiring a Cosmos shared key | Implemented, live run pending |
-| Create | Base repository create path persists to domain collection | Implemented, live run pending |
-| Read | Base repository get path reads Mongo entity | Implemented, live run pending |
-| Update | Base repository upsert path updates data and revision | Implemented, live run pending |
-| List/sort | Base repository filtered and sorted list query | Implemented, live run pending |
-| Soft delete | Default list hides deleted records; `ShowDeleted` reveals them | Implemented, live run pending |
-| Hard delete | Physical Mongo delete removes document | Implemented, live run pending |
-| Domain routing | Test entity routes to `EntityDescriptionAttribute.Domain` collection | Implemented, live run pending |
-| `_id` mapping | Existing Mongo adapter coverage plus live base-path persistence | Implemented, live run pending |
-| Projections | Lower-level `IDocumentCollection` live fixture | Implemented, live run pending |
-| Semantic queries | Customer aggregate live fixture | Implemented, live run pending |
-| Cache | Representative base repository with cache provider | Pending |
+| Provider selection | Database-specific Mongo override through existing `DocumentDBRepoBase<TEntity>` constructor | **PASS - local Mongo 8** |
+| Dynamic connection | `SetConnection` re-resolves Mongo without requiring a Cosmos shared key | **PASS - local Mongo 8** |
+| Create | Base repository create path persists to domain collection | **PASS - local Mongo 8** |
+| Read | Base repository get path reads Mongo entity | **PASS - local Mongo 8** |
+| Update | Base repository upsert path updates data and revision | **PASS - local Mongo 8** |
+| List/sort | Base repository filtered and sorted list query | **PASS - local Mongo 8** |
+| Soft delete | Default list hides deleted records; `ShowDeleted` reveals them | **PASS - local Mongo 8** |
+| Hard delete | Physical Mongo delete removes document | **PASS - local Mongo 8** |
+| Domain routing | Test entity routes to `EntityDescriptionAttribute.Domain` collection | **PASS - local Mongo 8** |
+| `_id` mapping | Root document ID maps to `_id`; nested `EntityHeader.Id` remains `Id` | **PASS - live + focused tests** |
+| LagoVista BSON wire types | `UtcTimestamp`, `NormalizedId32`, `LagoVistaKey` | **PASS - focused + live path** |
+| Projections | Lower-level `IDocumentCollection` live fixture | **PASS - local Mongo 8** |
+| Semantic queries | Customer aggregate live fixture | **PASS - local Mongo 8** |
+| Cache | Representative base repository with real cache provider | Pending |
 | Dependency checks | Representative base repository with dependency manager | Pending |
 | Migration counts | Cosmos dry-run and Mongo reconciliation | Pending |
-| Structural sample comparison | Nested headers, enums, dates, arrays, optional/null fields | Pending |
+| Structural sample comparison | Migrated vs newly written nested headers, enums, dates, arrays, optional/null fields | Partially proven; migration sample run pending |
 | Performance-sensitive paths | Representative high-volume/large-document queries | Pending |
+| Runtime configuration | First-class `MongoDocumentStorage` settings feed compatibility resolver | Pending |
 | Rollback | Provider configuration switched back to Cosmos with data retained | Pending |
 
 ## Local Docker Mongo integration tests
@@ -42,7 +44,7 @@ The integration-test project owns a local Docker Mongo harness:
 - `tests/LagoVista.CloudStorage.Tests/run-mongo-tests.ps1`
 - `tests/LagoVista.CloudStorage.Tests/stop-mongo-tests.ps1`
 
-The Docker instance runs Mongo 8 on `localhost:27018` with disposable local-test credentials. `run-mongo-tests.ps1` starts Mongo, waits for its health check, sets process-scoped `TEST_MONGO_*` configuration, and runs only the NUnit `Mongo` category.
+The Docker instance runs Mongo 8 on `localhost:27018` with disposable local-test credentials. `TestConnections.TestMongoDocumentStorage` owns the deterministic local connection values, so the runner does not need `TEST_MONGO_*` environment variables.
 
 Run the Mongo integration suite with:
 
@@ -56,31 +58,65 @@ Stop and remove the local Mongo test container with:
 ./tests/LagoVista.CloudStorage.Tests/stop-mongo-tests.ps1
 ```
 
-The Docker credentials are test-only and intentionally deterministic. Production credentials are not used by these scripts.
+The Docker credentials are test-only and intentionally deterministic. Production credentials remain application/secret configuration.
+
+## Green checkpoint - August 23, 2026
+
+User-executed local validation produced:
+
+```text
+LagoVista.CloudStorage netstandard2.1 succeeded
+LagoVista.CloudStorage.IntegrationTests net9.0 succeeded
+NUnit Adapter discovered 6 of 6 Mongo integration tests
+Test summary: total: 6, failed: 0, succeeded: 6, skipped: 0, duration: 1.1s
+```
+
+The run exercised:
+
+- lower-level Mongo filtering, sorting, paging, and projection
+- server-side customer metrics aggregation
+- real `DocumentDBRepoBase<TEntity>` Mongo provider selection
+- create/read/update
+- domain routing
+- soft and hard delete semantics
+- database-specific override and `SetConnection`
+- root `_id` identity mapping
+- nested `EntityHeader.Id` compatibility with migration shape
+- LagoVista value-type BSON serialization required by `EntityBase`
+
+Most importantly, the derived test repository used the existing constructor shape. No Mongo-specific derived repository constructor was required.
 
 ## Tasks
 
-- Build a validation matrix covering CRUD, list queries, projections, semantic queries, caching, deletes, and dependency checks.
-- Select representative logical databases and entity domains for staged validation.
-- Run Cosmos-to-Mongo migration in dry-run mode and review routing/count reports.
-- Run migration into a non-production Mongo database and reconcile counts by `EntityType` and domain collection.
-- Validate representative documents structurally, including `_id`, nested headers, enums, dates, arrays, and optional/null fields.
-- Exercise application reads against Mongo before enabling writes where practical.
-- Run targeted performance comparisons for known large-document/high-volume query paths.
-- Validate domain collection names and required indexes.
-- Document provider/environment configuration for local, dev, and later production use.
-- Define cutover sequence, smoke tests, rollback criteria, and rollback steps.
-- Keep Cosmos data intact through the initial stabilization window.
-- Document known Cosmos-specific migration islands that remain after generic document cutover.
+- [x] Build a validation matrix covering CRUD, list queries, projections, semantic queries, caching, deletes, and dependency checks.
+- [x] Add repeatable Docker-backed local Mongo validation.
+- [x] Validate primary CRUD/query/delete semantics through `DocumentDBRepoBase<TEntity>`.
+- [x] Validate domain collection routing and root/nested identity shape.
+- [x] Validate lower-level semantic aggregation against real Mongo.
+- [ ] Bridge first-class `MongoDocumentStorage` configuration into runtime provider resolution.
+- [ ] Select representative logical databases and entity domains for staged validation.
+- [ ] Validate a representative repository with the real cache provider.
+- [ ] Validate a representative repository with dependency manager behavior.
+- [ ] Run Cosmos-to-Mongo migration in dry-run mode and review routing/count reports.
+- [ ] Run migration into a non-production Mongo database and reconcile counts by `EntityType` and domain collection.
+- [ ] Compare representative migrated documents with newly-written Mongo documents structurally.
+- [ ] Exercise application reads against Mongo before enabling writes where practical.
+- [ ] Run targeted performance comparisons for known large-document/high-volume query paths.
+- [ ] Validate domain collection names and correctness-critical indexes for the selected cutover database.
+- [ ] Document provider/application configuration for local, dev, and later production use.
+- [ ] Define cutover sequence, smoke tests, rollback criteria, and rollback steps.
+- [ ] Prove rollback by switching the staged logical database back to Cosmos while source data remains intact.
+- [ ] Document known Cosmos-specific migration islands that remain after generic document cutover.
 
 ## Acceptance criteria
 
-- Migration reports reconcile source and target counts.
-- Representative application workflows pass against Mongo.
-- Known performance-sensitive queries do not regress materially.
-- Cutover can be enabled by configuration without repository code changes.
-- Rollback to Cosmos is documented and configuration-driven.
-- No destructive Cosmos cleanup is required to complete the initial cutover.
+- [ ] Migration reports reconcile source and target counts.
+- [ ] Representative application workflows pass against Mongo in dev.
+- [ ] Known performance-sensitive queries do not regress materially.
+- [x] Existing repository constructors can use Mongo without code changes.
+- [ ] Final cutover can be enabled through first-class application configuration without repository code changes.
+- [ ] Rollback to Cosmos is documented, configuration-driven, and exercised.
+- [x] No destructive Cosmos cleanup is required to complete the initial cutover.
 
 ## Follow-up after stable cutover
 
