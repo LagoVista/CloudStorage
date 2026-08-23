@@ -1,0 +1,22 @@
+services:
+  cassandra:
+    image: cassandra:5.0
+    container_name: nuviot-cloudstorage-cassandra-tests
+    ports:
+      - "19042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: NuvIoTCloudStorageTests
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_RACK: rack1
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        sed -ri 's/^authenticator: .*/authenticator: PasswordAuthenticator/' "$CASSANDRA_CONF/cassandra.yaml"
+        exec docker-entrypoint.sh cassandra -f
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -u cassandra -p cassandra -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 10s
+      retries: 40
+      start_period: 20s
