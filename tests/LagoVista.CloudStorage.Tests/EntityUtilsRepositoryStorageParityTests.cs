@@ -237,7 +237,7 @@ namespace LagoVista.CloudStorage.Tests
 
         private static T Stub<T>() where T : class => DispatchProxy.Create<T, NullDispatchProxy>();
 
-        private sealed class NullDispatchProxy : DispatchProxy
+        private class NullDispatchProxy : DispatchProxy
         {
             protected override object Invoke(MethodInfo targetMethod, object[] args)
             {
