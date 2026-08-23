@@ -11,8 +11,8 @@ namespace LagoVista.CloudStorage.Storage
 {
     /// <summary>
     /// Cassandra implementation for immutable activity records. Supports additive table
-    /// creation, insert/batch insert, declared partition equality filters, CreationDate
-    /// ranges, optional time buckets, retention, and opaque provider paging cursors.
+    /// creation/schema reconciliation, insert/batch insert, declared partition equality filters,
+    /// CreationDate ranges, optional time buckets, retention, and opaque provider paging cursors.
     /// </summary>
     [CriticalCoverage]
     public sealed class CassandraActivityRecordStore<TRecord> : IActivityRecordStore<TRecord>
@@ -227,6 +227,7 @@ namespace LagoVista.CloudStorage.Storage
                 if (!_schemaReady)
                 {
                     await session.ExecuteAsync(new SimpleStatement(_map.CreateTableCql())).ConfigureAwait(false);
+                    await ReconcileSchemaAsync(session).ConfigureAwait(false);
                     await session.ExecuteAsync(new SimpleStatement(_map.ReconcileRetentionCql())).ConfigureAwait(false);
                     _schemaReady = true;
                 }
@@ -237,6 +238,96 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             return session;
+        }
+
+        private async Task ReconcileSchemaAsync(ISession session)
+        {
+            var prepared = await session.PrepareAsync(@"
+SELECT column_name, type, kind, position
+FROM system_schema.columns
+WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
+
+            var rows = await session.ExecuteAsync(prepared.Bind(session.Keyspace, _map.TableName)).ConfigureAwait(false);
+            var existing = rows.ToDictionary(
+                row => row.GetValue<string>("column_name"),
+                row => new ExistingColumn(
+                    row.GetValue<string>("type"),
+                    row.GetValue<string>("kind"),
+                    row.GetValue<int>("position")),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var expected in ExpectedColumns())
+            {
+                if (!existing.TryGetValue(expected.Name, out var actual))
+                {
+                    if (expected.Kind != "regular")
+                    {
+                        throw new InvalidOperationException(
+                            $"Cassandra activity table {_map.TableName} is missing required {expected.Kind} column {expected.Name}. Primary-key changes require an explicit migration.");
+                    }
+
+                    await session.ExecuteAsync(new SimpleStatement(
+                        $"ALTER TABLE {_map.TableName} ADD {expected.Name} {expected.Type}")).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (!String.Equals(NormalizeCqlType(actual.Type), NormalizeCqlType(expected.Type), StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"Cassandra activity table {_map.TableName} column {expected.Name} has type {actual.Type}, but {typeof(TRecord).Name} requires {expected.Type}. Type changes require an explicit migration.");
+                }
+
+                if (!String.Equals(actual.Kind, expected.Kind, StringComparison.OrdinalIgnoreCase) ||
+                    (expected.Kind != "regular" && actual.Position != expected.Position))
+                {
+                    throw new InvalidOperationException(
+                        $"Cassandra activity table {_map.TableName} column {expected.Name} has key shape {actual.Kind}[{actual.Position}], but {typeof(TRecord).Name} requires {expected.Kind}[{expected.Position}]. Primary-key changes require an explicit migration.");
+                }
+            }
+        }
+
+        private IReadOnlyList<ExpectedColumn> ExpectedColumns()
+        {
+            var expected = new List<ExpectedColumn>();
+            var partitionNames = new HashSet<string>(_map.PartitionProperties.Select(property => property.ColumnName), StringComparer.OrdinalIgnoreCase);
+
+            for (var index = 0; index < _map.PartitionProperties.Count; index++)
+            {
+                var property = _map.PartitionProperties[index];
+                expected.Add(new ExpectedColumn(property.ColumnName, property.CqlType, "partition_key", index));
+            }
+
+            if (_map.UsesTimeBuckets)
+            {
+                expected.Add(new ExpectedColumn(
+                    CassandraRecordMap<TRecord>.BucketColumnName,
+                    "text",
+                    "partition_key",
+                    _map.PartitionProperties.Count));
+            }
+
+            expected.Add(new ExpectedColumn(_map.Time.ColumnName, _map.Time.CqlType, "clustering", 0));
+            expected.Add(new ExpectedColumn(_map.Key.ColumnName, _map.Key.CqlType, "clustering", 1));
+
+            foreach (var property in _map.Properties)
+            {
+                if (partitionNames.Contains(property.ColumnName) ||
+                    String.Equals(property.ColumnName, _map.Time.ColumnName, StringComparison.OrdinalIgnoreCase) ||
+                    String.Equals(property.ColumnName, _map.Key.ColumnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                expected.Add(new ExpectedColumn(property.ColumnName, property.CqlType, "regular", -1));
+            }
+
+            return expected;
+        }
+
+        private static string NormalizeCqlType(string type)
+        {
+            if (String.IsNullOrWhiteSpace(type)) return String.Empty;
+            return type.Replace(" ", String.Empty).ToLowerInvariant();
         }
 
         private async Task<PreparedStatement> GetInsertAsync(ISession session)
@@ -311,6 +402,36 @@ namespace LagoVista.CloudStorage.Storage
                 ? String.Empty
                 : Convert.ToBase64String(pagingState);
             return Convert.ToBase64String(Encoding.UTF8.GetBytes($"{bucketIndex}:{pagingText}"));
+        }
+
+        private sealed class ExistingColumn
+        {
+            public ExistingColumn(string type, string kind, int position)
+            {
+                Type = type;
+                Kind = kind;
+                Position = position;
+            }
+
+            public string Type { get; }
+            public string Kind { get; }
+            public int Position { get; }
+        }
+
+        private sealed class ExpectedColumn
+        {
+            public ExpectedColumn(string name, string type, string kind, int position)
+            {
+                Name = name;
+                Type = type;
+                Kind = kind;
+                Position = position;
+            }
+
+            public string Name { get; }
+            public string Type { get; }
+            public string Kind { get; }
+            public int Position { get; }
         }
 
         private sealed class BucketCursor
