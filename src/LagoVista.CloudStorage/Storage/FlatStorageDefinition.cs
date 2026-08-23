@@ -85,23 +85,30 @@ namespace LagoVista.CloudStorage.Storage
                 throw new ArgumentNullException(nameof(selector));
             }
 
-            Expression body = selector.Body;
-            if (body is UnaryExpression unary && unary.NodeType == ExpressionType.Convert)
-            {
-                body = unary.Operand;
-            }
-
+            var body = UnwrapConvert(selector.Body);
             if (!(body is MemberExpression member) || !(member.Member is PropertyInfo))
             {
                 throw new ArgumentException("Storage selectors must reference a direct property on the entity.", nameof(selector));
             }
 
-            if (member.Expression is ParameterExpression)
+            var target = UnwrapConvert(member.Expression);
+            if (target is ParameterExpression)
             {
                 return member.Member.Name;
             }
 
             throw new ArgumentException("Storage selectors must reference a direct property on the entity.", nameof(selector));
+        }
+
+        private static Expression UnwrapConvert(Expression expression)
+        {
+            while (expression is UnaryExpression unary &&
+                   (unary.NodeType == ExpressionType.Convert || unary.NodeType == ExpressionType.ConvertChecked))
+            {
+                expression = unary.Operand;
+            }
+
+            return expression;
         }
     }
 }
