@@ -17,6 +17,12 @@ namespace LagoVista.CloudStorage.Tests
                 ["CassandraStorage:Password"] = "test-password",
                 ["CassandraStorage:Keyspace"] = "nuviot",
                 ["CassandraStorage:LocalDataCenter"] = "dc1",
+                ["MongoDocumentStorage:Hosts"] = "mongo-0.mongo.svc,mongo-1.mongo.svc,mongo-0.mongo.svc",
+                ["MongoDocumentStorage:UserName"] = "mongo-app",
+                ["MongoDocumentStorage:Password"] = "test:p@ssword",
+                ["MongoDocumentStorage:AuthenticationDatabase"] = "admin",
+                ["MongoDocumentStorage:ReplicaSet"] = "rs0",
+                ["MongoDocumentStorage:UseTls"] = "true",
                 ["ScratchStorage:ConnectionString"] = "mongodb://localhost:27017",
                 ["ScratchStorage:DatabaseName"] = "nuviot-scratch",
                 ["ApplicationDataStorage:ConnectionString"] = "mongodb://localhost:27017",
@@ -37,6 +43,24 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
+        public void MongoDocumentSettings_ReadStandardApplicationConfiguration()
+        {
+            var settings = new MongoDocumentStorageConnectionSettings(CreateConfiguration());
+            Assert.That(settings.Hosts.Count, Is.EqualTo(2));
+            Assert.That(settings.Port, Is.EqualTo(27017));
+            Assert.That(settings.AuthenticationDatabase, Is.EqualTo("admin"));
+            Assert.That(settings.ReplicaSet, Is.EqualTo("rs0"));
+            Assert.That(settings.UseTls, Is.True);
+        }
+
+        [Test]
+        public void MongoDocumentSettings_BuildConnectionStringFromComponents()
+        {
+            var settings = new MongoDocumentStorageConnectionSettings(CreateConfiguration());
+            Assert.That(settings.BuildConnectionString(), Is.EqualTo("mongodb://mongo-app:test%3Ap%40ssword@mongo-0.mongo.svc:27017,mongo-1.mongo.svc:27017/?authSource=admin&replicaSet=rs0&tls=true"));
+        }
+
+        [Test]
         public void SemanticMongoSettings_RemainIndependent()
         {
             var configuration = CreateConfiguration();
@@ -53,6 +77,7 @@ namespace LagoVista.CloudStorage.Tests
         {
             var configuration = CreateConfiguration();
             Assert.That(new CassandraStorageSettings(configuration).ToString(), Does.Not.Contain("test-password"));
+            Assert.That(new MongoDocumentStorageConnectionSettings(configuration).ToString(), Does.Not.Contain("test:p@ssword"));
             Assert.That(new ScratchStorageSettings(configuration).ToString(), Does.Contain("<redacted>"));
             Assert.That(new ApplicationDataStorageSettings(configuration).ToString(), Does.Contain("<redacted>"));
         }
@@ -63,12 +88,14 @@ namespace LagoVista.CloudStorage.Tests
             var services = new ServiceCollection();
             services.AddSingleton(CreateConfiguration());
             services.AddCassandraStorageConnection();
+            services.AddMongoDocumentStorageConnection();
             services.AddScratchStorageConnection();
             services.AddApplicationDataStorageConnection();
 
             using (var provider = services.BuildServiceProvider())
             {
                 Assert.That(provider.GetRequiredService<ICassandraStorageSettings>(), Is.SameAs(provider.GetRequiredService<ICassandraStorageSettings>()));
+                Assert.That(provider.GetRequiredService<IMongoDocumentStorageConnectionSettings>(), Is.SameAs(provider.GetRequiredService<IMongoDocumentStorageConnectionSettings>()));
                 Assert.That(provider.GetRequiredService<IScratchStorageSettings>(), Is.SameAs(provider.GetRequiredService<IScratchStorageSettings>()));
                 Assert.That(provider.GetRequiredService<IApplicationDataStorageSettings>(), Is.SameAs(provider.GetRequiredService<IApplicationDataStorageSettings>()));
                 Assert.That(provider.GetRequiredService<IMongoStorageClientFactory>(), Is.SameAs(provider.GetRequiredService<IMongoStorageClientFactory>()));
