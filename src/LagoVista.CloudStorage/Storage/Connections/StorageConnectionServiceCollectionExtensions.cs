@@ -14,6 +14,15 @@ namespace LagoVista.CloudStorage.Storage
             return services;
         }
 
+        public static IServiceCollection AddMongoDocumentStorageConnection(this IServiceCollection services)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            services.TryAddSingleton<IMongoDocumentStorageConnectionSettings, MongoDocumentStorageConnectionSettings>();
+            services.TryAddSingleton<IMongoStorageClientFactory, MongoStorageClientFactory>();
+            return services;
+        }
+
         public static IServiceCollection AddScratchStorageConnection(this IServiceCollection services)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
