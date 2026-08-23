@@ -1,3 +1,4 @@
+using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -5,39 +6,31 @@ using System.Linq;
 
 namespace LagoVista.CloudStorage.Storage
 {
-    public sealed class CassandraStorageSettings
+    public interface ICassandraStorageSettings
     {
-        public CassandraStorageSettings(
-            IEnumerable<string> contactPoints,
-            string userName,
-            string password,
-            string keyspace,
-            int port = 9042,
-            string localDataCenter = null)
+        IReadOnlyList<string> ContactPoints { get; }
+        string UserName { get; }
+        string Password { get; }
+        string Keyspace { get; }
+        int Port { get; }
+        string LocalDataCenter { get; }
+    }
+
+    public sealed class CassandraStorageSettings : ICassandraStorageSettings
+    {
+        public const string SectionName = "CassandraStorage";
+
+        public CassandraStorageSettings(IConfiguration configuration)
         {
-            if (contactPoints == null) throw new ArgumentNullException(nameof(contactPoints));
-            if (String.IsNullOrWhiteSpace(userName)) throw new ArgumentNullException(nameof(userName));
-            if (String.IsNullOrWhiteSpace(password)) throw new ArgumentNullException(nameof(password));
-            if (String.IsNullOrWhiteSpace(keyspace)) throw new ArgumentNullException(nameof(keyspace));
-            if (port <= 0 || port > 65535) throw new ArgumentOutOfRangeException(nameof(port));
+            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
-            var points = contactPoints
-                .Where(point => !String.IsNullOrWhiteSpace(point))
-                .Select(point => point.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            if (points.Count == 0)
-            {
-                throw new ArgumentException("At least one Cassandra contact point is required.", nameof(contactPoints));
-            }
-
-            ContactPoints = points.AsReadOnly();
-            UserName = userName;
-            Password = password;
-            Keyspace = keyspace;
-            Port = port;
-            LocalDataCenter = String.IsNullOrWhiteSpace(localDataCenter) ? null : localDataCenter.Trim();
+            var section = configuration.GetSection(SectionName);
+            ContactPoints = ReadList(section.Require("ContactPoints"));
+            UserName = section.Require("UserName");
+            Password = section.Require("Password");
+            Keyspace = section.Require("Keyspace");
+            Port = ReadPort(section["Port"], 9042);
+            LocalDataCenter = String.IsNullOrWhiteSpace(section["LocalDataCenter"]) ? null : section["LocalDataCenter"].Trim();
         }
 
         public IReadOnlyList<string> ContactPoints { get; }
@@ -47,99 +40,93 @@ namespace LagoVista.CloudStorage.Storage
         public int Port { get; }
         public string LocalDataCenter { get; }
 
-        public static CassandraStorageSettings FromConfiguration(IConfiguration configuration)
-        {
-            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
-
-            var contactPoints = ReadList(configuration, "ContactPoints");
-            var port = ReadPort(configuration["Port"], 9042);
-
-            return new CassandraStorageSettings(
-                contactPoints,
-                Required(configuration, "UserName"),
-                Required(configuration, "Password"),
-                Required(configuration, "Keyspace"),
-                port,
-                configuration["LocalDataCenter"]);
-        }
-
         public override string ToString()
         {
             return $"CassandraStorageSettings(ContactPoints={String.Join(",", ContactPoints)}, Port={Port}, Keyspace={Keyspace}, LocalDataCenter={LocalDataCenter ?? "<default>"}, UserName={UserName}, Password=<redacted>)";
         }
 
-        private static IReadOnlyList<string> ReadList(IConfiguration configuration, string key)
+        private static IReadOnlyList<string> ReadList(string value)
         {
-            var section = configuration.GetSection(key);
-            var children = section.GetChildren()
-                .Select(child => child.Value)
-                .Where(value => !String.IsNullOrWhiteSpace(value))
-                .ToList();
-
-            if (children.Count > 0) return children;
-
-            var value = configuration[key];
-            if (String.IsNullOrWhiteSpace(value)) return Array.Empty<string>();
-
-            return value
+            var points = value
                 .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(item => item.Trim())
                 .Where(item => item.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            if (points.Count == 0)
+            {
+                throw new InvalidOperationException("CassandraStorage:ContactPoints must contain at least one host.");
+            }
+
+            return points.AsReadOnly();
         }
 
         private static int ReadPort(string value, int defaultPort)
         {
             if (String.IsNullOrWhiteSpace(value)) return defaultPort;
-            if (!Int32.TryParse(value, out var port))
+            if (!Int32.TryParse(value, out var port) || port <= 0 || port > 65535)
             {
-                throw new InvalidOperationException("Storage:Cassandra:Port must be a valid integer.");
+                throw new InvalidOperationException("CassandraStorage:Port must be a valid TCP port.");
             }
 
             return port;
         }
-
-        private static string Required(IConfiguration configuration, string key)
-        {
-            var value = configuration[key];
-            if (String.IsNullOrWhiteSpace(value))
-            {
-                throw new InvalidOperationException($"Required Cassandra storage setting '{key}' is missing.");
-            }
-
-            return value;
-        }
     }
 
-    public sealed class MongoStorageSettings
+    public interface IScratchStorageSettings
     {
-        public MongoStorageSettings(string connectionString, string defaultDatabaseName = null)
-        {
-            if (String.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
+        string ConnectionString { get; }
+        string DatabaseName { get; }
+    }
 
-            ConnectionString = connectionString;
-            DefaultDatabaseName = String.IsNullOrWhiteSpace(defaultDatabaseName) ? null : defaultDatabaseName.Trim();
-        }
+    public sealed class ScratchStorageSettings : IScratchStorageSettings
+    {
+        public const string SectionName = "ScratchStorage";
 
-        public string ConnectionString { get; }
-        public string DefaultDatabaseName { get; }
-
-        public static MongoStorageSettings FromConfiguration(IConfiguration configuration)
+        public ScratchStorageSettings(IConfiguration configuration)
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
-            var connectionString = configuration["ConnectionString"];
-            if (String.IsNullOrWhiteSpace(connectionString))
-            {
-                throw new InvalidOperationException("Required Mongo storage setting 'ConnectionString' is missing.");
-            }
-
-            return new MongoStorageSettings(connectionString, configuration["DefaultDatabaseName"] ?? configuration["DatabaseName"]);
+            var section = configuration.GetSection(SectionName);
+            ConnectionString = section.Require("ConnectionString");
+            DatabaseName = section.Require("DatabaseName");
         }
+
+        public string ConnectionString { get; }
+        public string DatabaseName { get; }
 
         public override string ToString()
         {
-            return $"MongoStorageSettings(DefaultDatabaseName={DefaultDatabaseName ?? "<none>"}, ConnectionString=<redacted>)";
+            return $"ScratchStorageSettings(DatabaseName={DatabaseName}, ConnectionString=<redacted>)";
+        }
+    }
+
+    public interface IFlatDocumentStorageSettings
+    {
+        string ConnectionString { get; }
+        string DatabaseName { get; }
+    }
+
+    public sealed class FlatDocumentStorageSettings : IFlatDocumentStorageSettings
+    {
+        public const string SectionName = "FlatDocumentStorage";
+
+        public FlatDocumentStorageSettings(IConfiguration configuration)
+        {
+            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
+
+            var section = configuration.GetSection(SectionName);
+            ConnectionString = section.Require("ConnectionString");
+            DatabaseName = section.Require("DatabaseName");
+        }
+
+        public string ConnectionString { get; }
+        public string DatabaseName { get; }
+
+        public override string ToString()
+        {
+            return $"FlatDocumentStorageSettings(DatabaseName={DatabaseName}, ConnectionString=<redacted>)";
         }
     }
 }
