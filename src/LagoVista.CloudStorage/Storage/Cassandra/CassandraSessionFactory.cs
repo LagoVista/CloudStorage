@@ -1,4 +1,5 @@
 using Cassandra;
+using LagoVista;
 using System;
 using System.Threading.Tasks;
 
@@ -13,6 +14,7 @@ namespace LagoVista.CloudStorage.Storage
     /// Owns the shared Cassandra driver cluster/session for the configured application keyspace.
     /// Keyspace creation is intentionally a platform/bootstrap responsibility.
     /// </summary>
+    [CriticalCoverage]
     public sealed class CassandraSessionFactory : ICassandraSessionFactory, IDisposable
     {
         private readonly ICassandraStorageSettings _settings;
