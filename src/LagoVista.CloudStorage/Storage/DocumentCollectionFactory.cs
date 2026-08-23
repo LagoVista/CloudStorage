@@ -24,7 +24,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     return new CosmosDocumentCollection(_cosmosClientProvider, settings.Endpoint, settings.SharedKey, settings.DatabaseName, resolvedCollectionName);
 
                 case DocumentStorageProviderType.Mongo:
-                    return new MongoDocumentCollection(settings.Endpoint, settings.DatabaseName, resolvedCollectionName);
+                    return new MongoDocumentCollection(settings.Mongo.ConnectionString, settings.Mongo.DatabaseName, resolvedCollectionName);
 
                 default:
                     throw new InvalidOperationException($"Unsupported document storage provider '{settings.Provider}'.");
