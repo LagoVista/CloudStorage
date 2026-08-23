@@ -1,3 +1,4 @@
+using LagoVista;
 using LagoVista.Core;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
@@ -8,6 +9,20 @@ namespace LagoVista.CloudStorage.Tests
 {
     public class MongoBsonSerializationTests
     {
+        [Test]
+        public void NormalizedId32_SerializesAsStringAndRoundTrips()
+        {
+            var expected = NormalizedId32.Parse("F47AC10B58CC4372A5670E02B2C3D479");
+            var source = new NormalizedIdDocument { Id = expected };
+
+            var bson = source.ToBsonDocument();
+            Assert.That(bson["_id"].BsonType, Is.EqualTo(BsonType.String));
+            Assert.That(bson["_id"].AsString, Is.EqualTo(expected.Value));
+
+            var roundTrip = BsonSerializer.Deserialize<NormalizedIdDocument>(bson);
+            Assert.That(roundTrip.Id, Is.EqualTo(expected));
+        }
+
         [Test]
         public void UtcTimestamp_SerializesAsCanonicalStringAndRoundTrips()
         {
@@ -42,6 +57,11 @@ namespace LagoVista.CloudStorage.Tests
 
             var result = BsonSerializer.Deserialize<UtcTimestampDocument>(bson);
             Assert.That(result.Timestamp, Is.EqualTo(UtcTimestamp.FromDateTime(instant)));
+        }
+
+        private sealed class NormalizedIdDocument
+        {
+            public NormalizedId32 Id { get; set; }
         }
 
         private sealed class UtcTimestampDocument
