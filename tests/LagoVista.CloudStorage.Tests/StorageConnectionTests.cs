@@ -14,13 +14,13 @@ namespace LagoVista.CloudStorage.Tests
             {
                 ["CassandraStorage:ContactPoints"] = "cassandra-0.cassandra.svc,cassandra-1.cassandra.svc,cassandra-0.cassandra.svc",
                 ["CassandraStorage:UserName"] = "app",
-                ["CassandraStorage:Password"] = "super-secret-value",
+                ["CassandraStorage:Password"] = "test-password",
                 ["CassandraStorage:Keyspace"] = "nuviot",
                 ["CassandraStorage:LocalDataCenter"] = "dc1",
-                ["ScratchStorage:ConnectionString"] = "mongodb://user:super-secret-value@mongodb.svc",
+                ["ScratchStorage:ConnectionString"] = "mongodb://localhost:27017",
                 ["ScratchStorage:DatabaseName"] = "nuviot-scratch",
-                ["FlatDocumentStorage:ConnectionString"] = "mongodb://user:super-secret-value@mongodb.svc",
-                ["FlatDocumentStorage:DatabaseName"] = "nuviot-flat"
+                ["ApplicationDataStorage:ConnectionString"] = "mongodb://localhost:27017",
+                ["ApplicationDataStorage:DatabaseName"] = "nuviot-application"
             };
 
             return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
@@ -30,7 +30,6 @@ namespace LagoVista.CloudStorage.Tests
         public void CassandraSettings_ReadStandardApplicationConfiguration()
         {
             var settings = new CassandraStorageSettings(CreateConfiguration());
-
             Assert.That(settings.ContactPoints.Count, Is.EqualTo(2));
             Assert.That(settings.Port, Is.EqualTo(9042));
             Assert.That(settings.Keyspace, Is.EqualTo("nuviot"));
@@ -42,21 +41,20 @@ namespace LagoVista.CloudStorage.Tests
         {
             var configuration = CreateConfiguration();
             var scratch = new ScratchStorageSettings(configuration);
-            var flat = new FlatDocumentStorageSettings(configuration);
+            var application = new ApplicationDataStorageSettings(configuration);
 
-            Assert.That(scratch.ConnectionString, Is.EqualTo(flat.ConnectionString));
+            Assert.That(scratch.ConnectionString, Is.EqualTo(application.ConnectionString));
             Assert.That(scratch.DatabaseName, Is.EqualTo("nuviot-scratch"));
-            Assert.That(flat.DatabaseName, Is.EqualTo("nuviot-flat"));
+            Assert.That(application.DatabaseName, Is.EqualTo("nuviot-application"));
         }
 
         [Test]
         public void Settings_ToString_DoesNotExposeSecrets()
         {
             var configuration = CreateConfiguration();
-
-            Assert.That(new CassandraStorageSettings(configuration).ToString(), Does.Not.Contain("super-secret-value"));
-            Assert.That(new ScratchStorageSettings(configuration).ToString(), Does.Not.Contain("super-secret-value"));
-            Assert.That(new FlatDocumentStorageSettings(configuration).ToString(), Does.Not.Contain("super-secret-value"));
+            Assert.That(new CassandraStorageSettings(configuration).ToString(), Does.Not.Contain("test-password"));
+            Assert.That(new ScratchStorageSettings(configuration).ToString(), Does.Contain("<redacted>"));
+            Assert.That(new ApplicationDataStorageSettings(configuration).ToString(), Does.Contain("<redacted>"));
         }
 
         [Test]
@@ -66,13 +64,13 @@ namespace LagoVista.CloudStorage.Tests
             services.AddSingleton(CreateConfiguration());
             services.AddCassandraStorageConnection();
             services.AddScratchStorageConnection();
-            services.AddFlatDocumentStorageConnection();
+            services.AddApplicationDataStorageConnection();
 
             using (var provider = services.BuildServiceProvider())
             {
                 Assert.That(provider.GetRequiredService<ICassandraStorageSettings>(), Is.SameAs(provider.GetRequiredService<ICassandraStorageSettings>()));
                 Assert.That(provider.GetRequiredService<IScratchStorageSettings>(), Is.SameAs(provider.GetRequiredService<IScratchStorageSettings>()));
-                Assert.That(provider.GetRequiredService<IFlatDocumentStorageSettings>(), Is.SameAs(provider.GetRequiredService<IFlatDocumentStorageSettings>()));
+                Assert.That(provider.GetRequiredService<IApplicationDataStorageSettings>(), Is.SameAs(provider.GetRequiredService<IApplicationDataStorageSettings>()));
                 Assert.That(provider.GetRequiredService<IMongoStorageClientFactory>(), Is.SameAs(provider.GetRequiredService<IMongoStorageClientFactory>()));
             }
         }
@@ -82,10 +80,10 @@ namespace LagoVista.CloudStorage.Tests
         {
             var configuration = CreateConfiguration();
             var scratch = new ScratchStorageSettings(configuration);
-            var flat = new FlatDocumentStorageSettings(configuration);
+            var application = new ApplicationDataStorageSettings(configuration);
             var factory = new MongoStorageClientFactory();
 
-            Assert.That(factory.GetClient(scratch.ConnectionString), Is.SameAs(factory.GetClient(flat.ConnectionString)));
+            Assert.That(factory.GetClient(scratch.ConnectionString), Is.SameAs(factory.GetClient(application.ConnectionString)));
         }
     }
 }
