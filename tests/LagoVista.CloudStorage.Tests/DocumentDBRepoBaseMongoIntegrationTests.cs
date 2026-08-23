@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.DocumentDB;
+using LagoVista.CloudStorage.Utils;
 using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
@@ -15,7 +16,6 @@ namespace LagoVista.CloudStorage.Tests
     [Category("Mongo")]
     public class DocumentDBRepoBaseMongoIntegrationTests
     {
-        private const string ConnectionStringEnvironmentVariable = "NUVIOT_TEST_MONGO_CONNECTION_STRING";
         private string _connectionString;
         private string _databaseName;
         private string _logicalDatabaseName;
@@ -31,9 +31,7 @@ namespace LagoVista.CloudStorage.Tests
         [OneTimeSetUp]
         public void Setup()
         {
-            _connectionString = Environment.GetEnvironmentVariable(ConnectionStringEnvironmentVariable);
-            if (String.IsNullOrWhiteSpace(_connectionString)) Assert.Ignore($"Set {ConnectionStringEnvironmentVariable} to run Mongo integration tests.");
-
+            _connectionString = GetTestConnectionString();
             _logicalDatabaseName = $"RepoBaseTest{Guid.NewGuid():N}";
             _databaseName = $"CloudStorageRepoBaseTests_{Guid.NewGuid():N}";
             var normalizedLogicalDatabaseName = _logicalDatabaseName.ToUpperInvariant();
@@ -114,6 +112,19 @@ namespace LagoVista.CloudStorage.Tests
             var entity = CreateEntity("SETCONNECTION", "Set Connection", 10);
             await _repository.CreateAsync(entity);
             Assert.That((await _repository.GetAsync(entity.Id)).Name, Is.EqualTo("Set Connection"));
+        }
+
+        private static string GetTestConnectionString()
+        {
+            try
+            {
+                return TestConnections.TestMongoDocumentStorage.BuildConnectionString();
+            }
+            catch (Exception ex)
+            {
+                Assert.Ignore($"Configure TEST_MONGO_* settings or run run-mongo-tests.ps1. {ex.Message}");
+                return null;
+            }
         }
 
         private static TestEntity CreateEntity(string id, string name, int rank)
