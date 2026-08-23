@@ -190,6 +190,11 @@ namespace LagoVista.CloudStorage.Storage
         {
             if (!value.HasValue) return null;
             if (value.Value.Kind == DateTimeKind.Utc) return value;
+            if (value.Value.Kind == DateTimeKind.Unspecified)
+            {
+                return DateTime.SpecifyKind(value.Value, DateTimeKind.Utc);
+            }
+
             return value.Value.ToUniversalTime();
         }
     }
