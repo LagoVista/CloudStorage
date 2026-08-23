@@ -54,10 +54,16 @@ namespace LagoVista.CloudStorage.Storage
             Key = GetRequired(Definition.KeyField);
             Time = GetRequired(Definition.TimeField);
             PartitionProperties = Definition.PartitionFields.Select(GetRequired).ToList().AsReadOnly();
+            IndexedProperties = Definition.IndexedFields.Select(GetRequired).ToList().AsReadOnly();
 
             if (PartitionProperties.Any(property => property.Property.Name == Key.Property.Name || property.Property.Name == Time.Property.Name))
             {
                 throw new InvalidOperationException("Cassandra partition fields cannot be the activity Id or CreationDate fields.");
+            }
+
+            if (IndexedProperties.Any(property => PartitionProperties.Any(partition => partition.Property.Name == property.Property.Name)))
+            {
+                throw new InvalidOperationException("Cassandra activity indexed fields must be non-partition fields. Partition fields are already queryable by equality.");
             }
 
             if (Definition.Retention.HasValue && Definition.Retention.Value.TotalSeconds > Int32.MaxValue)
@@ -73,6 +79,7 @@ namespace LagoVista.CloudStorage.Storage
         public string TableName { get; }
         public IReadOnlyList<CassandraRecordProperty> Properties { get; }
         public IReadOnlyList<CassandraRecordProperty> PartitionProperties { get; }
+        public IReadOnlyList<CassandraRecordProperty> IndexedProperties { get; }
         public CassandraRecordProperty Key { get; }
         public CassandraRecordProperty Time { get; }
         public bool UsesTimeBuckets => Definition.BucketPeriod != StoragePeriod.All;
@@ -123,6 +130,12 @@ AND default_time_to_live = {RetentionSeconds}";
             }
 
             return values.ToArray();
+        }
+
+        public object DriverValue(CassandraRecordProperty property, object value)
+        {
+            if (property == null) throw new ArgumentNullException(nameof(property));
+            return ToDriverValue(value, property.Property.PropertyType);
         }
 
         public string GetBucket(DateTime value)
