@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 namespace LagoVista.CloudStorage.Tests
 {
     [NonParallelizable]
+    [Category("Integration")]
+    [Category("Mongo")]
     public class DocumentDBRepoBaseMongoIntegrationTests
     {
         private const string ConnectionStringEnvironmentVariable = "NUVIOT_TEST_MONGO_CONNECTION_STRING";
