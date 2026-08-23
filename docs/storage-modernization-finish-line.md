@@ -7,8 +7,8 @@ Bring the Cosmos-to-Mongo modernization across the finish line using a disposabl
 The local lab contains:
 
 - MongoDB 8 on `localhost:27018`
-- Azure Cosmos DB Linux vNext emulator on `https://localhost:8081`
-- Cosmos readiness probe on `http://localhost:8080/ready`
+- Azure Cosmos DB Linux vNext emulator on `https://localhost:18081`
+- Cosmos readiness probe on `http://localhost:18080/ready`
 - Cosmos Data Explorer on `http://localhost:1234`
 
 The lab is disposable. Tests should create isolated databases/containers and remove them when complete.
