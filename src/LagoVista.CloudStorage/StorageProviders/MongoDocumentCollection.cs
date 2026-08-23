@@ -44,7 +44,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             var collection = GetCollection<TDocument>();
             var find = collection.Find(query);
-            if (sort != null) find = find.SortBy(sort);
+            if (sort != null) find = find.Sort(Builders<TDocument>.Sort.Ascending(ToObjectExpression(sort)));
             var items = await find.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Limit(listRequest.PageSize).ToListAsync(cancellationToken).ConfigureAwait(false);
             return ListResponse<TDocument>.Create(listRequest, items);
         }
@@ -57,7 +57,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             var collection = GetCollection<TDocument>();
             var find = collection.Find(query);
-            if (sort != null) find = find.SortBy(sort);
+            if (sort != null) find = find.Sort(Builders<TDocument>.Sort.Ascending(ToObjectExpression(sort)));
             var items = await find.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Limit(listRequest.PageSize).Project(projection).ToListAsync(cancellationToken).ConfigureAwait(false);
             return ListResponse<TProjection>.Create(listRequest, items);
         }
@@ -94,6 +94,13 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             var client = _clients.GetOrAdd(_connectionString, connectionString => new MongoClient(connectionString));
             return client.GetDatabase(_databaseName).GetCollection<BsonDocument>(_collectionName);
+        }
+
+        private static Expression<Func<TDocument, object>> ToObjectExpression<TDocument, TSort>(Expression<Func<TDocument, TSort>> expression)
+        {
+            if (expression == null) throw new ArgumentNullException(nameof(expression));
+            var body = Expression.Convert(expression.Body, typeof(object));
+            return Expression.Lambda<Func<TDocument, object>>(body, expression.Parameters);
         }
 
         private async Task<IEnumerable<TResult>> QueryCustomerIndustryNicheSalesStageCountsAsync<TResult>(DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
