@@ -45,8 +45,8 @@ namespace LagoVista.CloudStorage.Storage
     }
 
     /// <summary>
-    /// DI conventions for storage capabilities. Repositories depend on capability
-    /// interfaces only; provider choice lives in composition-root registration.
+    /// DI conventions for record-shaped storage capabilities. Repositories depend on
+    /// semantic interfaces only; provider choice lives in composition-root registration.
     /// </summary>
     public static class StorageRegistrationExtensions
     {
@@ -96,15 +96,6 @@ namespace LagoVista.CloudStorage.Storage
             var definition = BuildDefinition(configure);
             services.AddSingleton(new ApplicationDataStoreOptions<TRecord>(definition));
             services.AddScoped<IApplicationDataStore<TRecord>, TStore>();
-            return services;
-        }
-
-        public static IServiceCollection AddAccountLedgerStore<TRecord, TStore>(this IServiceCollection services)
-            where TRecord : IAccountLedgerRecord
-            where TStore : class, IAccountLedgerStore<TRecord>
-        {
-            if (services == null) throw new ArgumentNullException(nameof(services));
-            services.AddScoped<IAccountLedgerStore<TRecord>, TStore>();
             return services;
         }
 
