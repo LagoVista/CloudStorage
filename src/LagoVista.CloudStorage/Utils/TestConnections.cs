@@ -2,8 +2,10 @@
 // ContentHash: 01327be1d3e2ec3c6ab9198c9ab4886279b214c9f61cf064fa61d4fa0e0518ab
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using LagoVista.CloudStorage.Storage;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
+using Microsoft.Extensions.Configuration;
 using NLog.Layouts;
 using System;
 using System.Collections.Generic;
@@ -15,6 +17,9 @@ namespace LagoVista.CloudStorage.Utils
     {
         public const string ProdSLOrgId = "AA2C78499D0140A5A9CE4B7581EF9691";
         public const string DevSLOrgId = "C8AD4589F26842E7A1AEFBAEFC979C9B";
+
+        public static MongoDocumentStorageConnectionSettings ProductionMongoDocumentStorage => CreateMongoDocumentStorageSettings("PROD");
+        public static MongoDocumentStorageConnectionSettings TestMongoDocumentStorage => CreateMongoDocumentStorageSettings("TEST");
 
         public static ConnectionSettings ProductionDocDB
         {
@@ -240,6 +245,23 @@ namespace LagoVista.CloudStorage.Utils
 
                 return cs;
             }
+        }
+
+        private static MongoDocumentStorageConnectionSettings CreateMongoDocumentStorageSettings(string prefix)
+        {
+            var values = new Dictionary<string, string>
+            {
+                ["MongoDocumentStorage:Hosts"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_HOSTS"),
+                ["MongoDocumentStorage:Port"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_PORT"),
+                ["MongoDocumentStorage:UserName"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_USERNAME"),
+                ["MongoDocumentStorage:Password"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_PASSWORD"),
+                ["MongoDocumentStorage:AuthenticationDatabase"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_AUTHENTICATION_DATABASE"),
+                ["MongoDocumentStorage:ReplicaSet"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_REPLICA_SET"),
+                ["MongoDocumentStorage:UseTls"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_USE_TLS")
+            };
+
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+            return new MongoDocumentStorageConnectionSettings(configuration);
         }
     }
 }
