@@ -11,12 +11,12 @@ The three new application configuration contracts are intentionally independent:
 ```text
 CassandraStorage
 ScratchStorage
-FlatDocumentStorage
+ApplicationDataStorage
 ```
 
 The existing primary Mongo / DocumentDB configuration remains separate from both new Mongo-backed mechanisms.
 
-This means Scratch and Flat Document may point at the same Mongo server today while still having independent configuration keys, credentials, and database names. They can therefore be split later without changing repository constructors or storage contracts.
+This means Scratch and Application Data may point at the same Mongo server today while still having independent configuration keys, credentials, and database names. They can therefore be split later without changing repository constructors or storage contracts.
 
 ## Cassandra configuration
 
@@ -58,13 +58,13 @@ Registered as:
 services.AddSingleton<IScratchStorageSettings, ScratchStorageSettings>();
 ```
 
-## Flat Document configuration
+## Application Data configuration
 
 ```json
 {
-  "FlatDocumentStorage": {
+  "ApplicationDataStorage": {
     "ConnectionString": "<secret-bearing Mongo connection string>",
-    "DatabaseName": "nuviot-flat"
+    "DatabaseName": "nuviot-application"
   }
 }
 ```
@@ -72,7 +72,7 @@ services.AddSingleton<IScratchStorageSettings, ScratchStorageSettings>();
 Registered as:
 
 ```csharp
-services.AddSingleton<IFlatDocumentStorageSettings, FlatDocumentStorageSettings>();
+services.AddSingleton<IApplicationDataStorageSettings, ApplicationDataStorageSettings>();
 ```
 
 The values above are examples of shape only. Secret values must come from the normal environment/application secret path and must never be committed to Git.
@@ -82,7 +82,7 @@ The values above are examples of shape only. Secret values must come from the no
 ```csharp
 services.AddCassandraStorageConnection();
 services.AddScratchStorageConnection();
-services.AddFlatDocumentStorageConnection();
+services.AddApplicationDataStorageConnection();
 ```
 
 These helpers register the semantic settings interfaces. The host's normal `IConfiguration` registration supplies the environment-specific values.
@@ -95,7 +95,7 @@ Local development can supply the same keys with workstation-reachable endpoints 
 
 Therefore:
 
-- Scratch and Flat Document remain independent configuration contracts.
+- Scratch and Application Data remain independent configuration contracts.
 - They may use different Mongo servers with no architectural change.
 - If they currently contain the same connection string, both resolve to the same pooled `MongoClient`.
 - The existing primary Mongo/DocumentDB settings remain independent.
