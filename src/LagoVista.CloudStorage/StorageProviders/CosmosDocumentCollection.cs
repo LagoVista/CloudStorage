@@ -147,9 +147,9 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         private static QueryDefinition CreateEntityPreparationCandidatesByTypeQuery(DocumentQueryRequest request, bool incompleteOnly)
         {
-            var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
             var incompleteClause = incompleteOnly ? " AND (NOT IS_DEFINED(c.MasterStatus) OR IS_NULL(c.MasterStatus) OR NOT IS_DEFINED(c.MasterStatus.IsProductionReady) OR IS_NULL(c.MasterStatus.IsProductionReady) OR c.MasterStatus.IsProductionReady != true)" : String.Empty;
-            var sql = $"SELECT TOP {maxItems} {EntityPreparationProjection} FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId{incompleteClause} ORDER BY c.Name ASC";
+            var topClause = incompleteOnly ? $"TOP {Math.Min(request.GetRequired<int>("maxItems"), 5000)} " : String.Empty;
+            var sql = $"SELECT {topClause}{EntityPreparationProjection} FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId{incompleteClause} ORDER BY c.Name ASC";
             return new QueryDefinition(sql).WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
         }
 
