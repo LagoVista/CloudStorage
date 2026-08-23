@@ -19,10 +19,46 @@ namespace LagoVista.CloudStorage.StorageProviders
             lock (_syncRoot)
             {
                 if (_configured) return;
+                BsonSerializer.RegisterSerializer(typeof(LagoVistaKey), new LagoVistaKeyBsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(NormalizedId32), new NormalizedId32BsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(UtcTimestamp), new UtcTimestampBsonSerializer());
                 _configured = true;
             }
+        }
+    }
+
+    internal sealed class LagoVistaKeyBsonSerializer : SerializerBase<LagoVistaKey>
+    {
+        public override LagoVistaKey Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            var reader = context.Reader;
+            switch (reader.GetCurrentBsonType())
+            {
+                case BsonType.Null:
+                    reader.ReadNull();
+                    return default(LagoVistaKey);
+
+                case BsonType.String:
+                    return LagoVistaKey.Parse(reader.ReadString());
+
+                default:
+                    throw new BsonSerializationException($"Cannot deserialize {nameof(LagoVistaKey)} from BSON type {reader.GetCurrentBsonType()}.");
+            }
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, LagoVistaKey value)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            if (String.IsNullOrWhiteSpace(value.Value))
+            {
+                context.Writer.WriteNull();
+                return;
+            }
+
+            context.Writer.WriteString(value.Value);
         }
     }
 
