@@ -23,6 +23,18 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
+        public void UtcTimestamp_EmptyValueSerializesAsNullAndRoundTrips()
+        {
+            var source = new UtcTimestampDocument();
+
+            var bson = source.ToBsonDocument();
+            Assert.That(bson[nameof(UtcTimestampDocument.Timestamp)].BsonType, Is.EqualTo(BsonType.Null));
+
+            var roundTrip = BsonSerializer.Deserialize<UtcTimestampDocument>(bson);
+            Assert.That(roundTrip.Timestamp.IsEmpty, Is.True);
+        }
+
+        [Test]
         public void UtcTimestamp_DeserializesLegacyBsonDateTime()
         {
             var instant = new DateTime(2026, 8, 23, 18, 30, 15, DateTimeKind.Utc);
