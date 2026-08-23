@@ -3,8 +3,9 @@ $ErrorActionPreference = "Stop"
 Write-Host ""
 Write-Host "EntityUtilsRepository"
 Write-Host "====================="
-Write-Host "Status: IN PROGRESS"
-Write-Host "Provider-neutral read primitives are in place for by-type, by-id, and count queries."
-Write-Host "Repository wiring and parity coverage are next; mutation/patch behavior remains Cosmos-backed for now."
+Write-Host "Status: READ SLICE READY TO VERIFY"
+Write-Host "Parity coverage: 5 named Cosmos-vs-Mongo read contracts"
+Write-Host "Mutation/patch behavior remains Cosmos-backed and is not counted as complete yet."
 Write-Host ""
-& (Join-Path $PSScriptRoot "audit-cosmos-consumers.ps1") -Scope Application -FileContains "EntityUtilsRepository.cs"
+
+& (Join-Path $PSScriptRoot "run-storage-lab-baseline.ps1") -Gate Build,Parity -ParityTarget EntityUtilsRepository
