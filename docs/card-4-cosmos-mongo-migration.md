@@ -6,7 +6,7 @@ Provide a safe, repeatable utility that copies raw documents from Cosmos into Mo
 
 ## Status
 
-Initial migration engine implemented. Local build/API validation and end-to-end migration testing remain.
+Core migration and validation implementation is complete and has compiled through the initial migration engine checkpoint. Transform tests and count reconciliation are now implemented. Live Cosmos/Mongo execution remains.
 
 ## Migration shape
 
@@ -20,6 +20,9 @@ The migrator does not deserialize documents into application entity types.
 - Do not retain a duplicate top-level `id` field.
 - Strip `_rid`, `_self`, `_etag`, `_attachments`, and `_ts`.
 - Preserve the remaining raw JSON document shape and nested values.
+- Perform transforms on a cloned document so the source object is not mutated.
+
+The transformation is isolated in `DocumentMigrationTransformer` and has focused unit coverage.
 
 ## Request model
 
@@ -56,9 +59,15 @@ Each write is a replacement upsert filtered by `_id`, making normal reruns idemp
 
 Dry-run mode executes source reading, transforms, routing, and statistics collection without opening a Mongo connection or writing data.
 
-## Result model
+## Validation
 
-`CosmosToMongoMigrationResult` currently reports:
+`ValidateCosmosToMongoAsync` performs a full dry-run Cosmos inventory using the same routing rules, then counts the corresponding documents in Mongo by destination collection and `EntityType`.
+
+The result reports source and destination totals plus route-level source/destination counts and a `Matches` flag. Missing/null/empty `EntityType` values are validated only against equivalent Mongo documents in the fallback collection rather than counting the entire fallback collection.
+
+## Result models
+
+`CosmosToMongoMigrationResult` reports:
 
 - pages read
 - documents read
@@ -71,7 +80,15 @@ Dry-run mode executes source reading, transforms, routing, and statistics collec
 - dry-run flag
 - per-entity-type/per-destination route statistics
 
-No credentials or connection strings are included in the result.
+`CosmosToMongoValidationResult` reports:
+
+- total source count
+- total destination count
+- overall match status
+- per-entity-type/per-destination source and destination counts
+- per-route match status
+
+No credentials or connection strings are included in either result.
 
 ## Completed tasks
 
@@ -90,16 +107,18 @@ No credentials or connection strings are included in the result.
 - [x] Include per-entity-type/per-destination statistics.
 - [x] Register migration service with dependency injection.
 - [x] Keep secrets out of migration reports.
+- [x] Add transform-focused unit tests for `id -> _id`, Cosmos metadata removal, nested-shape preservation, missing IDs, and source immutability.
+- [x] Add validation mode comparing Cosmos and Mongo counts by entity type and destination collection.
 
 ## Remaining tasks
 
-- [ ] Build against current Cosmos and Mongo SDK versions and clear any API signature mismatches.
-- [ ] Add transform-focused unit tests for `id -> _id` and Cosmos metadata removal.
+- [ ] Rebuild after validation additions and clear any SDK/API signature mismatches.
+- [ ] Run the unit/integration test project.
 - [ ] Run a dry-run against a real Cosmos database and review route inventory.
 - [ ] Run a small bounded migration into dev Mongo.
-- [ ] Add validation mode comparing Cosmos and Mongo counts by entity type.
 - [ ] Validate continuation/resume behavior against a real Cosmos feed.
 - [ ] Validate rerunning the same page does not create duplicates.
+- [ ] Run count reconciliation and confirm route-level matches.
 
 ## Local validation
 
