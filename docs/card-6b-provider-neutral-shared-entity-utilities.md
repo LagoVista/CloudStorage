@@ -1,84 +1,97 @@
-# Card 6B - Provider-Neutral Shared-Entity Utilities
+# Card 6B - Audit and Provider-Neutralize Direct Cosmos Consumers
 
 ## Objective
 
-Ensure every CloudStorage utility/repository that reads or mutates the same first-class document entities as `DocumentDBRepoBase<TEntity>` follows the selected document provider instead of remaining hard-wired to Cosmos.
+Audit every production `LagoVista.CloudStorage` code path that directly references Cosmos and give it an explicit disposition before Mongo cutover.
+
+The rule is intentionally broad: if production CloudStorage code references `Microsoft.Azure.Cosmos`, `CosmosClient`, `Container`, `QueryDefinition`, `PatchOperation`, `GetItemQueryIterator`, or another Cosmos-specific API, it belongs in this audit.
+
+Each direct Cosmos consumer must be one of:
+
+1. converted so normal application behavior follows the selected document provider
+2. retained as the Cosmos implementation behind a provider-neutral abstraction
+3. explicitly documented as intentionally Cosmos-only infrastructure
+4. removed/deferred if obsolete
+
+Nothing is allowed to remain Cosmos-bound merely because it was missed by the migration work.
 
 This card is a prerequisite for Mongo dev cutover and Card 7 validation.
 
 ## Why this must happen before cutover
 
-The generic repository path can now select Mongo by logical database, but several utility repositories still connect directly to the consolidated Cosmos container.
+The generic repository path can now select Mongo by logical database, but production CloudStorage still contains direct Cosmos consumers.
 
-If a logical database is switched to Mongo while one of these utilities remains Cosmos-only, the application can become internally split-brained:
+If a logical database is switched to Mongo while one of those code paths still reads or mutates the Cosmos copy, the application can become internally split-brained:
 
 - normal repository CRUD reads/writes Mongo
-- utility queries still read Cosmos
-- utility patch/update operations still mutate Cosmos
-- users can observe stale or contradictory entity state depending on which code path served the request
+- utility/query paths may still read Cosmos
+- patch/update paths may still mutate Cosmos
+- application behavior can vary depending on which code path served the request
 
-For classes that operate on the same entities, direct Cosmos access is therefore not a harmless migration island. They must either become provider-neutral or be proven not to participate in a Mongo-enabled logical database.
+Even direct Cosmos consumers that do not touch shared first-class entities need an explicit classification so we know whether they are legitimate provider implementations or accidental application coupling.
 
-## Initial inventory
+## Current SDK-reference audit backbone
 
-### Must become provider-neutral before Mongo cutover
+A repo-wide search for `Microsoft.Azure.Cosmos` currently identifies production references including:
 
-#### `EntityUtilsRepository`
+- `OperationResponse.cs`
+- `Storage/CosmosClientProvider.cs`
+- `Interfaces/ICosmosClientProvider.cs`
+- `StorageProviders/CosmosDocumentCollection.cs`
+- `StorageProviders/CosmosDBStorage.cs`
+- `Storage/DocumentDBRepoBase.cs`
+- `Storage/DocumentMigrationService.cs`
+- `Storage/StorageUtils.cs`
+- `Storage/EntityListItemRepo.cs`
+- `Storage/EntityUtilsRepository.cs`
+- `Storage/EntityPreparationCandidateRepository.cs`
+- `Storage/CosmosSyncRepository.cs`
 
-Directly owns a Cosmos `Container` and performs cross-entity queries, raw document reads, and partial entity updates/patches. It operates on the same entity records managed by normal repositories.
+Package/project references and test-only Cosmos usages are tracked separately from production behavior.
 
-Representative capabilities include:
+This SDK search is the starting inventory, not the final inventory. The audit must also search for indirect Cosmos-specific types and operations such as `QueryDefinition`, `PatchOperation`, `Container`, `CosmosClient`, `FeedIterator`, `GetItemQueryIterator`, and direct database/container management.
 
-- get entity summaries/core records by `EntityType` and organization
-- readiness/checklist candidate queries
-- status-based candidate queries
-- load entity by ID
-- patch status/master status and other selected fields
-- cache invalidation, dependency and RAG-related follow-up around those mutations
+## Known application-facing consumers that must become provider-neutral
 
-This is a headline acceptance case for this card.
+### `EntityUtilsRepository`
 
-#### `EntityPreparationCandidateRepository`
+Directly owns a Cosmos `Container` and performs cross-entity queries, raw document reads, and partial entity updates/patches over the same records managed by normal repositories.
 
-Directly owns a Cosmos `Container` and performs cross-entity summary/candidate queries over the same first-class entities, including readiness/production-ready state.
+Representative capabilities include entity summaries, readiness/checklist candidates, status queries, load-by-ID, selected-field patches, cache invalidation, dependency handling, and RAG-related follow-up.
 
-These reads must see the same provider that normal entity repositories use.
+### `EntityPreparationCandidateRepository`
 
-#### `EntityListItemRepo<TEntity>`
+Directly owns a Cosmos `Container` and performs candidate/summary queries over the same first-class entities, including readiness and production-ready state.
 
-Although it derives from `DocumentDBRepoBase<TEntity>`, its list/header/category paths bypass the provider-neutral repository APIs and execute raw Cosmos `QueryDefinition` queries through `GetContainerAsync()`.
+### `EntityListItemRepo<TEntity>`
 
-Those paths must be rewritten to provider-neutral typed/projection queries or registered semantic query operations.
+Although it derives from `DocumentDBRepoBase<TEntity>`, list/header/category paths bypass provider-neutral repository APIs and execute raw Cosmos queries through `GetContainerAsync()`.
 
-#### `StorageUtils`
+### `StorageUtils`
 
 Directly owns Cosmos connectivity and performs shared-entity reads and mutations including key lookup, ratings, visibility/public-state changes, and patch-style updates.
 
-Any methods that operate on entities participating in Mongo cutover must follow the selected provider.
+### `CosmosSyncRepository`
 
-### Intentional Cosmos-aware infrastructure
+Must be fully classified method-by-method. Any normal application entity behavior must follow provider selection. Truly Cosmos-specific synchronization/bootstrap behavior may remain explicitly Cosmos-aware.
 
-The following are not targets merely because they reference the Cosmos SDK:
+## Expected intentional Cosmos-aware infrastructure
+
+The following may remain Cosmos-specific where they are clearly acting as Cosmos provider/infrastructure implementations rather than normal application data access:
 
 - `CosmosDBStorage<TEntity>`
 - `CosmosDocumentCollection`
 - `CosmosClientProvider` / `ICosmosClientProvider`
 - Cosmos source side of `DocumentMigrationService`
-- explicit Cosmos database/container/security/resource-token management
+- explicit Cosmos database/container management
+- explicit Cosmos users/permissions/resource-token operations
+- Cosmos-specific constructors or compatibility surfaces in otherwise provider-neutral result types, such as `OperationResponse`, where required for the Cosmos provider
 
-These are provider implementations or explicit Cosmos operations and may remain Cosmos-aware.
-
-### Requires classification
-
-`CosmosSyncRepository` and any other direct Cosmos consumer found by the audit must be classified as one of:
-
-1. shared-entity application behavior that must become provider-neutral
-2. migration/bootstrap infrastructure that intentionally remains Cosmos-specific
-3. obsolete/dead code that can be removed separately
+These still receive an explicit audit disposition. They are not excluded from Card 6B simply because we expect them to remain.
 
 ## Design direction
 
-Do not create Mongo-specific copies of these repositories.
+Do not create Mongo-specific copies of application repositories.
 
 Prefer extending provider-neutral capabilities at the smallest reusable seam:
 
@@ -87,38 +100,44 @@ Prefer extending provider-neutral capabilities at the smallest reusable seam:
 - provider-neutral partial-update/patch capability where read-modify-replace would be unsafe or unnecessarily expensive
 - raw provider-neutral document access only when a typed contract is genuinely impractical
 
-Both Cosmos and Mongo implementations must preserve the existing public repository interfaces so consuming application code does not need provider-specific branches.
+Both Cosmos and Mongo implementations must preserve existing public application-facing repository interfaces so consuming code does not need provider-specific branches.
 
 ## Tasks
 
-- [ ] Complete a repo-wide inventory of production CloudStorage code that directly references `Microsoft.Azure.Cosmos`, `CosmosClient`, `Container`, `QueryDefinition`, `PatchOperation`, or `GetItemQueryIterator`.
-- [ ] Classify every direct Cosmos consumer as shared-entity behavior, intentional Cosmos infrastructure, or obsolete/deferred.
-- [ ] Refactor `EntityUtilsRepository` so all shared-entity reads and writes follow the selected document provider.
+- [ ] Complete a repo-wide inventory of every production CloudStorage direct Cosmos reference, not only shared-entity repositories.
+- [ ] Search by SDK namespace and Cosmos-specific types/operations so indirect direct-access paths are not missed.
+- [ ] Create a disposition table for every production Cosmos consumer: provider-neutralize, Cosmos provider implementation, intentional Cosmos-only infrastructure, or obsolete/deferred.
+- [ ] Refactor `EntityUtilsRepository` so all normal application reads and writes follow the selected document provider.
 - [ ] Refactor `EntityPreparationCandidateRepository` so candidate/summary reads follow the selected document provider.
 - [ ] Refactor `EntityListItemRepo<TEntity>` raw Cosmos list/header/category queries to provider-neutral query capabilities.
-- [ ] Refactor the shared-entity portions of `StorageUtils` to follow the selected provider.
-- [ ] Classify and address `CosmosSyncRepository`.
-- [ ] Add provider-neutral capability for partial field updates if required by `EntityUtilsRepository`/`StorageUtils` semantics.
-- [ ] Add focused Mongo tests for every converted utility path.
-- [ ] Add Cosmos regression coverage where existing tests do not already protect behavior.
-- [ ] Verify cache invalidation and side effects remain correct after provider-neutralization.
-- [ ] Search consuming solution repositories for direct Cosmos access to the same migrated document databases and capture any additional blockers before dev cutover.
+- [ ] Refactor the application-facing portions of `StorageUtils` to follow the selected provider.
+- [ ] Classify and address `CosmosSyncRepository` method-by-method.
+- [ ] Audit remaining Cosmos references in `DocumentDBRepoBase<TEntity>` and ensure Mongo-selected normal operations never fall through to direct Cosmos access.
+- [ ] Audit `OperationResponse` and similar compatibility types so Cosmos SDK coupling does not leak into normal application contracts unnecessarily.
+- [ ] Add provider-neutral partial-update capability if required by existing patch semantics.
+- [ ] Add focused Mongo tests for every converted application-facing path.
+- [ ] Preserve/add Cosmos regression coverage for converted paths.
+- [ ] Verify cache invalidation, dependency updates, RAG side effects, revision behavior, and other workflow semantics remain correct after provider-neutralization.
+- [ ] Search consuming solution repositories for direct Cosmos access to the same document databases and capture additional cutover blockers.
+- [ ] Re-run the production Cosmos-reference audit at completion and verify every remaining reference has a documented intentional disposition.
 
 ## Acceptance criteria
 
-- When a logical document database selects Mongo, no CloudStorage shared-entity utility reads or mutates the corresponding Cosmos copy of those entities.
+- Every production Cosmos reference in `LagoVista.CloudStorage` is inventoried and explicitly classified.
+- When a logical document database selects Mongo, no normal CloudStorage application path silently reads or mutates the Cosmos copy instead.
 - `EntityUtilsRepository` reads and mutations operate successfully against Mongo for a Mongo-selected logical database.
 - `EntityPreparationCandidateRepository` returns Mongo-backed candidate/summary data for a Mongo-selected logical database.
 - `EntityListItemRepo<TEntity>` list/header/category behavior works without direct Cosmos container access when Mongo is selected.
-- Shared-entity `StorageUtils` operations work against the selected provider.
-- Existing public repository/utility interfaces remain provider-neutral.
+- Application-facing `StorageUtils` operations work against the selected provider.
+- `CosmosSyncRepository` has no unclassified provider bypasses.
+- Remaining Cosmos SDK references are intentional provider, migration, security, or platform infrastructure and are documented as such.
+- Existing public application-facing interfaces remain provider-neutral.
 - Cosmos remains functional when Cosmos is selected.
-- Intentional Cosmos-only infrastructure is explicitly documented rather than accidentally mixed with normal entity behavior.
-- Card 7 dev cutover does not begin until this card's shared-entity blockers are complete.
+- Card 7 dev cutover does not begin until this audit is complete and all application-facing blockers are resolved.
 
 ## Out of scope
 
-- Removing the Cosmos SDK from CloudStorage.
-- Replacing Cosmos migration source access.
+- Removing the Cosmos SDK merely for aesthetic/package cleanup.
+- Replacing Cosmos as the source for Cosmos-to-Mongo migration.
 - Reimplementing Cosmos-specific users/permissions/resource-token behavior in Mongo unless a real application requirement demands it.
 - Production cutover.
