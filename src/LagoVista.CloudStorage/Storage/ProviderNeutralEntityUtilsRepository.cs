@@ -31,7 +31,7 @@ namespace LagoVista.CloudStorage.Storage
             IEntityDetailResponseFactory entityDetailResponseFactory,
             IDependencyManager dependencyManager,
             ICacheProvider cacheProvider,
-            ILogger logger,
+            IAdminLogger logger,
             IRagIndexingServices ragIndexingServices,
             IEntityListCacheInvalidator entityListCacheInvalidator)
             : base(options, cosmosClientProvider, entityDetailResponseFactory, dependencyManager, cacheProvider, logger, ragIndexingServices, entityListCacheInvalidator)
