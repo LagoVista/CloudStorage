@@ -31,6 +31,15 @@ namespace LagoVista.CloudStorage.StorageProviders
                     });
                 }
 
+                if (!BsonClassMap.IsClassMapRegistered(typeof(Label)))
+                {
+                    BsonClassMap.RegisterClassMap<Label>(classMap =>
+                    {
+                        classMap.AutoMap();
+                        classMap.SetIgnoreExtraElements(true);
+                    });
+                }
+
                 BsonSerializer.RegisterSerializer(typeof(LagoVistaKey), new LagoVistaKeyBsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(NormalizedId32), new NormalizedId32BsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(UtcTimestamp), new UtcTimestampBsonSerializer());
