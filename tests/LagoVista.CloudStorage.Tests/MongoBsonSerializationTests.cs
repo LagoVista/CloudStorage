@@ -10,6 +10,32 @@ namespace LagoVista.CloudStorage.Tests
     public class MongoBsonSerializationTests
     {
         [Test]
+        public void LagoVistaKey_SerializesAsStringAndRoundTrips()
+        {
+            var expected = LagoVistaKey.Parse("alpha-key");
+            var source = new LagoVistaKeyDocument { Key = expected };
+
+            var bson = source.ToBsonDocument();
+            Assert.That(bson[nameof(LagoVistaKeyDocument.Key)].BsonType, Is.EqualTo(BsonType.String));
+            Assert.That(bson[nameof(LagoVistaKeyDocument.Key)].AsString, Is.EqualTo(expected.Value));
+
+            var roundTrip = BsonSerializer.Deserialize<LagoVistaKeyDocument>(bson);
+            Assert.That(roundTrip.Key, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void LagoVistaKey_EmptyValueSerializesAsNullAndRoundTrips()
+        {
+            var source = new LagoVistaKeyDocument();
+
+            var bson = source.ToBsonDocument();
+            Assert.That(bson[nameof(LagoVistaKeyDocument.Key)].BsonType, Is.EqualTo(BsonType.Null));
+
+            var roundTrip = BsonSerializer.Deserialize<LagoVistaKeyDocument>(bson);
+            Assert.That(String.IsNullOrWhiteSpace(roundTrip.Key.Value), Is.True);
+        }
+
+        [Test]
         public void NormalizedId32_SerializesAsStringAndRoundTrips()
         {
             var expected = NormalizedId32.Parse("F47AC10B58CC4372A5670E02B2C3D479");
@@ -57,6 +83,11 @@ namespace LagoVista.CloudStorage.Tests
 
             var result = BsonSerializer.Deserialize<UtcTimestampDocument>(bson);
             Assert.That(result.Timestamp, Is.EqualTo(UtcTimestamp.FromDateTime(instant)));
+        }
+
+        private sealed class LagoVistaKeyDocument
+        {
+            public LagoVistaKey Key { get; set; }
         }
 
         private sealed class NormalizedIdDocument
