@@ -41,8 +41,26 @@ namespace LagoVista.CloudStorage.Interfaces
         public List<DocumentMigrationRouteStatistics> Routes { get; set; } = new List<DocumentMigrationRouteStatistics>();
     }
 
+    public sealed class DocumentMigrationValidationStatistics
+    {
+        public string EntityType { get; set; }
+        public string CollectionName { get; set; }
+        public long SourceCount { get; set; }
+        public long DestinationCount { get; set; }
+        public bool Matches => SourceCount == DestinationCount;
+    }
+
+    public sealed class CosmosToMongoValidationResult
+    {
+        public long SourceCount { get; set; }
+        public long DestinationCount { get; set; }
+        public bool Matches { get; set; }
+        public List<DocumentMigrationValidationStatistics> Routes { get; set; } = new List<DocumentMigrationValidationStatistics>();
+    }
+
     public interface IDocumentMigrationService
     {
         Task<CosmosToMongoMigrationResult> MigrateCosmosToMongoAsync(CosmosToMongoMigrationRequest request, CancellationToken cancellationToken = default);
+        Task<CosmosToMongoValidationResult> ValidateCosmosToMongoAsync(CosmosToMongoMigrationRequest request, CancellationToken cancellationToken = default);
     }
 }
