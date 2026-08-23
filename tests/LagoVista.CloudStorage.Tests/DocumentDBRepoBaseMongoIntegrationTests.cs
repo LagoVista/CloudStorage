@@ -3,6 +3,8 @@ using LagoVista.CloudStorage.Utils;
 using LagoVista.Core.Attributes;
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
+using LagoVista.IoT.Logging.Loggers;
+using LagoVista.IoT.Logging.Utils;
 using MongoDB.Driver;
 using NUnit.Framework;
 using System;
@@ -140,7 +142,7 @@ namespace LagoVista.CloudStorage.Tests
 
         private sealed class TestRepository : DocumentDBRepoBase<TestEntity>
         {
-            public TestRepository(string endpoint, string sharedKey, string dbName) : base(endpoint, sharedKey, dbName, logger: null)
+            public TestRepository(string endpoint, string sharedKey, string dbName) : base(endpoint, sharedKey, dbName, new AdminLogger(new ConsoleLogWriter()))
             {
             }
 
@@ -164,12 +166,12 @@ namespace LagoVista.CloudStorage.Tests
                 return DeleteDocumentAsync(id, softDelete);
             }
 
-            public Task<ListResponse<TestEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TestEntity, bool>> query, ListRequest listRequest)
+            public new Task<ListResponse<TestEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TestEntity, bool>> query, ListRequest listRequest)
             {
                 return base.QueryAsync(query, listRequest);
             }
 
-            public Task<ListResponse<TestEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TestEntity, bool>> query, System.Linq.Expressions.Expression<Func<TestEntity, string>> sort, ListRequest listRequest)
+            public new Task<ListResponse<TestEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TestEntity, bool>> query, System.Linq.Expressions.Expression<Func<TestEntity, string>> sort, ListRequest listRequest)
             {
                 return base.QueryAsync(query, sort, listRequest);
             }
