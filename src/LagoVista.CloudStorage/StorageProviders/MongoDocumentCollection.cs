@@ -135,13 +135,24 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         private async Task<IEnumerable<TResult>> QueryEntityUtilsDocumentsAsync<TResult>(DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
         {
-            var filter = request.QueryType == DocumentQueryType.EntityUtilsDocumentById
-                ? new BsonDocument("_id", request.GetRequired<string>("entityId"))
-                : new BsonDocument
+            BsonDocument filter;
+            if (request.QueryType == DocumentQueryType.EntityUtilsDocumentById)
+            {
+                filter = new BsonDocument
+                {
+                    { "_id", request.GetRequired<string>("entityId") },
+                    { "EntityType", request.GetRequired<string>("entityType") },
+                    { "OwnerOrganization.Id", request.GetRequired<string>("orgId") }
+                };
+            }
+            else
+            {
+                filter = new BsonDocument
                 {
                     { "EntityType", request.GetRequired<string>("entityType") },
                     { "OwnerOrganization.Id", request.GetRequired<string>("orgId") }
                 };
+            }
 
             var find = GetBsonCollection().Find(filter);
             if (request.QueryType == DocumentQueryType.EntityUtilsDocumentsByType)
