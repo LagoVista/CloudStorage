@@ -20,8 +20,8 @@ $work = @(
     },
     [PSCustomObject]@{
         Class = "EntityUtilsRepository"
-        Status = "NEXT"
-        Parity = "-"
+        Status = "READ SLICE READY"
+        Parity = "0/5 reads"
         Test = ".\test-EntityUtilsRepository.ps1"
     },
     [PSCustomObject]@{
@@ -41,10 +41,9 @@ $work = @(
 $work | Format-Table Class, Status, Parity, Test -AutoSize
 
 Write-Host ""
-Write-Host "COMPLETE        = provider-neutral conversion implemented and parity coverage green."
-Write-Host "READY TO VERIFY = conversion and parity tests are in place; run the class test script."
-Write-Host "NEXT            = next Card 6B conversion target."
-Write-Host "PENDING         = not yet converted / parity-tested."
+Write-Host "COMPLETE         = provider-neutral conversion implemented and parity coverage green."
+Write-Host "READ SLICE READY = a coherent provider-neutral slice is ready for its focused parity run; the class is not complete yet."
+Write-Host "PENDING          = not yet converted / parity-tested."
 Write-Host ""
 Write-Host "Run the script shown in the Test column when you want to validate one class."
 Write-Host "Run .\run-storage-lab-baseline.ps1 only when you want the full authoritative milestone baseline."
