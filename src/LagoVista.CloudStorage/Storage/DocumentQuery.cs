@@ -25,7 +25,21 @@ namespace LagoVista.CloudStorage.DocumentDB
         EntityListHeaders,
 
         /// <summary>Returns distinct category headers visible to the organization under the standard entity-list filters.</summary>
-        EntityListCategories
+        EntityListCategories,
+
+        /// <summary>Returns raw entities of one type owned by an organization, ordered by name.</summary>
+        EntityUtilsDocumentsByType,
+
+        /// <summary>Returns one raw entity document by ID.</summary>
+        EntityUtilsDocumentById,
+
+        /// <summary>Counts entities of one type owned by an organization.</summary>
+        EntityUtilsCountByType
+    }
+
+    public sealed class DocumentCountResult
+    {
+        public int Count { get; set; }
     }
 
     public sealed class DocumentQueryParameter
