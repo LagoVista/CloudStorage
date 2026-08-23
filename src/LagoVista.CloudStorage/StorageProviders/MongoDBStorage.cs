@@ -87,7 +87,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var items = await GetCollection<TEntity>().Find(CreateEntityFilter(query)).Sort(Builders<TEntity>.Sort.Descending(orderBy)).Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
+                var items = await GetCollection<TEntity>().Find(CreateEntityFilter(query)).Sort(Builders<TEntity>.Sort.Descending(ToObjectExpression(orderBy))).Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntity>.Create(listRequest, items);
             }
             catch (Exception ex)
@@ -177,7 +177,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             try
             {
                 var find = GetCollection<TEntity>().Find(CreateEntityFilter(query));
-                if (sort != null) find = find.Sort(Builders<TEntity>.Sort.Ascending(sort));
+                if (sort != null) find = find.Sort(Builders<TEntity>.Sort.Ascending(ToObjectExpression(sort)));
                 var items = await find.Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntity>.Create(listRequest, items);
             }
@@ -192,7 +192,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             try
             {
                 var find = GetCollection<TEntity>().Find(CreateEntityFilter(query));
-                if (sort != null) find = find.Sort(Builders<TEntity>.Sort.Descending(sort));
+                if (sort != null) find = find.Sort(Builders<TEntity>.Sort.Descending(ToObjectExpression(sort)));
                 var items = await find.Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntity>.Create(listRequest, items);
             }
@@ -207,7 +207,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             try
             {
                 var find = GetCollection<TEntityFactory>().Find(CreateFactoryFilter(query));
-                if (sort != null) find = find.Sort(Builders<TEntityFactory>.Sort.Ascending(sort));
+                if (sort != null) find = find.Sort(Builders<TEntityFactory>.Sort.Ascending(ToObjectExpression(sort)));
                 var items = await find.Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntitySummary>.Create(listRequest, items.Select(item => item.CreateSummary() as TEntitySummary));
             }
@@ -222,7 +222,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             try
             {
                 var find = GetCollection<TEntityFactory>().Find(CreateFactoryFilter(query));
-                if (sort != null) find = find.Sort(Builders<TEntityFactory>.Sort.Descending(sort));
+                if (sort != null) find = find.Sort(Builders<TEntityFactory>.Sort.Descending(ToObjectExpression(sort)));
                 var items = await find.Skip(GetSkip(listRequest)).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
                 return ListResponse<TEntitySummary>.Create(listRequest, items.Select(item => item.CreateSummary() as TEntitySummary));
             }
@@ -313,6 +313,13 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
             return Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize;
+        }
+
+        private static Expression<Func<TDocument, object>> ToObjectExpression<TDocument, TValue>(Expression<Func<TDocument, TValue>> expression)
+        {
+            if (expression == null) return null;
+            var body = expression.Body.Type.IsValueType ? Expression.Convert(expression.Body, typeof(object)) : expression.Body;
+            return Expression.Lambda<Func<TDocument, object>>(body, expression.Parameters);
         }
 
         private void PrepareItem(TEntity item)
