@@ -8,30 +8,30 @@ namespace LagoVista.CloudStorage.Tests
     public class DocumentCollectionNameResolverTests
     {
         [Test]
-        public void Resolve_WithShareableStorage_ReturnsSharedEntitiesCollection()
+        public void Resolve_WithShareableStorage_ReturnsEntitiesCollection()
         {
             var resolver = new DocumentCollectionNameResolver();
             var collection = resolver.Resolve("TestDb", typeof(ShareableEntity));
 
-            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.SharedEntitiesCollectionName));
+            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.EntitiesCollectionName));
         }
 
         [Test]
-        public void Resolve_WithNoStorageAttribute_ReturnsOrganizationEntitiesCollection()
+        public void Resolve_WithNoStorageAttribute_ReturnsEntitiesCollection()
         {
             var resolver = new DocumentCollectionNameResolver();
             var collection = resolver.Resolve("TestDb", typeof(OrganizationEntity));
 
-            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.OrganizationEntitiesCollectionName));
+            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.EntitiesCollectionName));
         }
 
         [Test]
-        public void Resolve_WithDedicatedStorageCollection_ReturnsEntityTypeName()
+        public void Resolve_WithDedicatedStorageCollection_ReturnsEntitiesCollection()
         {
             var resolver = new DocumentCollectionNameResolver();
             var collection = resolver.Resolve("TestDb", typeof(DedicatedEntity));
 
-            Assert.That(collection, Is.EqualTo(nameof(DedicatedEntity)));
+            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.EntitiesCollectionName));
         }
 
         [Test]
@@ -44,52 +44,23 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
-        public void Resolve_WithConflictingStorageAttributes_Throws()
-        {
-            var resolver = new DocumentCollectionNameResolver();
-
-            var exception = Assert.Throws<InvalidOperationException>(() => resolver.Resolve("TestDb", typeof(InvalidStorageEntity)));
-            Assert.That(exception.Message, Does.Contain(nameof(InvalidStorageEntity)));
-        }
-
-        [Test]
-        public void TryResolve_WithLoadedShareableEntity_UsesSharedEntitiesCollection()
+        public void TryResolve_WithLoadedEntity_UsesEntitiesCollection()
         {
             var resolver = new DocumentCollectionNameResolver();
             var resolved = resolver.TryResolve("TestDb", nameof(ShareableMigrationEntity), out var collection);
 
             Assert.That(resolved, Is.True);
-            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.SharedEntitiesCollectionName));
+            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.EntitiesCollectionName));
         }
 
         [Test]
-        public void TryResolve_WithLoadedOrganizationEntity_UsesOrganizationEntitiesCollection()
-        {
-            var resolver = new DocumentCollectionNameResolver();
-            var resolved = resolver.TryResolve("TestDb", nameof(OrganizationMigrationEntity), out var collection);
-
-            Assert.That(resolved, Is.True);
-            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.OrganizationEntitiesCollectionName));
-        }
-
-        [Test]
-        public void TryResolve_WithLoadedDedicatedEntity_UsesEntityTypeName()
-        {
-            var resolver = new DocumentCollectionNameResolver();
-            var resolved = resolver.TryResolve("TestDb", nameof(DedicatedMigrationEntity), out var collection);
-
-            Assert.That(resolved, Is.True);
-            Assert.That(collection, Is.EqualTo(nameof(DedicatedMigrationEntity)));
-        }
-
-        [Test]
-        public void TryResolve_WithUnknownEntityType_ReturnsOrganizationFallback()
+        public void TryResolve_WithUnknownEntityType_ReturnsEntitiesFallback()
         {
             var resolver = new DocumentCollectionNameResolver();
             var resolved = resolver.TryResolve("TestDb", "DefinitelyNotARealEntityType", out var collection);
 
             Assert.That(resolved, Is.False);
-            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.OrganizationEntitiesCollectionName));
+            Assert.That(collection, Is.EqualTo(DocumentCollectionNameResolver.EntitiesCollectionName));
         }
 
         [Test]
@@ -110,15 +81,6 @@ namespace LagoVista.CloudStorage.Tests
         private sealed class DedicatedEntity { }
 
         [ShareableStorage]
-        [DedicatedStorageCollection]
-        private sealed class InvalidStorageEntity { }
-
-        [ShareableStorage]
         private sealed class ShareableMigrationEntity { }
-
-        private sealed class OrganizationMigrationEntity { }
-
-        [DedicatedStorageCollection]
-        private sealed class DedicatedMigrationEntity { }
     }
 }
