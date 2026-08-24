@@ -1,15 +1,11 @@
 using LagoVista.CloudStorage.DocumentDB;
-using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
-using LagoVista.Core.Validation;
-using LagoVista.IoT.Logging.Loggers;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,96 +15,58 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.StorageProviders
 {
+    /// <summary>
+    /// Cosmos-specific document persistence. Common repository concerns such as validation,
+    /// caching, dependency processing, audit preparation, and cache invalidation stay above
+    /// this boundary so they execute identically regardless of the selected provider.
+    /// </summary>
     public sealed class CosmosDocumentStorageClient : ICosmosDocumentStorageClient
     {
         private readonly ICosmosConnectionSettings _settings;
-        private readonly IAdminLogger _logger;
-        private readonly ICacheProvider _cacheProvider;
-        private readonly IDependencyManager _dependencyManager;
         private readonly ICosmosClientProvider _cosmosClientProvider;
 
-        public CosmosDocumentStorageClient(
-            ICosmosConnectionSettings settings,
-            IAdminLogger logger,
-            ICacheProvider cacheProvider,
-            IDependencyManager dependencyManager,
-            ICosmosClientProvider cosmosClientProvider)
+        public CosmosDocumentStorageClient(ICosmosConnectionSettings settings, ICosmosClientProvider cosmosClientProvider)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _cacheProvider = cacheProvider;
-            _dependencyManager = dependencyManager;
             _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
         }
 
         public async Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            Validate(item);
-            Prepare(item);
+            if (item == null) throw new ArgumentNullException(nameof(item));
             var response = await GetContainer().CreateItemAsync(item).ConfigureAwait(false);
-            if (_cacheProvider != null) await _cacheProvider.AddAsync(GetCacheKey<TEntity>(item.Id), JsonConvert.SerializeObject(item)).ConfigureAwait(false);
             return new OperationResponse<TEntity>(response);
         }
 
         public async Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            Validate(item);
-            Prepare(item);
-
-            if (_dependencyManager != null)
-            {
-                var existing = await GetDocumentAsync<TEntity>(item.Id, false).ConfigureAwait(false);
-                if (existing != null && !String.Equals(existing.Name, item.Name, StringComparison.Ordinal))
-                {
-                    var dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item).ConfigureAwait(false);
-                    if (dependencyResult.IsInUse)
-                    {
-                        foreach (var dependent in dependencyResult.DependentObjects)
-                            await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, dependent.Id, dependent.RecordType, item.Name).ConfigureAwait(false);
-                    }
-                    await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, item.Name).ConfigureAwait(false);
-                }
-            }
-
+            if (item == null) throw new ArgumentNullException(nameof(item));
             var response = await GetContainer().UpsertItemAsync(item).ConfigureAwait(false);
-            if (_cacheProvider != null) await _cacheProvider.AddAsync(GetCacheKey<TEntity>(item.Id), JsonConvert.SerializeObject(item)).ConfigureAwait(false);
             return new OperationResponse<TEntity>(response);
         }
 
-        public async Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
-            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
-        {
-            if (_cacheProvider != null)
-            {
-                var cached = await _cacheProvider.GetAsync(GetCacheKey<TEntity>(id)).ConfigureAwait(false);
-                if (!String.IsNullOrWhiteSpace(cached))
-                {
-                    var entity = JsonConvert.DeserializeObject<TEntity>(cached);
-                    if (entity != null && String.Equals(entity.EntityType, typeof(TEntity).Name, StringComparison.Ordinal)) return entity;
-                    await _cacheProvider.RemoveAsync(GetCacheKey<TEntity>(id)).ConfigureAwait(false);
-                }
-            }
-
-            var entityFromStore = await GetDocumentAsync<TEntity>(id, null, throwOnNotFound).ConfigureAwait(false);
-            if (entityFromStore != null && _cacheProvider != null)
-                await _cacheProvider.AddAsync(GetCacheKey<TEntity>(id), JsonConvert.SerializeObject(entityFromStore)).ConfigureAwait(false);
-            return entityFromStore;
-        }
+        public Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity =>
+            GetDocumentAsync<TEntity>(id, null, throwOnNotFound);
 
         public async Task<TEntity> GetDocumentAsync<TEntity>(string id, string partitionKey, bool throwOnNotFound = true)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             try
             {
-                var response = await GetContainer().ReadItemAsync<TEntity>(id, String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
+                var response = await GetContainer().ReadItemAsync<TEntity>(
+                    id,
+                    String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
+
                 var entity = response.Resource;
                 if (entity == null || !String.Equals(entity.EntityType, typeof(TEntity).Name, StringComparison.Ordinal))
                 {
                     if (throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
                     return null;
                 }
+
                 return entity;
             }
             catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -125,27 +83,35 @@ namespace LagoVista.CloudStorage.StorageProviders
         public async Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id, string partitionKey)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            var document = await GetDocumentAsync<TEntity>(id, partitionKey, true).ConfigureAwait(false);
-            if (_dependencyManager != null)
+            try
             {
-                var dependencies = await _dependencyManager.CheckForDependenciesAsync(document).ConfigureAwait(false);
-                if (dependencies.IsInUse) throw new InUseException(dependencies);
+                var response = await GetContainer().DeleteItemAsync<TEntity>(
+                    id,
+                    String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
+                return new OperationResponse<TEntity>(response);
             }
-            if (_cacheProvider != null) await _cacheProvider.RemoveAsync(GetCacheKey<TEntity>(id)).ConfigureAwait(false);
-            var response = await GetContainer().DeleteItemAsync<TEntity>(id, String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
-            return new OperationResponse<TEntity>(response);
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new RecordNotFoundException(typeof(TEntity).Name, id);
+            }
         }
 
         public async Task<IEnumerable<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
+
             var items = new List<TEntity>();
-            var linqQuery = GetContainer().GetItemLinqQueryable<TEntity>().Where(query).Where(item => item.EntityType == typeof(TEntity).Name);
+            var linqQuery = GetContainer().GetItemLinqQueryable<TEntity>()
+                .Where(query)
+                .Where(item => item.EntityType == typeof(TEntity).Name);
+
             using (var iterator = linqQuery.ToFeedIterator())
             {
-                while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+                while (iterator.HasMoreResults)
+                    items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
             }
+
             return items;
         }
 
@@ -154,58 +120,38 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
-            try
+
+            var items = new List<TEntity>();
+            var linqQuery = GetContainer().GetItemLinqQueryable<TEntity>()
+                .Where(query)
+                .Where(item => item.EntityType == typeof(TEntity).Name)
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Take(listRequest.PageSize);
+
+            using (var iterator = linqQuery.ToFeedIterator())
             {
-                var items = new List<TEntity>();
-                var linqQuery = GetContainer().GetItemLinqQueryable<TEntity>()
-                    .Where(query)
-                    .Where(item => item.EntityType == typeof(TEntity).Name)
-                    .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
-                    .Take(listRequest.PageSize);
-                using (var iterator = linqQuery.ToFeedIterator())
-                {
-                    while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
-                }
-                return ListResponse<TEntity>.Create(listRequest, items);
+                while (iterator.HasMoreResults)
+                    items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
             }
-            catch (Exception ex)
-            {
-                _logger.AddException(nameof(CosmosDocumentStorageClient), ex);
-                var response = ListResponse<TEntity>.Create(new List<TEntity>());
-                response.Errors.Add(new ErrorMessage(ex.Message));
-                return response;
-            }
+
+            return ListResponse<TEntity>.Create(listRequest, items);
         }
 
         public async Task<IEnumerable<TResult>> QueryKnownAsync<TResult>(string entityType, DocumentQueryRequest request, CancellationToken cancellationToken = default)
             where TResult : class
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
+
             var iterator = GetContainer().GetItemQueryIterator<TResult>(CreateKnownQuery(request));
             var items = new List<TResult>();
-            while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
+            while (iterator.HasMoreResults)
+                items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
             return items;
         }
 
-        private Container GetContainer() => _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey).GetContainer(_settings.DatabaseName, $"{_settings.DatabaseName}_Collections");
-
-        private string GetCacheKey<TEntity>(string id) => $"{_settings.DatabaseName}-{typeof(TEntity).Name}-{id}".ToLowerInvariant();
-
-        private void Prepare<TEntity>(TEntity item) where TEntity : INoSQLEntity
-        {
-            item.DatabaseName = _settings.DatabaseName;
-            item.EntityType = typeof(TEntity).Name;
-        }
-
-        private static void Validate<TEntity>(TEntity item)
-        {
-            if (item == null) throw new ArgumentNullException(nameof(item));
-            if (item is IValidateable validateable)
-            {
-                var result = Validator.Validate(validateable);
-                if (!result.Successful) throw new ValidationException("Invalid Data.", result.Errors);
-            }
-        }
+        private Container GetContainer() =>
+            _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey)
+                .GetContainer(_settings.DatabaseName, $"{_settings.DatabaseName}_Collections");
 
         private static QueryDefinition CreateKnownQuery(DocumentQueryRequest request)
         {
