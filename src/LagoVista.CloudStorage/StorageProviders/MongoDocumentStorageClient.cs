@@ -278,6 +278,6 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         private static IEnumerable<TResult> Deserialize<TResult>(IEnumerable<BsonDocument> documents) where TResult : class =>
-            documents.Select(BsonSerializer.Deserialize<TResult>).ToList();
+            documents.Select(document => BsonSerializer.Deserialize<TResult>(document)).ToList();
     }
 }
