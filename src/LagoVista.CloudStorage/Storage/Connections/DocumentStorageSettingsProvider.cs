@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.DocumentDB;
+using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System;
 
