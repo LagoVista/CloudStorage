@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Storage;
+using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;

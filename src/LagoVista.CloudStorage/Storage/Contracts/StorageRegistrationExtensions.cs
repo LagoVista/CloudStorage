@@ -1,3 +1,4 @@
+using LagoVista.Core.Interfaces;
 using System;
 using Microsoft.Extensions.DependencyInjection;
 
