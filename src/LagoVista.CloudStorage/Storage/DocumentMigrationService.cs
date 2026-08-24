@@ -28,6 +28,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var result = new CosmosToMongoMigrationResult { DryRun = request.DryRun };
             var sourceCollectionName = String.IsNullOrWhiteSpace(request.SourceCollectionName) ? $"{request.Source.DatabaseName}_Collections" : request.SourceCollectionName;
+            var targetCollectionName = _collectionNameResolver.GetFallback(request.Target.DatabaseName);
             var cosmosClient = _cosmosClientProvider.GetClient(request.Source.Endpoint, request.Source.SharedKey);
             var container = cosmosClient.GetContainer(request.Source.DatabaseName, sourceCollectionName);
             var query = CreateQuery(request.EntityType);
@@ -46,12 +47,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                 {
                     result.DocumentsRead++;
                     var entityType = GetString(sourceDocument, "EntityType") ?? String.Empty;
-                    var routeResolved = _collectionNameResolver.TryResolve(request.Target.DatabaseName, entityType, out var collectionName);
-                    if (!routeResolved) result.UnresolvedRoutes++;
-
-                    var route = GetRoute(result, entityType, collectionName);
+                    var route = GetRoute(result, entityType, targetCollectionName);
                     route.Read++;
-                    if (!routeResolved) route.UnresolvedRoute++;
 
                     if (!DocumentMigrationTransformer.TryTransform(sourceDocument, out var targetDocument))
                     {
@@ -62,10 +59,10 @@ namespace LagoVista.CloudStorage.DocumentDB
                     }
 
                     if (request.DryRun) continue;
-                    if (!documentsByCollection.TryGetValue(collectionName, out var collectionDocuments))
+                    if (!documentsByCollection.TryGetValue(targetCollectionName, out var collectionDocuments))
                     {
                         collectionDocuments = new List<BsonDocument>();
-                        documentsByCollection[collectionName] = collectionDocuments;
+                        documentsByCollection[targetCollectionName] = collectionDocuments;
                     }
 
                     collectionDocuments.Add(targetDocument);
