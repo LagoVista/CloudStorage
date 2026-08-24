@@ -24,18 +24,6 @@ namespace LagoVista.CloudStorage.Storage
     }
 
     /// <summary>
-    /// Minimal record contract for immutable activity records.
-    /// Each concrete record type maps to its own provider table/collection.
-    /// </summary>
-    public interface IActivityRecord
-    {
-        string Id { get; set; }
-        string OrganizationId { get; set; }
-        string Organization { get; set; }
-        DateTime CreationDate { get; set; }
-    }
-
-    /// <summary>
     /// Minimal transaction supplied to an account ledger. The store owns the
     /// authoritative running balance and integrity-chain metadata.
     /// </summary>
