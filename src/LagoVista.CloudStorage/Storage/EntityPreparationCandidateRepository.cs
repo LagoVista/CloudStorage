@@ -20,6 +20,19 @@ namespace LagoVista.CloudStorage.Storage
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
         private readonly ILogger _logger;
 
+        public EntityPreparationCandidateRepository(
+            IDocumentCollectionFactory collectionFactory,
+            IDocumentCollectionNameResolver collectionNameResolver,
+            IDocumentStorageSettingsProvider settingsProvider,
+            ILogger logger)
+        {
+            _collectionFactory = collectionFactory ?? throw new ArgumentNullException(nameof(collectionFactory));
+            _collectionNameResolver = collectionNameResolver ?? throw new ArgumentNullException(nameof(collectionNameResolver));
+            _storageSettings = settingsProvider?.Default ?? throw new ArgumentNullException(nameof(settingsProvider));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        // Compatibility constructor for callers/tests that still supply the legacy connection tuple.
         public EntityPreparationCandidateRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, ILogger logger)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
