@@ -1,5 +1,4 @@
 using LagoVista.CloudStorage.Interfaces;
-using LagoVista.Core.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,64 +8,30 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
     public sealed class DocumentCollectionNameResolver : IDocumentCollectionNameResolver
     {
-        public const string SharedEntitiesCollectionName = "SharedEntities";
-        public const string OrganizationEntitiesCollectionName = "OrganizationEntities";
+        public const string EntitiesCollectionName = "Entities";
 
         public string Resolve(string databaseName, Type entityType, string explicitCollectionName = null)
         {
             if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
             if (!String.IsNullOrWhiteSpace(explicitCollectionName)) return Normalize(explicitCollectionName);
-            if (entityType == null) return GetFallback(databaseName);
-
-            var isShareable = entityType.GetCustomAttribute<ShareableStorageAttribute>(true) != null;
-            var isDedicated = entityType.GetCustomAttribute<DedicatedStorageCollectionAttribute>(true) != null;
-
-            if (isShareable && isDedicated)
-                throw new InvalidOperationException($"Entity type '{entityType.FullName}' cannot use both ShareableStorageAttribute and DedicatedStorageCollectionAttribute.");
-
-            if (isShareable) return SharedEntitiesCollectionName;
-            if (isDedicated) return Normalize(entityType.Name);
-            return OrganizationEntitiesCollectionName;
+            return EntitiesCollectionName;
         }
 
         public bool TryResolve(string databaseName, string entityTypeName, out string collectionName)
         {
             if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
-            if (String.IsNullOrWhiteSpace(entityTypeName))
-            {
-                collectionName = GetFallback(databaseName);
-                return false;
-            }
+            collectionName = EntitiesCollectionName;
 
-            var matches = GetLoadedEntityTypes()
-                .Where(type => String.Equals(type.Name, entityTypeName, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            if (String.IsNullOrWhiteSpace(entityTypeName)) return false;
 
-            if (matches.Count == 0)
-            {
-                collectionName = GetFallback(databaseName);
-                return false;
-            }
-
-            var collections = matches
-                .Select(type => Resolve(databaseName, type))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            if (collections.Count != 1)
-            {
-                collectionName = GetFallback(databaseName);
-                return false;
-            }
-
-            collectionName = collections[0];
-            return true;
+            return GetLoadedEntityTypes()
+                .Any(type => String.Equals(type.Name, entityTypeName, StringComparison.OrdinalIgnoreCase));
         }
 
         public string GetFallback(string databaseName)
         {
             if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
-            return OrganizationEntitiesCollectionName;
+            return EntitiesCollectionName;
         }
 
         private static IEnumerable<Type> GetLoadedEntityTypes()
