@@ -36,6 +36,28 @@ namespace LagoVista.CloudStorage.Tests
             Assert.That(target["Nested"].AsBsonDocument["Id"].AsString, Is.EqualTo("NESTED-ID"));
         }
 
+        [TestCase("DeviceType", true)]
+        [TestCase("ProductCatalog", false)]
+        [TestCase("WorkTask", false)]
+        public void TryTransform_WithEntityBaseDocument_PreservesRoutingAndOwnershipFields(string entityType, bool isPublic)
+        {
+            var source = JObject.Parse($@"{{
+                'id':'ABC123',
+                'EntityType':'{entityType}',
+                'Name':'Test Entity',
+                'OwnerOrganization':{{'Id':'ORG1','Text':'Organization One'}},
+                'IsPublic':{isPublic.ToString().ToLowerInvariant()},
+                '_etag':'etag-value'
+            }}");
+
+            var transformed = DocumentMigrationTransformer.TryTransform(source, out var target);
+
+            Assert.That(transformed, Is.True);
+            Assert.That(target["EntityType"].AsString, Is.EqualTo(entityType));
+            Assert.That(target["OwnerOrganization"].AsBsonDocument["Id"].AsString, Is.EqualTo("ORG1"));
+            Assert.That(target["IsPublic"].AsBoolean, Is.EqualTo(isPublic));
+        }
+
         [Test]
         public void TryTransform_WithMixedCaseCosmosFields_StripsFieldsCaseInsensitively()
         {
