@@ -74,29 +74,12 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
-        public async Task QueryKnownAsync_WithCustomerMetricsAggregate_ReturnsServerSideCounts()
+        public async Task QueryAsync_WithCustomerMetricsAggregate_ReturnsServerSideCounts()
         {
-            var request = new KnownDocumentQueryRequest(KnownDocumentQuery.CustomerIndustryNicheSalesStageCounts).WithParameter("orgId", "ORG1");
-            var results = (await _documentCollection.QueryKnownAsync<TestCustomerMetrics>(request)).ToList();
+            var request = new DocumentQueryRequest(DocumentQueryType.CustomerIndustryNicheSalesStageCounts).WithParameter("orgId", "ORG1");
+            var results = (await _documentCollection.QueryAsync<TestCustomerMetrics>(request)).ToList();
             Assert.That(results.Sum(result => result.CountLeads), Is.EqualTo(3));
             Assert.That(results.Single(result => result.Industry.Id == "IND1" && result.IndustryNiche.Id == "NICHE1" && result.SalesStage.Id == "QUALIFIED").CountLeads, Is.EqualTo(2));
-        }
-
-        [Test]
-        public async Task RawDocumentAdapter_FilterGetAndCount_ReturnExpectedDocuments()
-        {
-            var filter = new DocumentFilterRequest()
-                .WhereEquals("EntityType", "TestEntity")
-                .WhereEquals("OwnerOrganization.Id", "ORG1")
-                .OrderBy("Name");
-
-            var documents = (await _documentCollection.QueryDocumentsAsync(filter)).ToList();
-            Assert.That(documents.Select(document => (string)document["Name"]), Is.EqualTo(new[] { "Alpha", "Beta", "Gamma" }));
-            Assert.That(await _documentCollection.CountDocumentsAsync(filter), Is.EqualTo(3));
-
-            var document = await _documentCollection.GetDocumentAsync("DOC2");
-            Assert.That((string)document?["id"], Is.EqualTo("DOC2"));
-            Assert.That((string)document?["Name"], Is.EqualTo("Beta"));
         }
 
         private static string GetTestConnectionString()

@@ -33,26 +33,6 @@ namespace LagoVista.CloudStorage.Storage
             ICacheProvider cacheProvider,
             ILogger logger,
             IRagIndexingServices ragIndexingServices,
-            IEntityListCacheInvalidator entityListCacheInvalidator,
-            IDocumentCollectionFactory collectionFactory,
-            IDocumentCollectionNameResolver collectionNameResolver,
-            IDocumentStorageSettingsProvider settingsProvider)
-            : base(options, cosmosClientProvider, entityDetailResponseFactory, dependencyManager, cacheProvider, logger, ragIndexingServices, entityListCacheInvalidator)
-        {
-            _collectionFactory = collectionFactory ?? throw new ArgumentNullException(nameof(collectionFactory));
-            _collectionNameResolver = collectionNameResolver ?? throw new ArgumentNullException(nameof(collectionNameResolver));
-            _storageSettings = settingsProvider?.Default ?? throw new ArgumentNullException(nameof(settingsProvider));
-        }
-
-        // Compatibility constructor for callers/tests that still supply the legacy connection tuple.
-        public ProviderNeutralEntityUtilsRepository(
-            ISyncConnectionSettings options,
-            ICosmosClientProvider cosmosClientProvider,
-            IEntityDetailResponseFactory entityDetailResponseFactory,
-            IDependencyManager dependencyManager,
-            ICacheProvider cacheProvider,
-            ILogger logger,
-            IRagIndexingServices ragIndexingServices,
             IEntityListCacheInvalidator entityListCacheInvalidator)
             : base(options, cosmosClientProvider, entityDetailResponseFactory, dependencyManager, cacheProvider, logger, ragIndexingServices, entityListCacheInvalidator)
         {
@@ -75,8 +55,11 @@ namespace LagoVista.CloudStorage.Storage
                 if (!TryGetCollection(entityType, out var collection))
                     return InvokeResult<List<JObject>>.Create(new List<JObject>());
 
-                var filter = CreateEntityFilter(entityType, orgId).OrderBy(nameof(EntityBase.Name));
-                var documents = (await collection.QueryDocumentsAsync(filter, ct).ConfigureAwait(false)).ToList();
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByType)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim());
+
+                var documents = (await collection.QueryAsync<JObject>(request, ct).ConfigureAwait(false)).ToList();
                 return InvokeResult<List<JObject>>.Create(documents);
             }
             catch (Exception ex)
@@ -118,14 +101,12 @@ namespace LagoVista.CloudStorage.Storage
             if (!TryGetCollection(entityType, out var collection))
                 return null;
 
-            var document = await collection.GetDocumentAsync(entityId.Trim(), token).ConfigureAwait(false);
-            if (document == null) return null;
+            var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentById)
+                .WithParameter("entityType", entityType.Trim())
+                .WithParameter("entityId", entityId.Trim())
+                .WithParameter("orgId", orgId.Trim());
 
-            var storedEntityType = (string)document[nameof(EntityBase.EntityType)];
-            var ownerOrgId = (string)document[nameof(EntityBase.OwnerOrganization)]?["Id"];
-            if (!String.Equals(storedEntityType, entityType.Trim(), StringComparison.OrdinalIgnoreCase)) return null;
-            if (!String.Equals(ownerOrgId, orgId.Trim(), StringComparison.OrdinalIgnoreCase)) return null;
-            return document;
+            return (await collection.QueryAsync<JObject>(request, token).ConfigureAwait(false)).FirstOrDefault();
         }
 
         public new async Task<InvokeResult<int>> CountEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct)
@@ -136,8 +117,12 @@ namespace LagoVista.CloudStorage.Storage
                 if (!TryGetCollection(entityType, out var collection))
                     return InvokeResult<int>.Create(0);
 
-                var count = await collection.CountDocumentsAsync(CreateEntityFilter(entityType, orgId), ct).ConfigureAwait(false);
-                return InvokeResult<int>.Create(count);
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsCountByType)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim());
+
+                var result = (await collection.QueryAsync<DocumentCountResult>(request, ct).ConfigureAwait(false)).FirstOrDefault();
+                return InvokeResult<int>.Create(result?.Count ?? 0);
             }
             catch (Exception ex)
             {
@@ -150,13 +135,6 @@ namespace LagoVista.CloudStorage.Storage
         Task<InvokeResult<List<JObject>>> IEntityUtilsRepository.GetEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct) => GetEntitiesByTypeAsync(entityType, orgId, ct);
         Task<JObject> IEntityUtilsRepository.GetEntityByIdAsync(string entityType, string entityId, string orgId, CancellationToken token) => GetEntityByIdAsync(entityType, entityId, orgId, token);
         Task<InvokeResult<int>> IEntityUtilsRepository.CountEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct) => CountEntitiesByTypeAsync(entityType, orgId, ct);
-
-        private static DocumentFilterRequest CreateEntityFilter(string entityType, string orgId)
-        {
-            return new DocumentFilterRequest()
-                .WhereEquals(nameof(EntityBase.EntityType), entityType.Trim())
-                .WhereEquals($"{nameof(EntityBase.OwnerOrganization)}.Id", orgId.Trim());
-        }
 
         private bool TryGetCollection(string entityType, out IDocumentCollection collection)
         {
