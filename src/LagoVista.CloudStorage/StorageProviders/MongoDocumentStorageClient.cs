@@ -14,38 +14,24 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     public sealed class MongoDocumentStorageClient : IMongoDocumentStorageClient
     {
-        private readonly DocumentStorageSettings _settings;
+        private readonly IMongoConnectionSettings _settings;
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
-        private readonly IDocumentCollectionFactory _collectionFactory;
 
         public MongoDocumentStorageClient(
-            IDocumentStorageClientSettings settings,
+            IMongoConnectionSettings settings,
             IAdminLogger logger,
             ICacheProvider cacheProvider,
             IDependencyManager dependencyManager,
-            IDocumentCollectionNameResolver collectionNameResolver,
-            IDocumentCollectionFactory collectionFactory)
+            IDocumentCollectionNameResolver collectionNameResolver)
         {
-            if (settings == null) throw new ArgumentNullException(nameof(settings));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cacheProvider = cacheProvider;
             _dependencyManager = dependencyManager;
             _collectionNameResolver = collectionNameResolver ?? throw new ArgumentNullException(nameof(collectionNameResolver));
-            _collectionFactory = collectionFactory ?? throw new ArgumentNullException(nameof(collectionFactory));
-
-            _settings = new DocumentStorageSettings
-            {
-                Provider = DocumentStorageProviderType.Mongo,
-                DatabaseName = settings.DatabaseName,
-                Mongo = new MongoDocumentStorageSettings
-                {
-                    ConnectionString = settings.MongoConnectionString,
-                    DatabaseName = settings.MongoDatabaseName
-                }
-            };
         }
 
         public Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)
@@ -86,14 +72,15 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required for Mongo known-query routing.", nameof(entityType));
             if (request == null) throw new ArgumentNullException(nameof(request));
 
-            if (!_collectionNameResolver.TryResolve(_settings.Mongo.DatabaseName, entityType, out var collectionName))
+            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
                 throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
 
-            return _collectionFactory.Create(_settings, collectionName).QueryAsync<TResult>(request, cancellationToken);
+            var collection = new MongoDocumentCollection(_settings.ConnectionString, _settings.DatabaseName, collectionName);
+            return collection.QueryAsync<TResult>(request, cancellationToken);
         }
 
         private IDocumentDBRepoBase<TEntity> GetStorage<TEntity>()
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity =>
-            DocumentStorageFactory.Create<TEntity>(_settings, _logger, _cacheProvider, _dependencyManager, collectionNameResolver: _collectionNameResolver);
+            new MongoDBStorage<TEntity>(_settings.ConnectionString, _settings.DatabaseName, _logger, _cacheProvider, _dependencyManager, _collectionNameResolver);
     }
 }
