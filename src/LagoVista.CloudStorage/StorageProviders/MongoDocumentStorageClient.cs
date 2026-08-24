@@ -5,12 +5,9 @@ using LagoVista.CloudStorage.Storage;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
-using LagoVista.Core.Validation;
-using LagoVista.IoT.Logging.Loggers;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -22,27 +19,23 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.StorageProviders
 {
+    /// <summary>
+    /// Mongo-specific document persistence. Common repository concerns such as validation,
+    /// caching, dependency processing, audit preparation, and cache invalidation stay above
+    /// this boundary so they execute identically regardless of the selected provider.
+    /// </summary>
     public sealed class MongoDocumentStorageClient : IMongoDocumentStorageClient
     {
         private readonly IMongoConnectionSettings _settings;
-        private readonly IAdminLogger _logger;
-        private readonly ICacheProvider _cacheProvider;
-        private readonly IDependencyManager _dependencyManager;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
         private readonly IMongoStorageClientFactory _clientFactory;
 
         public MongoDocumentStorageClient(
             IMongoConnectionSettings settings,
-            IAdminLogger logger,
-            ICacheProvider cacheProvider,
-            IDependencyManager dependencyManager,
             IDocumentCollectionNameResolver collectionNameResolver,
             IMongoStorageClientFactory clientFactory)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _cacheProvider = cacheProvider;
-            _dependencyManager = dependencyManager;
             _collectionNameResolver = collectionNameResolver ?? throw new ArgumentNullException(nameof(collectionNameResolver));
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             MongoBsonSerialization.Configure();
@@ -51,12 +44,10 @@ namespace LagoVista.CloudStorage.StorageProviders
         public async Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            Validate(item);
-            Prepare(item);
+            if (item == null) throw new ArgumentNullException(nameof(item));
             try
             {
                 await GetCollection<TEntity>().InsertOneAsync(item).ConfigureAwait(false);
-                if (_cacheProvider != null) await _cacheProvider.AddAsync(GetCacheKey<TEntity>(item.Id), JsonConvert.SerializeObject(item)).ConfigureAwait(false);
                 return new OperationResponse<TEntity>(item);
             }
             catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
@@ -68,51 +59,25 @@ namespace LagoVista.CloudStorage.StorageProviders
         public async Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            Validate(item);
-            Prepare(item);
-
-            if (_dependencyManager != null)
-            {
-                var existing = await GetDocumentAsync<TEntity>(item.Id, false).ConfigureAwait(false);
-                if (existing != null && !String.Equals(existing.Name, item.Name, StringComparison.Ordinal))
-                {
-                    var dependencyResult = await _dependencyManager.CheckForDependenciesAsync(item).ConfigureAwait(false);
-                    if (dependencyResult.IsInUse)
-                    {
-                        foreach (var dependent in dependencyResult.DependentObjects)
-                            await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, dependent.Id, dependent.RecordType, item.Name).ConfigureAwait(false);
-                    }
-                    await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, item.Id, item.GetType().Name, item.Name).ConfigureAwait(false);
-                }
-            }
-
-            await GetCollection<TEntity>().ReplaceOneAsync(entity => entity.Id == item.Id, item, new ReplaceOptions { IsUpsert = true }).ConfigureAwait(false);
-            if (_cacheProvider != null) await _cacheProvider.AddAsync(GetCacheKey<TEntity>(item.Id), JsonConvert.SerializeObject(item)).ConfigureAwait(false);
+            if (item == null) throw new ArgumentNullException(nameof(item));
+            await GetCollection<TEntity>()
+                .ReplaceOneAsync(entity => entity.Id == item.Id, item, new ReplaceOptions { IsUpsert = true })
+                .ConfigureAwait(false);
             return new OperationResponse<TEntity>(item);
         }
 
         public async Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            if (_cacheProvider != null)
-            {
-                var cached = await _cacheProvider.GetAsync(GetCacheKey<TEntity>(id)).ConfigureAwait(false);
-                if (!String.IsNullOrWhiteSpace(cached))
-                {
-                    var entity = JsonConvert.DeserializeObject<TEntity>(cached);
-                    if (entity != null && String.Equals(entity.EntityType, typeof(TEntity).Name, StringComparison.Ordinal)) return entity;
-                    await _cacheProvider.RemoveAsync(GetCacheKey<TEntity>(id)).ConfigureAwait(false);
-                }
-            }
+            var entity = await GetCollection<TEntity>()
+                .Find(item => item.Id == id && item.EntityType == typeof(TEntity).Name)
+                .FirstOrDefaultAsync()
+                .ConfigureAwait(false);
 
-            var entityFromStore = await GetCollection<TEntity>().Find(entity => entity.Id == id && entity.EntityType == typeof(TEntity).Name).FirstOrDefaultAsync().ConfigureAwait(false);
-            if (entityFromStore == null)
-            {
-                if (throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                return null;
-            }
-            if (_cacheProvider != null) await _cacheProvider.AddAsync(GetCacheKey<TEntity>(id), JsonConvert.SerializeObject(entityFromStore)).ConfigureAwait(false);
-            return entityFromStore;
+            if (entity == null && throwOnNotFound)
+                throw new RecordNotFoundException(typeof(TEntity).Name, id);
+
+            return entity;
         }
 
         public Task<TEntity> GetDocumentAsync<TEntity>(string id, string partitionKey, bool throwOnNotFound = true)
@@ -126,15 +91,13 @@ namespace LagoVista.CloudStorage.StorageProviders
         public async Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id, string partitionKey)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            var document = await GetDocumentAsync<TEntity>(id, true).ConfigureAwait(false);
-            if (_dependencyManager != null)
-            {
-                var dependencies = await _dependencyManager.CheckForDependenciesAsync(document).ConfigureAwait(false);
-                if (dependencies.IsInUse) throw new InUseException(dependencies);
-            }
-            if (_cacheProvider != null) await _cacheProvider.RemoveAsync(GetCacheKey<TEntity>(id)).ConfigureAwait(false);
-            var result = await GetCollection<TEntity>().DeleteOneAsync(entity => entity.Id == id).ConfigureAwait(false);
-            if (!result.IsAcknowledged || result.DeletedCount == 0) throw new RecordNotFoundException(typeof(TEntity).Name, id);
+            var document = await GetCollection<TEntity>()
+                .FindOneAndDeleteAsync(item => item.Id == id && item.EntityType == typeof(TEntity).Name)
+                .ConfigureAwait(false);
+
+            if (document == null)
+                throw new RecordNotFoundException(typeof(TEntity).Name, id);
+
             return new OperationResponse<TEntity>(document);
         }
 
@@ -142,7 +105,10 @@ namespace LagoVista.CloudStorage.StorageProviders
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            return await GetCollection<TEntity>().Find(query).ToListAsync().ConfigureAwait(false);
+            var filter = Builders<TEntity>.Filter.And(
+                Builders<TEntity>.Filter.Where(query),
+                Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
+            return await GetCollection<TEntity>().Find(filter).ToListAsync().ConfigureAwait(false);
         }
 
         public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest)
@@ -150,21 +116,16 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
-            try
-            {
-                var items = await GetCollection<TEntity>().Find(query)
-                    .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
-                    .Limit(listRequest.PageSize)
-                    .ToListAsync().ConfigureAwait(false);
-                return ListResponse<TEntity>.Create(listRequest, items);
-            }
-            catch (Exception ex)
-            {
-                _logger.AddException(nameof(MongoDocumentStorageClient), ex);
-                var response = ListResponse<TEntity>.Create(new List<TEntity>());
-                response.Errors.Add(new ErrorMessage(ex.Message));
-                return response;
-            }
+
+            var filter = Builders<TEntity>.Filter.And(
+                Builders<TEntity>.Filter.Where(query),
+                Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
+            var items = await GetCollection<TEntity>().Find(filter)
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Limit(listRequest.PageSize)
+                .ToListAsync()
+                .ConfigureAwait(false);
+            return ListResponse<TEntity>.Create(listRequest, items);
         }
 
         public async Task<IEnumerable<TResult>> QueryKnownAsync<TResult>(string entityType, DocumentQueryRequest request, CancellationToken cancellationToken = default)
@@ -221,24 +182,6 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         private IMongoCollection<BsonDocument> GetBsonCollection(string collectionName) =>
             _clientFactory.GetDatabase(_settings.ConnectionString, _settings.DatabaseName).GetCollection<BsonDocument>(collectionName);
-
-        private string GetCacheKey<TEntity>(string id) => $"{_settings.DatabaseName}-{typeof(TEntity).Name}-{id}".ToLowerInvariant();
-
-        private void Prepare<TEntity>(TEntity item) where TEntity : INoSQLEntity
-        {
-            item.DatabaseName = _settings.DatabaseName;
-            item.EntityType = typeof(TEntity).Name;
-        }
-
-        private static void Validate<TEntity>(TEntity item)
-        {
-            if (item == null) throw new ArgumentNullException(nameof(item));
-            if (item is IValidateable validateable)
-            {
-                var result = Validator.Validate(validateable);
-                if (!result.Successful) throw new ValidationException("Invalid Data.", result.Errors);
-            }
-        }
 
         private static async Task<IEnumerable<TResult>> QueryEntityUtilsDocumentsAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
         {
