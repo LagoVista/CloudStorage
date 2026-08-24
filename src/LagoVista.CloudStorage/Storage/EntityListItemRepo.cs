@@ -38,7 +38,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             try
             {
                 var sw = Stopwatch.StartNew();
-                var items = (await _collection.QueryKnownAsync<EntityListItem>(CreateListRequest(KnownDocumentQuery.EntityListItems, orgId, listRequest))).ToList();
+                var items = (await _collection.QueryAsync<EntityListItem>(CreateListRequest(DocumentQueryType.EntityListItems, orgId, listRequest))).ToList();
                 var response = ListResponse<EntityListItem>.Create(listRequest, items);
                 response.Categories = await GetCategoryOptionsAsync(orgId, listRequest);
                 response.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
@@ -65,7 +65,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             try
             {
                 var sw = Stopwatch.StartNew();
-                var items = (await _collection.QueryKnownAsync<EntityHeader>(CreateListRequest(KnownDocumentQuery.EntityListHeaders, orgId, listRequest))).ToList();
+                var items = (await _collection.QueryAsync<EntityHeader>(CreateListRequest(DocumentQueryType.EntityListHeaders, orgId, listRequest))).ToList();
                 var response = ListResponse<EntityHeader>.Create(listRequest, items);
                 _logger.AddCustomEvent(LogLevel.Message, $"[{nameof(EntityListItemRepo<TEntity>)}__{nameof(GetEntityHeadersAsync)}]", $"Returned {items.Count} {typeof(TEntity).Name} entity headers in {sw.Elapsed.TotalMilliseconds} ms",
                     items.Count.ToString().ToKVP("recordCount"), typeof(TEntity).Name.ToKVP("entityType"), orgId.ToKVP("orgId"));
@@ -82,18 +82,18 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         private async Task<List<EnumDescription>> GetCategoryOptionsAsync(string orgId, ListRequest listRequest)
         {
-            var categories = await _collection.QueryKnownAsync<EntityHeader>(CreateListRequest(KnownDocumentQuery.EntityListCategories, orgId, listRequest));
+            var categories = await _collection.QueryAsync<EntityHeader>(CreateListRequest(DocumentQueryType.EntityListCategories, orgId, listRequest));
             return categories.Where(category => !String.IsNullOrWhiteSpace(category.Key))
                 .Select(category => EnumDescription.Create(category.Id, category.Key, category.Text)).ToList();
         }
 
-        private static KnownDocumentQueryRequest CreateListRequest(KnownDocumentQuery queryType, string orgId, ListRequest listRequest)
+        private static DocumentQueryRequest CreateListRequest(DocumentQueryType queryType, string orgId, ListRequest listRequest)
         {
             if (listRequest.OrderBy != null && listRequest.OrderByDesc != null)
                 throw new InvalidOperationException("OrderBy and OrderByDesc cannot both be provided.");
 
             var orderBy = listRequest.OrderByDesc ?? listRequest.OrderBy ?? OrderByTypes.Name;
-            return new KnownDocumentQueryRequest(queryType)
+            return new DocumentQueryRequest(queryType)
                 .WithParameter("entityType", typeof(TEntity).Name)
                 .WithParameter("orgId", orgId)
                 .WithParameter("showDeleted", listRequest.ShowDeleted)
