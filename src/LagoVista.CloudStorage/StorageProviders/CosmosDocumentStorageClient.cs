@@ -14,35 +14,24 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     public sealed class CosmosDocumentStorageClient : ICosmosDocumentStorageClient
     {
-        private readonly DocumentStorageSettings _settings;
+        private readonly ICosmosConnectionSettings _settings;
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly IDependencyManager _dependencyManager;
         private readonly ICosmosClientProvider _cosmosClientProvider;
-        private readonly IDocumentCollectionFactory _collectionFactory;
 
         public CosmosDocumentStorageClient(
-            IDocumentStorageClientSettings settings,
+            ICosmosConnectionSettings settings,
             IAdminLogger logger,
             ICacheProvider cacheProvider,
             IDependencyManager dependencyManager,
-            ICosmosClientProvider cosmosClientProvider,
-            IDocumentCollectionFactory collectionFactory)
+            ICosmosClientProvider cosmosClientProvider)
         {
-            if (settings == null) throw new ArgumentNullException(nameof(settings));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _cacheProvider = cacheProvider;
             _dependencyManager = dependencyManager;
             _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
-            _collectionFactory = collectionFactory ?? throw new ArgumentNullException(nameof(collectionFactory));
-
-            _settings = new DocumentStorageSettings
-            {
-                Provider = DocumentStorageProviderType.Cosmos,
-                Endpoint = settings.Endpoint,
-                SharedKey = settings.AccessKey,
-                DatabaseName = settings.DatabaseName
-            };
         }
 
         public Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)
@@ -81,12 +70,17 @@ namespace LagoVista.CloudStorage.StorageProviders
             where TResult : class
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
-            var collection = _collectionFactory.Create(_settings, $"{_settings.DatabaseName}_Collections");
+            var collection = new CosmosDocumentCollection(
+                _cosmosClientProvider,
+                _settings.Endpoint,
+                _settings.AccessKey,
+                _settings.DatabaseName,
+                $"{_settings.DatabaseName}_Collections");
             return collection.QueryAsync<TResult>(request, cancellationToken);
         }
 
         private IDocumentDBRepoBase<TEntity> GetStorage<TEntity>()
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity =>
-            DocumentStorageFactory.Create<TEntity>(_settings, _logger, _cacheProvider, _dependencyManager, _cosmosClientProvider);
+            new CosmosDBStorage<TEntity>(new Uri(_settings.Endpoint), _settings.AccessKey, _settings.DatabaseName, _logger, _cacheProvider, _dependencyManager, _cosmosClientProvider);
     }
 }
