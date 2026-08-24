@@ -5,6 +5,7 @@
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.AI.Interfaces;
 using LagoVista.Core.Attributes;
@@ -47,6 +48,8 @@ namespace LagoVista.CloudStorage.DocumentDB
         private string _dbName;
         private string _defaultCollectionName;
         private readonly ICosmosClientProvider _cosmosClientProvider;
+        private readonly IDocumentCollectionNameResolver _collectionNameResolver = new DocumentCollectionNameResolver();
+        private readonly CosmosDocumentCollectionProvisioner _cosmosCollectionProvisioner = new CosmosDocumentCollectionProvisioner();
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
         private readonly ICacheAborter _cacheAborter;
@@ -205,9 +208,8 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             if (_stoargeProvider == StorageProviderTypes.Original)
             {
-                var client = await GetDocumentClientAsync();
-                var database = await GetDatabase(client);
-                await database.DeleteAsync();
+                var container = await GetContainerAsync();
+                await container.DeleteContainerAsync();
             }
             else
             {
@@ -218,7 +220,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         public virtual string GetPartitionKey()
         {
             if (_stoargeProvider == StorageProviderTypes.Mongo) return _storage.GetPartitionKey();
-            return "/_partitionKey";
+            return EntityDocumentStoragePolicy.CosmosPartitionKeyPath;
         }
 
         protected Task<CosmosClient> GetDocumentClientAsync()
@@ -244,7 +246,9 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             if (_stoargeProvider == StorageProviderTypes.Mongo) throw new InvalidOperationException($"Cosmos container access is not available when {typeof(TEntity).Name} is configured for Mongo.");
             var docClient = await GetDocumentClientAsync();
-            return docClient.GetContainer(_dbName, GetCollectionName());
+            var collectionName = GetCollectionName();
+            await _cosmosCollectionProvisioner.EnsureExistsAsync(docClient, _endPointString, _dbName, collectionName, EntityDocumentStoragePolicy.CosmosPartitionKeyPath).ConfigureAwait(false);
+            return docClient.GetContainer(_dbName, collectionName);
         }
 
 
@@ -262,69 +266,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         public virtual String GetCollectionName()
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo) return _storage.GetCollectionName();
-
-            if (IsRuntimeData)
-            {
-                return _dbName + "_CollectionsRunTime";
-            }
-            else
-                return _dbName + "_Collections";
-        }
-
-        public async Task<EntityHeader> GetEntityHeaderForRecordAsync(string id, CancellationToken ct = default)
-        {
-
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
-            _logger.Trace($"{this.Tag()} - Request object for id {id}");
-            var sql = @"SELECT c.id, c.Key, c.Name, c.Namespace, c.UserName, c.EntityType, c.OwnerOrganization, c.IsPublic
-FROM c
-where c.id = @id";
-
-            var qd = new QueryDefinition(sql).WithParameter("@id", id);
-
-            var requestOptions = new QueryRequestOptions
-            {
-                MaxItemCount = Math.Min(1, 1)
-            };
-
-            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
-            {
-                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
-            }
-
-            var container = await GetContainerAsync();
-            using var iterator = container.GetItemQueryIterator<EntityHeaderRow>(qd, requestOptions: requestOptions);
-
-            if (iterator.HasMoreResults)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                var record = page.Resource?.FirstOrDefault();
-                if (record != null)
-                {
-                    var eh = new EntityHeader()
-                    {
-                        Id = record.Id,
-                        Key = record.GetKey(),
-                        Text = record.Name,
-                        OwnerOrgId = record.OwnerOrganization?.Id,
-                        IsPublic = record.IsPublic,
-                        EntityType = record.EntityType
-                    };
-                    return eh;
-                }
-            }
-
-            var notFoundEh = new EntityHeader()
-            {
-                Id = NOT_FOUND_ID,
-                Key = NOT_FOUND_KEY,
-                Text = NOT_FOUND_TEXT,
-                OwnerOrgId = NOT_FOUND_OWNER_ORG_ID,
-                EntityType = NOT_FOUND_ENTITYTYPE
-            };
-
-            return notFoundEh;
+            return _collectionNameResolver.Resolve(_dbName, typeof(TEntity));
         }
 
         protected virtual bool IsRuntimeData { get { return false; } }
@@ -339,6 +281,8 @@ where c.id = @id";
                     throw new ValidationException("Invalid Data.", result.Errors);
                 }
             }
+
+            EntityDocumentStoragePolicy.ValidateForWrite(item);
 
             var ehCache = new Dictionary<string, EntityHeader>();
 
@@ -362,42 +306,7 @@ where c.id = @id";
 
             var container = await GetContainerAsync();
 
-            var response = await container.CreateItemAsync(item);
-
-            /*var ehNodes = item.FindEntityHeaderNodes();
-            foreach (var node in ehNodes)
-            {
-                if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
-                     (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
-                {
-                    if (ehCache.ContainsKey(node.Id))
-                    {
-                        var eh = ehCache[node.Id];
-                        item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.EntityType);
-                    }
-                    else
-                    {
-                        var eh = await GetEntityHeaderForRecordAsync(node.Id);
-                        if (eh.Id == NOT_FOUND_ID)
-                        {
-                            if (_fkeyIndexWriter != null)
-                            {
-                                if (String.IsNullOrEmpty(node.Key))
-                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Text));
-                                else
-                                    await _fkeyIndexWriter.AddOrphanedEHAsync(item, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
-                            }
-
-                            _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
-                        }
-                        else
-                        {
-                            ehCache.Add(node.Id, eh);
-                            item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                        }
-                    }
-                }
-            }*/
+            var response = await container.CreateItemAsync(item, new PartitionKey(item.OwnerOrganization.Id));
 
             if (response.StatusCode != System.Net.HttpStatusCode.Created)
             {
@@ -418,12 +327,6 @@ where c.id = @id";
 
                 if(_producedArtifactService != null)
                     await _producedArtifactService.CreateProducedArtifactsAsync(item);
-
-                /*if (_fkeyIndexWriter != null)
-                {
-                    var fkNodes = ForeignKeyEdgeFactory.FromEntityHeaderNodes(item, ehNodes);
-                    await _fkeyIndexWriter.UpsertAllAsync(fkNodes);
-                }*/
 
                 DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
                 DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
@@ -509,36 +412,6 @@ where c.id = @id";
             }
         }
 
-        /*               var ehPreviousNodes = existing.FindEntityHeaderNodes();
-
-             foreach (var node in ehCurrentNodes)
-              {
-                  if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
-                        (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
-                  {
-                      if (ehCache.ContainsKey(node.Id))
-                      {
-                          var eh = ehCache[node.Id];
-                          item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                      }
-                      else
-                      {
-                          var eh = await GetEntityHeaderForRecordAsync(node.Id);
-                          if (eh.Id == NOT_FOUND_ID)
-                          {
-                              eh.Resolved = false;
-                              _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {item.Id}");
-                          }
-                          else
-                          {
-                              ehCache.Add(node.Id, eh);
-                              item.UpdateEntityHeaders(node, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
-                          }
-                      }
-                  }
-              }*/
-
-
         protected async Task<OperationResponse<TEntity>> UpsertDocumentAsync(TEntity item, bool checkEtag = false, string idOverride = null)
         {
             if (item is IValidateable && !item.IsDraft)
@@ -553,6 +426,8 @@ where c.id = @id";
                     throw new ValidationException("Found invalid data at storage", validationResult.Errors);
                 }
             }
+
+            EntityDocumentStoragePolicy.ValidateForWrite(item);
 
             ItemRequestOptions requestOptions = null;
 
@@ -650,7 +525,7 @@ where c.id = @id";
                 return mongoResponse;
             }
 
-            var upsertResult = await container.UpsertItemAsync(item, requestOptions: requestOptions);
+            var upsertResult = await container.UpsertItemAsync(item, new PartitionKey(item.OwnerOrganization.Id), requestOptions);
             item.ETag = upsertResult.ETag;
 
             switch (upsertResult.StatusCode)
@@ -779,7 +654,7 @@ where c.id = @id";
 
             sw = Stopwatch.StartNew();
             var doc = await GetDocumentAsync(id, null, throwOnNotFound);
-            if (_cacheProvider != null)
+            if (_cacheProvider != null && doc != null)
             {
                 sw = Stopwatch.StartNew();
                 await _cacheProvider.AddAsync(GetCacheKey(id), JsonConvert.SerializeObject(doc));
@@ -796,58 +671,54 @@ where c.id = @id";
             try
             {
                 var container = await GetContainerAsync();
-
                 var sw = Stopwatch.StartNew();
                 var timer = DocumentGet.WithLabels(typeof(TEntity).Name).NewTimer();
-                var response = await container.ReadItemAsync<TEntity>(id, String.IsNullOrEmpty(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey));
-                timer.Dispose();
 
+                TEntity entity = null;
+                double requestCharge = 0;
 
-                if (response == null)
+                if (String.IsNullOrWhiteSpace(partitionKey))
                 {
-                    _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Empty Response", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("id", id));
-                    DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
-                    throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                }
+                    var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id AND c.EntityType = @entityType")
+                        .WithParameter("@id", id)
+                        .WithParameter("@entityType", typeof(TEntity).Name);
 
-                DocumentRequestCharge.WithLabels(GetCollectionName()).Set(response.RequestCharge);
-
-                if (response.StatusCode == System.Net.HttpStatusCode.OK)
-                {
-                    var entity = response.Resource;
-
-                    if (entity.EntityType != typeof(TEntity).Name)
+                    using var iterator = container.GetItemQueryIterator<TEntity>(query, requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+                    if (iterator.HasMoreResults)
                     {
-                        if (throwOnNotFound)
-                        {
-                            _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Type Mismatch", new KeyValuePair<string, string>("entityType", typeof(TEntity).Name), new KeyValuePair<string, string>("Actual Type", entity.EntityType), new KeyValuePair<string, string>("id", id));
-                            DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
-                            throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                        }
-                        else
-                        {
-                            return default;
-                        }
+                        var response = await iterator.ReadNextAsync().ConfigureAwait(false);
+                        requestCharge = response.RequestCharge;
+                        entity = response.Resource.FirstOrDefault();
                     }
-
-                    _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Load document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} from storage in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {response.RequestCharge}",
-                        sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), response.RequestCharge.ToString().ToKVP("requestCharge"), id.ToKVP("recordId"), entity.Name.ToKVP("entityName"));
-
-                    return entity;
                 }
                 else
                 {
-                    DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
-                    if (throwOnNotFound)
-                    {
-                        _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Error requesting document", new KeyValuePair<string, string>("Invalid Status Code", response.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
-                        throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                    }
-                    else
-                    {
-                        return default;
-                    }
+                    var response = await container.ReadItemAsync<TEntity>(id, new PartitionKey(partitionKey)).ConfigureAwait(false);
+                    requestCharge = response.RequestCharge;
+                    entity = response.Resource;
                 }
+
+                timer.Dispose();
+                DocumentRequestCharge.WithLabels(GetCollectionName()).Set(requestCharge);
+
+                if (entity == null)
+                {
+                    DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
+                    if (throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                    return null;
+                }
+
+                if (!String.IsNullOrWhiteSpace(entity.EntityType) && entity.EntityType != typeof(TEntity).Name)
+                {
+                    DocumentNotFound.WithLabels(typeof(TEntity).Name).Inc();
+                    if (throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
+                    return null;
+                }
+
+                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Load document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} from storage in {sw.Elapsed.TotalMilliseconds}ms, Resource Charge: {requestCharge}",
+                    sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), requestCharge.ToString().ToKVP("requestCharge"), id.ToKVP("recordId"), entity.Name.ToKVP("entityName"));
+
+                return entity;
             }
             catch (CosmosException ex)
             {
@@ -855,33 +726,8 @@ where c.id = @id";
 
                 _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Error requesting document", new KeyValuePair<string, string>("DocumentClientException", ex.Message), new KeyValuePair<string, string>("StatusCode", ex.StatusCode.ToString()), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
                 if (throwOnNotFound)
-                {
                     throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                }
-                else
-                {
-                    return null;
-                }
-
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                _logger.Trace(ex.Message);
-                _logger.Trace(ex.StackTrace);
-                Console.ResetColor();
-
-                DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
-
-                _logger.AddCustomEvent(LogLevel.Error, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Error requesting document", new KeyValuePair<string, string>("Exception", ex.Message), new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("Id", id));
-                if (throwOnNotFound)
-                {
-                    throw new RecordNotFoundException(typeof(TEntity).Name, id);
-                }
-                else
-                {
-                    return null;
-                }
+                return null;
             }
         }
 
@@ -905,7 +751,6 @@ where c.id = @id";
 
                 if (dependentObjects.Any())
                 {
-
                     timer.Dispose();
                     throw new InUseException(DependentObjectCheckResult.InUse(dependentObjects.ToArray()));
                 }
@@ -940,12 +785,13 @@ where c.id = @id";
             }
 
             var container = await GetContainerAsync();
+            var cosmosPartitionKey = new PartitionKey(doc.OwnerOrganization.Id);
 
             ItemResponse<TEntity> result;
 
             if (!softDelete || (doc.IsDeleted.HasValue && doc.IsDeleted.Value))
             {
-                result = await container.DeleteItemAsync<TEntity>(doc.Id, PartitionKey.None);
+                result = await container.DeleteItemAsync<TEntity>(doc.Id, cosmosPartitionKey);
                 if (_ragIndexingServices != null)
                 {
                     if (!EntityHeader.IsNullOrEmpty(doc.OwnerOrganization))
@@ -956,7 +802,7 @@ where c.id = @id";
             {
                 doc.IsDeleted = true;
                 doc.DeletionDate = UtcTimestamp.Now;
-                result = await container.UpsertItemAsync(doc);
+                result = await container.UpsertItemAsync(doc, cosmosPartitionKey);
                 if (_ragIndexingServices != null && doc.ShouldVectorIndex)
                     await _ragIndexingServices.IndexAsync(doc);
             }
@@ -1004,8 +850,7 @@ where c.id = @id";
             }
 
             var container = await GetContainerAsync();
-            var partitionKeyValue = new PartitionKey(partitionKey);
-
+            var partitionKeyValue = new PartitionKey(String.IsNullOrWhiteSpace(partitionKey) ? doc.OwnerOrganization.Id : partitionKey);
 
             doc.IsDeleted = true;
             doc.DeletionDate = UtcTimestamp.Now;
