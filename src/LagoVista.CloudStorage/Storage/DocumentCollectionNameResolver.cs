@@ -9,15 +9,24 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
     public sealed class DocumentCollectionNameResolver : IDocumentCollectionNameResolver
     {
+        public const string SharedEntitiesCollectionName = "SharedEntities";
+        public const string OrganizationEntitiesCollectionName = "OrganizationEntities";
+
         public string Resolve(string databaseName, Type entityType, string explicitCollectionName = null)
         {
             if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
             if (!String.IsNullOrWhiteSpace(explicitCollectionName)) return Normalize(explicitCollectionName);
             if (entityType == null) return GetFallback(databaseName);
 
-            var attribute = entityType.GetCustomAttribute<EntityDescriptionAttribute>(true);
-            if (attribute == null || String.IsNullOrWhiteSpace(attribute.Domain)) return GetFallback(databaseName);
-            return Normalize(attribute.Domain);
+            var isShareable = entityType.GetCustomAttribute<ShareableStorageAttribute>(true) != null;
+            var isDedicated = entityType.GetCustomAttribute<DedicatedStorageCollectionAttribute>(true) != null;
+
+            if (isShareable && isDedicated)
+                throw new InvalidOperationException($"Entity type '{entityType.FullName}' cannot use both ShareableStorageAttribute and DedicatedStorageCollectionAttribute.");
+
+            if (isShareable) return SharedEntitiesCollectionName;
+            if (isDedicated) return Normalize(entityType.Name);
+            return OrganizationEntitiesCollectionName;
         }
 
         public bool TryResolve(string databaseName, string entityTypeName, out string collectionName)
@@ -29,28 +38,35 @@ namespace LagoVista.CloudStorage.DocumentDB
                 return false;
             }
 
-            var matches = GetLoadedEntityTypes().Where(type => String.Equals(type.Name, entityTypeName, StringComparison.OrdinalIgnoreCase)).Select(type => new { Type = type, Attribute = type.GetCustomAttribute<EntityDescriptionAttribute>(true) }).Where(item => item.Attribute != null && !String.IsNullOrWhiteSpace(item.Attribute.Domain)).ToList();
+            var matches = GetLoadedEntityTypes()
+                .Where(type => String.Equals(type.Name, entityTypeName, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
             if (matches.Count == 0)
             {
                 collectionName = GetFallback(databaseName);
                 return false;
             }
 
-            var domains = matches.Select(item => Normalize(item.Attribute.Domain)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            if (domains.Count != 1)
+            var collections = matches
+                .Select(type => Resolve(databaseName, type))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (collections.Count != 1)
             {
                 collectionName = GetFallback(databaseName);
                 return false;
             }
 
-            collectionName = domains[0];
+            collectionName = collections[0];
             return true;
         }
 
         public string GetFallback(string databaseName)
         {
             if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
-            return $"{databaseName}_Collections";
+            return OrganizationEntitiesCollectionName;
         }
 
         private static IEnumerable<Type> GetLoadedEntityTypes()
