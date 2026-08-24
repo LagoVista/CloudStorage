@@ -33,6 +33,26 @@ namespace LagoVista.CloudStorage.Storage
             ICacheProvider cacheProvider,
             ILogger logger,
             IRagIndexingServices ragIndexingServices,
+            IEntityListCacheInvalidator entityListCacheInvalidator,
+            IDocumentCollectionFactory collectionFactory,
+            IDocumentCollectionNameResolver collectionNameResolver,
+            IDocumentStorageSettingsProvider settingsProvider)
+            : base(options, cosmosClientProvider, entityDetailResponseFactory, dependencyManager, cacheProvider, logger, ragIndexingServices, entityListCacheInvalidator)
+        {
+            _collectionFactory = collectionFactory ?? throw new ArgumentNullException(nameof(collectionFactory));
+            _collectionNameResolver = collectionNameResolver ?? throw new ArgumentNullException(nameof(collectionNameResolver));
+            _storageSettings = settingsProvider?.Default ?? throw new ArgumentNullException(nameof(settingsProvider));
+        }
+
+        // Compatibility constructor for callers/tests that still supply the legacy connection tuple.
+        public ProviderNeutralEntityUtilsRepository(
+            ISyncConnectionSettings options,
+            ICosmosClientProvider cosmosClientProvider,
+            IEntityDetailResponseFactory entityDetailResponseFactory,
+            IDependencyManager dependencyManager,
+            ICacheProvider cacheProvider,
+            ILogger logger,
+            IRagIndexingServices ragIndexingServices,
             IEntityListCacheInvalidator entityListCacheInvalidator)
             : base(options, cosmosClientProvider, entityDetailResponseFactory, dependencyManager, cacheProvider, logger, ragIndexingServices, entityListCacheInvalidator)
         {
