@@ -28,13 +28,18 @@ namespace LagoVista.CloudStorage.Storage
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
             var section = configuration.GetSection(SectionName);
-            Hosts = ReadHosts(section.Require("Hosts"));
-            Port = ReadPort(section["Port"], 27017);
+            var hosts = section.Require("Hosts");
+            if(!String.IsNullOrEmpty(hosts)) Hosts = ReadHosts(hosts);
+            var port = section.Optional("Port");
+            Port = ReadPort(port, 27017);
             UserName = section.Require("UserName");
             Password = section.Require("Password");
-            AuthenticationDatabase = String.IsNullOrWhiteSpace(section["AuthenticationDatabase"]) ? "admin" : section["AuthenticationDatabase"].Trim();
-            ReplicaSet = String.IsNullOrWhiteSpace(section["ReplicaSet"]) ? null : section["ReplicaSet"].Trim();
-            UseTls = ReadBoolean(section["UseTls"], false, "UseTls");
+            var authenticationDatabase = section.Optional("AuthenticationDatabase");
+            AuthenticationDatabase = String.IsNullOrWhiteSpace(authenticationDatabase) ? "admin" : authenticationDatabase.Trim();
+            var replicaSet = section.Optional("ReplicaSet");
+            ReplicaSet = String.IsNullOrWhiteSpace(replicaSet) ? null : replicaSet.Trim();
+            var useTls = section.Optional("UseTls");
+            UseTls = ReadBoolean(useTls, false, "UseTls");
         }
 
         public IReadOnlyList<string> Hosts { get; }

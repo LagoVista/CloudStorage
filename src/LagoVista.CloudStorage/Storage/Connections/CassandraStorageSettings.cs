@@ -27,12 +27,15 @@ namespace LagoVista.CloudStorage.Storage
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
             var section = configuration.GetSection(SectionName);
-            ContactPoints = ReadList(section.Require("ContactPoints"));
+            var contactPoints = section.Require("ContactPoints");
+            if(!String.IsNullOrEmpty(contactPoints)) ContactPoints = ReadList(contactPoints);
             UserName = section.Require("UserName");
             Password = section.Require("Password");
             Keyspace = section.Require("Keyspace");
-            Port = ReadPort(section["Port"], 9042);
-            LocalDataCenter = String.IsNullOrWhiteSpace(section["LocalDataCenter"]) ? null : section["LocalDataCenter"].Trim();
+            var port = section.Optional("Port");
+            Port = ReadPort(port, 9042);
+            var localDataCenter = section.Optional("LocalDataCenter");
+            LocalDataCenter = String.IsNullOrWhiteSpace(localDataCenter) ? null : localDataCenter.Trim();
         }
 
         public IReadOnlyList<string> ContactPoints { get; }

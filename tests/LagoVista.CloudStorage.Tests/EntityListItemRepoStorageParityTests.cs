@@ -215,6 +215,7 @@ namespace LagoVista.CloudStorage.Tests
             public IUserNotificationService UserNotificationService => null;
             public IRagIndexingServices RagIndexingServices => null;
             public IFkIndexTableWriterBatched FkIndexTableWriter => null;
+            public IDocumentStorageClientProvider DocumentStorageClientProvider => null; 
         }
 
         [EntityDescription("ListParityDomain", "", "", "", EntityDescriptionAttribute.EntityTypes.Dto, typeof(EntityListItemRepoStorageParityTests))]

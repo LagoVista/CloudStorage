@@ -68,20 +68,7 @@ namespace LagoVista.CloudStorage.Storage
         public string LocalDataCenter { get; }
     }
 
-    public sealed class MongoConnectionSettings : IFlatStorageConnectionSettings
-    {
-        public MongoConnectionSettings(string connectionString, string databaseName)
-        {
-            if (String.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
-            if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
 
-            ConnectionString = connectionString;
-            DatabaseName = databaseName;
-        }
-
-        public string ConnectionString { get; }
-        public string DatabaseName { get; }
-    }
 
     public sealed class FlatStorageContext
     {

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
-    internal sealed class ProvisioningDocumentCollection : IDocumentCollection
+    public sealed class ProvisioningDocumentCollection : IDocumentCollection
     {
         private readonly IDocumentCollection _inner;
         private readonly Func<CancellationToken, Task> _ensureExists;
