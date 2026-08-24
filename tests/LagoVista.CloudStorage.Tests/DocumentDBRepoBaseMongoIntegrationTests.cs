@@ -75,10 +75,10 @@ namespace LagoVista.CloudStorage.Tests
 
             var createResponse = await _repository.CreateAsync(entity);
             Assert.That(createResponse.Resource.Id, Is.EqualTo(entity.Id));
-            Assert.That(_repository.GetCollectionName(), Is.EqualTo("RichMongoDomain"));
+            Assert.That(_repository.GetCollectionName(), Is.EqualTo(DocumentCollectionNameResolver.OrganizationEntitiesCollectionName));
             Assert.That(_repository.GetPartitionKey(), Is.Null);
 
-            var mongoCollection = _client.GetDatabase(_databaseName).GetCollection<TestEntity>("RichMongoDomain");
+            var mongoCollection = _client.GetDatabase(_databaseName).GetCollection<TestEntity>(DocumentCollectionNameResolver.OrganizationEntitiesCollectionName);
             var rawDocument = await mongoCollection.Find(item => item.Id == entity.Id).FirstOrDefaultAsync();
             Assert.That(rawDocument, Is.Not.Null);
             Assert.That(rawDocument.EntityType, Is.EqualTo(nameof(TestEntity)));
