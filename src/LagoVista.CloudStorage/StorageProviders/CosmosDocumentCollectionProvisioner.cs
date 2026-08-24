@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.DocumentDB;
+using LagoVista.CloudStorage.Storage;
 using Microsoft.Azure.Cosmos;
 using System;
 using System.Threading;
@@ -8,10 +9,10 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     public sealed class CosmosDocumentCollectionProvisioner
     {
-        private readonly ICosmosClientProvider _cosmosClientProvider;
+        private readonly CosmosClientProvider _cosmosClientProvider;
         private readonly DocumentCollectionProvisioningCache _cache;
 
-        public CosmosDocumentCollectionProvisioner(ICosmosClientProvider cosmosClientProvider, DocumentCollectionProvisioningCache cache = null)
+        public CosmosDocumentCollectionProvisioner(CosmosClientProvider cosmosClientProvider, DocumentCollectionProvisioningCache cache = null)
         {
             _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
             _cache = cache ?? new DocumentCollectionProvisioningCache();
