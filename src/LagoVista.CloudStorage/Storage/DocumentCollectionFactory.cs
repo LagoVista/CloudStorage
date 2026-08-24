@@ -1,5 +1,4 @@
 using LagoVista.CloudStorage.Interfaces;
-using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.StorageProviders;
 using System;
 
@@ -9,30 +8,11 @@ namespace LagoVista.CloudStorage.DocumentDB
     {
         private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
-        private readonly IDocumentStorageSettingsProvider _settingsProvider;
 
         public DocumentCollectionFactory(ICosmosClientProvider cosmosClientProvider, IDocumentCollectionNameResolver collectionNameResolver = null)
-            : this(cosmosClientProvider, collectionNameResolver, null)
-        {
-        }
-
-        public DocumentCollectionFactory(ICosmosClientProvider cosmosClientProvider, IDocumentCollectionNameResolver collectionNameResolver, IDocumentStorageSettingsProvider settingsProvider)
         {
             _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
             _collectionNameResolver = collectionNameResolver ?? new DocumentCollectionNameResolver();
-            _settingsProvider = settingsProvider;
-        }
-
-        public IDocumentCollection CreateDefault(string collectionName = null)
-        {
-            if (_settingsProvider == null) throw new InvalidOperationException("Default document storage settings are not available on this collection factory.");
-            return Create(_settingsProvider.Default, collectionName);
-        }
-
-        public IDocumentCollection CreateDefault<TEntity>(string collectionName = null) where TEntity : class
-        {
-            if (_settingsProvider == null) throw new InvalidOperationException("Default document storage settings are not available on this collection factory.");
-            return Create<TEntity>(_settingsProvider.Default, collectionName);
         }
 
         public IDocumentCollection Create(string endpoint, string sharedKey, string databaseName, string collectionName = null)
