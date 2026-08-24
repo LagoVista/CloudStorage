@@ -6,13 +6,21 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
     public sealed class DocumentCollectionFactory : IDocumentCollectionFactory
     {
+        private const string LegacyCosmosPartitionKeyPath = "/EntityType";
+
         private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
+        private readonly CosmosDocumentCollectionProvisioner _cosmosProvisioner;
+        private readonly MongoDocumentCollectionProvisioner _mongoProvisioner;
 
         public DocumentCollectionFactory(ICosmosClientProvider cosmosClientProvider, IDocumentCollectionNameResolver collectionNameResolver = null)
         {
             _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
             _collectionNameResolver = collectionNameResolver ?? new DocumentCollectionNameResolver();
+
+            var provisioningCache = new DocumentCollectionProvisioningCache();
+            _cosmosProvisioner = new CosmosDocumentCollectionProvisioner(provisioningCache);
+            _mongoProvisioner = new MongoDocumentCollectionProvisioner(provisioningCache);
         }
 
         public IDocumentCollection Create(string endpoint, string sharedKey, string databaseName, string collectionName = null)
@@ -52,12 +60,33 @@ namespace LagoVista.CloudStorage.DocumentDB
             switch (settings.Provider)
             {
                 case DocumentStorageProviderType.Cosmos:
-                    return new CosmosDocumentCollection(_cosmosClientProvider, settings.Endpoint, settings.SharedKey, settings.DatabaseName, collectionName);
+                {
+                    var inner = new CosmosDocumentCollection(_cosmosClientProvider, settings.Endpoint, settings.SharedKey, settings.DatabaseName, collectionName);
+                    var client = _cosmosClientProvider.GetClient(settings.Endpoint, settings.SharedKey);
+                    return new ProvisioningDocumentCollection(
+                        inner,
+                        cancellationToken => _cosmosProvisioner.EnsureExistsAsync(
+                            client,
+                            settings.Endpoint,
+                            settings.DatabaseName,
+                            collectionName,
+                            LegacyCosmosPartitionKeyPath,
+                            cancellationToken));
+                }
 
                 case DocumentStorageProviderType.Mongo:
+                {
                     if (settings.Mongo == null) throw new InvalidOperationException("Mongo document storage settings are required when Mongo is selected.");
                     MongoBsonSerialization.Configure();
-                    return new MongoDocumentCollection(settings.Mongo.ConnectionString, settings.Mongo.DatabaseName, collectionName);
+                    var inner = new MongoDocumentCollection(settings.Mongo.ConnectionString, settings.Mongo.DatabaseName, collectionName);
+                    return new ProvisioningDocumentCollection(
+                        inner,
+                        cancellationToken => _mongoProvisioner.EnsureExistsAsync(
+                            settings.Mongo.ConnectionString,
+                            settings.Mongo.DatabaseName,
+                            collectionName,
+                            cancellationToken));
+                }
 
                 default:
                     throw new InvalidOperationException($"Unsupported document storage provider '{settings.Provider}'.");
