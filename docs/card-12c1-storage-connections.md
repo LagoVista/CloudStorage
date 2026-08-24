@@ -41,6 +41,45 @@ services.AddSingleton<ICassandraStorageSettings, CassandraStorageSettings>();
 
 `AddCassandraStorageConnection()` provides the canonical registration helper.
 
+### Explicit Development / Production environment settings
+
+Operator and migration tools sometimes need to explicitly choose the shared Development or Production storage environment rather than rely on the host's active `IConfiguration` section.
+
+CloudStorage exposes:
+
+```csharp
+CassandraStorageEnvironmentSettings.Development
+CassandraStorageEnvironmentSettings.Production
+```
+
+Both return `ICassandraStorageSettings` and use the same validated `CassandraStorageSettings` implementation as normal applications.
+
+Development reads:
+
+```text
+DEV_CASSANDRA_CONTACT_POINTS
+DEV_CASSANDRA_PORT
+DEV_CASSANDRA_USERNAME
+DEV_CASSANDRA_PASSWORD
+DEV_CASSANDRA_KEYSPACE
+DEV_CASSANDRA_LOCAL_DATA_CENTER
+```
+
+Production reads:
+
+```text
+PROD_CASSANDRA_CONTACT_POINTS
+PROD_CASSANDRA_PORT
+PROD_CASSANDRA_USERNAME
+PROD_CASSANDRA_PASSWORD
+PROD_CASSANDRA_KEYSPACE
+PROD_CASSANDRA_LOCAL_DATA_CENTER
+```
+
+`*_CASSANDRA_PORT` is optional and defaults to `9042`. `*_CASSANDRA_LOCAL_DATA_CENTER` is optional. Contact points, username, password, and keyspace are required by the canonical settings validation.
+
+These prefixed settings are intended for explicit operator/tool selection, matching the existing Development/Production Table Storage connection pattern. Runtime services should normally continue to use the standard `CassandraStorage` configuration section so Kubernetes/environment configuration can select endpoints without application code changes.
+
 ## Scratch configuration
 
 ```json
