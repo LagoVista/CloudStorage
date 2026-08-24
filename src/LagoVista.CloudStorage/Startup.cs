@@ -24,6 +24,9 @@ namespace LagoVista.CloudStorage
             services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
             services.AddScoped<IDocumentCollectionNameResolver, DocumentCollectionNameResolver>();
             services.AddScoped<IDocumentCollectionFactory, DocumentCollectionFactory>();
+            services.AddScoped<ICosmosDocumentStorageClient, CosmosDocumentStorageClient>();
+            services.AddScoped<IMongoDocumentStorageClient, MongoDocumentStorageClient>();
+            services.AddScoped<IDocumentStorageClientProvider, DocumentStorageClientProvider>();
             services.AddScoped<IDocumentMigrationService, DocumentMigrationService>();
             services.AddScoped<ICategoryManager, CategoryManager>();
             services.AddScoped<ITableSizer, TableSizer>();
@@ -44,6 +47,7 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<ICacheProvider, CacheProvider>();
             services.AddSingleton<ISyncConnectionSettings, SyncConnections>();
             services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
+            services.AddSingleton<IDocumentStorageClientSettings, DocumentStorageClientSettings>();
             services.AddSingleton<ICosmosClientProvider>(CosmosClientProvider.Shared);
             services.AddMongoDocumentStorageConnection();
 
