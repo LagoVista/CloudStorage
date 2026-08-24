@@ -6,7 +6,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
     public sealed class DocumentCollectionProvisioningCache
     {
-        private readonly ConcurrentDictionary<string, Lazy<Task>> _verified = new ConcurrentDictionary<string, Lazy<Task>>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, Lazy<Task>> _verified = new ConcurrentDictionary<string, Lazy<Task>>(StringComparer.Ordinal);
 
         public async Task EnsureAsync(string key, Func<Task> ensureAction)
         {
