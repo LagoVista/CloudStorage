@@ -1,5 +1,6 @@
 using Cassandra;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.Core.Interfaces;
 using NUnit.Framework;
 using System;
 using System.Linq;
