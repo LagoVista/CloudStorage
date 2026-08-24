@@ -3,17 +3,21 @@ using LagoVista.Core.AI.Interfaces;
 using LagoVista.Core.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LagoVista.CloudStorage.StorageProviders
 {
     public class DocumentCloudServices : IDocumentCloudServices
     {
         public DocumentCloudServices(IAdminLogger adminLogger, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkIndexTableWriter, IProducedArtifactService producedArtifactService, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices)
+            : this(adminLogger, cosmosClientProvider, fkIndexTableWriter, producedArtifactService, dependencyManager, userNotificationService, ragServices, null)
+        {
+        }
+
+        public DocumentCloudServices(IAdminLogger adminLogger, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkIndexTableWriter, IProducedArtifactService producedArtifactService, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, IDocumentStorageClientProvider documentStorageClientProvider)
         {
             AdminLogger = adminLogger;
             CosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
+            DocumentStorageClientProvider = documentStorageClientProvider;
             DependencyManager = dependencyManager;
             UserNotificationService = userNotificationService;
             RagIndexingServices = ragServices;
@@ -24,6 +28,8 @@ namespace LagoVista.CloudStorage.StorageProviders
         public IAdminLogger AdminLogger { get; }
 
         public ICosmosClientProvider CosmosClientProvider { get; }
+
+        public IDocumentStorageClientProvider DocumentStorageClientProvider { get; }
 
         public IDependencyManager DependencyManager { get; }
 
@@ -39,7 +45,12 @@ namespace LagoVista.CloudStorage.StorageProviders
     public class DocumentCloudCachedServices : DocumentCloudServices, IDocumentCloudCachedServices
     {
         public DocumentCloudCachedServices(IAdminLogger adminLogger, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkIndexTableWriter, IProducedArtifactService producedArtifactService, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, ICacheAborter aborter, ICacheProvider cacheProvider, IEntityListCacheInvalidator entityListCacheInvalidator)
-            : base(adminLogger, cosmosClientProvider, fkIndexTableWriter, producedArtifactService, dependencyManager, userNotificationService, ragServices)
+            : this(adminLogger, cosmosClientProvider, fkIndexTableWriter, producedArtifactService, dependencyManager, userNotificationService, ragServices, aborter, cacheProvider, entityListCacheInvalidator, null)
+        {
+        }
+
+        public DocumentCloudCachedServices(IAdminLogger adminLogger, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkIndexTableWriter, IProducedArtifactService producedArtifactService, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, ICacheAborter aborter, ICacheProvider cacheProvider, IEntityListCacheInvalidator entityListCacheInvalidator, IDocumentStorageClientProvider documentStorageClientProvider)
+            : base(adminLogger, cosmosClientProvider, fkIndexTableWriter, producedArtifactService, dependencyManager, userNotificationService, ragServices, documentStorageClientProvider)
         {
             CacheProvider = cacheProvider;
             CacheAborter = aborter;
