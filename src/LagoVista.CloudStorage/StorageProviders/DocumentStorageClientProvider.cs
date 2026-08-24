@@ -1,4 +1,3 @@
-using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
 using System;
@@ -7,12 +6,12 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     public sealed class DocumentStorageClientProvider : IDocumentStorageClientProvider
     {
-        private readonly IDocumentStorageClientSettings _settings;
+        private readonly IDocumentStorageProviderSettings _settings;
         private readonly ICosmosDocumentStorageClient _cosmosClient;
         private readonly IMongoDocumentStorageClient _mongoClient;
 
         public DocumentStorageClientProvider(
-            IDocumentStorageClientSettings settings,
+            IDocumentStorageProviderSettings settings,
             ICosmosDocumentStorageClient cosmosClient,
             IMongoDocumentStorageClient mongoClient)
         {
@@ -25,10 +24,10 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             switch (_settings.Provider)
             {
-                case DocumentStorageProviderType.Cosmos:
+                case DocumentStorageClientType.Cosmos:
                     return _cosmosClient;
 
-                case DocumentStorageProviderType.Mongo:
+                case DocumentStorageClientType.Mongo:
                     return _mongoClient;
 
                 default:
