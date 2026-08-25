@@ -12,7 +12,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Repositories
 {
     /// <summary>
     /// Strangler implementation for EntityUtilsRepository. Provider-neutral operations move
