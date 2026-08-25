@@ -65,6 +65,36 @@ namespace LagoVista.CloudStorage.StorageProviders
                 throw new KeyNotFoundException($"{typeof(TRecord).Name} record '{key.Id}' was not found.");
         }
 
+        public async Task ReplaceScratchAsync<TRecord>(StorageKey key, TRecord record, TimeSpan? retention, CancellationToken cancellationToken)
+            where TRecord : class, IScratchDataRecord
+        {
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (record == null) throw new ArgumentNullException(nameof(record));
+
+            await GetCollectionAsync<TRecord>(cancellationToken).ConfigureAwait(false);
+
+            if (!retention.HasValue)
+            {
+                await ReplaceAsync(key, record, true, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            // Serialize through the normal TRecord class map so the application POCO remains
+            // the canonical representation, then attach the provider-owned TTL field before
+            // a single replacement/upsert. This avoids a crash window between persistence and TTL.
+            var document = record.ToBsonDocument();
+            document[ScratchExpirationField] = new BsonDateTime(DateTime.UtcNow.Add(retention.Value));
+
+            var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
+            var collection = _database.GetCollection<BsonDocument>(collectionName);
+            var filter = BuildBsonKeyFilter(key);
+            await collection.ReplaceOneAsync(
+                filter,
+                document,
+                new ReplaceOptions { IsUpsert = true },
+                cancellationToken).ConfigureAwait(false);
+        }
+
         public async Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken)
             where TRecord : class
         {
@@ -111,16 +141,6 @@ namespace LagoVista.CloudStorage.StorageProviders
                 records.RemoveAt(records.Count - 1);
 
             return new StoragePageResult<TRecord>(records, hasMore ? EncodeOffset(offset + pageSize) : null);
-        }
-
-        public async Task ApplyScratchExpirationAsync<TRecord>(StorageKey key, TimeSpan retention, CancellationToken cancellationToken)
-            where TRecord : class, IScratchDataRecord
-        {
-            var collection = await GetCollectionAsync<TRecord>(cancellationToken).ConfigureAwait(false);
-            var expiration = DateTime.UtcNow.Add(retention);
-            var update = new BsonDocumentUpdateDefinition<TRecord>(
-                new BsonDocument("$set", new BsonDocument(ScratchExpirationField, expiration)));
-            await collection.UpdateOneAsync(BuildKeyFilter<TRecord>(key), update, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
         public TimeSpan? GetScratchRetention<TRecord>()
@@ -214,10 +234,15 @@ namespace LagoVista.CloudStorage.StorageProviders
         private static FilterDefinition<TRecord> BuildKeyFilter<TRecord>(StorageKey key)
             where TRecord : class
         {
+            return new BsonDocumentFilterDefinition<TRecord>(BuildBsonKeyFilter(key));
+        }
+
+        private static BsonDocument BuildBsonKeyFilter(StorageKey key)
+        {
             var document = new BsonDocument("_id", key.Id);
             if (!String.IsNullOrWhiteSpace(key.Scope))
                 document.Add(StorageRecordIdentity.OrganizationIdPath, key.Scope);
-            return new BsonDocumentFilterDefinition<TRecord>(document);
+            return document;
         }
 
         private static FilterDefinition<TRecord> BuildFilter<TRecord>(StorageFilter<TRecord> filter)
