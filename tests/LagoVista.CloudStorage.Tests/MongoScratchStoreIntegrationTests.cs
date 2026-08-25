@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.CloudStorage.Utils;
 using LagoVista.Core.Models;
 using Microsoft.Extensions.Configuration;
