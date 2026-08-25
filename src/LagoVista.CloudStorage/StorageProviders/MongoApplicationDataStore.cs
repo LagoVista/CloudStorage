@@ -39,8 +39,16 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             ValidateRecord(record);
             var now = UtcTimestamp.Now;
-            record.CreationDate = now;
-            record.LastUpdatedDate = now;
+
+            // Application Data normally receives new records with empty timestamps, in which
+            // case CloudStorage establishes the invariant. Operational migration/import tools
+            // may supply authoritative source timestamps and those values are preserved.
+            if (record.CreationDate.IsEmpty)
+                record.CreationDate = now;
+
+            if (record.LastUpdatedDate.IsEmpty)
+                record.LastUpdatedDate = record.CreationDate.IsEmpty ? now : record.CreationDate;
+
             await _store.InsertAsync(record, cancellationToken).ConfigureAwait(false);
         }
 
