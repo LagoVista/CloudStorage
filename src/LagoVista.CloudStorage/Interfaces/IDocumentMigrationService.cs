@@ -15,6 +15,7 @@ namespace LagoVista.CloudStorage.Interfaces
         public int BatchSize { get; set; } = 200;
         public int MaxPages { get; set; }
         public bool DryRun { get; set; }
+        public IReadOnlyCollection<string> ExcludedEntityTypes { get; set; }
     }
 
     public sealed class DocumentMigrationRouteStatistics
@@ -23,6 +24,7 @@ namespace LagoVista.CloudStorage.Interfaces
         public string CollectionName { get; set; }
         public int Read { get; set; }
         public int Written { get; set; }
+        public int Excluded { get; set; }
         public int Failed { get; set; }
         public int UnresolvedRoute { get; set; }
     }
@@ -32,6 +34,7 @@ namespace LagoVista.CloudStorage.Interfaces
         public int PagesRead { get; set; }
         public int DocumentsRead { get; set; }
         public int DocumentsWritten { get; set; }
+        public int DocumentsExcluded { get; set; }
         public int DocumentsSkipped { get; set; }
         public int DocumentsFailed { get; set; }
         public int UnresolvedRoutes { get; set; }
