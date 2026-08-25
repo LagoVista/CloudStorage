@@ -60,13 +60,32 @@ namespace LagoVista.Relational.Diagnostics
                 }
 
                 stopwatch.Stop();
-                return PlatformSmokeTestResult.Passed(Key, Name, Category, target,
-                    $"Connected to PostgreSQL database '{connection.Database}' and validated schema '{_settings.SchemaName}'.", stopwatch.ElapsedMilliseconds);
+                return new PlatformSmokeTestResult
+                {
+                    Key = Key,
+                    Name = Name,
+                    Category = Category,
+                    Status = PlatformSmokeTestStatus.Passed,
+                    Target = target,
+                    Message = $"Connected to PostgreSQL database '{connection.Database}' and validated schema '{_settings.SchemaName}'.",
+                    DurationMs = stopwatch.ElapsedMilliseconds,
+                    CheckedUtc = DateTime.UtcNow
+                };
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                return PlatformSmokeTestResult.Failed(Key, Name, Category, target, ex.Message, stopwatch.ElapsedMilliseconds);
+                return new PlatformSmokeTestResult
+                {
+                    Key = Key,
+                    Name = Name,
+                    Category = Category,
+                    Status = PlatformSmokeTestStatus.Failed,
+                    Target = target,
+                    Message = ex.Message,
+                    DurationMs = stopwatch.ElapsedMilliseconds,
+                    CheckedUtc = DateTime.UtcNow
+                };
             }
         }
     }
