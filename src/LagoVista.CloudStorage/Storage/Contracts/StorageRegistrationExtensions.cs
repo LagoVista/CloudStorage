@@ -16,7 +16,7 @@ namespace LagoVista.CloudStorage.Storage
     }
 
     public sealed class ScratchStoreOptions<TRecord>
-        where TRecord : IScratchDataRecord
+        where TRecord : class, IScratchDataRecord
     {
         internal ScratchStoreOptions(Action<FlatStorageDefinition<TRecord>> configure = null)
         {
@@ -31,7 +31,7 @@ namespace LagoVista.CloudStorage.Storage
     }
 
     public sealed class ApplicationDataStoreOptions<TRecord>
-        where TRecord : IApplicationDataRecord
+        where TRecord : class, IApplicationDataRecord
     {
         internal ApplicationDataStoreOptions(Action<FlatStorageDefinition<TRecord>> configure = null)
         {
@@ -92,7 +92,7 @@ namespace LagoVista.CloudStorage.Storage
         public static IServiceCollection ConfigureScratchData<TRecord>(
             this IServiceCollection services,
             Action<FlatStorageDefinition<TRecord>> configure)
-            where TRecord : IScratchDataRecord
+            where TRecord : class, IScratchDataRecord
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
@@ -104,7 +104,7 @@ namespace LagoVista.CloudStorage.Storage
         public static IServiceCollection ConfigureApplicationData<TRecord>(
             this IServiceCollection services,
             Action<FlatStorageDefinition<TRecord>> configure)
-            where TRecord : IApplicationDataRecord
+            where TRecord : class, IApplicationDataRecord
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
