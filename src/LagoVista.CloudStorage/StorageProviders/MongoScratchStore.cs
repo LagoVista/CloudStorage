@@ -32,16 +32,13 @@ namespace LagoVista.CloudStorage.StorageProviders
             return _store.GetAsync<TRecord>(key, cancellationToken);
         }
 
-        public async Task UpsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
+        public Task UpsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
             where TRecord : class, IScratchDataRecord
         {
             ValidateRecord(record);
             var key = new StorageKey(record.Id.Value, record.Organization.Id);
-            await _store.ReplaceAsync(key, record, true, cancellationToken).ConfigureAwait(false);
-
             var retention = _store.GetScratchRetention<TRecord>();
-            if (retention.HasValue)
-                await _store.ApplyScratchExpirationAsync(key, retention.Value, cancellationToken).ConfigureAwait(false);
+            return _store.ReplaceScratchAsync(key, record, retention, cancellationToken);
         }
 
         public Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
