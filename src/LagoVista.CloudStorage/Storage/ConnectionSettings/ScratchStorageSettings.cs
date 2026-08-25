@@ -2,7 +2,7 @@ using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
     public interface IScratchStorageSettings
     {
