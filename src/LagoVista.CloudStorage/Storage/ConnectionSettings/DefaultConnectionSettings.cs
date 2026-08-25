@@ -3,6 +3,7 @@ using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using Microsoft.Extensions.Configuration;
 using System;
+using CoreConnectionSettings = LagoVista.Core.Models.ConnectionSettings;
 
 namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
@@ -17,7 +18,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         public DefaultConnectionSettings(IConfiguration configuration)
         {
             var docDbSection = configuration.GetSection("DefaultDocDBStorage");
-            DefaultDocDbSettings = new ConnectionSettings
+            DefaultDocDbSettings = new CoreConnectionSettings
             {
                 Uri = docDbSection.Require("Endpoint"),
                 AccessKey = docDbSection.Require("AccessKey"),
@@ -25,14 +26,14 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
             };
 
             var tsSection = configuration.GetSection("DefaultTableStorage");
-            DefaultTableStorageSettings = new ConnectionSettings
+            DefaultTableStorageSettings = new CoreConnectionSettings
             {
                 AccountId = tsSection.Require("Name"),
                 AccessKey = tsSection.Require("AccessKey"),
             };
 
             var ehSection = configuration.GetSection("CheckPointStorage");
-            EHCheckPointStorageSettings = new ConnectionSettings
+            EHCheckPointStorageSettings = new CoreConnectionSettings
             {
                 AccountId = ehSection.Require("Name"),
                 AccessKey = ehSection.Require("AccessKey"),
