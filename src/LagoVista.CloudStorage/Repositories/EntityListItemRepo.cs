@@ -1,3 +1,4 @@
+using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.Core;
@@ -15,7 +16,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.DocumentDB
+namespace LagoVista.CloudStorage.Repositories
 {
     public class EntityListItemRepo<TEntity> : DocumentDBRepoBase<TEntity>, IEntityListItemRepo where TEntity : class, IEntityBase
     {
