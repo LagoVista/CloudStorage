@@ -4,16 +4,34 @@
 
 Scratch Data Storage is the CloudStorage capability for small, mutable, durable working records that behave like a persistent cache or application scratch pad.
 
-The semantic contract is:
+The semantic contract is a single composed capability:
 
 ```csharp
-IScratchStore<TRecord>
-    where TRecord : IScratchDataRecord
+IScratchStore
+```
+
+Record type is supplied on each operation:
+
+```csharp
+await store.UpsertAsync(record);
+var record = await store.GetAsync<MyScratchRecord>(key);
+var page = await store.QueryAsync(new StorageQuery<MyScratchRecord>());
 ```
 
 The initial and preferred provider is **MongoDB**.
 
-Scratch Storage is intentionally distinct from Application Data Storage even when both use the same Mongo cluster. The distinction is about **lifecycle and meaning**, not the database product underneath them.
+Scratch remains intentionally distinct from Application Data even when both share the same Mongo cluster and low-level provider machinery. The distinction is about lifecycle and meaning.
+
+## Core architectural rule
+
+Repositories use Scratch through composition rather than inheriting provider storage classes.
+
+```text
+Repository
+    HAS-A IScratchStore
+```
+
+The repository expresses domain intent. CloudStorage owns collection selection, serialization, indexes, paging, TTL behavior, and provider mechanics.
 
 ## What belongs here
 
@@ -21,209 +39,190 @@ Scratch Storage is intended for data with these characteristics:
 
 - mutable working state;
 - small or moderate record size;
-- point read / upsert / delete are the dominant operations;
-- data is useful and should survive ordinary process/pod restarts;
-- losing the data may be inconvenient, but should not represent loss of authoritative business history;
+- point read / upsert / delete are dominant operations;
+- data should survive normal process/pod restarts;
+- losing it may be inconvenient or expensive but should not destroy authoritative business history;
 - automatic expiration/cleanup is often desirable;
 - query surface is intentionally small;
 - the record does not need rich entity behavior or a large domain graph.
 
-Examples include durable workflow scratch state, short-lived intermediate results, coordination state, resumable working context, or cache-like records where recomputation is possible but expensive or inconvenient.
+Examples include durable workflow scratch state, intermediate results, coordination state, resumable context, processing checkpoints, and cache-like records where recomputation is possible.
 
-Scratch Storage should not become a dumping ground for data whose real lifecycle has not been understood. If records become authoritative, broadly queryable business state, they likely belong in Application Data Storage instead.
+Scratch must not become a dumping ground for records whose lifecycle has not been understood. Records that become authoritative or broadly queryable should normally move to Application Data.
 
 ## Provider decision
 
 Scratch Storage lives in **MongoDB**.
 
-MongoDB fits the scratch workload well because it provides:
+MongoDB fits this workload because it provides:
 
 - inexpensive collections in the self-hosted environment;
 - direct POCO/document persistence;
 - natural upsert semantics;
-- TTL indexes for automatic cleanup;
+- TTL indexes;
 - flexible additive record evolution;
-- simple indexes for the small query surface;
-- durable storage without requiring a relational schema.
+- simple indexes for narrow query surfaces;
+- durable storage without relational schema requirements.
 
-Scratch Storage may share Mongo client/server infrastructure with Application Data Storage, but it retains separate settings, contracts, collection policies, and retention behavior.
+Scratch may share Mongo client/server infrastructure with Application Data while retaining independent settings, databases, credentials, retention behavior, and future operational placement.
 
 ## Record contract
 
-The minimum record contract is intentionally tiny:
+The minimum contract is intentionally tiny:
 
 ```csharp
 public interface IScratchDataRecord
 {
-    string Id { get; set; }
+    NormalizedId32 Id { get; set; }
     EntityHeader Organization { get; set; }
 }
 ```
 
-The interface does not require `CreationDate` or `LastUpdatedDate` because scratch records are not expected to provide a universal audit/history contract.
+The common storage invariants are:
 
-A concrete scratch record may include timestamps, expiration fields, state markers, or other lifecycle metadata when its workload requires them.
+```text
+identity     => Id
+organization => Organization.Id
+```
 
-Do not grow `IScratchDataRecord` into another `EntityBase`. Scratch records should remain lightweight.
+Scratch does not require universal creation/update timestamps because those are not part of the semantic promise. Concrete records may add timestamps or state markers when their workload requires them.
+
+Do not grow `IScratchDataRecord` into another `EntityBase`.
 
 ## Store contract
 
-Scratch intentionally uses upsert semantics:
+Scratch deliberately uses upsert semantics:
 
 ```csharp
-public interface IScratchStore<TRecord>
-    where TRecord : IScratchDataRecord
+public interface IScratchStore
 {
-    Task<TRecord> GetAsync(StorageKey key, CancellationToken cancellationToken = default);
-    Task UpsertAsync(TRecord record, CancellationToken cancellationToken = default);
-    Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default);
-    Task<StoragePageResult<TRecord>> QueryAsync(
+    Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
+        where TRecord : class, IScratchDataRecord;
+
+    Task UpsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
+        where TRecord : class, IScratchDataRecord;
+
+    Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
+        where TRecord : class, IScratchDataRecord;
+
+    Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(
         StorageQuery<TRecord> query,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default)
+        where TRecord : class, IScratchDataRecord;
 }
 ```
 
-`UpsertAsync` is a deliberate semantic difference from Application Data Storage. Scratch callers generally care that the current working record exists with the latest state; they do not need create/update lifecycle distinction from the storage API.
+There is one `IScratchStore` DI registration. Adding a new scratch record type does not require registering `IScratchStore<TRecord>`.
 
-## Physical Mongo model
+`UpsertAsync` is a deliberate semantic difference from Application Data. Scratch callers care that the latest working state exists, not whether the operation was technically a create or update.
 
-Each concrete scratch record type maps to its own MongoDB collection.
+## Deterministic physical identity
 
-Conceptually:
-
-```text
-WorkflowScratchRecord
-    -> workflow_scratch_record collection
-
-ProcessingCheckpointRecord
-    -> processing_checkpoint_record collection
-
-TemporaryContextRecord
-    -> temporary_context_record collection
-```
-
-Collection naming should be deterministic and owned by CloudStorage. Callers should not construct Mongo collection names.
-
-### POCO-first persistence
-
-Scratch should normally persist the application record POCO directly:
+Each concrete scratch record type maps to exactly one Mongo collection through `StorageRecordIdentity`:
 
 ```text
-scratch record POCO
-      |
-      +--> IScratchStore<TRecord>
-              |
-              +--> Mongo serializer / collection
+WorkflowScratchRecord      -> WorkflowScratchRecord collection
+ProcessingCheckpointRecord -> ProcessingCheckpointRecord collection
+TemporaryContextRecord     -> TemporaryContextRecord collection
 ```
 
-Avoid introducing provider DTOs and mapping layers unless a concrete provider requirement justifies them.
+Callers never provide or override collection names during CRUD/query operations.
 
-Mongo/BSON concerns remain inside the provider implementation.
+Changing the persisted CLR type name is therefore a storage migration decision.
 
-## Storage definition
+## POCO-first persistence
 
-Scratch repositories declare their storage requirements during registration through `FlatStorageDefinition<TRecord>`.
+Scratch persists the application POCO directly:
 
-A scratch store requires a logical key:
+```text
+scratch POCO
+    |
+    +--> IScratchStore
+            |
+            +--> Mongo serializer / deterministic collection
+```
+
+Provider DTOs and mapping layers should not be added without a concrete physical-storage requirement.
+
+Mongo/BSON mechanics stay inside CloudStorage.
+
+## Record configuration
+
+Scratch records are storable without per-record registration. Identity, organization scope, serialization, and collection name are deterministic conventions.
+
+Optional configuration only declares additional behavior such as indexes and retention:
 
 ```csharp
-services.AddScratchStore<MyScratchRecord, MongoScratchStore<MyScratchRecord>>(
-    definition => definition
-        .KeyBy(x => x.Id)
-        .Index(x => x.SomeLookupField)
-        .RetainFor(TimeSpan.FromDays(7)));
+services.ConfigureScratchData<AgentExecutionState>(definition =>
+{
+    definition.Index(x => x.AgentSessionId);
+    definition.RetainFor(TimeSpan.FromDays(14));
+});
 ```
 
-Useful provider-neutral metadata includes:
+Nested selectors are supported.
 
-- `KeyBy(...)` for logical identity;
-- `PartitionBy(...)` where organization/scope should be part of the logical access contract;
-- `Index(...)` for the intentionally small set of queryable fields;
-- `RetainFor(...)` for automatic expiration.
-
-`BucketBy(...)` is generally not appropriate for Scratch Storage. If the workload is an ever-growing time stream, it is likely an Activity Record workload instead.
+Configuration must not override collection identity, key identity, or organization identity.
 
 ## Retention and TTL
 
 Retention is a first-class Scratch concern.
 
-When `RetainFor(...)` is configured, the Mongo provider should implement it with a TTL index or equivalent provider-native mechanism.
+When `RetainFor(...)` is configured, the Mongo provider maintains a provider-owned expiration field and a TTL index. The scratch POCO does not need to expose Mongo expiration mechanics.
 
-The implementation must make the expiration model explicit. Mongo TTL indexes operate on a date field, so CloudStorage must establish a deterministic expiration timestamp strategy rather than relying on callers to remember provider-specific TTL rules.
-
-Two acceptable logical approaches are:
+Conceptually:
 
 ```text
-record has provider-neutral expiration/lifecycle timestamp
-        + retention duration
-        -> Mongo TTL index
+Upsert scratch record
+    + configured retention
+    -> provider calculates expiration timestamp
+    -> provider-owned _storageExpiresUtc field
+    -> Mongo TTL index
 ```
 
-or
+Every upsert refreshes the provider-owned expiration timestamp for that record.
 
-```text
-provider persists an internal expiration field
-calculated from the configured retention policy
-        -> Mongo TTL index
-```
+Scratch records without `RetainFor(...)` remain durable until explicitly deleted.
 
-The public scratch contract should not expose Mongo TTL-index mechanics.
-
-Retention changes should reconcile idempotently. Missing TTL indexes should be created. Incompatible index/policy changes should fail clearly or use an explicit migration path rather than silently deleting data.
-
-Scratch records without `RetainFor(...)` are durable until explicitly deleted.
+The provider-owned field is ignored when deserializing the scratch POCO so persistence remains POCO-first from the application's perspective.
 
 ## Index strategy
 
-Scratch indexes should be intentionally sparse.
+Scratch indexes should remain sparse.
 
-The provider should:
+Mongo has efficient `_id` identity and CloudStorage creates the canonical `Organization.Id` index for mutable record collections.
 
-1. create the key/identity path efficiently;
-2. create indexes declared with `Index(...)`;
-3. create retention/TTL indexes when configured;
-4. reconcile missing indexes idempotently;
-5. preserve unrelated legacy indexes unless explicitly migrated;
-6. reject unsafe/incompatible index drift rather than silently rebuilding it.
-
-Do not index every property. Scratch is meant to have a small query surface.
-
-If a scratch workload develops many query dimensions, complex filtering, or broad reporting requirements, that is a useful signal that the records may actually be Application Data.
-
-## Organization scoping
-
-`IScratchDataRecord` carries:
+Additional indexes are declared only for real lookup/query patterns:
 
 ```csharp
-EntityHeader Organization
+services.ConfigureScratchData<MyScratchRecord>(definition =>
+    definition.Index(x => x.SomeLookupField));
 ```
 
-Organization should remain part of the logical access boundary for tenant-owned scratch data.
+When retention is configured, CloudStorage also creates the TTL index.
 
-Where records are queried by organization, registration should declare the relevant partition/index requirement so the Mongo provider can create an efficient access path.
-
-CloudStorage should not infer arbitrary tenant filters from naming conventions in application code.
+If a scratch workload develops many query dimensions or reporting requirements, that is a signal it may actually be Application Data.
 
 ## Query behavior
 
 `StorageQuery<TRecord>` is the provider-neutral query surface.
 
-Scratch query support should remain deliberately modest. Typical operations are:
+Typical Scratch queries are:
 
 - get by key;
-- query within an organization/scope;
+- query within `Organization.Id`;
 - equality lookup on one or more declared indexed fields;
-- page through a bounded set of working records.
+- sort/page through a bounded working set.
 
-Provider implementations should reject unsupported or dangerous query shapes instead of falling back to collection scans/client-side filtering without an explicit decision.
+CloudStorage translates typed property paths and supported operators into Mongo queries. Unsupported behavior should fail explicitly rather than silently falling back to broad client-side filtering.
 
-Paging uses `StoragePageResult<TRecord>` and opaque continuation tokens. Mongo cursor details must not leak to callers.
+Paging uses `StoragePageResult<TRecord>` and opaque continuation tokens.
 
 ## Upsert behavior
 
-`UpsertAsync` should be atomic for a single logical scratch record.
+`UpsertAsync` is atomic for a single logical record replacement/upsert.
 
-If the record does not exist, it is created. If it exists, the current document is replaced/updated according to the provider's defined serialization strategy.
+If the record does not exist it is created. If it exists its current document is replaced according to the provider's serialization strategy.
 
 Scratch does not automatically promise:
 
@@ -232,102 +231,89 @@ Scratch does not automatically promise:
 - event history;
 - conflict-free merging.
 
-If a particular workload needs optimistic concurrency, that requirement should be modeled deliberately rather than assumed because Mongo supports additional mechanisms.
+Those requirements should be modeled deliberately when needed.
 
 ## Configuration
 
-Scratch has an independent settings contract and configuration section:
+Scratch has an independent configuration section:
 
 ```text
 ScratchStorage
 ```
 
-The current settings are represented by:
+represented by:
 
 ```csharp
 IScratchStorageSettings
 ScratchStorageSettings
 ```
 
-Scratch Storage and Application Data Storage may point to the same Mongo server today. Duplicate configuration keys are intentional because the semantic capabilities may diverge later in database name, credentials, retention policies, scaling, or operational placement.
+`AddScratchStorageConnection()` registers the settings, shared Mongo client factory, and the single scoped `IScratchStore` Mongo implementation.
 
-## Relationship to Application Data Storage
+## Relationship to Application Data
 
-Both initial implementations use MongoDB, but the APIs intentionally encode different behavior.
+Both implementations use the same low-level Mongo record core while preserving separate semantic APIs:
 
 | Scratch | Application Data |
 | --- | --- |
-| `IScratchStore<TRecord>` | `IApplicationDataStore<TRecord>` |
+| `IScratchStore` | `IApplicationDataStore` |
 | `IScratchDataRecord` | `IApplicationDataRecord` |
-| Upsert-oriented | Explicit insert/update |
-| Small working-state surface | Durable application-state surface |
-| Retention/expiration common | Retention workload-specific |
-| Loss may be recoverable/inconvenient | Data is authoritative application state |
-| Narrow query requirements | Broader declared indexed querying |
+| upsert-oriented | explicit insert/update |
+| reconstructable working state | authoritative application state |
+| retention/TTL common | retention unusual |
+| timestamps workload-specific | creation/update timestamps invariant |
+| narrow query requirements | broader declared querying |
 
-Do not merge these stores just because their first provider is MongoDB.
+Do not merge these semantic capabilities just because they share a provider implementation core.
 
 ## Relationship to Mongo entity storage
 
-Scratch Storage is **not** part of the rich Mongo entity-storage modernization.
+Scratch Storage is not the rich Mongo entity-storage modernization.
 
-The entity-storage lane owns first-class LagoVista entity persistence, Cosmos/Mongo provider parity, document/entity behavior, and its migration mechanics.
+Entity storage owns first-class LagoVista entities and entity-specific repository behavior.
 
-Scratch Storage handles lightweight `IScratchDataRecord` POCOs through `IScratchStore<TRecord>`.
+Scratch owns lightweight runtime POCOs through `IScratchStore` and should not reintroduce `DocumentDBRepoBase`-style inheritance.
 
-The two lanes may share proven low-level Mongo connection/client infrastructure, but Scratch implementation must not refactor `DocumentDBRepoBase`, `MongoDocumentCollection`, or active entity-conversion work.
+## Migration from existing storage
 
-## Migration from Azure Table Storage
+Some Azure Table or embedded runtime state is really durable scratch state. Those workloads should migrate only when their lifecycle matches this contract.
 
-Some existing Azure Table workloads are really scratch/durable-cache workloads. Those should migrate to Scratch only when their lifecycle matches this semantic contract.
+A typical conversion is:
 
-Migration utilities remain separate from the normal runtime store:
-
-```text
-Azure Table Storage
-       |
-       +--> selected/all scratch records
-                |
-                +--> migration adapter
-                         |
-                         +--> Mongo Scratch collection
-```
-
-A migration may import all records or a bounded recent window depending on the workload's useful lifetime.
-
-If old scratch data has no continuing value, recreating the working set may be preferable to a full historical migration.
+1. identify the working-state record and useful lifetime;
+2. make it implement `IScratchDataRecord`;
+3. declare only required indexes and optional retention;
+4. inject `IScratchStore` into the owning repository/service;
+5. replace provider-specific CRUD with `GetAsync<T>`, `UpsertAsync`, `DeleteAsync<T>`, and `QueryAsync<T>`;
+6. remove provider DTO/mapping layers that no longer serve a purpose;
+7. decide whether old scratch data should migrate or simply be recreated.
 
 ## Testing strategy
 
-Most contract/definition validation should remain fast unit tests. Mongo behavior should use the existing Docker-backed Mongo integration harness.
+Fast contract tests cover deterministic identity, nested selectors, DI composition, and record configuration.
 
-Important integration coverage includes:
+Mongo-specific behavior should be covered with a Docker-backed integration harness, including:
 
 - authenticated connection through `ScratchStorageSettings`;
-- collection creation/use;
-- upsert creates a new record;
-- second upsert replaces/updates the same logical record;
-- get by key;
-- delete;
+- deterministic separate collections for multiple record types;
+- upsert creates a record;
+- second upsert replaces the same record;
+- get/delete;
 - organization-scoped lookup;
-- declared index creation/reconciliation;
-- typed indexed queries;
-- paging and continuation tokens;
-- TTL/retention index creation;
-- expiration behavior with a short test retention window;
+- declared nested indexes;
+- sorting and paging;
+- TTL index creation;
+- expiration with a short retention window;
+- retention refresh on upsert;
 - additive POCO evolution;
-- initialization is idempotent;
+- idempotent initialization;
 - persistence across Mongo restart for non-expired records.
-
-Critical provider paths should use LagoVista's `[CriticalCoverage]` marker where a regression could cause unintended retention, record loss, or isolation/query errors.
 
 ## Operational expectations
 
 Scratch is durable working storage, not disposable process memory.
 
-The Mongo deployment therefore participates in the normal platform durability/DR posture appropriate to the shared Mongo service. At the same time, consumer design should recognize that scratch data should generally be reconstructable or recoverable from authoritative state.
-
-This distinction lets us avoid over-engineering scratch records while still preventing ordinary pod/process restarts from erasing useful work.
+The underlying Mongo service participates in normal platform durability appropriate to that service. Consumers should nevertheless design scratch state so it can generally be reconstructed from authoritative data when necessary.
 
 ## Non-goals
 
@@ -335,26 +321,25 @@ Scratch Storage is not intended to become:
 
 - the rich entity/document repository stack;
 - a general authoritative application database;
-- an append-only activity log;
+- an append-only activity/history store;
 - a metrics store;
 - an account ledger;
 - a relational transaction layer;
-- an arbitrary Mongo API exposed to business repositories.
+- an arbitrary Mongo API exposed to application repositories.
 
 ## Definition of done
 
-The Mongo Scratch capability is ready for first workload migration when:
+The Mongo Scratch capability is infrastructure-ready when:
 
-- `IScratchStore<TRecord>` has a production Mongo implementation;
+- one non-generic `IScratchStore` has a production Mongo implementation;
 - `ScratchStorage` settings and DI are complete;
+- record identity and organization scope are deterministic conventions;
 - each record type maps deterministically to its own collection;
-- direct POCO persistence is the normal path;
-- upsert/get/delete semantics are integration-tested;
+- direct POCO persistence is normal;
+- no per-record store DI registration is required;
+- upsert/get/delete/query/paging semantics are integration-tested;
 - declared indexes reconcile safely and idempotently;
-- retention/TTL behavior is implemented and integration-tested;
-- query/paging behavior is provider-neutral and tested;
-- the Docker Mongo integration harness can run the provider suite repeatably;
-- the implementation does not refactor or collide with the concurrent Mongo entity-storage modernization;
-- migration/rebuild tooling is separate from normal runtime storage behavior.
+- provider-owned TTL behavior is integration-tested;
+- migration/rebuild tooling remains separate from normal runtime behavior.
 
-At that point Scratch Storage is infrastructure-ready. Individual workload conversions can proceed independently based on lifecycle/value.
+Individual workload conversions can then proceed independently based on lifecycle and value.
