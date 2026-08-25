@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
     public interface IFlatStorageConnectionSettings
     {
@@ -67,8 +67,6 @@ namespace LagoVista.CloudStorage.Storage
         public int Port { get; }
         public string LocalDataCenter { get; }
     }
-
-
 
     public sealed class FlatStorageContext
     {
