@@ -23,6 +23,11 @@ namespace LagoVista.CloudStorage.Storage
     {
         public const string SectionName = "MongoDocumentStorage";
 
+        public MongoDocumentStorageConnectionSettings()
+        {
+            
+        }
+
         public MongoDocumentStorageConnectionSettings(IConfiguration configuration)
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
@@ -42,13 +47,13 @@ namespace LagoVista.CloudStorage.Storage
             UseTls = ReadBoolean(useTls, false, "UseTls");
         }
 
-        public IReadOnlyList<string> Hosts { get; }
-        public int Port { get; }
-        public string UserName { get; }
-        public string Password { get; }
-        public string AuthenticationDatabase { get; }
-        public string ReplicaSet { get; }
-        public bool UseTls { get; }
+        public IReadOnlyList<string> Hosts { get; set;}
+        public int Port { get; set;} = 27018;
+        public string UserName { get; set;}
+        public string Password { get; set;}
+        public string AuthenticationDatabase { get; set;}
+        public string ReplicaSet { get; set;}
+        public bool UseTls { get; set;}
 
         public string BuildConnectionString()
         {

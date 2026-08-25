@@ -249,19 +249,23 @@ namespace LagoVista.CloudStorage.Utils
 
         private static MongoDocumentStorageConnectionSettings CreateMongoDocumentStorageSettings(string prefix)
         {
-            var values = new Dictionary<string, string>
+            var cs = new MongoDocumentStorageConnectionSettings()
             {
-                ["MongoDocumentStorage:Hosts"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_HOSTS"),
-                ["MongoDocumentStorage:Port"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_PORT"),
-                ["MongoDocumentStorage:UserName"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_USERNAME"),
-                ["MongoDocumentStorage:Password"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_PASSWORD"),
-                ["MongoDocumentStorage:AuthenticationDatabase"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_AUTHENTICATION_DATABASE"),
-                ["MongoDocumentStorage:ReplicaSet"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_REPLICA_SET"),
-                ["MongoDocumentStorage:UseTls"] = Environment.GetEnvironmentVariable($"{prefix}_MONGO_USE_TLS")
+              Hosts = new List<string>() { Environment.GetEnvironmentVariable($"{prefix}_MongoDocumentStorage:Hosts")},
+              UserName = Environment.GetEnvironmentVariable($"{prefix}_MongoDocumentStorage:UserName"),
+              Password = Environment.GetEnvironmentVariable($"{prefix}_MongoDocumentStorage:Password"),
+              AuthenticationDatabase = Environment.GetEnvironmentVariable($"{prefix}_MongoDocumentStorage:AuthenticationDatabase"),
+              ReplicaSet = Environment.GetEnvironmentVariable($"{prefix}_MongoDocumentStorage:ReplicaSet"),
             };
 
-            var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
-            return new MongoDocumentStorageConnectionSettings(configuration);
+            if(!String.IsNullOrEmpty(Environment.GetEnvironmentVariable($"{prefix}_MongoDocumentStorage:Port"))) cs.Port = Int32.Parse(Environment.GetEnvironmentVariable($"{prefix}_MongoDocumentStorage:Port"));
+            if(!String.IsNullOrEmpty(Environment.GetEnvironmentVariable($"{prefix}_MongoDocumentStorage:UseTls"))) cs.UseTls = Boolean.Parse(Environment.GetEnvironmentVariable($"{prefix}_MongoDocumentStorage:UseTls"));
+
+            if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine($"[ERROR] - Missing {prefix}_MongoDocumentStorage:UserName as environment variable");
+            if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine($"[ERROR] - Missing {prefix}_MongoDocumentStorage:Password as environment variable");
+            if (String.IsNullOrEmpty(cs.AuthenticationDatabase)) Console.WriteLine($"[ERROR] - Missing {prefix}_MongoDocumentStorage:AuthenticationDatabase as environment variable");
+         
+            return cs;
         }
 
         private static MongoDocumentStorageConnectionSettings CreateLocalTestMongoDocumentStorageSettings()
