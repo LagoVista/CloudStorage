@@ -1,20 +1,31 @@
 ﻿using LagoVista.CloudStorage;
+using LagoVista.CloudStorage.Storage.Connections;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Interfaces.Crypto;
 using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Relational.DataContexts;
+using LagoVista.Relational.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace LagoVista.Relational
 {
     public static class Startup
     {
+        private static void ConfigurePlatformSmokeTests(IServiceCollection services)
+        {
+            services.TryAddSingleton<IPostgresConnectionSettings, PostgresConnectionSettings>();
+            services.TryAddEnumerable(ServiceDescriptor.Transient<IPlatformSmokeTest, PostgresPlatformSmokeTest>());
+        }
+
         public static void ConfigureDataContextServices(IConfigurationRoot configurationRoot, IServiceCollection services, ILogger logger)
         {
+            ConfigurePlatformSmokeTests(services);
+
             var section = configurationRoot.GetSection("BillingDb");
             var connectionSettings = CreateConnectionSettings(section);
 
@@ -34,6 +45,8 @@ namespace LagoVista.Relational
 
         public static void ConfigureSemanticDataContextServices(IConfigurationRoot configurationRoot, IServiceCollection services, ILogger logger)
         {
+            ConfigurePlatformSmokeTests(services);
+
             var liveConnectionSettings = CreateConnectionSettings(configurationRoot.GetSection("SemanticDb"));
             var testConnectionSettings = CreateConnectionSettings(configurationRoot.GetSection("SemanticTestDb"));
 
