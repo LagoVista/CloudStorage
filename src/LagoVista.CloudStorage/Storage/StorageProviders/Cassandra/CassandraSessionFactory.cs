@@ -1,5 +1,6 @@
 using Cassandra;
 using LagoVista;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using System;
 using System.Threading.Tasks;
 
