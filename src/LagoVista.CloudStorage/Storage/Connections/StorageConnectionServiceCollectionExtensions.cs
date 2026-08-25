@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Diagnostics;
+using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -33,6 +34,7 @@ namespace LagoVista.CloudStorage.Storage
 
             services.TryAddSingleton<IScratchStorageSettings, ScratchStorageSettings>();
             services.TryAddSingleton<IMongoStorageClientFactory, MongoStorageClientFactory>();
+            services.TryAddScoped<IScratchStore, MongoScratchStore>();
             return services;
         }
 
@@ -42,6 +44,7 @@ namespace LagoVista.CloudStorage.Storage
 
             services.TryAddSingleton<IApplicationDataStorageSettings, ApplicationDataStorageSettings>();
             services.TryAddSingleton<IMongoStorageClientFactory, MongoStorageClientFactory>();
+            services.TryAddScoped<IApplicationDataStore, MongoApplicationDataStore>();
             return services;
         }
     }
