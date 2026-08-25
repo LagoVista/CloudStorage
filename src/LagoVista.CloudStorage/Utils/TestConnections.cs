@@ -2,7 +2,7 @@
 // ContentHash: 01327be1d3e2ec3c6ab9198c9ab4886279b214c9f61cf064fa61d4fa0e0518ab
 // IndexVersion: 2
 // --- END CODE INDEX META ---
-using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using Microsoft.Extensions.Configuration;
