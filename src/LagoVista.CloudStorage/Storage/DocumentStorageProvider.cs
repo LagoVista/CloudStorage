@@ -13,12 +13,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         Mongo
     }
 
-    public sealed class MongoDocumentStorageSettings
-    {
-        public string ConnectionString { get; set; }
-        public string DatabaseName { get; set; }
-    }
-
     public sealed class DocumentStorageSettings
     {
         public DocumentStorageProviderType Provider { get; set; }
@@ -78,9 +72,17 @@ namespace LagoVista.CloudStorage.DocumentDB
             var connectionString = GetEnvironmentSetting(MongoConnectionStringEnvironmentVariablePrefix + normalizedDatabaseName, MongoConnectionStringEnvironmentVariable);
             var databaseName = GetEnvironmentSetting(MongoDatabaseEnvironmentVariablePrefix + normalizedDatabaseName, MongoDatabaseEnvironmentVariable);
 
-            var settings = Utils.TestConnections.DevMongoDocumentStorage;
+            if (String.IsNullOrWhiteSpace(connectionString))
+                connectionString = Utils.TestConnections.DevMongoDocumentStorage.BuildConnectionString();
 
-            return ValidateMongoSettings(settings);
+            if (String.IsNullOrWhiteSpace(databaseName))
+                databaseName = logicalDatabaseName;
+
+            return ValidateMongoSettings(new MongoDocumentStorageSettings
+            {
+                ConnectionString = connectionString,
+                DatabaseName = databaseName
+            });
         }
 
         public static DocumentStorageProviderType ParseProvider(string providerSetting)
