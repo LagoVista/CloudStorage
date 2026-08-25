@@ -1,7 +1,6 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core;
-using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.PlatformSupport;
@@ -15,20 +14,15 @@ namespace LagoVista.CloudStorage.Repositories
 {
     public sealed class EntityPreparationCandidateRepository : IEntityPreparationCandidateRepository
     {
-        private readonly DocumentStorageSettings _storageSettings;
-        private readonly IDocumentCollectionFactory _collectionFactory;
-        private readonly IDocumentCollectionNameResolver _collectionNameResolver;
+        private readonly IDocumentStorageClient _storageClient;
         private readonly ILogger _logger;
 
-        public EntityPreparationCandidateRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, ILogger logger)
+        public EntityPreparationCandidateRepository(IDocumentStorageClientProvider documentStorageClientProvider, ILogger logger)
         {
-            if (options == null) throw new ArgumentNullException(nameof(options));
-            if (cosmosClientProvider == null) throw new ArgumentNullException(nameof(cosmosClientProvider));
+            if (documentStorageClientProvider == null) throw new ArgumentNullException(nameof(documentStorageClientProvider));
 
+            _storageClient = documentStorageClientProvider.GetClient();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _collectionNameResolver = new DocumentCollectionNameResolver();
-            _collectionFactory = new DocumentCollectionFactory(cosmosClientProvider, _collectionNameResolver);
-            _storageSettings = DocumentStorageSettingsResolver.Resolve(options.SyncConnectionSettings.Uri, options.SyncConnectionSettings.AccessKey, options.SyncConnectionSettings.ResourceName);
         }
 
         public async Task<EntityBaseSummary> GetEntityBaseAsync(string entityType, string entityId, string orgId, CancellationToken ct = default)
@@ -44,7 +38,7 @@ namespace LagoVista.CloudStorage.Repositories
                     .WithParameter("entityId", entityId.Trim())
                     .WithParameter("orgId", orgId.Trim());
 
-                var entities = await GetCollection(entityType).QueryAsync<EntityBaseSummary>(request, ct).ConfigureAwait(false);
+                var entities = await _storageClient.QueryKnownAsync<EntityBaseSummary>(entityType, request, ct).ConfigureAwait(false);
                 return entities.FirstOrDefault();
             }
             catch (Exception ex)
@@ -65,7 +59,7 @@ namespace LagoVista.CloudStorage.Repositories
                     .WithParameter("entityType", entityType.Trim())
                     .WithParameter("orgId", orgId.Trim());
 
-                var entities = (await GetCollection(entityType).QueryAsync<EntityBaseSummary>(request, ct).ConfigureAwait(false)).ToList();
+                var entities = (await _storageClient.QueryKnownAsync<EntityBaseSummary>(entityType, request, ct).ConfigureAwait(false)).ToList();
                 _logger.Trace($"{this.Tag()} - Found {entities.Count} entities of type '{entityType}' for organization '{orgId}'.");
                 return entities;
             }
@@ -85,7 +79,7 @@ namespace LagoVista.CloudStorage.Repositories
             try
             {
                 var request = CreateIncompleteRequest(entityType, orgId, maxItems);
-                var entities = (await GetCollection(entityType).QueryAsync<EntityBaseSummary>(request, ct).ConfigureAwait(false)).ToList();
+                var entities = (await _storageClient.QueryKnownAsync<EntityBaseSummary>(entityType, request, ct).ConfigureAwait(false)).ToList();
                 _logger.Trace($"{this.Tag()} - Found {entities.Count} incomplete entities of type '{entityType}' for organization '{orgId}'.");
                 return entities;
             }
@@ -106,7 +100,7 @@ namespace LagoVista.CloudStorage.Repositories
             try
             {
                 var request = CreateIncompleteRequest(entityType, org.Id, listRequest.PageSize);
-                var entities = (await GetCollection(entityType).QueryAsync<EntityBaseSummary>(request, ct).ConfigureAwait(false)).ToList();
+                var entities = (await _storageClient.QueryKnownAsync<EntityBaseSummary>(entityType, request, ct).ConfigureAwait(false)).ToList();
                 _logger.Trace($"{this.Tag()} - Found {entities.Count} incomplete entities of type '{entityType}' for organization '{org.Text}'.");
                 return ListResponse<EntityBaseSummary>.Create(entities);
             }
@@ -115,18 +109,6 @@ namespace LagoVista.CloudStorage.Repositories
                 _logger.AddException(this.Tag(), ex);
                 throw;
             }
-        }
-
-        private IDocumentCollection GetCollection(string entityType)
-        {
-            if (_storageSettings.Provider == DocumentStorageProviderType.Cosmos)
-                return _collectionFactory.Create(_storageSettings, $"{_storageSettings.DatabaseName}_Collections");
-
-            var mongoDatabaseName = _storageSettings.Mongo?.DatabaseName ?? _storageSettings.DatabaseName;
-            if (!_collectionNameResolver.TryResolve(mongoDatabaseName, entityType, out var collectionName))
-                throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
-
-            return _collectionFactory.Create(_storageSettings, collectionName);
         }
 
         private static DocumentQueryRequest CreateIncompleteRequest(string entityType, string orgId, int maxItems)
