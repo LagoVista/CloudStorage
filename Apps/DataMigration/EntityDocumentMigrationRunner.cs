@@ -21,7 +21,7 @@ internal sealed class EntityDocumentMigrationRunner
     private readonly string _environment;
     private readonly IDocumentMigrationService _migrationService;
     private readonly DocumentStorageSettings _source;
-    private readonly MongoDocumentStorageSettings _target;
+    private readonly MongoDocumentStorageTarget _target;
 
     public EntityDocumentMigrationRunner(string environment)
     {
@@ -36,7 +36,13 @@ internal sealed class EntityDocumentMigrationRunner
             DatabaseName = sourceConnection.ResourceName
         };
 
-        _target = DocumentStorageSettingsResolver.ResolveMongo(_source.DatabaseName);
+        var mongoConnection = _environment == "prod" ? TestConnections.ProductionMongoDocumentStorage : TestConnections.DevMongoDocumentStorage;
+        _target = new MongoDocumentStorageTarget
+        {
+            ConnectionString = mongoConnection.BuildConnectionString(),
+            DatabaseName = _source.DatabaseName
+        };
+
         _migrationService = new DocumentMigrationService(CosmosClientProvider.Shared, new DocumentCollectionNameResolver());
     }
 

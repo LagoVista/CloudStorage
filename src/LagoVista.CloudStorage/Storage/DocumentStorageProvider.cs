@@ -13,7 +13,12 @@ namespace LagoVista.CloudStorage.DocumentDB
         Mongo
     }
 
-    public sealed class MongoDocumentStorageSettings
+    /// <summary>
+    /// Resolved Mongo destination used by the provider-neutral document-storage path.
+    /// Server connection configuration lives in MongoDocumentStorageConnectionSettings;
+    /// this type only carries the final connection string and logical database selected for an operation.
+    /// </summary>
+    public sealed class MongoDocumentStorageTarget
     {
         public string ConnectionString { get; set; }
         public string DatabaseName { get; set; }
@@ -25,7 +30,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         public string Endpoint { get; set; }
         public string SharedKey { get; set; }
         public string DatabaseName { get; set; }
-        public MongoDocumentStorageSettings Mongo { get; set; }
+        public MongoDocumentStorageTarget Mongo { get; set; }
     }
 
     /// <summary>
@@ -53,7 +58,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             return Resolve(endpoint, sharedKey, databaseName, providerSetting, null);
         }
 
-        public static DocumentStorageSettings Resolve(string endpoint, string sharedKey, string databaseName, string providerSetting, MongoDocumentStorageSettings mongoSettings)
+        public static DocumentStorageSettings Resolve(string endpoint, string sharedKey, string databaseName, string providerSetting, MongoDocumentStorageTarget mongoTarget)
         {
             if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
 
@@ -66,11 +71,11 @@ namespace LagoVista.CloudStorage.DocumentDB
                 Endpoint = endpoint,
                 SharedKey = sharedKey,
                 DatabaseName = databaseName,
-                Mongo = provider == DocumentStorageProviderType.Mongo ? ValidateMongoSettings(mongoSettings ?? ResolveMongo(databaseName)) : mongoSettings
+                Mongo = provider == DocumentStorageProviderType.Mongo ? ValidateMongoTarget(mongoTarget ?? ResolveMongo(databaseName)) : mongoTarget
             };
         }
 
-        public static MongoDocumentStorageSettings ResolveMongo(string logicalDatabaseName)
+        public static MongoDocumentStorageTarget ResolveMongo(string logicalDatabaseName)
         {
             if (String.IsNullOrWhiteSpace(logicalDatabaseName)) throw new ArgumentNullException(nameof(logicalDatabaseName));
 
@@ -78,9 +83,11 @@ namespace LagoVista.CloudStorage.DocumentDB
             var connectionString = GetEnvironmentSetting(MongoConnectionStringEnvironmentVariablePrefix + normalizedDatabaseName, MongoConnectionStringEnvironmentVariable);
             var databaseName = GetEnvironmentSetting(MongoDatabaseEnvironmentVariablePrefix + normalizedDatabaseName, MongoDatabaseEnvironmentVariable);
 
-            var settings = Utils.TestConnections.DevMongoDocumentStorage;
-
-            return ValidateMongoSettings(settings);
+            return ValidateMongoTarget(new MongoDocumentStorageTarget
+            {
+                ConnectionString = connectionString,
+                DatabaseName = String.IsNullOrWhiteSpace(databaseName) ? logicalDatabaseName : databaseName
+            });
         }
 
         public static DocumentStorageProviderType ParseProvider(string providerSetting)
@@ -104,13 +111,13 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        private static MongoDocumentStorageSettings ValidateMongoSettings(MongoDocumentStorageSettings settings)
+        private static MongoDocumentStorageTarget ValidateMongoTarget(MongoDocumentStorageTarget target)
         {
-            if (settings == null) throw new InvalidOperationException("Mongo document storage settings are required when Mongo is selected.");
-            if (String.IsNullOrWhiteSpace(settings.ConnectionString)) throw new InvalidOperationException($"Mongo document storage connection string is required. Configure {MongoConnectionStringEnvironmentVariable} or its database-specific override.");
-            if (!settings.ConnectionString.StartsWith("mongodb://", StringComparison.OrdinalIgnoreCase) && !settings.ConnectionString.StartsWith("mongodb+srv://", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Mongo document storage connection string must use mongodb:// or mongodb+srv://.");
-            if (String.IsNullOrWhiteSpace(settings.DatabaseName)) throw new InvalidOperationException("Mongo document storage database name is required.");
-            return settings;
+            if (target == null) throw new InvalidOperationException("Mongo document storage target is required when Mongo is selected.");
+            if (String.IsNullOrWhiteSpace(target.ConnectionString)) throw new InvalidOperationException($"Mongo document storage connection string is required. Configure {MongoConnectionStringEnvironmentVariable} or its database-specific override.");
+            if (!target.ConnectionString.StartsWith("mongodb://", StringComparison.OrdinalIgnoreCase) && !target.ConnectionString.StartsWith("mongodb+srv://", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Mongo document storage connection string must use mongodb:// or mongodb+srv://.");
+            if (String.IsNullOrWhiteSpace(target.DatabaseName)) throw new InvalidOperationException("Mongo document storage database name is required.");
+            return target;
         }
 
         private static string GetProviderSetting(string databaseName)
@@ -158,7 +165,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     return new CosmosDBStorage<TEntity>(settings.Endpoint, settings.SharedKey, settings.DatabaseName, logger, cacheProvider, dependencyManager, cosmosClientProvider);
 
                 case DocumentStorageProviderType.Mongo:
-                    if (settings.Mongo == null) throw new InvalidOperationException("Mongo settings are required when the Mongo document storage provider is selected.");
+                    if (settings.Mongo == null) throw new InvalidOperationException("Mongo target is required when the Mongo document storage provider is selected.");
                     MongoBsonSerialization.Configure();
                     return new MongoDBStorage<TEntity>(settings.Mongo.ConnectionString, settings.Mongo.DatabaseName, logger, cacheProvider, dependencyManager, collectionNameResolver);
 

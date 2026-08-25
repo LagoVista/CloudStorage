@@ -16,7 +16,7 @@ namespace LagoVista.CloudStorage.Tests
             {
                 Provider = DocumentStorageProviderType.Mongo,
                 DatabaseName = "LogicalDb",
-                Mongo = new MongoDocumentStorageSettings
+                Mongo = new MongoDocumentStorageTarget
                 {
                     ConnectionString = "mongodb://localhost:27017",
                     DatabaseName = "MongoTarget"

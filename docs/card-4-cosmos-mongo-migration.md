@@ -30,7 +30,7 @@ The transformation is isolated in `DocumentMigrationTransformer` and has focused
 `CosmosToMongoMigrationRequest` accepts:
 
 - explicit Cosmos source `DocumentStorageSettings`
-- explicit Mongo target `MongoDocumentStorageSettings`
+- explicit resolved Mongo `MongoDocumentStorageTarget`
 - optional source collection override
 - optional `EntityType` filter
 - optional `ExcludedEntityTypes`
@@ -38,6 +38,8 @@ The transformation is isolated in `DocumentMigrationTransformer` and has focused
 - optional `ContinuationToken`
 - optional `MaxPages`
 - `DryRun`
+
+`MongoDocumentStorageTarget` is deliberately a resolved operation target, not another Mongo server connection-settings model. The canonical server connection configuration is `MongoDocumentStorageConnectionSettings`.
 
 `MaxPages` plus `ContinuationToken` provides a controlled checkpoint/resume mechanism. A migration can intentionally process a small number of Cosmos pages, inspect its result, then continue using the returned token.
 
@@ -78,7 +80,7 @@ Dry-run mode executes source reading, transforms, routing, exclusion accounting,
 
 ## Runner
 
-The existing `Apps/DataMigration` console app now exposes four EntityBase migration modes:
+The existing `Apps/DataMigration` console app exposes four EntityBase migration modes:
 
 ```powershell
 # Safe inventory only. Defaults to 5 Cosmos pages, 200 records/page.
@@ -99,7 +101,7 @@ dotnet run --project Apps/DataMigration/DataMigration.csproj -- reset-mongo-enti
 
 The second argument is the environment (`dev` or `prod`). Migration mode defaults to a bounded five-page run unless an explicit `MaxPages` is supplied; `0` means all pages.
 
-Cosmos source settings continue to use the existing dev/prod connection settings. Mongo destination settings use the existing `NUVIOT_MONGO_CONNECTION_STRING[_<DATABASE>]` and `NUVIOT_MONGO_DATABASE[_<DATABASE>]` environment-variable resolution.
+Cosmos source settings continue to use the existing dev/prod Cosmos connection settings. The runner gets the Mongo server connection from `TestConnections.DevMongoDocumentStorage` / `ProductionMongoDocumentStorage`, both of which return the canonical `MongoDocumentStorageConnectionSettings`. It then creates the small `MongoDocumentStorageTarget` used by the migration service.
 
 Reset never drops the Mongo database. It drops only the canonical `Entities` collection, which normal lazy provisioning recreates on first use.
 
@@ -141,7 +143,7 @@ No credentials or connection strings are included in either result.
 ## Completed tasks
 
 - [x] Add migration request/result models.
-- [x] Support explicit source Cosmos and target Mongo settings.
+- [x] Support explicit source Cosmos and resolved target Mongo settings.
 - [x] Stream Cosmos documents page-by-page.
 - [x] Support configurable Cosmos page/batch size.
 - [x] Route all EntityBase documents to the canonical `Entities` collection.
@@ -161,10 +163,11 @@ No credentials or connection strings are included in either result.
 - [x] Add validation mode comparing Cosmos and Mongo counts by entity type in `Entities`.
 - [x] Add DataMigration runner modes for dry-run, write, validate, and reset.
 - [x] Require explicit console confirmation for write migration and Mongo collection reset.
+- [x] Use the canonical Mongo server connection settings in the migration runner.
 
 ## Remaining tasks
 
-- [ ] Build CloudStorage and DataMigration and run the full non-integration/unit suite after the runner changes.
+- [ ] Build CloudStorage and DataMigration and run the full non-integration/unit suite after the connection cleanup.
 - [ ] Run a bounded dry-run against a real Cosmos database and review entity-type inventory/exclusions.
 - [ ] Populate the source-controlled exclusion list with the EntityTypes intentionally handled differently in the new world.
 - [ ] Run a small bounded migration into dev/non-production Mongo `Entities`.
@@ -196,6 +199,7 @@ dotnet test tests/LagoVista.CloudStorage.Tests/LagoVista.CloudStorage.Integratio
 ## Out of scope
 
 - ApplicationData or ScratchData migration.
+- Removing live Cosmos strangler repositories that still have consumers.
 - Live dual-write/change-feed synchronization during the first implementation.
 - Destructive removal from Cosmos.
 - Application cutover.

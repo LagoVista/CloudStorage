@@ -8,7 +8,6 @@ namespace LagoVista.CloudStorage.Interfaces
     {
         IAdminLogger AdminLogger { get; }
         ICosmosClientProvider CosmosClientProvider { get; }
-        IDocumentStorageClientProvider DocumentStorageClientProvider { get; }
         IDependencyManager DependencyManager { get;  }
         IProducedArtifactService ProducedArtifactService { get; }
 

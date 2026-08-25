@@ -8,7 +8,7 @@ namespace LagoVista.CloudStorage.Interfaces
     public sealed class CosmosToMongoMigrationRequest
     {
         public DocumentStorageSettings Source { get; set; }
-        public MongoDocumentStorageSettings Target { get; set; }
+        public MongoDocumentStorageTarget Target { get; set; }
         public string SourceCollectionName { get; set; }
         public string EntityType { get; set; }
         public string ContinuationToken { get; set; }

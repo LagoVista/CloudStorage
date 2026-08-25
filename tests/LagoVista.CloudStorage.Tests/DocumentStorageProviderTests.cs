@@ -47,15 +47,15 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
-        public void Resolve_WithExplicitMongoSettings_KeepsCosmosAndMongoCredentialsSeparate()
+        public void Resolve_WithExplicitMongoTarget_KeepsCosmosAndMongoCredentialsSeparate()
         {
-            var mongoSettings = new MongoDocumentStorageSettings
+            var mongoTarget = new MongoDocumentStorageTarget
             {
                 ConnectionString = "mongodb://mongo.example:27017",
                 DatabaseName = "MongoTarget"
             };
 
-            var settings = DocumentStorageSettingsResolver.Resolve("https://cosmos.example:443/", "cosmos-key", "LogicalDb", "mongo", mongoSettings);
+            var settings = DocumentStorageSettingsResolver.Resolve("https://cosmos.example:443/", "cosmos-key", "LogicalDb", "mongo", mongoTarget);
 
             Assert.That(settings.Provider, Is.EqualTo(DocumentStorageProviderType.Mongo));
             Assert.That(settings.Endpoint, Is.EqualTo("https://cosmos.example:443/"));
@@ -69,26 +69,26 @@ namespace LagoVista.CloudStorage.Tests
         [TestCase("mongodb+srv://cluster.example")]
         public void Resolve_WithSupportedMongoConnectionString_AcceptsConnectionString(string connectionString)
         {
-            var settings = new MongoDocumentStorageSettings
+            var target = new MongoDocumentStorageTarget
             {
                 ConnectionString = connectionString,
                 DatabaseName = "MongoTarget"
             };
 
-            var resolved = DocumentStorageSettingsResolver.Resolve(null, null, "LogicalDb", "mongo", settings);
+            var resolved = DocumentStorageSettingsResolver.Resolve(null, null, "LogicalDb", "mongo", target);
             Assert.That(resolved.Mongo.ConnectionString, Is.EqualTo(connectionString));
         }
 
         [Test]
         public void Resolve_WithInvalidMongoConnectionString_FailsFast()
         {
-            var settings = new MongoDocumentStorageSettings
+            var target = new MongoDocumentStorageTarget
             {
                 ConnectionString = "https://not-mongo.example",
                 DatabaseName = "MongoTarget"
             };
 
-            var ex = Assert.Throws<InvalidOperationException>(() => DocumentStorageSettingsResolver.Resolve(null, null, "LogicalDb", "mongo", settings));
+            var ex = Assert.Throws<InvalidOperationException>(() => DocumentStorageSettingsResolver.Resolve(null, null, "LogicalDb", "mongo", target));
             Assert.That(ex.Message, Does.Contain("mongodb:// or mongodb+srv://"));
         }
 

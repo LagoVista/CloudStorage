@@ -2,52 +2,81 @@
 
 ## Objective
 
-Define explicit Mongo configuration instead of overloading Cosmos-oriented endpoint/access-key settings, while preserving configuration-driven provider selection for existing repositories.
+Define one explicit Mongo server connection model instead of overloading Cosmos-oriented endpoint/access-key settings or maintaining parallel Mongo configuration stacks.
 
 ## Status
 
-Core configuration model is implemented and locally validated. One cleanup remains before dev cutover: bridge the new first-class structured Mongo settings into the legacy `DocumentStorageSettingsResolver` provider-selection path so primary Mongo runtime configuration no longer depends on ad-hoc `NUVIOT_MONGO_*` connection-string variables.
+The primary Mongo server connection model is `MongoDocumentStorageConnectionSettings` / `IMongoDocumentStorageConnectionSettings`. The older provider-client experiment and its duplicate Mongo/Cosmos settings wrappers have been removed.
 
-## First-class Mongo connection settings
+The compatibility `DocumentStorageSettingsResolver` remains for existing repository constructors and provider selection during the strangler migration, but its resolved Mongo value is now deliberately named `MongoDocumentStorageTarget` so it is not confused with server configuration.
 
-Primary Mongo now has a LagoVista-style application configuration contract:
+## Canonical Mongo server connection settings
+
+Primary Mongo uses the LagoVista-style application configuration contract:
 
 ```text
 MongoDocumentStorage
 ```
 
-The structured settings expose:
+`MongoDocumentStorageConnectionSettings` exposes:
 
 - `Hosts`
-- `Port` (default `27017`)
+- `Port`
 - `UserName`
 - `Password`
-- `AuthenticationDatabase` (default `admin`)
+- `AuthenticationDatabase`
 - optional `ReplicaSet`
-- `UseTls` (default `false`)
+- `UseTls`
 
-The settings build the driver connection string internally and redact credentials from diagnostic output.
+It owns Mongo server connection-string construction. `IMongoDocumentStorageConnectionSettings` and `IMongoStorageClientFactory` are registered through the normal CloudStorage DI setup.
 
-`IMongoDocumentStorageConnectionSettings` and `IMongoStorageClientFactory` are registered through the normal CloudStorage DI setup.
+This is the only first-class Mongo server connection model in CloudStorage.
 
-## Local test configuration
+## Resolved document-storage target
 
-`TestConnections.TestMongoDocumentStorage` is intentionally deterministic and matches the repository-owned Docker Mongo harness:
+Provider-neutral document operations sometimes need a small resolved value containing:
 
 ```text
-Host: localhost
-Port: 27018
-User: nuviot-test
-Authentication database: admin
-TLS: false
-Replica set: none
+ConnectionString
+DatabaseName
 ```
 
-The local runner therefore does not need `TEST_MONGO_*` environment variables.
+That value is `MongoDocumentStorageTarget`.
 
-Production/test deployment credentials remain configuration/secret driven; deterministic credentials are only for the disposable local Docker test instance.
+It is intentionally not another connection-settings abstraction. It represents the final Mongo target selected for one logical document-storage operation after server connection and database selection have been resolved.
 
-## Existing provider selection
+This keeps the concepts distinct:
+
+```text
+MongoDocumentStorageConnectionSettings
+    = how to connect to the Mongo server
+
+MongoDocumentStorageTarget
+    = connection string + database selected for this operation
+```
+
+## Retired parallel client seam
+
+An earlier modernization attempt introduced a second provider stack:
+
+- `IDocumentStorageClient`
+- `ICosmosDocumentStorageClient`
+- `IMongoDocumentStorageClient`
+- `IDocumentStorageClientProvider`
+- `DocumentStorageClientProvider`
+- `CosmosDocumentStorageClient`
+- `MongoDocumentStorageClient`
+- `ICosmosConnectionSettings`
+- `IMongoConnectionSettings`
+- `MongoConnectionSettings`
+
+That stack was registered and partially plumbed into `DocumentCloudServices`, but the active provider-neutral repositories use `DocumentCollectionFactory` / `IDocumentCollection` instead. The duplicate stack has therefore been removed rather than maintained in parallel.
+
+This does **not** remove live Cosmos compatibility repositories such as `CosmosSyncRepository`, `CosmosDBStorage`, or the remaining Cosmos implementation behind the strangler path. Those still have active callers and will be retired only as their consumers are converted.
+
+## Local/test and migration configuration
+
+`TestConnections` exposes structured Mongo server settings for production, development, and the disposable local Mongo harness. The EntityBase migration runner consumes these canonical connection settings and builds its `MongoDocumentStorageTarget` from them.
 
 The compatibility resolver still supports:
 
@@ -56,39 +85,43 @@ NUVIOT_DOCUMENT_STORAGE_PROVIDER=mongo
 NUVIOT_DOCUMENT_STORAGE_PROVIDER_<LOGICAL_DATABASE>=mongo
 ```
 
-and the older Mongo connection/database resolver variables. Database-specific values take precedence and Cosmos remains the default when no provider is selected.
+and the older `NUVIOT_MONGO_CONNECTION_STRING*` / `NUVIOT_MONGO_DATABASE*` values for repository paths that have not yet been moved onto injected structured configuration.
 
-This compatibility path is what currently lets existing `DocumentDBRepoBase<TEntity>` constructors switch to Mongo without changes.
+Cosmos remains the default provider when no provider is selected.
 
 ## Completed tasks
 
-- [x] Define explicit Mongo document storage settings separate from Cosmos endpoint/shared-key values.
-- [x] Add first-class structured `MongoDocumentStorage` application settings.
-- [x] Register structured Mongo settings through dependency injection.
-- [x] Add singleton Mongo client lifecycle management.
+- [x] Define Mongo server connection settings separate from Cosmos endpoint/shared-key values.
+- [x] Add structured `MongoDocumentStorage` application settings.
+- [x] Register structured Mongo settings and singleton Mongo client lifecycle through DI.
 - [x] Build Mongo connection strings from structured host/auth/TLS/replica-set values.
 - [x] Keep credentials out of diagnostic/error output.
-- [x] Preserve global and database-specific provider selection.
+- [x] Preserve global and database-specific provider selection during migration.
 - [x] Preserve Cosmos as the default provider.
-- [x] Support explicit application-supplied provider settings for migration code.
+- [x] Support explicit provider-neutral Mongo targets for migration/cutover code.
 - [x] Add deterministic local Docker test settings through `TestConnections`.
-- [x] Validate the Mongo settings path through the local integration suite.
+- [x] Remove the abandoned parallel `IDocumentStorageClient` provider stack.
+- [x] Remove duplicate `MongoConnectionSettings` / `IMongoConnectionSettings` wrappers.
+- [x] Move the Mongo document-storage smoke test onto `IMongoDocumentStorageConnectionSettings`.
 
-## Remaining task
+## Remaining compatibility work
 
-- [ ] Configure `DocumentStorageSettingsResolver` from the host `IConfiguration` / `IMongoDocumentStorageConnectionSettings` seam so primary runtime Mongo credentials come from the first-class configuration model rather than the legacy connection-string environment variables.
+Existing constructors still use `DocumentStorageSettingsResolver` and its environment-variable compatibility path. As those consumers move to injected storage configuration, the remaining `NUVIOT_MONGO_*` compatibility resolver can be retired separately.
 
-The existing `CloudStorageModule.AddCloudStorageModule(IServiceCollection, IConfigurationRoot, ILogger)` already receives the host configuration and is the preferred compatibility seam. Derived repository constructors should remain unchanged.
+That is intentionally not coupled to this cleanup because the current repository strangler still depends on provider selection without constructor changes.
 
 ## Acceptance criteria
 
+- [x] There is one first-class Mongo server connection model.
+- [x] A resolved Mongo operation target is clearly distinguished from server connection settings.
 - [x] Cosmos and Mongo connection information can coexist in one process.
 - [x] Selecting Mongo does not require repurposing a Cosmos access-key field.
-- [x] Migration code can receive explicit source Cosmos and target Mongo settings simultaneously.
+- [x] Migration code can receive explicit source Cosmos and target Mongo values simultaneously.
 - [x] Existing Cosmos-only deployments continue working without configuration changes.
-- [ ] Primary Mongo runtime credentials are sourced through the first-class LagoVista configuration model during normal host startup.
+- [x] Dead Mongo/Cosmos provider-client duplication is removed without deleting live strangler implementations.
 
 ## Out of scope
 
-- Domain collection routing. See Card 3.
+- Removing live Cosmos repositories that still have consumers.
+- Application Data or Scratch Data storage configuration changes.
 - Secret-store implementation changes outside the configuration seam.
