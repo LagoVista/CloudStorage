@@ -47,19 +47,19 @@ namespace LagoVista.CloudStorage.Tests
 
         private class FakeScratchStore : IScratchStore
         {
-            public Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : IScratchDataRecord => Task.FromResult<TRecord>(default);
-            public Task UpsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default) where TRecord : IScratchDataRecord => Task.CompletedTask;
-            public Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : IScratchDataRecord => Task.CompletedTask;
-            public Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default) where TRecord : IScratchDataRecord => Task.FromResult(new StoragePageResult<TRecord>(Array.Empty<TRecord>()));
+            public Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : class, IScratchDataRecord => Task.FromResult<TRecord>(default);
+            public Task UpsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default) where TRecord : class, IScratchDataRecord => Task.CompletedTask;
+            public Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : class, IScratchDataRecord => Task.CompletedTask;
+            public Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default) where TRecord : class, IScratchDataRecord => Task.FromResult(new StoragePageResult<TRecord>(Array.Empty<TRecord>()));
         }
 
         private class FakeApplicationDataStore : IApplicationDataStore
         {
-            public Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.FromResult<TRecord>(default);
-            public Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.CompletedTask;
-            public Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.CompletedTask;
-            public Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.CompletedTask;
-            public Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.FromResult(new StoragePageResult<TRecord>(Array.Empty<TRecord>()));
+            public Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : class, IApplicationDataRecord => Task.FromResult<TRecord>(default);
+            public Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default) where TRecord : class, IApplicationDataRecord => Task.CompletedTask;
+            public Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default) where TRecord : class, IApplicationDataRecord => Task.CompletedTask;
+            public Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : class, IApplicationDataRecord => Task.CompletedTask;
+            public Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default) where TRecord : class, IApplicationDataRecord => Task.FromResult(new StoragePageResult<TRecord>(Array.Empty<TRecord>()));
         }
 
         [Test]
@@ -131,6 +131,7 @@ namespace LagoVista.CloudStorage.Tests
         {
             Assert.That(StorageRecordIdentity.GetCollectionName<ApplicationDataRecord>(), Is.EqualTo(nameof(ApplicationDataRecord)));
             Assert.That(StorageRecordIdentity.GetCollectionName<ScratchRecord>(), Is.EqualTo(nameof(ScratchRecord)));
+            Assert.That(StorageRecordIdentity.GetCollectionName<ApplicationDataRecord>(), Is.Not.EqualTo(StorageRecordIdentity.GetCollectionName<ScratchRecord>()));
         }
 
         [Test]
