@@ -1,3 +1,5 @@
+using LagoVista.CloudStorage.Diagnostics;
+using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
@@ -12,6 +14,7 @@ namespace LagoVista.CloudStorage.Storage
 
             services.TryAddSingleton<ICassandraStorageSettings, CassandraStorageSettings>();
             services.TryAddSingleton<ICassandraSessionFactory, CassandraSessionFactory>();
+            services.TryAddEnumerable(ServiceDescriptor.Transient<IPlatformSmokeTest, CassandraPlatformSmokeTest>());
             return services;
         }
 
