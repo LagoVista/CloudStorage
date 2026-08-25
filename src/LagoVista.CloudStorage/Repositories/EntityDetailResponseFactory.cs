@@ -10,7 +10,7 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Repositories
 {
     public class EntityDetailResponseFactory : IEntityDetailResponseFactory
     {
