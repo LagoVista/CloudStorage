@@ -11,7 +11,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Repositories
 {
     public sealed class EntityPreparationCandidateRepository : IEntityPreparationCandidateRepository
     {
