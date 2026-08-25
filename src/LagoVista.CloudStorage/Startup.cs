@@ -56,6 +56,7 @@ namespace LagoVista.CloudStorage
 
             services.AddTransient<IPlatformSmokeTest, MongoDocumentStorageSmokeTest>();
             services.AddTransient<IPlatformSmokeTest, CosmosDocumentStorageSmokeTest>();
+            services.AddTransient<IPlatformSmokeTest, RedisPlatformSmokeTest>();
 
             LagoVista.Core.AutoMapper.Startup.ConfigureServices(services);
         }
