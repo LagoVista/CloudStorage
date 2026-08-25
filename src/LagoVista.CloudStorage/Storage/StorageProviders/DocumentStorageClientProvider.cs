@@ -1,5 +1,6 @@
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using System;
 
 namespace LagoVista.CloudStorage.StorageProviders
