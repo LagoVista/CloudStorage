@@ -1,5 +1,6 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Repositories;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.CloudStorage.Utils;

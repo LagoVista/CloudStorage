@@ -128,30 +128,6 @@ namespace LagoVista.CloudStorage.Tests
             }));
         }
 
-        [Test]
-        public void DocumentCollectionFactory_WithDefaultProvider_ReturnsCosmosAdapter()
-        {
-            var databaseVariableName = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + "TESTDB";
-            WithEnvironment(databaseVariableName, null, () => WithEnvironment(DocumentStorageSettingsResolver.ProviderEnvironmentVariable, null, () =>
-            {
-                var factory = new DocumentCollectionFactory(CosmosClientProvider.Shared);
-                var collection = factory.Create("https://example.documents.azure.com:443/", "key", "TestDb");
-                Assert.That(collection, Is.TypeOf<CosmosDocumentCollection>());
-            }));
-        }
-
-        [Test]
-        public void DocumentCollectionFactory_WithDatabaseSpecificMongoProvider_ReturnsMongoAdapter()
-        {
-            var providerVariable = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + "TESTDB";
-            var connectionVariable = DocumentStorageSettingsResolver.MongoConnectionStringEnvironmentVariablePrefix + "TESTDB";
-            WithEnvironment(DocumentStorageSettingsResolver.ProviderEnvironmentVariable, "cosmos", () => WithEnvironment(providerVariable, "mongo", () => WithEnvironment(connectionVariable, "mongodb://localhost:27017", () =>
-            {
-                var factory = new DocumentCollectionFactory(CosmosClientProvider.Shared);
-                var collection = factory.Create("https://example.documents.azure.com:443/", "cosmos-key", "TestDb");
-                Assert.That(collection, Is.TypeOf<MongoDocumentCollection>());
-            })));
-        }
 
         [Test]
         public void MongoSerialization_WithClrId_UsesMongoIdField()

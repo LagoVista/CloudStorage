@@ -1,5 +1,6 @@
 using Cassandra;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;

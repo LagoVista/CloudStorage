@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;

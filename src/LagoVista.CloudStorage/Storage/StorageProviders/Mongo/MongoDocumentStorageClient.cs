@@ -112,7 +112,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             var collection = GetCollection<TEntity>();
             var filter = Builders<TEntity>.Filter.And(
-                Builders<TEntity>.Filter.Eq(item => item.Id, request.Id),
+                Builders<TEntity>.Filter.Eq(item => item.Id.Value, request.Id),
                 Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
 
             if (!String.IsNullOrWhiteSpace(request.ETag))
@@ -131,6 +131,7 @@ namespace LagoVista.CloudStorage.StorageProviders
                 {
                     var exists = await collection.Find(item => item.Id == request.Id && item.EntityType == typeof(TEntity).Name)
                         .AnyAsync().ConfigureAwait(false);
+
                     if (exists) throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = request.Id };
                 }
 
