@@ -1,12 +1,13 @@
 using LagoVista.CloudStorage.Storage;
 using LagoVista.Core.Models;
-using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +31,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         public async Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken)
+            where TRecord : class
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -38,6 +40,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         public async Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken)
+            where TRecord : class
         {
             if (record == null) throw new ArgumentNullException(nameof(record));
 
@@ -46,6 +49,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         public async Task ReplaceAsync<TRecord>(StorageKey key, TRecord record, bool upsert, CancellationToken cancellationToken)
+            where TRecord : class
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
             if (record == null) throw new ArgumentNullException(nameof(record));
@@ -62,6 +66,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         public async Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken)
+            where TRecord : class
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -70,6 +75,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         public async Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken)
+            where TRecord : class
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
 
@@ -86,9 +92,10 @@ namespace LagoVista.CloudStorage.StorageProviders
                 SortDefinition<TRecord> sort = null;
                 foreach (var item in query.Sorts)
                 {
+                    var field = TranslateField(item.Field);
                     var next = item.Direction == StorageSortDirection.Ascending
-                        ? Builders<TRecord>.Sort.Ascending(item.Field)
-                        : Builders<TRecord>.Sort.Descending(item.Field);
+                        ? Builders<TRecord>.Sort.Ascending(field)
+                        : Builders<TRecord>.Sort.Descending(field);
                     sort = sort == null ? next : Builders<TRecord>.Sort.Combine(sort, next);
                 }
 
@@ -107,15 +114,23 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         public async Task ApplyScratchExpirationAsync<TRecord>(StorageKey key, TimeSpan retention, CancellationToken cancellationToken)
-            where TRecord : IScratchDataRecord
+            where TRecord : class, IScratchDataRecord
         {
             var collection = await GetCollectionAsync<TRecord>(cancellationToken).ConfigureAwait(false);
             var expiration = DateTime.UtcNow.Add(retention);
-            var update = Builders<TRecord>.Update.Set(ScratchExpirationField, expiration);
+            var update = new BsonDocumentUpdateDefinition<TRecord>(
+                new BsonDocument("$set", new BsonDocument(ScratchExpirationField, expiration)));
             await collection.UpdateOneAsync(BuildKeyFilter<TRecord>(key), update, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
+        public TimeSpan? GetScratchRetention<TRecord>()
+            where TRecord : class, IScratchDataRecord
+        {
+            return GetDefinition<TRecord>(typeof(ScratchStoreOptions<>))?.Retention;
+        }
+
         private async Task<IMongoCollection<TRecord>> GetCollectionAsync<TRecord>(CancellationToken cancellationToken)
+            where TRecord : class
         {
             EnsureScratchExtraElementCompatibility<TRecord>();
             var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
@@ -127,37 +142,48 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         private async Task InitializeCollectionAsync<TRecord>(string collectionName, CancellationToken cancellationToken)
+            where TRecord : class
         {
             var collection = _database.GetCollection<TRecord>(collectionName);
             var indexes = new List<CreateIndexModel<TRecord>>();
+            FlatStorageDefinition<TRecord> definition = null;
 
             if (typeof(IApplicationDataRecord).IsAssignableFrom(typeof(TRecord)))
-            {
-                var options = _serviceProvider.GetService<ApplicationDataStoreOptions<TRecord>>();
-                AddCommonAndConfiguredIndexes(indexes, options?.Definition);
-            }
+                definition = GetDefinition<TRecord>(typeof(ApplicationDataStoreOptions<>));
             else if (typeof(IScratchDataRecord).IsAssignableFrom(typeof(TRecord)))
-            {
-                var options = _serviceProvider.GetService<ScratchStoreOptions<TRecord>>();
-                AddCommonAndConfiguredIndexes(indexes, options?.Definition);
+                definition = GetDefinition<TRecord>(typeof(ScratchStoreOptions<>));
 
-                if (options?.Definition.Retention != null)
-                {
-                    indexes.Add(new CreateIndexModel<TRecord>(
-                        Builders<TRecord>.IndexKeys.Ascending(ScratchExpirationField),
-                        new CreateIndexOptions
-                        {
-                            Name = ScratchExpirationIndexName,
-                            ExpireAfter = TimeSpan.Zero
-                        }));
-                }
+            AddCommonAndConfiguredIndexes(indexes, definition);
+
+            if (typeof(IScratchDataRecord).IsAssignableFrom(typeof(TRecord)) && definition?.Retention != null)
+            {
+                indexes.Add(new CreateIndexModel<TRecord>(
+                    Builders<TRecord>.IndexKeys.Ascending(ScratchExpirationField),
+                    new CreateIndexOptions
+                    {
+                        Name = ScratchExpirationIndexName,
+                        ExpireAfter = TimeSpan.Zero
+                    }));
             }
 
             if (indexes.Count > 0)
-                await collection.Indexes.CreateManyAsync(indexes, cancellationToken).ConfigureAwait(false);
+                await collection.Indexes.CreateManyAsync(indexes, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+
+        private FlatStorageDefinition<TRecord> GetDefinition<TRecord>(Type openOptionsType)
+            where TRecord : class
+        {
+            var closedOptionsType = openOptionsType.MakeGenericType(typeof(TRecord));
+            var options = _serviceProvider.GetService(closedOptionsType);
+            if (options == null)
+                return null;
+
+            var definitionProperty = closedOptionsType.GetProperty("Definition", BindingFlags.Instance | BindingFlags.Public);
+            return definitionProperty?.GetValue(options) as FlatStorageDefinition<TRecord>;
         }
 
         private static void AddCommonAndConfiguredIndexes<TRecord>(List<CreateIndexModel<TRecord>> indexes, FlatStorageDefinition<TRecord> definition)
+            where TRecord : class
         {
             AddIndex(indexes, StorageRecordIdentity.OrganizationIdPath);
 
@@ -169,8 +195,10 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         private static void AddIndex<TRecord>(List<CreateIndexModel<TRecord>> indexes, string field)
+            where TRecord : class
         {
-            if (String.IsNullOrWhiteSpace(field) || indexes.Any(existing => String.Equals(existing.Options?.Name, BuildIndexName(field), StringComparison.Ordinal)))
+            field = TranslateField(field);
+            if (String.IsNullOrWhiteSpace(field) || field == "_id" || indexes.Any(existing => String.Equals(existing.Options?.Name, BuildIndexName(field), StringComparison.Ordinal)))
                 return;
 
             indexes.Add(new CreateIndexModel<TRecord>(
@@ -180,45 +208,52 @@ namespace LagoVista.CloudStorage.StorageProviders
 
         private static string BuildIndexName(string field)
         {
-            return "ix_" + field.Replace('.', '_').ToLowerInvariant();
+            return "ix_" + field.Replace('.', '_').TrimStart('_').ToLowerInvariant();
         }
 
         private static FilterDefinition<TRecord> BuildKeyFilter<TRecord>(StorageKey key)
+            where TRecord : class
         {
-            var filter = Builders<TRecord>.Filter.Eq(StorageRecordIdentity.IdPath, key.Id);
+            var document = new BsonDocument("_id", key.Id);
             if (!String.IsNullOrWhiteSpace(key.Scope))
-                filter &= Builders<TRecord>.Filter.Eq(StorageRecordIdentity.OrganizationIdPath, key.Scope);
-            return filter;
+                document.Add(StorageRecordIdentity.OrganizationIdPath, key.Scope);
+            return new BsonDocumentFilterDefinition<TRecord>(document);
         }
 
         private static FilterDefinition<TRecord> BuildFilter<TRecord>(StorageFilter<TRecord> filter)
+            where TRecord : class
         {
-            var value = NormalizeScalar(filter.Value);
-            switch (filter.Operator)
+            var field = TranslateField(filter.Field);
+            var value = ToBsonValue(filter.Value);
+
+            if (filter.Operator == StorageFilterOperator.Equal)
+                return new BsonDocumentFilterDefinition<TRecord>(new BsonDocument(field, value));
+
+            var mongoOperator = filter.Operator switch
             {
-                case StorageFilterOperator.Equal:
-                    return Builders<TRecord>.Filter.Eq<object>(filter.Field, value);
-                case StorageFilterOperator.NotEqual:
-                    return Builders<TRecord>.Filter.Ne<object>(filter.Field, value);
-                case StorageFilterOperator.LessThan:
-                    return Builders<TRecord>.Filter.Lt<object>(filter.Field, value);
-                case StorageFilterOperator.LessThanOrEqual:
-                    return Builders<TRecord>.Filter.Lte<object>(filter.Field, value);
-                case StorageFilterOperator.GreaterThan:
-                    return Builders<TRecord>.Filter.Gt<object>(filter.Field, value);
-                case StorageFilterOperator.GreaterThanOrEqual:
-                    return Builders<TRecord>.Filter.Gte<object>(filter.Field, value);
-                default:
-                    throw new NotSupportedException($"Storage filter operator '{filter.Operator}' is not supported by Mongo storage.");
-            }
+                StorageFilterOperator.NotEqual => "$ne",
+                StorageFilterOperator.LessThan => "$lt",
+                StorageFilterOperator.LessThanOrEqual => "$lte",
+                StorageFilterOperator.GreaterThan => "$gt",
+                StorageFilterOperator.GreaterThanOrEqual => "$gte",
+                _ => throw new NotSupportedException($"Storage filter operator '{filter.Operator}' is not supported by Mongo storage.")
+            };
+
+            return new BsonDocumentFilterDefinition<TRecord>(
+                new BsonDocument(field, new BsonDocument(mongoOperator, value)));
         }
 
-        private static object NormalizeScalar(object value)
+        private static BsonValue ToBsonValue(object value)
         {
-            if (value == null) return null;
-            if (value is NormalizedId32 normalizedId) return normalizedId.Value;
-            if (value is UtcTimestamp timestamp) return timestamp.ToString();
-            return value;
+            if (value == null) return BsonNull.Value;
+            if (value is NormalizedId32 normalizedId) return new BsonString(normalizedId.Value);
+            if (value is UtcTimestamp timestamp) return new BsonString(timestamp.ToString());
+            return BsonValue.Create(value);
+        }
+
+        private static string TranslateField(string field)
+        {
+            return String.Equals(field, StorageRecordIdentity.IdPath, StringComparison.Ordinal) ? "_id" : field;
         }
 
         private static int DecodeOffset(string continuationToken)
@@ -244,6 +279,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         private static void EnsureScratchExtraElementCompatibility<TRecord>()
+            where TRecord : class
         {
             if (!typeof(IScratchDataRecord).IsAssignableFrom(typeof(TRecord)))
                 return;
