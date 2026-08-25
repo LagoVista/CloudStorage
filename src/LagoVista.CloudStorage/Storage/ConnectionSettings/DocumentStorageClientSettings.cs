@@ -1,8 +1,9 @@
+using LagoVista.CloudStorage.Storage;
 using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System;
 
-namespace LagoVista.CloudStorage.Storage.ConnectionSettings
+namespace LagoVista.CloudStorage.Storage
 {
     public enum DocumentStorageClientType
     {
@@ -27,7 +28,10 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         string ConnectionString { get; }
         string DatabaseName { get; }
     }
+}
 
+namespace LagoVista.CloudStorage.Storage.ConnectionSettings
+{
     public sealed class DocumentStorageProviderSettings : IDocumentStorageProviderSettings
     {
         public const string SectionName = "DefaultDocDBStorage";
