@@ -11,18 +11,18 @@ namespace LagoVista.CloudStorage.Storage
     public interface IApplicationDataStore
     {
         Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
-            where TRecord : IApplicationDataRecord;
+            where TRecord : class, IApplicationDataRecord;
 
         Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
-            where TRecord : IApplicationDataRecord;
+            where TRecord : class, IApplicationDataRecord;
 
         Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
-            where TRecord : IApplicationDataRecord;
+            where TRecord : class, IApplicationDataRecord;
 
         Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
-            where TRecord : IApplicationDataRecord;
+            where TRecord : class, IApplicationDataRecord;
 
         Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default)
-            where TRecord : IApplicationDataRecord;
+            where TRecord : class, IApplicationDataRecord;
     }
 }
