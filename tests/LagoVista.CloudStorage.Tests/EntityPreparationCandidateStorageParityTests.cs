@@ -1,9 +1,9 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.CloudStorage.Utils;
 using LagoVista.Core.Attributes;
-using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using LagoVista.IoT.Logging.Loggers;
@@ -101,16 +101,8 @@ namespace LagoVista.CloudStorage.Tests
         private static async Task WithRepositoriesAsync(Func<EntityPreparationCandidateRepository, EntityPreparationCandidateRepository, Task> assertion)
         {
             var cosmosDatabaseName = $"CandidateParityCosmos_{Guid.NewGuid():N}";
-            var mongoLogicalDatabaseName = $"CandidateParityMongo{Guid.NewGuid():N}";
             var mongoDatabaseName = $"CandidateParityMongo_{Guid.NewGuid():N}";
             var mongoConnectionString = TestConnections.TestMongoDocumentStorage.BuildConnectionString();
-            var normalizedMongoLogicalDatabaseName = mongoLogicalDatabaseName.ToUpperInvariant();
-            var providerVariable = DocumentStorageSettingsResolver.ProviderEnvironmentVariablePrefix + normalizedMongoLogicalDatabaseName;
-            var mongoConnectionVariable = DocumentStorageSettingsResolver.MongoConnectionStringEnvironmentVariablePrefix + normalizedMongoLogicalDatabaseName;
-            var mongoDatabaseVariable = DocumentStorageSettingsResolver.MongoDatabaseEnvironmentVariablePrefix + normalizedMongoLogicalDatabaseName;
-            var priorProvider = Environment.GetEnvironmentVariable(providerVariable);
-            var priorMongoConnection = Environment.GetEnvironmentVariable(mongoConnectionVariable);
-            var priorMongoDatabase = Environment.GetEnvironmentVariable(mongoDatabaseVariable);
 
             using var cosmosProvider = new CosmosClientProvider();
             var cosmosClient = cosmosProvider.GetClient(StorageLabConnections.CosmosEndpoint, StorageLabConnections.CosmosKey);
@@ -119,13 +111,9 @@ namespace LagoVista.CloudStorage.Tests
 
             try
             {
-                Environment.SetEnvironmentVariable(providerVariable, "mongo");
-                Environment.SetEnvironmentVariable(mongoConnectionVariable, mongoConnectionString);
-                Environment.SetEnvironmentVariable(mongoDatabaseVariable, mongoDatabaseName);
-
                 cosmosDatabase = (await cosmosClient.CreateDatabaseIfNotExistsAsync(cosmosDatabaseName)).Database;
                 var cosmosContainer = (await cosmosDatabase.CreateContainerIfNotExistsAsync($"{cosmosDatabaseName}_Collections", "/EntityType")).Container;
-                var mongoCollection = mongoClient.GetDatabase(mongoDatabaseName).GetCollection<BsonDocument>("ParityDomain");
+                var mongoCollection = mongoClient.GetDatabase(mongoDatabaseName).GetCollection<BsonDocument>(DocumentCollectionNameResolver.EntitiesCollectionName);
 
                 var documents = new[]
                 {
@@ -142,24 +130,19 @@ namespace LagoVista.CloudStorage.Tests
                 }
 
                 var logger = new AdminLogger(new ConsoleLogWriter());
-                var cosmosRepository = new EntityPreparationCandidateRepository(
-                    new TestSyncConnectionSettings(new ConnectionSettings
-                    {
-                        Uri = StorageLabConnections.CosmosEndpoint,
-                        AccessKey = StorageLabConnections.CosmosKey,
-                        ResourceName = cosmosDatabaseName
-                    }),
-                    cosmosProvider,
-                    logger);
+                var cosmosStorageClient = new CosmosDocumentStorageClient(
+                    new TestCosmosConnectionSettings(StorageLabConnections.CosmosEndpoint, StorageLabConnections.CosmosKey, cosmosDatabaseName),
+                    cosmosProvider);
+                var mongoStorageClient = new MongoDocumentStorageClient(
+                    new TestMongoConnectionSettings(mongoConnectionString, mongoDatabaseName),
+                    new DocumentCollectionNameResolver(),
+                    new MongoStorageClientFactory());
 
+                var cosmosRepository = new EntityPreparationCandidateRepository(
+                    new TestDocumentStorageClientProvider(cosmosStorageClient),
+                    logger);
                 var mongoRepository = new EntityPreparationCandidateRepository(
-                    new TestSyncConnectionSettings(new ConnectionSettings
-                    {
-                        Uri = "https://cosmos-unused.example/",
-                        AccessKey = null,
-                        ResourceName = mongoLogicalDatabaseName
-                    }),
-                    cosmosProvider,
+                    new TestDocumentStorageClientProvider(mongoStorageClient),
                     logger);
 
                 await assertion(cosmosRepository, mongoRepository);
@@ -168,9 +151,6 @@ namespace LagoVista.CloudStorage.Tests
             {
                 if (cosmosDatabase != null) await cosmosDatabase.DeleteAsync();
                 await mongoClient.DropDatabaseAsync(mongoDatabaseName);
-                Environment.SetEnvironmentVariable(providerVariable, priorProvider);
-                Environment.SetEnvironmentVariable(mongoConnectionVariable, priorMongoConnection);
-                Environment.SetEnvironmentVariable(mongoDatabaseVariable, priorMongoDatabase);
             }
         }
 
@@ -211,14 +191,42 @@ namespace LagoVista.CloudStorage.Tests
             return (cosmos, mongo);
         }
 
-        private sealed class TestSyncConnectionSettings : ISyncConnectionSettings
+        private sealed class TestDocumentStorageClientProvider : IDocumentStorageClientProvider
         {
-            public TestSyncConnectionSettings(IConnectionSettings settings)
+            private readonly IDocumentStorageClient _client;
+
+            public TestDocumentStorageClientProvider(IDocumentStorageClient client)
             {
-                SyncConnectionSettings = settings;
+                _client = client ?? throw new ArgumentNullException(nameof(client));
             }
 
-            public IConnectionSettings SyncConnectionSettings { get; }
+            public IDocumentStorageClient GetClient() => _client;
+        }
+
+        private sealed class TestCosmosConnectionSettings : ICosmosConnectionSettings
+        {
+            public TestCosmosConnectionSettings(string endpoint, string accessKey, string databaseName)
+            {
+                Endpoint = endpoint;
+                AccessKey = accessKey;
+                DatabaseName = databaseName;
+            }
+
+            public string Endpoint { get; }
+            public string AccessKey { get; }
+            public string DatabaseName { get; }
+        }
+
+        private sealed class TestMongoConnectionSettings : IMongoConnectionSettings
+        {
+            public TestMongoConnectionSettings(string connectionString, string databaseName)
+            {
+                ConnectionString = connectionString;
+                DatabaseName = databaseName;
+            }
+
+            public string ConnectionString { get; }
+            public string DatabaseName { get; }
         }
 
         [EntityDescription("ParityDomain", "", "", "", EntityDescriptionAttribute.EntityTypes.Dto, typeof(EntityPreparationCandidateStorageParityTests))]
