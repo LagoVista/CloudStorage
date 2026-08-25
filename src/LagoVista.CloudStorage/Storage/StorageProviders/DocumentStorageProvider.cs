@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
