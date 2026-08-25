@@ -1,5 +1,7 @@
 using LagoVista.CloudStorage.DocumentDB;
+using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -96,6 +98,36 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
         }
 
+        public async Task<OperationResponse<TEntity>> PatchDocumentAsync<TEntity>(PatchRequest request)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (String.IsNullOrWhiteSpace(request.Id)) throw new ArgumentException("Patch request id is required.", nameof(request));
+            if (request.Steps == null || request.Steps.Count == 0) throw new ArgumentException("Patch request must contain at least one step.", nameof(request));
+
+            var operations = request.Steps.Select(CreatePatchOperation).ToList();
+            var options = new PatchItemRequestOptions();
+            if (!String.IsNullOrWhiteSpace(request.ETag)) options.IfMatchEtag = request.ETag;
+
+            try
+            {
+                var response = await GetContainer().PatchItemAsync<TEntity>(
+                    request.Id,
+                    String.IsNullOrWhiteSpace(request.PartitionKey) ? PartitionKey.None : new PartitionKey(request.PartitionKey),
+                    operations,
+                    options).ConfigureAwait(false);
+                return new OperationResponse<TEntity>(response.Resource);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new RecordNotFoundException(typeof(TEntity).Name, request.Id);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+            {
+                throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = request.Id };
+            }
+        }
+
         public async Task<IEnumerable<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
@@ -152,6 +184,32 @@ namespace LagoVista.CloudStorage.StorageProviders
         private Container GetContainer() =>
             _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey)
                 .GetContainer(_settings.DatabaseName, $"{_settings.DatabaseName}_Collections");
+
+        private static PatchOperation CreatePatchOperation(PatchStep step)
+        {
+            if (step == null) throw new ArgumentException("Patch request contains a null step.");
+            var path = !String.IsNullOrWhiteSpace(step.CosmosPath)
+                ? step.CosmosPath
+                : ToCosmosPath(step.LogicalPath);
+
+            switch (step.Op)
+            {
+                case PatchOp.Set:
+                    return PatchOperation.Set(path, step.Value?.ToObject<object>());
+                case PatchOp.Remove:
+                    return PatchOperation.Remove(path);
+                case PatchOp.Add:
+                    return PatchOperation.Add(path, step.Value?.ToObject<object>());
+                default:
+                    throw new NotSupportedException($"Patch operation '{step.Op}' is not supported by the Cosmos document client.");
+            }
+        }
+
+        private static string ToCosmosPath(string logicalPath)
+        {
+            if (String.IsNullOrWhiteSpace(logicalPath)) throw new ArgumentException("Patch step path is required.");
+            return "/" + logicalPath.Trim().TrimStart('/').Replace('.', '/');
+        }
 
         private static QueryDefinition CreateKnownQuery(DocumentQueryRequest request)
         {
