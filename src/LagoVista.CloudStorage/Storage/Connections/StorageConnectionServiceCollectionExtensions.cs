@@ -34,7 +34,7 @@ namespace LagoVista.CloudStorage.Storage
 
             services.TryAddSingleton<IScratchStorageSettings, ScratchStorageSettings>();
             services.TryAddSingleton<IMongoStorageClientFactory, MongoStorageClientFactory>();
-            services.TryAddScoped<IScratchStore, MongoScratchStore>();
+            services.TryAddSingleton<IScratchStore, MongoScratchStore>();
             return services;
         }
 
@@ -44,7 +44,7 @@ namespace LagoVista.CloudStorage.Storage
 
             services.TryAddSingleton<IApplicationDataStorageSettings, ApplicationDataStorageSettings>();
             services.TryAddSingleton<IMongoStorageClientFactory, MongoStorageClientFactory>();
-            services.TryAddScoped<IApplicationDataStore, MongoApplicationDataStore>();
+            services.TryAddSingleton<IApplicationDataStore, MongoApplicationDataStore>();
             return services;
         }
     }
