@@ -5,22 +5,26 @@ namespace LagoVista.CloudStorage.Storage
 {
     /// <summary>
     /// Minimal record contract for mutable scratch data.
+    /// Storage identity is deterministic: Id is the record key and Organization.Id
+    /// is the canonical organization scope path.
     /// </summary>
     public interface IScratchDataRecord
     {
-        string Id { get; set; }
+        NormalizedId32 Id { get; set; }
         EntityHeader Organization { get; set; }
     }
 
     /// <summary>
     /// Minimal record contract for durable mutable application data.
+    /// Storage identity is deterministic: Id is the record key and Organization.Id
+    /// is the canonical organization scope path. CloudStorage owns timestamp invariants.
     /// </summary>
     public interface IApplicationDataRecord
     {
-        string Id { get; set; }
+        NormalizedId32 Id { get; set; }
         EntityHeader Organization { get; set; }
-        DateTime CreationDate { get; set; }
-        DateTime LastUpdatedDate { get; set; }
+        UtcTimestamp CreationDate { get; set; }
+        UtcTimestamp LastUpdatedDate { get; set; }
     }
 
     /// <summary>
