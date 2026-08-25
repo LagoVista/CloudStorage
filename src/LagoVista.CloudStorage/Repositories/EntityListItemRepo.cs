@@ -1,6 +1,5 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
-using LagoVista.CloudStorage.Models;
 using LagoVista.Core;
 using LagoVista.Core.Attributes;
 using LagoVista.Core.Interfaces;
@@ -21,14 +20,13 @@ namespace LagoVista.CloudStorage.Repositories
     public class EntityListItemRepo<TEntity> : DocumentDBRepoBase<TEntity>, IEntityListItemRepo where TEntity : class, IEntityBase
     {
         private readonly IAdminLogger _logger;
-        private readonly IDocumentCollection _collection;
+        private readonly IDocumentStorageClient _storageClient;
 
         public EntityListItemRepo(string endpoint, string sharedKey, string dbName, IDocumentCloudCachedServices cloudServices) : base(endpoint, sharedKey, dbName, cloudServices)
         {
             if (cloudServices == null) throw new ArgumentNullException(nameof(cloudServices));
             _logger = cloudServices.AdminLogger;
-            var settings = DocumentStorageSettingsResolver.Resolve(endpoint, sharedKey, dbName);
-            _collection = new DocumentCollectionFactory(cloudServices.CosmosClientProvider).Create<TEntity>(settings);
+            _storageClient = cloudServices.DocumentStorageClientProvider.GetClient();
         }
 
         public async Task<ListResponse<EntityListItem>> GetListItemsAsync(string orgId, ListRequest listRequest)
@@ -39,7 +37,7 @@ namespace LagoVista.CloudStorage.Repositories
             try
             {
                 var sw = Stopwatch.StartNew();
-                var items = (await _collection.QueryAsync<EntityListItem>(CreateListRequest(DocumentQueryType.EntityListItems, orgId, listRequest))).ToList();
+                var items = (await _storageClient.QueryKnownAsync<EntityListItem>(typeof(TEntity).Name, CreateListRequest(DocumentQueryType.EntityListItems, orgId, listRequest))).ToList();
                 var response = ListResponse<EntityListItem>.Create(listRequest, items);
                 response.Categories = await GetCategoryOptionsAsync(orgId, listRequest);
                 response.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
@@ -66,7 +64,7 @@ namespace LagoVista.CloudStorage.Repositories
             try
             {
                 var sw = Stopwatch.StartNew();
-                var items = (await _collection.QueryAsync<EntityHeader>(CreateListRequest(DocumentQueryType.EntityListHeaders, orgId, listRequest))).ToList();
+                var items = (await _storageClient.QueryKnownAsync<EntityHeader>(typeof(TEntity).Name, CreateListRequest(DocumentQueryType.EntityListHeaders, orgId, listRequest))).ToList();
                 var response = ListResponse<EntityHeader>.Create(listRequest, items);
                 _logger.AddCustomEvent(LogLevel.Message, $"[{nameof(EntityListItemRepo<TEntity>)}__{nameof(GetEntityHeadersAsync)}]", $"Returned {items.Count} {typeof(TEntity).Name} entity headers in {sw.Elapsed.TotalMilliseconds} ms",
                     items.Count.ToString().ToKVP("recordCount"), typeof(TEntity).Name.ToKVP("entityType"), orgId.ToKVP("orgId"));
@@ -83,7 +81,7 @@ namespace LagoVista.CloudStorage.Repositories
 
         private async Task<List<EnumDescription>> GetCategoryOptionsAsync(string orgId, ListRequest listRequest)
         {
-            var categories = await _collection.QueryAsync<EntityHeader>(CreateListRequest(DocumentQueryType.EntityListCategories, orgId, listRequest));
+            var categories = await _storageClient.QueryKnownAsync<EntityHeader>(typeof(TEntity).Name, CreateListRequest(DocumentQueryType.EntityListCategories, orgId, listRequest));
             return categories.Where(category => !String.IsNullOrWhiteSpace(category.Key))
                 .Select(category => EnumDescription.Create(category.Id, category.Key, category.Text)).ToList();
         }
