@@ -1,6 +1,6 @@
 using LagoVista.Core.Interfaces;
-using System;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 
 namespace LagoVista.CloudStorage.Storage
 {
@@ -18,13 +18,13 @@ namespace LagoVista.CloudStorage.Storage
     public sealed class ScratchStoreOptions<TRecord>
         where TRecord : IScratchDataRecord
     {
-        internal ScratchStoreOptions(FlatStorageDefinition<TRecord> definition)
+        internal ScratchStoreOptions(Action<FlatStorageDefinition<TRecord>> configure = null)
         {
-            Definition = definition ?? throw new ArgumentNullException(nameof(definition));
-            if (String.IsNullOrWhiteSpace(definition.KeyField))
-            {
-                throw new InvalidOperationException($"Scratch storage for {typeof(TRecord).Name} requires a KeyBy(...) field.");
-            }
+            Definition = new FlatStorageDefinition<TRecord>()
+                .KeyBy(record => record.Id)
+                .PartitionBy(record => record.Organization.Id);
+
+            configure?.Invoke(Definition);
         }
 
         public FlatStorageDefinition<TRecord> Definition { get; }
@@ -33,21 +33,22 @@ namespace LagoVista.CloudStorage.Storage
     public sealed class ApplicationDataStoreOptions<TRecord>
         where TRecord : IApplicationDataRecord
     {
-        internal ApplicationDataStoreOptions(FlatStorageDefinition<TRecord> definition)
+        internal ApplicationDataStoreOptions(Action<FlatStorageDefinition<TRecord>> configure = null)
         {
-            Definition = definition ?? throw new ArgumentNullException(nameof(definition));
-            if (String.IsNullOrWhiteSpace(definition.KeyField))
-            {
-                throw new InvalidOperationException($"Application data storage for {typeof(TRecord).Name} requires a KeyBy(...) field.");
-            }
+            Definition = new FlatStorageDefinition<TRecord>()
+                .KeyBy(record => record.Id)
+                .PartitionBy(record => record.Organization.Id);
+
+            configure?.Invoke(Definition);
         }
 
         public FlatStorageDefinition<TRecord> Definition { get; }
     }
 
     /// <summary>
-    /// DI conventions for record-shaped storage capabilities. Repositories depend on
-    /// semantic interfaces only; provider choice lives in composition-root registration.
+    /// DI conventions for record-shaped storage capabilities. Mutable application and
+    /// scratch stores are registered once. Per-record configuration is optional and
+    /// only declares additional query/index/retention behavior; identity and scope are conventions.
     /// </summary>
     public static class StorageRegistrationExtensions
     {
@@ -70,41 +71,46 @@ namespace LagoVista.CloudStorage.Storage
             return services;
         }
 
-        public static IServiceCollection AddScratchStore<TRecord, TStore>(
+        public static IServiceCollection AddScratchStore<TStore>(this IServiceCollection services)
+            where TStore : class, IScratchStore
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            services.AddScoped<IScratchStore, TStore>();
+            return services;
+        }
+
+        public static IServiceCollection AddApplicationDataStore<TStore>(this IServiceCollection services)
+            where TStore : class, IApplicationDataStore
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            services.AddScoped<IApplicationDataStore, TStore>();
+            return services;
+        }
+
+        public static IServiceCollection ConfigureScratchData<TRecord>(
             this IServiceCollection services,
             Action<FlatStorageDefinition<TRecord>> configure)
             where TRecord : IScratchDataRecord
-            where TStore : class, IScratchStore<TRecord>
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
 
-            var definition = BuildDefinition(configure);
-            services.AddSingleton(new ScratchStoreOptions<TRecord>(definition));
-            services.AddScoped<IScratchStore<TRecord>, TStore>();
+            services.AddSingleton(new ScratchStoreOptions<TRecord>(configure));
             return services;
         }
 
-        public static IServiceCollection AddApplicationDataStore<TRecord, TStore>(
+        public static IServiceCollection ConfigureApplicationData<TRecord>(
             this IServiceCollection services,
             Action<FlatStorageDefinition<TRecord>> configure)
             where TRecord : IApplicationDataRecord
-            where TStore : class, IApplicationDataStore<TRecord>
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
 
-            var definition = BuildDefinition(configure);
-            services.AddSingleton(new ApplicationDataStoreOptions<TRecord>(definition));
-            services.AddScoped<IApplicationDataStore<TRecord>, TStore>();
+            services.AddSingleton(new ApplicationDataStoreOptions<TRecord>(configure));
             return services;
-        }
-
-        private static FlatStorageDefinition<TRecord> BuildDefinition<TRecord>(Action<FlatStorageDefinition<TRecord>> configure)
-        {
-            var definition = new FlatStorageDefinition<TRecord>();
-            configure(definition);
-            return definition;
         }
     }
 }
