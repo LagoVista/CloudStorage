@@ -24,17 +24,17 @@ namespace LagoVista.CloudStorage.Tests
 
         private class ScratchRecord : IScratchDataRecord
         {
-            public string Id { get; set; }
+            public NormalizedId32 Id { get; set; }
             public EntityHeader Organization { get; set; }
             public string Category { get; set; }
         }
 
         private class ApplicationDataRecord : IApplicationDataRecord
         {
-            public string Id { get; set; }
+            public NormalizedId32 Id { get; set; }
             public EntityHeader Organization { get; set; }
-            public DateTime CreationDate { get; set; }
-            public DateTime LastUpdatedDate { get; set; }
+            public UtcTimestamp CreationDate { get; set; }
+            public UtcTimestamp LastUpdatedDate { get; set; }
             public string Category { get; set; }
         }
 
@@ -45,21 +45,21 @@ namespace LagoVista.CloudStorage.Tests
             public Task<StoragePageResult<ActivityRecord>> QueryAsync(HistoryQuery<ActivityRecord> query, CancellationToken cancellationToken = default) => Task.FromResult(new StoragePageResult<ActivityRecord>(Array.Empty<ActivityRecord>()));
         }
 
-        private class FakeScratchStore : IScratchStore<ScratchRecord>
+        private class FakeScratchStore : IScratchStore
         {
-            public Task<ScratchRecord> GetAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.FromResult<ScratchRecord>(null);
-            public Task UpsertAsync(ScratchRecord record, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task<StoragePageResult<ScratchRecord>> QueryAsync(StorageQuery<ScratchRecord> query, CancellationToken cancellationToken = default) => Task.FromResult(new StoragePageResult<ScratchRecord>(Array.Empty<ScratchRecord>()));
+            public Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : IScratchDataRecord => Task.FromResult<TRecord>(default);
+            public Task UpsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default) where TRecord : IScratchDataRecord => Task.CompletedTask;
+            public Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : IScratchDataRecord => Task.CompletedTask;
+            public Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default) where TRecord : IScratchDataRecord => Task.FromResult(new StoragePageResult<TRecord>(Array.Empty<TRecord>()));
         }
 
-        private class FakeApplicationDataStore : IApplicationDataStore<ApplicationDataRecord>
+        private class FakeApplicationDataStore : IApplicationDataStore
         {
-            public Task<ApplicationDataRecord> GetAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.FromResult<ApplicationDataRecord>(null);
-            public Task InsertAsync(ApplicationDataRecord record, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task UpdateAsync(ApplicationDataRecord record, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default) => Task.CompletedTask;
-            public Task<StoragePageResult<ApplicationDataRecord>> QueryAsync(StorageQuery<ApplicationDataRecord> query, CancellationToken cancellationToken = default) => Task.FromResult(new StoragePageResult<ApplicationDataRecord>(Array.Empty<ApplicationDataRecord>()));
+            public Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.FromResult<TRecord>(default);
+            public Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.CompletedTask;
+            public Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.CompletedTask;
+            public Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.CompletedTask;
+            public Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default) where TRecord : IApplicationDataRecord => Task.FromResult(new StoragePageResult<TRecord>(Array.Empty<TRecord>()));
         }
 
         [Test]
@@ -92,39 +92,65 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
-        public void ScratchAndApplicationData_RemainSeparateCapabilities()
+        public void ScratchAndApplicationData_AreRegisteredOnceAsCapabilities()
         {
             var services = new ServiceCollection();
-            services.AddScratchStore<ScratchRecord, FakeScratchStore>(storage => storage.KeyBy(x => x.Id));
-            services.AddApplicationDataStore<ApplicationDataRecord, FakeApplicationDataStore>(storage => storage.KeyBy(x => x.Id).Index(x => x.Category));
+            services.AddScratchStore<FakeScratchStore>();
+            services.AddApplicationDataStore<FakeApplicationDataStore>();
 
             using (var provider = services.BuildServiceProvider())
             using (var scope = provider.CreateScope())
             {
-                Assert.That(scope.ServiceProvider.GetRequiredService<IScratchStore<ScratchRecord>>(), Is.TypeOf<FakeScratchStore>());
-                Assert.That(scope.ServiceProvider.GetRequiredService<IApplicationDataStore<ApplicationDataRecord>>(), Is.TypeOf<FakeApplicationDataStore>());
+                Assert.That(scope.ServiceProvider.GetRequiredService<IScratchStore>(), Is.TypeOf<FakeScratchStore>());
+                Assert.That(scope.ServiceProvider.GetRequiredService<IApplicationDataStore>(), Is.TypeOf<FakeApplicationDataStore>());
             }
         }
 
         [Test]
-        public void MutableStores_WithoutKeyField_FailFast()
+        public void MutableRecordDefinitions_UseDeterministicIdentityAndOrganizationPath()
         {
-            var scratchServices = new ServiceCollection();
-            var applicationServices = new ServiceCollection();
+            var services = new ServiceCollection();
+            services.ConfigureScratchData<ScratchRecord>(storage => storage.Index(x => x.Category));
+            services.ConfigureApplicationData<ApplicationDataRecord>(storage => storage.Index(x => x.Category));
 
-            Assert.Throws<InvalidOperationException>(() => scratchServices.AddScratchStore<ScratchRecord, FakeScratchStore>(storage => storage.Index(x => x.Category)));
-            Assert.Throws<InvalidOperationException>(() => applicationServices.AddApplicationDataStore<ApplicationDataRecord, FakeApplicationDataStore>(storage => storage.Index(x => x.Category)));
+            using (var provider = services.BuildServiceProvider())
+            {
+                var scratch = provider.GetRequiredService<ScratchStoreOptions<ScratchRecord>>().Definition;
+                var application = provider.GetRequiredService<ApplicationDataStoreOptions<ApplicationDataRecord>>().Definition;
+
+                Assert.That(scratch.KeyField, Is.EqualTo(nameof(IScratchDataRecord.Id)));
+                Assert.That(scratch.PartitionFields, Does.Contain("Organization.Id"));
+                Assert.That(application.KeyField, Is.EqualTo(nameof(IApplicationDataRecord.Id)));
+                Assert.That(application.PartitionFields, Does.Contain("Organization.Id"));
+                Assert.That(application.IndexedFields, Does.Contain(nameof(ApplicationDataRecord.Category)));
+            }
         }
 
         [Test]
-        public void QueryModels_UseTypedSelectorsAndOpaquePaging()
+        public void CollectionName_IsDeterministicFromRecordType()
         {
-            var query = new StorageQuery<ApplicationDataRecord>().Where(x => x.Category, StorageFilterOperator.Equal, "telemetry").OrderBy(x => x.CreationDate, StorageSortDirection.Descending).WithPage(new StoragePageRequest(250, "opaque-token"));
+            Assert.That(StorageRecordIdentity.GetCollectionName<ApplicationDataRecord>(), Is.EqualTo(nameof(ApplicationDataRecord)));
+            Assert.That(StorageRecordIdentity.GetCollectionName<ScratchRecord>(), Is.EqualTo(nameof(ScratchRecord)));
+        }
 
-            Assert.That(query.Filters.Single().Field, Is.EqualTo(nameof(ApplicationDataRecord.Category)));
+        [Test]
+        public void QueryModels_SupportNestedSelectorsAndOpaquePaging()
+        {
+            var query = new StorageQuery<ApplicationDataRecord>()
+                .Where(x => x.Organization.Id, StorageFilterOperator.Equal, "org-id")
+                .OrderBy(x => x.CreationDate, StorageSortDirection.Descending)
+                .WithPage(new StoragePageRequest(250, "opaque-token"));
+
+            Assert.That(query.Filters.Single().Field, Is.EqualTo("Organization.Id"));
             Assert.That(query.Sorts.Single().Field, Is.EqualTo(nameof(ApplicationDataRecord.CreationDate)));
             Assert.That(query.Page.PageSize, Is.EqualTo(250));
             Assert.That(query.Page.ContinuationToken, Is.EqualTo("opaque-token"));
+        }
+
+        [Test]
+        public void ApplicationDataContract_DoesNotRequireName()
+        {
+            Assert.That(typeof(IApplicationDataRecord).GetProperty("Name"), Is.Null);
         }
 
         [Test]
