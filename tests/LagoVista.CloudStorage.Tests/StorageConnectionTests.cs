@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.StorageProviders;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
@@ -83,7 +84,7 @@ namespace LagoVista.CloudStorage.Tests
         }
 
         [Test]
-        public void StorageSettings_RegisterAsSingletonInterfaces()
+        public void StorageSettingsAndMutableCapabilities_RegisterCorrectly()
         {
             var services = new ServiceCollection();
             services.AddSingleton(CreateConfiguration());
@@ -93,12 +94,15 @@ namespace LagoVista.CloudStorage.Tests
             services.AddApplicationDataStorageConnection();
 
             using (var provider = services.BuildServiceProvider())
+            using (var scope = provider.CreateScope())
             {
                 Assert.That(provider.GetRequiredService<ICassandraStorageSettings>(), Is.SameAs(provider.GetRequiredService<ICassandraStorageSettings>()));
                 Assert.That(provider.GetRequiredService<IMongoDocumentStorageConnectionSettings>(), Is.SameAs(provider.GetRequiredService<IMongoDocumentStorageConnectionSettings>()));
                 Assert.That(provider.GetRequiredService<IScratchStorageSettings>(), Is.SameAs(provider.GetRequiredService<IScratchStorageSettings>()));
                 Assert.That(provider.GetRequiredService<IApplicationDataStorageSettings>(), Is.SameAs(provider.GetRequiredService<IApplicationDataStorageSettings>()));
                 Assert.That(provider.GetRequiredService<IMongoStorageClientFactory>(), Is.SameAs(provider.GetRequiredService<IMongoStorageClientFactory>()));
+                Assert.That(scope.ServiceProvider.GetRequiredService<IScratchStore>(), Is.TypeOf<MongoScratchStore>());
+                Assert.That(scope.ServiceProvider.GetRequiredService<IApplicationDataStore>(), Is.TypeOf<MongoApplicationDataStore>());
             }
         }
 
