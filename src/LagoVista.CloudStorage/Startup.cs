@@ -2,6 +2,7 @@
 // ContentHash: fb6351dbc21fb32befd31cbcdb2f36abeb3a9628a825d24fd89d091ede688782
 // IndexVersion: 2
 // --- END CODE INDEX META ---
+using LagoVista.CloudStorage.Diagnostics;
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Managers;
@@ -52,6 +53,9 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<IMongoConnectionSettings, MongoConnectionSettings>();
             services.AddSingleton<ICosmosClientProvider>(CosmosClientProvider.Shared);
             services.AddMongoDocumentStorageConnection();
+
+            services.AddTransient<IPlatformSmokeTest, MongoDocumentStorageSmokeTest>();
+            services.AddTransient<IPlatformSmokeTest, CosmosDocumentStorageSmokeTest>();
 
             LagoVista.Core.AutoMapper.Startup.ConfigureServices(services);
         }
