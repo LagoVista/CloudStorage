@@ -19,6 +19,7 @@ namespace LagoVista.CloudStorage.Utils
         public const string DevSLOrgId = "C8AD4589F26842E7A1AEFBAEFC979C9B";
 
         public static MongoDocumentStorageConnectionSettings ProductionMongoDocumentStorage => CreateMongoDocumentStorageSettings("PROD");
+        public static MongoDocumentStorageConnectionSettings DevMongoDocumentStorage => CreateMongoDocumentStorageSettings("Dev");
         public static MongoDocumentStorageConnectionSettings TestMongoDocumentStorage => CreateLocalTestMongoDocumentStorageSettings();
 
         public static ConnectionSettings ProductionDocDB

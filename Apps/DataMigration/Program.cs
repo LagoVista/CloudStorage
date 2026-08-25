@@ -58,7 +58,7 @@ void Init(string env)
     _fkeyWriter = new FkIndexTableWriterBatched(syncSettings, _logger);
     _nodeWriter = new NodeLocatorTableWriterBatched(syncSettings, _logger);
     _nodeReader = new NodeLocatorTableReader(syncSettings, _logger);
-    _syncRepo = new CosmosSyncRepository(syncSettings, _fkeyWriter, _nodeWriter, _nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
+    //_syncRepo = new CosmosSyncRepository(syncSettings, _fkeyWriter, _nodeWriter, _nodeReader, new Mock<ICacheProvider>().Object, new AdminLogger(new ConsoleLogWriter()));
 
     _shutdownCts = new CancellationTokenSource();
 
@@ -267,27 +267,27 @@ Init(env);
 
 switch (mode)
 {
-    case "resolvefkeys":
-        await ResolveFKeysAsync(dryRun:dryRun, ct:_shutdownCts.Token);
-        break;
-    case "buildnodeindex":
-        await BuildNodeLocatorIndexAsync(ct:_shutdownCts.Token);
-        break;
-    case "tablesizes":
-        await GetTableSizesAsync(_shutdownCts.Token);
-        break;
-    case "prune":
-        await PruneTableStorage(_shutdownCts.Token);
-        break;
-    case "deletebytype":
-        await DeleteByEntityType(entityType, dryRun:dryRun,  ct:_shutdownCts.Token);
-        break;
-    case "deletetablerows":
-        await DeleteTableRows("errors", 10, false, _shutdownCts.Token);
-        break;
-    case "sethash":
-        await SetEntityHashAsync("Module");
-        break;
+    //case "resolvefkeys":
+    //    await ResolveFKeysAsync(dryRun:dryRun, ct:_shutdownCts.Token);
+    //    break;
+    //case "buildnodeindex":
+    //    await BuildNodeLocatorIndexAsync(ct:_shutdownCts.Token);
+    //    break;
+    //case "tablesizes":
+    //    await GetTableSizesAsync(_shutdownCts.Token);
+    //    break;
+    //case "prune":
+    //    await PruneTableStorage(_shutdownCts.Token);
+    //    break;
+    //case "deletebytype":
+    //    await DeleteByEntityType(entityType, dryRun:dryRun,  ct:_shutdownCts.Token);
+    //    break;
+    //case "deletetablerows":
+    //    await DeleteTableRows("errors", 10, false, _shutdownCts.Token);
+    //    break;
+    //case "sethash":
+    //    await SetEntityHashAsync("Module");
+    //    break;
     case "migrate-entities-dryrun":
         await new EntityDocumentMigrationRunner(env).DryRunAsync(migrationBatchSize, migrationMaxPages, ct: _shutdownCts.Token);
         break;

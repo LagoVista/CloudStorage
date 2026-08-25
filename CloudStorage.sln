@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Relational.Tests", "tests\R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.Relational.Tests.Core", "tests\Relational.Tests.Core\LagoVista.Relational.Tests.Core.csproj", "{611832C7-3E25-EF1E-7A3B-29E133F3B90E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataMigration", "Apps\DataMigration\DataMigration.csproj", "{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{611832C7-3E25-EF1E-7A3B-29E133F3B90E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{611832C7-3E25-EF1E-7A3B-29E133F3B90E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{611832C7-3E25-EF1E-7A3B-29E133F3B90E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

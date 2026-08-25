@@ -78,11 +78,9 @@ namespace LagoVista.CloudStorage.DocumentDB
             var connectionString = GetEnvironmentSetting(MongoConnectionStringEnvironmentVariablePrefix + normalizedDatabaseName, MongoConnectionStringEnvironmentVariable);
             var databaseName = GetEnvironmentSetting(MongoDatabaseEnvironmentVariablePrefix + normalizedDatabaseName, MongoDatabaseEnvironmentVariable);
 
-            return ValidateMongoSettings(new MongoDocumentStorageSettings()
-            {
-                ConnectionString = connectionString,
-                DatabaseName = String.IsNullOrWhiteSpace(databaseName) ? logicalDatabaseName : databaseName
-            });
+            var settings = Utils.TestConnections.DevMongoDocumentStorage;
+
+            return ValidateMongoSettings(settings);
         }
 
         public static DocumentStorageProviderType ParseProvider(string providerSetting)
