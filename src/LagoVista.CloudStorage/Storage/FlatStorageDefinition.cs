@@ -31,25 +31,25 @@ namespace LagoVista.CloudStorage.Storage
 
         public FlatStorageDefinition<TEntity> KeyBy<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
-            KeyField = GetPropertyName(selector);
+            KeyField = GetPropertyPath(selector);
             return this;
         }
 
         public FlatStorageDefinition<TEntity> PartitionBy<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
-            AddUnique(_partitionFields, GetPropertyName(selector));
+            AddUnique(_partitionFields, GetPropertyPath(selector));
             return this;
         }
 
         public FlatStorageDefinition<TEntity> TimeBy<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
-            TimeField = GetPropertyName(selector);
+            TimeField = GetPropertyPath(selector);
             return this;
         }
 
         public FlatStorageDefinition<TEntity> Index<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
-            AddUnique(_indexedFields, GetPropertyName(selector));
+            AddUnique(_indexedFields, GetPropertyPath(selector));
             return this;
         }
 
@@ -78,26 +78,25 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
-        private static string GetPropertyName<TValue>(Expression<Func<TEntity, TValue>> selector)
+        private static string GetPropertyPath<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
-            if (selector == null)
+            if (selector == null) throw new ArgumentNullException(nameof(selector));
+
+            var names = new Stack<string>();
+            Expression current = UnwrapConvert(selector.Body);
+
+            while (current is MemberExpression member && member.Member is PropertyInfo)
             {
-                throw new ArgumentNullException(nameof(selector));
+                names.Push(member.Member.Name);
+                current = UnwrapConvert(member.Expression);
             }
 
-            var body = UnwrapConvert(selector.Body);
-            if (!(body is MemberExpression member) || !(member.Member is PropertyInfo))
+            if (!(current is ParameterExpression) || names.Count == 0)
             {
-                throw new ArgumentException("Storage selectors must reference a direct property on the entity.", nameof(selector));
+                throw new ArgumentException("Storage selectors must reference a property path on the entity.", nameof(selector));
             }
 
-            var target = UnwrapConvert(member.Expression);
-            if (target is ParameterExpression)
-            {
-                return member.Member.Name;
-            }
-
-            throw new ArgumentException("Storage selectors must reference a direct property on the entity.", nameof(selector));
+            return String.Join(".", names);
         }
 
         private static Expression UnwrapConvert(Expression expression)
