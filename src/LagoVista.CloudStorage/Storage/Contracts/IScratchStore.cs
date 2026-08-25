@@ -11,15 +11,15 @@ namespace LagoVista.CloudStorage.Storage
     public interface IScratchStore
     {
         Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
-            where TRecord : IScratchDataRecord;
+            where TRecord : class, IScratchDataRecord;
 
         Task UpsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
-            where TRecord : IScratchDataRecord;
+            where TRecord : class, IScratchDataRecord;
 
         Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
-            where TRecord : IScratchDataRecord;
+            where TRecord : class, IScratchDataRecord;
 
         Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default)
-            where TRecord : IScratchDataRecord;
+            where TRecord : class, IScratchDataRecord;
     }
 }
