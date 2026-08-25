@@ -5,16 +5,24 @@ namespace LagoVista.CloudStorage.Storage
 {
     /// <summary>
     /// Durable mutable application-data capability with indexed querying.
-    /// Insert and update remain explicit operations rather than being collapsed
-    /// into scratch-store upsert semantics.
+    /// Record type is supplied per operation so repositories compose one shared
+    /// storage capability rather than requiring a closed generic DI registration.
     /// </summary>
-    public interface IApplicationDataStore<TRecord>
-        where TRecord : IApplicationDataRecord
+    public interface IApplicationDataStore
     {
-        Task<TRecord> GetAsync(StorageKey key, CancellationToken cancellationToken = default);
-        Task InsertAsync(TRecord record, CancellationToken cancellationToken = default);
-        Task UpdateAsync(TRecord record, CancellationToken cancellationToken = default);
-        Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default);
-        Task<StoragePageResult<TRecord>> QueryAsync(StorageQuery<TRecord> query, CancellationToken cancellationToken = default);
+        Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
+            where TRecord : IApplicationDataRecord;
+
+        Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
+            where TRecord : IApplicationDataRecord;
+
+        Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
+            where TRecord : IApplicationDataRecord;
+
+        Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
+            where TRecord : IApplicationDataRecord;
+
+        Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default)
+            where TRecord : IApplicationDataRecord;
     }
 }
