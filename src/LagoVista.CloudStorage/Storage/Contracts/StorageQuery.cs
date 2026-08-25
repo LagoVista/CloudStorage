@@ -205,17 +205,21 @@ namespace LagoVista.CloudStorage.Storage
         {
             if (selector == null) throw new ArgumentNullException(nameof(selector));
 
-            var body = UnwrapConvert(selector.Body);
-            if (body is MemberExpression member && member.Member is PropertyInfo)
+            var names = new Stack<string>();
+            Expression current = UnwrapConvert(selector.Body);
+
+            while (current is MemberExpression member && member.Member is PropertyInfo)
             {
-                var target = UnwrapConvert(member.Expression);
-                if (target is ParameterExpression)
-                {
-                    return member.Member.Name;
-                }
+                names.Push(member.Member.Name);
+                current = UnwrapConvert(member.Expression);
             }
 
-            throw new ArgumentException("Storage selectors must reference a direct property on the entity.", nameof(selector));
+            if (!(current is ParameterExpression) || names.Count == 0)
+            {
+                throw new ArgumentException("Storage selectors must reference a property path on the entity.", nameof(selector));
+            }
+
+            return String.Join(".", names);
         }
 
         private static Expression UnwrapConvert(Expression expression)
