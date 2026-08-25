@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using LagoVista.Core;
 
 namespace LagoVista.CloudStorage.Tests
 {
