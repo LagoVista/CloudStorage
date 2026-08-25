@@ -26,6 +26,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         {
             ValidateRequest(request);
 
+            var excludedEntityTypes = new HashSet<string>(request.ExcludedEntityTypes ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
             var result = new CosmosToMongoMigrationResult { DryRun = request.DryRun };
             var sourceCollectionName = String.IsNullOrWhiteSpace(request.SourceCollectionName) ? $"{request.Source.DatabaseName}_Collections" : request.SourceCollectionName;
             var targetCollectionName = _collectionNameResolver.GetFallback(request.Target.DatabaseName);
@@ -49,6 +50,13 @@ namespace LagoVista.CloudStorage.DocumentDB
                     var entityType = GetString(sourceDocument, "EntityType") ?? String.Empty;
                     var route = GetRoute(result, entityType, targetCollectionName);
                     route.Read++;
+
+                    if (excludedEntityTypes.Contains(entityType))
+                    {
+                        result.DocumentsExcluded++;
+                        route.Excluded++;
+                        continue;
+                    }
 
                     if (!DocumentMigrationTransformer.TryTransform(sourceDocument, out var targetDocument))
                     {
@@ -103,7 +111,8 @@ namespace LagoVista.CloudStorage.DocumentDB
                 SourceCollectionName = request.SourceCollectionName,
                 EntityType = request.EntityType,
                 BatchSize = request.BatchSize,
-                DryRun = true
+                DryRun = true,
+                ExcludedEntityTypes = request.ExcludedEntityTypes
             };
 
             var inventory = await MigrateCosmosToMongoAsync(inventoryRequest, cancellationToken).ConfigureAwait(false);
@@ -120,7 +129,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 {
                     EntityType = route.EntityType,
                     CollectionName = route.CollectionName,
-                    SourceCount = route.Read,
+                    SourceCount = route.Read - route.Excluded,
                     DestinationCount = destinationCount
                 };
                 result.Routes.Add(item);

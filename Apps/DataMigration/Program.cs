@@ -256,10 +256,12 @@ async Task SetEntityHashAsync(string? entityType = null, int pageSize = defaultP
 }
 
 
-var mode = "sethash";
-var env = "prod";
+var mode = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "sethash";
+var env = args.Length > 1 ? args[1].Trim().ToLowerInvariant() : "prod";
 var entityType = "ExternalWorkTask";
 var dryRun = false;
+var migrationMaxPages = args.Length > 2 && Int32.TryParse(args[2], out var parsedMaxPages) ? parsedMaxPages : 5;
+var migrationBatchSize = args.Length > 3 && Int32.TryParse(args[3], out var parsedBatchSize) ? parsedBatchSize : 200;
 
 Init(env);
 
@@ -285,5 +287,21 @@ switch (mode)
         break;
     case "sethash":
         await SetEntityHashAsync("Module");
+        break;
+    case "migrate-entities-dryrun":
+        await new EntityDocumentMigrationRunner(env).DryRunAsync(migrationBatchSize, migrationMaxPages, ct: _shutdownCts.Token);
+        break;
+    case "migrate-entities":
+        await new EntityDocumentMigrationRunner(env).MigrateAsync(migrationBatchSize, migrationMaxPages, ct: _shutdownCts.Token);
+        break;
+    case "validate-entities":
+        await new EntityDocumentMigrationRunner(env).ValidateAsync(migrationBatchSize, _shutdownCts.Token);
+        break;
+    case "reset-mongo-entities":
+        await new EntityDocumentMigrationRunner(env).ResetMongoEntitiesAsync(_shutdownCts.Token);
+        break;
+    default:
+        Console.WriteLine($"Unknown mode '{mode}'.");
+        Console.WriteLine("Migration modes: migrate-entities-dryrun, migrate-entities, validate-entities, reset-mongo-entities");
         break;
 }

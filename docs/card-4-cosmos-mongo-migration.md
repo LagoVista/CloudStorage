@@ -6,7 +6,7 @@ Provide a safe, repeatable utility that copies raw EntityBase documents from Cos
 
 ## Status
 
-Core migration and validation implementation is complete. EntityBase migration now has one provider-neutral destination collection, and transform/count reconciliation coverage is in place. Live execution against a real Cosmos source and non-production Mongo target remains the substantive validation step.
+Core migration and validation implementation is complete. EntityBase migration now has one provider-neutral destination collection, transform/count reconciliation coverage is in place, and the existing `Apps/DataMigration` console app exposes dry-run, write, validation, and Mongo reset modes. Live execution against a real Cosmos source and non-production Mongo target remains the substantive validation step.
 
 ## Migration shape
 
@@ -33,6 +33,7 @@ The transformation is isolated in `DocumentMigrationTransformer` and has focused
 - explicit Mongo target `MongoDocumentStorageSettings`
 - optional source collection override
 - optional `EntityType` filter
+- optional `ExcludedEntityTypes`
 - configurable `BatchSize`
 - optional `ContinuationToken`
 - optional `MaxPages`
@@ -54,17 +55,57 @@ The migration service uses the same canonical `IDocumentCollectionNameResolver` 
 
 An unknown or unloaded `EntityType` therefore does not make the physical migration route unresolved. The document still belongs in `Entities`; missing or unexpected `EntityType` values should be treated separately as data-quality concerns.
 
+## EntityType exclusions
+
+The reusable migration service supports a case-insensitive `ExcludedEntityTypes` list. Excluded documents are read and reported but are not transformed or written.
+
+The operational list is intentionally owned by `Apps/DataMigration/EntityDocumentMigrationRunner.cs` so migration exceptions are visible and source-controlled rather than hidden inside provider code.
+
+Excluded records are reported separately from invalid/skipped records. Validation subtracts intentional exclusions from the expected Mongo count, so reconciliation remains:
+
+```text
+Cosmos read = eligible source + intentionally excluded
+eligible source = Mongo destination (after successful migration)
+```
+
 ## Mongo writes
 
 Documents are grouped by destination collection for each Cosmos page and written with unordered Mongo bulk writes. For EntityBase migration there is one destination batch, `Entities`.
 
 Each write is a replacement upsert filtered by `_id`, making normal reruns idempotent.
 
-Dry-run mode executes source reading, transforms, routing, and statistics collection without opening a Mongo connection or writing data.
+Dry-run mode executes source reading, transforms, routing, exclusion accounting, and statistics collection without opening a Mongo connection or writing data.
+
+## Runner
+
+The existing `Apps/DataMigration` console app now exposes four EntityBase migration modes:
+
+```powershell
+# Safe inventory only. Defaults to 5 Cosmos pages, 200 records/page.
+dotnet run --project Apps/DataMigration/DataMigration.csproj -- migrate-entities-dryrun dev
+
+# Same dry run with explicit max pages and batch size.
+dotnet run --project Apps/DataMigration/DataMigration.csproj -- migrate-entities-dryrun dev 2 100
+
+# Real write. Requires typing MIGRATE at the confirmation prompt.
+dotnet run --project Apps/DataMigration/DataMigration.csproj -- migrate-entities dev 2 100
+
+# Reconcile eligible Cosmos records against Mongo Entities.
+dotnet run --project Apps/DataMigration/DataMigration.csproj -- validate-entities dev
+
+# Drop only Mongo Entities. Requires typing Entities at the confirmation prompt.
+dotnet run --project Apps/DataMigration/DataMigration.csproj -- reset-mongo-entities dev
+```
+
+The second argument is the environment (`dev` or `prod`). Migration mode defaults to a bounded five-page run unless an explicit `MaxPages` is supplied; `0` means all pages.
+
+Cosmos source settings continue to use the existing dev/prod connection settings. Mongo destination settings use the existing `NUVIOT_MONGO_CONNECTION_STRING[_<DATABASE>]` and `NUVIOT_MONGO_DATABASE[_<DATABASE>]` environment-variable resolution.
+
+Reset never drops the Mongo database. It drops only the canonical `Entities` collection, which normal lazy provisioning recreates on first use.
 
 ## Validation
 
-`ValidateCosmosToMongoAsync` performs a full dry-run Cosmos inventory using the same destination rule, then counts corresponding documents in Mongo `Entities` by `EntityType`.
+`ValidateCosmosToMongoAsync` performs a full dry-run Cosmos inventory using the same destination and exclusion rules, then counts corresponding documents in Mongo `Entities` by `EntityType`.
 
 The result reports source and destination totals plus per-entity-type counts and a `Matches` flag. Missing/null/empty `EntityType` values are validated only against equivalent Mongo documents rather than counting the entire collection.
 
@@ -77,18 +118,19 @@ The local Mongo integration work has additionally proven that newly-written Mong
 - pages read
 - documents read
 - documents written
+- documents excluded
 - documents skipped
 - documents failed
 - continuation token
 - completed flag
 - dry-run flag
-- per-entity-type/per-destination statistics
+- per-entity-type/per-destination statistics, including exclusions
 
 The legacy unresolved-route counter remains on the result model for compatibility, but normal EntityBase migration no longer increments it because the physical destination is always known.
 
 `CosmosToMongoValidationResult` reports:
 
-- total source count
+- total eligible source count
 - total destination count
 - overall match status
 - per-entity-type source and destination counts
@@ -108,19 +150,23 @@ No credentials or connection strings are included in either result.
 - [x] Preserve `EntityType`, `OwnerOrganization`, and `IsPublic` during transformation.
 - [x] Bulk upsert Mongo documents by `_id`.
 - [x] Support optional `EntityType` filtering.
+- [x] Support explicit EntityType migration exclusions with reconciliation accounting.
 - [x] Add dry-run mode.
 - [x] Add continuation token input/output and bounded `MaxPages` execution.
-- [x] Count read, written, skipped, and failed documents.
+- [x] Count read, written, excluded, skipped, and failed documents.
 - [x] Include per-entity-type/per-destination statistics.
 - [x] Register migration service with dependency injection.
 - [x] Keep secrets out of migration reports.
 - [x] Add transform-focused unit tests for `id -> _id`, Cosmos metadata removal, EntityBase field preservation, nested-shape preservation, missing IDs, and source immutability.
 - [x] Add validation mode comparing Cosmos and Mongo counts by entity type in `Entities`.
+- [x] Add DataMigration runner modes for dry-run, write, validate, and reset.
+- [x] Require explicit console confirmation for write migration and Mongo collection reset.
 
 ## Remaining tasks
 
-- [ ] Build CloudStorage and run the full non-integration/unit suite after the canonical destination change.
-- [ ] Run a dry-run against a real Cosmos database and review entity-type inventory.
+- [ ] Build CloudStorage and DataMigration and run the full non-integration/unit suite after the runner changes.
+- [ ] Run a bounded dry-run against a real Cosmos database and review entity-type inventory/exclusions.
+- [ ] Populate the source-controlled exclusion list with the EntityTypes intentionally handled differently in the new world.
 - [ ] Run a small bounded migration into dev/non-production Mongo `Entities`.
 - [ ] Validate continuation/resume behavior against a real Cosmos feed.
 - [ ] Validate rerunning the same page does not create duplicates.
@@ -131,18 +177,20 @@ No credentials or connection strings are included in either result.
 
 ```powershell
 dotnet build src/LagoVista.CloudStorage/LagoVista.CloudStorage.csproj
+dotnet build Apps/DataMigration/DataMigration.csproj
 dotnet test tests/LagoVista.CloudStorage.Tests/LagoVista.CloudStorage.IntegrationTests.csproj --filter "TestCategory!=Integration"
 ./tests/LagoVista.CloudStorage.Tests/run-mongo-tests.ps1
 ```
 
 ## Acceptance criteria
 
-- [ ] A dry run can inventory a real Cosmos collection and show all EntityBase records targeting `Entities`.
+- [ ] A dry run can inventory a real Cosmos collection and show all eligible EntityBase records targeting `Entities` plus intentional exclusions.
 - [ ] A real run can be interrupted and safely rerun without duplicate documents.
 - [x] `id`/`_id` transformation is deterministic in focused coverage.
 - [x] Cosmos metadata removal is covered by focused tests.
 - [x] `EntityType`, `OwnerOrganization`, and `IsPublic` preservation is covered by focused tests.
 - [x] Unknown entity types still have a deterministic `Entities` destination.
+- [x] Intentionally excluded EntityTypes do not count toward expected Mongo validation totals.
 - [ ] Source and target counts reconcile by entity type against real data.
 
 ## Out of scope
