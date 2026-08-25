@@ -7,6 +7,7 @@ using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Managers;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.CloudStorage.Utils.TableSizer;
 using LagoVista.Core.Interfaces;
