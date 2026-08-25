@@ -18,7 +18,6 @@ using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
-using MongoDB.Driver;
 using Newtonsoft.Json;
 using Prometheus;
 using System;
@@ -36,13 +35,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
     public class DocumentDBRepoBase<TEntity> where TEntity : class, IEntityBase
     {
-        enum StorageProviderTypes
-        {
-            Original,
-            CosmosDB,
-            Mongo,
-        }
-
         private string _endPointString;
         private string _sharedKey;
         private string _dbName;
@@ -58,9 +50,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly IProducedArtifactService _producedArtifactService;
         private readonly IFkIndexTableWriterBatched _fkeyIndexWriter;
         private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
-        private IDocumentDBRepoBase<TEntity> _storage;
-
-        private StorageProviderTypes _stoargeProvider = StorageProviderTypes.Original;
 
         private bool _verboseLogging = false;
 
@@ -132,10 +121,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             _fkeyIndexWriter = fkWriter;
             _cosmosClientProvider = cosmosClientProvider ?? Storage.CosmosClientProvider.Shared;
 
-            var storageSettings = DocumentStorageSettingsResolver.Resolve(_endPointString, sharedKey, dbName);
-            _stoargeProvider = storageSettings.Provider == DocumentStorageProviderType.Mongo ? StorageProviderTypes.Mongo : StorageProviderTypes.Original;
-            _storage = DocumentStorageFactory.Create<TEntity>(storageSettings, logger, null, null, _cosmosClientProvider);
-
             _defaultCollectionName = typeof(TEntity).Name;
             if (!_defaultCollectionName.ToLower().EndsWith("s"))
             {
@@ -192,34 +177,22 @@ namespace LagoVista.CloudStorage.DocumentDB
                 _defaultCollectionName += "s";
             }
 
-            var storageSettings = DocumentStorageSettingsResolver.Resolve(connectionString, sharedKey, dbName);
-            if (storageSettings.Provider == DocumentStorageProviderType.Cosmos && String.IsNullOrEmpty(_sharedKey))
+            if (String.IsNullOrEmpty(_sharedKey))
             {
                 var ex = new InvalidOperationException($"Invalid or missing shared key information on {GetType().Name}");
                 _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__CTor]", ex);
                 throw ex;
             }
-
-            _stoargeProvider = storageSettings.Provider == DocumentStorageProviderType.Mongo ? StorageProviderTypes.Mongo : StorageProviderTypes.Original;
-            _storage = DocumentStorageFactory.Create<TEntity>(storageSettings, _logger, null, null, _cosmosClientProvider);
         }
 
         public async Task DeleteCollectionAsync()
         {
-            if (_stoargeProvider == StorageProviderTypes.Original)
-            {
-                var container = await GetContainerAsync();
-                await container.DeleteContainerAsync();
-            }
-            else
-            {
-                await _storage.DeleteCollectionAsync();
-            }
+            var container = await GetContainerAsync();
+            await container.DeleteContainerAsync();
         }
 
         public virtual string GetPartitionKey()
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo) return _storage.GetPartitionKey();
             return EntityDocumentStoragePolicy.CosmosPartitionKeyPath;
         }
 
@@ -244,7 +217,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<Container> GetContainerAsync()
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo) throw new InvalidOperationException($"Cosmos container access is not available when {typeof(TEntity).Name} is configured for Mongo.");
             var docClient = await GetDocumentClientAsync();
             var collectionName = GetCollectionName();
             await _cosmosCollectionProvisioner.EnsureExistsAsync(docClient, _endPointString, _dbName, collectionName, EntityDocumentStoragePolicy.CosmosPartitionKeyPath).ConfigureAwait(false);
@@ -291,18 +263,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var sw = Stopwatch.StartNew();
             item.SetHash();
-
-            if (_stoargeProvider == StorageProviderTypes.Mongo)
-            {
-                var mongoResponse = await _storage.CreateDocumentAsync(item);
-
-                if (_ragIndexingServices != null && (item is IRagableEntity || item.ShouldVectorIndex)) await _ragIndexingServices.IndexAsync(item);
-                if (_producedArtifactService != null) await _producedArtifactService.CreateProducedArtifactsAsync(item);
-                DocumentInsert.WithLabels(typeof(TEntity).Name).NewTimer();
-
-                if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache)) await _cacheProvider.AddAsync(GetCacheKey(item.Id), JsonConvert.SerializeObject(item));
-                return mongoResponse;
-            }
 
             var container = await GetContainerAsync();
 
@@ -446,7 +406,7 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             var documentId = idOverride ?? item.Id;
             var ownerOrgId = item.OwnerOrganization?.Id;
-            var container = _stoargeProvider == StorageProviderTypes.Mongo ? null : await GetContainerAsync();
+            var container = await GetContainerAsync();
             var sw = Stopwatch.StartNew();
 
             DependentObjectCheckResult dependencyResult = null;
@@ -492,38 +452,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
 
             item.SetHash();
-
-            if (_stoargeProvider == StorageProviderTypes.Mongo)
-            {
-                if (checkEtag) throw new NotSupportedException("Mongo optimistic concurrency is not implemented for DocumentDBRepoBase yet.");
-                if (!String.IsNullOrWhiteSpace(idOverride) && !String.Equals(idOverride, item.Id, StringComparison.Ordinal)) throw new NotSupportedException("Mongo idOverride upserts are not implemented for DocumentDBRepoBase yet.");
-
-                var mongoResponse = await _storage.UpsertDocumentAsync(item);
-
-                if (nameChanged && _dependencyManager != null)
-                {
-                    if (dependencyResult?.IsInUse == true)
-                    {
-                        foreach (var dependentObject in dependencyResult.DependentObjects) await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, documentId, typeof(TEntity).Name, dependentObject.Id, dependentObject.RecordType, item.Name);
-                    }
-
-                    if (!String.IsNullOrWhiteSpace(ownerOrgId)) await _dependencyManager.RenameRegisteredReferencesAsync(item.LastUpdatedBy, typeof(TEntity), documentId, ownerOrgId, item.Name);
-                    else _logger.AddCustomEvent(LogLevel.Warning, $"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync]", $"Could not update registered references for renamed entity '{documentId}' because OwnerOrganization.Id was missing.");
-
-                    await _dependencyManager.RenameObjectAsync(item.LastUpdatedBy, documentId, typeof(TEntity).Name, item.Name);
-                }
-
-                if (_cacheProvider != null && (_cacheAborter == null || !_cacheAborter.AbortCache))
-                {
-                    await _cacheProvider.RemoveAsync(GetCacheKey(documentId));
-                    await _cacheProvider.AddAsync(GetCacheKey(documentId), JsonConvert.SerializeObject(item));
-                }
-
-                if (_ragIndexingServices != null && item.ShouldVectorIndex) await _ragIndexingServices.IndexAsync(item);
-                if (_producedArtifactService != null) await _producedArtifactService.CreateProducedArtifactsAsync(item);
-                await InvalidateEntityListCacheAsync(ownerOrgId);
-                return mongoResponse;
-            }
 
             var upsertResult = await container.UpsertItemAsync(item, new PartitionKey(item.OwnerOrganization.Id), requestOptions);
             item.ETag = upsertResult.ETag;
@@ -666,8 +594,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<TEntity> GetDocumentAsync(string id, string partitionKey, bool throwOnNotFound = true)
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.GetDocumentAsync(id, partitionKey, throwOnNotFound);
-
             try
             {
                 var container = await GetContainerAsync();
@@ -762,28 +688,6 @@ namespace LagoVista.CloudStorage.DocumentDB
                 await _cacheProvider.RemoveAsync(cacheKey);
             }
 
-            if (_stoargeProvider == StorageProviderTypes.Mongo)
-            {
-                OperationResponse<TEntity> mongoResult;
-
-                if (!softDelete || (doc.IsDeleted.HasValue && doc.IsDeleted.Value))
-                {
-                    mongoResult = await _storage.DeleteDocumentAsync(doc.Id);
-                    if (_ragIndexingServices != null && !EntityHeader.IsNullOrEmpty(doc.OwnerOrganization)) await _ragIndexingServices.RemoveIndexAsync(doc.OwnerOrganization.Id, doc.Id);
-                }
-                else
-                {
-                    doc.IsDeleted = true;
-                    doc.DeletionDate = UtcTimestamp.Now;
-                    mongoResult = await _storage.UpsertDocumentAsync(doc);
-                    if (_ragIndexingServices != null && doc.ShouldVectorIndex) await _ragIndexingServices.IndexAsync(doc);
-                }
-
-                timer.Dispose();
-                await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
-                return mongoResult;
-            }
-
             var container = await GetContainerAsync();
             var cosmosPartitionKey = new PartitionKey(doc.OwnerOrganization.Id);
 
@@ -839,16 +743,6 @@ namespace LagoVista.CloudStorage.DocumentDB
                 await _cacheProvider.RemoveAsync(cacheKey);
             }
 
-            if (_stoargeProvider == StorageProviderTypes.Mongo)
-            {
-                doc.IsDeleted = true;
-                doc.DeletionDate = UtcTimestamp.Now;
-                var mongoResult = await _storage.UpsertDocumentAsync(doc);
-                timer.Dispose();
-                await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
-                return mongoResult;
-            }
-
             var container = await GetContainerAsync();
             var partitionKeyValue = new PartitionKey(String.IsNullOrWhiteSpace(partitionKey) ? doc.OwnerOrganization.Id : partitionKey);
 
@@ -867,8 +761,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.QueryAsync(query);
-
             var sw = Stopwatch.StartNew();
             var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
@@ -955,8 +847,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.QueryAsync(query, listRequest);
-
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1017,8 +907,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<ListResponse<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
                             System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.QueryAsync(query, sort, listRequest);
-
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1085,16 +973,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
                            System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ICategorized, ISummaryFactory, INoSQLEntity, INamedEntity, IRatedEntity, IAuditableEntity
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo)
-            {
-                var mongoResponse = await _storage.QuerySummaryAsync<TEntitySummary, TEntityFactory>(query, sort, listRequest);
-                var categories = mongoResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).ToList();
-                var groupedCategories = categories.Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id);
-                mongoResponse.Categories = groupedCategories.Select(itm => itm.First()).ToList();
-                mongoResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
-                return mongoResponse;
-            }
-
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1230,14 +1108,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<ListResponse<TEntitySummary>> QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
                    System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo)
-            {
-                var mongoResponse = await _storage.QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(query, sort, listRequest);
-                mongoResponse.Categories = mongoResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id).Select(itm => itm.First()).ToList();
-                if (mongoResponse.Categories.Any()) mongoResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
-                return mongoResponse;
-            }
-
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1412,8 +1282,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<ListResponse<TEntity>> QueryDescendingAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
                           System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo) return await _storage.QueryDescendingAsync(query, sort, listRequest);
-
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1612,9 +1480,6 @@ namespace LagoVista.CloudStorage.DocumentDB
         /// <returns></returns>
         protected async Task<ListResponse<TEntity>> QueryAllAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query, ListRequest listRequest)
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo)
-                return await _storage.QueryAllAsync(query, listRequest);
-
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -1667,9 +1532,6 @@ namespace LagoVista.CloudStorage.DocumentDB
                                                     System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy,
                                                     ListRequest listRequest)
         {
-            if (_stoargeProvider == StorageProviderTypes.Mongo)
-                return await _storage.DescOrderQueryAsync(query, orderBy, listRequest);
-
             try
             {
                 var sw = Stopwatch.StartNew();
