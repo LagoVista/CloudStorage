@@ -4,7 +4,7 @@
 
 Use this playbook to move the `LagoVista/ai` ProducedArtifact metadata catalog from the legacy Azure `ProducedArtifacts` table into Mongo-backed Application Data Storage.
 
-This migration is intentionally limited to the mutable `ProducedArtifact` metadata record. `ProducedArtifactHistory` is revision/history data with a different lifecycle and is not part of this cutover.
+The new `ProducedArtifact` document also owns a compact embedded `History` list for future prior-version metadata. The legacy `ProducedArtifactHistory` Azure table is development-era data and is intentionally not migrated as part of this cutover.
 
 ## Starting prompt for a future session
 
@@ -60,6 +60,33 @@ Organization.Id
 
 `OwnerOrganizationId` may exist temporarily on ProducedArtifact as a compatibility field while existing AI callers are converted. New persistence and query behavior must use `Organization.Id` as the authoritative organization scope.
 
+## Embedded revision history
+
+`ProducedArtifact.History` is persisted in the same Application Data document.
+
+The embedded history item is intentionally narrow. It stores the prior committed content version metadata rather than another complete ProducedArtifact document. The first-pass shape includes:
+
+```text
+ContentVersion
+CreationDate
+CreatedBy
+VtmMeeting
+WorkItemId
+StandardOperatingProcedure
+PrimaryVirtualTeamMember
+EssentialJobActivity
+ContentType
+ContentSha256
+ContentLength
+Summary
+```
+
+When `CurrentContentVersion` advances, `ProducedArtifactRepo` loads the current persisted record, appends a compact snapshot of that prior version to `History`, then writes the updated ProducedArtifact document.
+
+Metadata-only updates that do not advance `CurrentContentVersion` do not create another history entry.
+
+This is intentionally a simple first implementation. Revisit the exact embedded revision shape only when real usage gives us a reason.
+
 ## Legacy source
 
 The source is the Azure Table Storage table:
@@ -91,6 +118,8 @@ ScopeText
 ```
 
 The migration mapper reconstructs the real `ProducedArtifact` POCO and its `EntityHeader` / typed `EntityHeader<T>` properties before writing to Application Data Storage.
+
+The historical `ProducedArtifactHistory` Azure table is not read by this migration. Existing migrated ProducedArtifact documents begin with an empty embedded `History` list unless future migration requirements explicitly change that choice.
 
 ## Target collection
 
@@ -181,6 +210,8 @@ The typed migration mapper reconstructs at least:
 - CreationDate / LastUpdatedDate
 - ProjectionVersion
 
+The embedded `History` list starts empty for legacy metadata migration because the old development history table is intentionally not imported.
+
 ## Timestamp preservation
 
 Historical timestamps are authoritative migration input.
@@ -264,7 +295,7 @@ For local disposable testing, the utility may default to the local Mongo storage
 Before moving data:
 
 1. Publish/build a CloudStorage package containing the non-generic `IApplicationDataStore`, deterministic Mongo provider, nested query paths, and timestamp-preserving insert behavior.
-2. Publish/build an AI Models package containing `ProducedArtifact : IApplicationDataRecord` and `Organization`.
+2. Publish/build an AI Models package containing `ProducedArtifact : IApplicationDataRecord`, `Organization`, and embedded `History`.
 3. Update `LagoVista/ai` and `nuviot/appsupport` package references to those package versions.
 4. Confirm AI runtime configuration contains `ApplicationDataStorage` Mongo connection/database values.
 5. Confirm AppSupport migration environment variables point to the intended Azure source and Mongo target.
@@ -370,6 +401,7 @@ For each sampled record confirm:
 - content hash/length/location fields match
 - CreationDate matches source
 - LastUpdatedDate matches source
+- History is empty immediately after legacy metadata migration
 
 ## Catch-up pass
 
@@ -406,6 +438,8 @@ After deployment verify:
 - create ProducedArtifact
 - get by artifact id + organization
 - update and reload
+- advance CurrentContentVersion and confirm the prior version appears once in embedded History
+- perform a metadata-only update and confirm no duplicate history entry is created
 - query by ArtifactSpecification.Id
 - query by VtmMeeting.Id
 - query by SopExecution.Id
@@ -414,7 +448,6 @@ After deployment verify:
 - sort by CreationDate
 - sort by Name where required
 - page using the opaque continuation token passed through the existing ListResponse cursor fields
-- history snapshot behavior still works independently
 - content blob retrieval still works independently
 
 ## Rollback
@@ -431,13 +464,13 @@ If the new runtime must be rolled back:
 
 The short rollback window is one reason to avoid a long-running dual-write mode.
 
-## ProducedArtifactHistory is separate
+## Legacy ProducedArtifactHistory table
 
-Do not include `ProducedArtifactHistory` in this migration by accident.
+Do not include the old `ProducedArtifactHistory` Azure table in this migration.
 
-It represents immutable revision/history records and currently has its own persistence path. If/when that storage changes, classify it as Activity/History and create a separate migration definition/playbook appropriate to append-only records.
+The current data is primarily development-era history and is not important enough to justify a second historical migration lane. New revision metadata is embedded directly in `ProducedArtifact.History` going forward.
 
-The ProducedArtifact metadata cutover must not silently alter history retention or revision semantics.
+Keep the old history table untouched through the normal rollback/safety window. It can later be archived or removed according to development-data cleanup policy.
 
 ## Cleanup after the rollback window
 
@@ -445,7 +478,7 @@ Once the cutover has been stable and rollback is no longer required:
 
 - mark the legacy ProducedArtifacts Azure table read-only/retired according to operational policy
 - retain or archive it for the agreed safety period
-- remove any remaining runtime ProducedArtifact Table DTO code
+- archive/remove the legacy ProducedArtifactHistory table when no longer useful
 - remove obsolete Table Storage-specific ProducedArtifact settings only when no other AI repositories use them
 - keep the migration definition and state record as operational evidence
 
@@ -457,6 +490,8 @@ The ProducedArtifact migration is complete when:
 - ProducedArtifactRepo uses composition with `IApplicationDataStore`
 - ProducedArtifactRepo no longer inherits TableStorageBase
 - the mutable ProducedArtifact Table DTO is removed
+- ProducedArtifact revision metadata is embedded in the same Application Data document
+- the standalone ProducedArtifact history repo/DTO are removed
 - runtime indexes are declared through `ConfigureApplicationData<ProducedArtifact>`
 - migration definition validates
 - migration state is stored through Application Data for this migration lane
@@ -464,8 +499,8 @@ The ProducedArtifact migration is complete when:
 - source count, RecordsWritten, and target count agree
 - representative field/header/timestamp checks pass
 - final catch-up completes if required
-- new runtime CRUD/query smoke tests pass
-- ProducedArtifactHistory remains unaffected
+- new runtime CRUD/query/history smoke tests pass
+- legacy ProducedArtifactHistory data is intentionally not migrated
 - Azure source is retained through the rollback window
 
 That is the repeatable ProducedArtifact path from legacy flat Table Storage to deterministic Application Data Storage.
