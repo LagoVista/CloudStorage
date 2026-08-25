@@ -23,7 +23,7 @@ namespace LagoVista.CloudStorage.Storage
         string DatabaseName { get; }
     }
 
-    public interface IMongoConnectionSettings
+    public interface IMongoConnectionSettings : IFlatStorageConnectionSettings
     {
         string ConnectionString { get; }
         string DatabaseName { get; }
