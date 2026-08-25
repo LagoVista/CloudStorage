@@ -1,9 +1,10 @@
+using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using System;
 
-namespace LagoVista.CloudStorage.DocumentDB
+namespace LagoVista.CloudStorage.Repositories
 {
     public class EntityListItemRepoFactory : IEntityListItemRepoFactory
     {
