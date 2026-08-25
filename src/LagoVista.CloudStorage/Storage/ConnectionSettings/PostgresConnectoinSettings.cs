@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using System;
 
-namespace LagoVista.CloudStorage.Storage.Connections
+namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
     public interface IPostgresConnectionSettings
     {
@@ -15,8 +15,6 @@ namespace LagoVista.CloudStorage.Storage.Connections
 
     public class PostgresConnectionSettings : IPostgresConnectionSettings
     {
-        
-
         public PostgresConnectionSettings(IConfiguration configuration)
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
@@ -35,6 +33,5 @@ namespace LagoVista.CloudStorage.Storage.Connections
         public string Password { get; }
         public int Port { get; }
         public string SchemaName { get; }
-
     }
 }
