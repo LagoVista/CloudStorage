@@ -37,7 +37,7 @@ namespace LagoVista.CloudStorage
             services.AddScoped<INodeLocatorTableReader, NodeLocatorTableReader>();
             services.AddScoped<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
             services.AddScoped<IEntityDetailResponseFactory, EntityDetailResponseFactory>();
-            services.AddScoped<IEntityUtilsRepository, ProviderNeutralEntityUtilsRepository>();
+            services.AddScoped<IEntityUtilsRepository, EntityUtilsRepository>();
             services.AddScoped<IEntityPreparationCandidateRepository, EntityPreparationCandidateRepository>();
             services.AddScoped<IEntityListItemRepoFactory, EntityListItemRepoFactory>();
             services.AddScoped<IEntityListResponseMetadataProvider, EntityListResponseMetadataProvider>();
