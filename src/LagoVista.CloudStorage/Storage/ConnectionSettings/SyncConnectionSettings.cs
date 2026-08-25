@@ -4,7 +4,7 @@ using LagoVista.Core.Models;
 using Microsoft.Extensions.Configuration;
 using System;
 
-namespace LagoVista.CloudStorage
+namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
     public class SyncConnections : ISyncConnectionSettings
     {
