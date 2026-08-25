@@ -4,30 +4,73 @@
 
 Application Data Storage is the CloudStorage capability for durable, mutable, queryable application records that do not require relational transaction semantics and are not rich LagoVista entities.
 
-The semantic contract is:
+The semantic contract is a single composed capability:
 
 ```csharp
-IApplicationDataStore<TRecord>
-    where TRecord : IApplicationDataRecord
+IApplicationDataStore
+```
+
+Record type is supplied on each operation:
+
+```csharp
+await store.InsertAsync(record);
+await store.UpdateAsync(record);
+var record = await store.GetAsync<MyRecord>(key);
+var page = await store.QueryAsync(new StorageQuery<MyRecord>());
 ```
 
 The initial and preferred provider is **MongoDB**.
 
-Application repositories should depend on `IApplicationDataStore<TRecord>` rather than on MongoDB APIs. Provider choice, connection details, collection management, indexes, serialization, and schema reconciliation belong inside CloudStorage and application composition.
+Application repositories depend on `IApplicationDataStore`, not on MongoDB APIs and not on a closed generic storage service. Provider choice, connection details, collection management, serialization, indexes, paging, and timestamp invariants belong inside CloudStorage.
+
+## Core architectural rule
+
+Repositories use storage through composition rather than inheritance.
+
+```text
+OLD
+
+Repository
+    IS-A storage implementation
+
+NEW
+
+Repository
+    HAS-A storage capability
+```
+
+For example:
+
+```csharp
+public sealed class VtmMeetingRepo : IVtmMeetingRepo
+{
+    private readonly IApplicationDataStore _store;
+
+    public VtmMeetingRepo(IApplicationDataStore store)
+    {
+        _store = store;
+    }
+
+    public Task AddAsync(VtmMeeting meeting)
+        => _store.InsertAsync(meeting);
+}
+```
+
+The repository owns domain query intent. CloudStorage owns persistence mechanics.
 
 ## What belongs here
 
 Application Data Storage is intended for record-shaped application state with these characteristics:
 
-- durable business/application data;
+- durable authoritative business/application data;
 - records are created, updated, queried, and deleted over time;
 - query patterns are known by the owning repository and can be declared explicitly;
 - the data does not need joins, foreign keys, or multi-table relational transactions;
-- the data is more structured and durable than scratch/cache state;
+- the data is more authoritative and durable than scratch/cache state;
 - the data is not an immutable event/activity stream;
-- the data is not a rich LagoVista entity graph requiring the entity-storage infrastructure.
+- the data is not a rich LagoVista entity graph requiring entity-storage infrastructure.
 
-Typical candidates are the mutable Azure Table Storage workloads that historically used flat records and queryable columns but do not need to remain in Azure Table Storage.
+Typical candidates include mutable Azure Table Storage workloads and runtime objects that historically inherited `EntityBase` primarily to obtain persistence.
 
 ## Provider decision
 
@@ -43,230 +86,263 @@ MongoDB is a strong fit because it provides:
 - no per-collection platform cost penalty in the self-hosted environment;
 - a natural migration path from record-shaped Azure Table Storage workloads.
 
-This capability may share Mongo cluster/client infrastructure with Scratch Storage, but it remains a separate semantic capability with separate settings and lifecycle expectations.
+Application Data may share Mongo client/server infrastructure with Scratch Storage, but it remains a separate semantic capability with separate settings and lifecycle expectations.
 
 ## Record contract
 
-The minimum record contract is intentionally small:
+The common record contract is intentionally small and deterministic:
 
 ```csharp
 public interface IApplicationDataRecord
 {
-    string Id { get; set; }
+    NormalizedId32 Id { get; set; }
     EntityHeader Organization { get; set; }
-    DateTime CreationDate { get; set; }
-    DateTime LastUpdatedDate { get; set; }
+    UtcTimestamp CreationDate { get; set; }
+    UtcTimestamp LastUpdatedDate { get; set; }
 }
 ```
 
-`EntityHeader Organization` follows the normal LagoVista application model.
+The common storage invariants are:
 
-`CreationDate` and `LastUpdatedDate` follow house naming. UTC is implied by platform convention.
+```text
+identity          => Id
+organization      => Organization.Id
+created timestamp => CreationDate
+updated timestamp => LastUpdatedDate
+```
 
-Do not grow this interface into another `EntityBase`. Additional fields belong on the concrete record type because the owning application requires them, not because CloudStorage wants a richer universal base record.
+`Name` is deliberately not part of the storage contract. A concrete application record may be named when its domain requires that behavior, and repositories may sort/query by that field normally.
+
+Do not grow `IApplicationDataRecord` into another `EntityBase`. Additional fields belong on the concrete record type because the owning application requires them.
 
 ## Store contract
 
-The application-facing contract intentionally distinguishes insert from update:
+Application Data intentionally distinguishes insert from update:
 
 ```csharp
-public interface IApplicationDataStore<TRecord>
-    where TRecord : IApplicationDataRecord
+public interface IApplicationDataStore
 {
-    Task<TRecord> GetAsync(StorageKey key, CancellationToken cancellationToken = default);
-    Task InsertAsync(TRecord record, CancellationToken cancellationToken = default);
-    Task UpdateAsync(TRecord record, CancellationToken cancellationToken = default);
-    Task DeleteAsync(StorageKey key, CancellationToken cancellationToken = default);
-    Task<StoragePageResult<TRecord>> QueryAsync(
+    Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
+        where TRecord : class, IApplicationDataRecord;
+
+    Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
+        where TRecord : class, IApplicationDataRecord;
+
+    Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
+        where TRecord : class, IApplicationDataRecord;
+
+    Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
+        where TRecord : class, IApplicationDataRecord;
+
+    Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(
         StorageQuery<TRecord> query,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default)
+        where TRecord : class, IApplicationDataRecord;
 }
 ```
 
-Insert and update remain separate operations because Application Data represents durable application state. The API should not silently collapse create/update semantics into an upsert.
+There is one `IApplicationDataStore` registration. Adding a new record type does not require registering `IApplicationDataStore<TRecord>`.
 
-## Physical Mongo model
+## Deterministic physical identity
 
-Each concrete `TRecord` maps to its own MongoDB collection.
-
-Conceptually:
+Each concrete record type maps to exactly one MongoDB collection. The mapping is deterministic and owned by CloudStorage:
 
 ```text
-CustomerPreferenceRecord
-    -> customer_preference_record collection
-
-NotificationRuleRecord
-    -> notification_rule_record collection
-
-SomeApplicationRecord
-    -> some_application_record collection
+VtmMeeting       -> VtmMeeting collection
+ProducedArtifact -> ProducedArtifact collection
+SopWorkItem      -> SopWorkItem collection
 ```
 
-Collection naming should be deterministic and owned by CloudStorage. Applications should not construct collection names themselves.
+Callers never provide a collection name to CRUD/query methods.
 
-### POCO-first persistence
+The current convention derives collection identity directly from the CLR type name through `StorageRecordIdentity`. Changing a persisted CLR type name is therefore a storage migration decision, not a per-repository configuration tweak.
 
-The preferred implementation is direct persistence of the application record POCO.
+## POCO-first persistence
+
+The normal path is direct persistence of the application record POCO:
 
 ```text
-repository model / record POCO
-        |
-        +--> IApplicationDataStore<TRecord>
-                |
-                +--> Mongo serializer / collection
+record POCO
+    |
+    +--> IApplicationDataStore
+            |
+            +--> Mongo serializer / deterministic collection
 ```
 
-Avoid introducing a provider DTO and mapping layer unless the physical representation has a concrete requirement that cannot reasonably be handled through Mongo serialization configuration.
+Provider DTOs and mapping layers should not be introduced unless a concrete physical representation requirement makes them necessary.
 
-The provider may own BSON naming, ignored fields, conventions, or other serialization mechanics without leaking those concerns into ordinary repositories.
+This specifically allows migrations such as:
 
-## Storage definition
+```text
+ProducedArtifact
+    -> ProducedArtifactTableDto
+    -> Azure Table Storage
+```
 
-Application Data repositories declare the storage shape they need through `FlatStorageDefinition<TRecord>` during registration.
+becoming:
 
-At minimum, Application Data requires a key:
+```text
+ProducedArtifact
+    -> IApplicationDataStore
+    -> MongoDB
+```
+
+with the storage DTO removed.
+
+## Record configuration
+
+Record registration is **not required to make a type storable**. Identity, organization scope, timestamps, serialization, and collection name are conventions.
+
+Optional configuration only declares additional storage behavior such as indexes:
 
 ```csharp
-services.AddApplicationDataStore<MyRecord, MongoApplicationDataStore<MyRecord>>(
-    definition => definition
-        .KeyBy(x => x.Id)
-        .Index(x => x.SomeQueryableField));
+services.ConfigureApplicationData<VtmMeeting>(definition =>
+{
+    definition.Index(x => x.AgentSession.Id);
+    definition.Index(x => x.Archived);
+});
 ```
 
-Useful provider-neutral metadata includes:
+Nested selectors such as `Organization.Id` and `AgentSession.Id` are supported.
 
-- `KeyBy(...)` for logical identity;
-- `PartitionBy(...)` where a logical scope is useful to the provider/query contract;
-- `Index(...)` for declared queryable fields;
-- `RetainFor(...)` only for an application record type whose lifecycle explicitly requires automatic retention.
-
-Time bucketing is primarily an Activity Record concern and should not be introduced into Application Data without a real workload that requires it.
+Application Data should not use configuration to override collection identity, key identity, or organization identity.
 
 ## Index strategy
 
-Indexes are declared by the owning repository/model registration, not hand-built ad hoc inside business code.
+Mongo always has efficient `_id` identity and CloudStorage creates the canonical `Organization.Id` index for mutable record collections.
+
+Additional indexes are declared through `ConfigureApplicationData<TRecord>()` for real repository query paths.
 
 The Mongo provider should:
 
-1. derive the required index set from the registered storage definition;
+1. derive required indexes from the registered definition;
 2. create missing indexes idempotently;
-3. preserve unrelated/legacy indexes unless an explicit migration removes them;
-4. fail clearly on incompatible definitions that cannot be reconciled safely;
-5. never require application repositories to issue Mongo index commands.
+3. preserve unrelated indexes unless an explicit migration removes them;
+4. fail clearly on incompatible definitions;
+5. never require domain repositories to issue Mongo index commands.
 
-`Id`/Mongo `_id` identity should remain efficient by construction. Organization-scoped access patterns should be indexed where the repository actually queries by organization.
-
-Do not create indexes on every field "just in case." Indexes are part of the repository's declared query contract and carry write/storage cost.
+Do not index every property just in case.
 
 ## Timestamp behavior
 
-CloudStorage should own the persistence invariants for the common timestamps:
+CloudStorage owns the common timestamp invariants:
 
-- `InsertAsync` establishes `CreationDate` and `LastUpdatedDate` consistently when the provider is responsible for timestamping;
-- `UpdateAsync` advances `LastUpdatedDate` while preserving `CreationDate`;
-- UTC is assumed.
+- `InsertAsync` establishes both `CreationDate` and `LastUpdatedDate`;
+- `UpdateAsync` preserves the stored `CreationDate` and advances `LastUpdatedDate`;
+- timestamps use `UtcTimestamp`.
 
-The exact ownership rule should be consistent across all Application Data implementations and covered by contract tests before consumer migration begins.
+Consumers do not need provider-specific timestamp logic.
 
 ## Query behavior
 
 `StorageQuery<TRecord>` is the provider-neutral query surface.
 
-Application repositories should express queries through typed selectors rather than Mongo filter documents. CloudStorage translates supported operators into Mongo filters.
+Repositories express queries using typed selectors:
 
-The provider should reject query shapes it cannot support safely rather than silently performing broad client-side filtering.
+```csharp
+var query = new StorageQuery<VtmMeeting>()
+    .Where(x => x.Organization.Id, StorageFilterOperator.Equal, organizationId)
+    .Where(x => x.Archived, StorageFilterOperator.Equal, false)
+    .OrderBy(x => x.LastUpdatedDate, StorageSortDirection.Descending);
+```
 
-Paging uses `StoragePageResult<TRecord>` and an opaque continuation token. Consumers must not depend on Mongo cursor internals.
+CloudStorage translates supported property paths and operators into Mongo queries.
+
+Paging uses `StoragePageResult<TRecord>` and an opaque continuation token. Consumers must not interpret provider-owned token contents.
 
 ## Update and concurrency semantics
 
-The first implementation should provide correct single-record insert/update/delete semantics.
+The initial implementation provides correct single-record insert/update/delete semantics.
 
 Application Data does **not** automatically imply:
 
 - relational transactions;
 - cross-record atomicity;
 - event sourcing;
-- account-ledger semantics.
+- account-ledger semantics;
+- compare-and-swap concurrency.
 
-If a workload requires compare-and-swap/optimistic concurrency, that should be added deliberately to the semantic contract rather than smuggled through provider-specific Mongo behavior.
+Workloads that require optimistic concurrency should add that semantic deliberately rather than leaking provider-specific Mongo behavior.
 
 ## Configuration
 
-Application Data has an independent settings contract and configuration section:
+Application Data has an independent settings section:
 
 ```text
 ApplicationDataStorage
 ```
 
-The current settings are represented by:
+represented by:
 
 ```csharp
 IApplicationDataStorageSettings
 ApplicationDataStorageSettings
 ```
 
-Application Data and Scratch may point to the same physical Mongo server while using different configuration keys, databases, credentials, or future policies.
+`AddApplicationDataStorageConnection()` registers the settings, shared Mongo client factory, and the single scoped `IApplicationDataStore` Mongo implementation.
 
-That separation is intentional. Sharing a server must not merge the semantics of the two capabilities.
+Application Data and Scratch may point to the same Mongo server while using different configuration keys, databases, credentials, and future operational policies.
+
+## Relationship to Scratch Storage
+
+Application Data and Scratch share low-level mutable Mongo infrastructure but expose different semantics:
+
+| Application Data | Scratch |
+| --- | --- |
+| authoritative application state | reconstructable working state |
+| explicit insert/update | upsert-oriented |
+| timestamps are invariant | timestamps are workload-specific |
+| retention is unusual | retention/TTL is common |
+| broader declared querying | intentionally narrow querying |
+
+Sharing a Mongo server or internal provider core must not merge these semantic contracts.
 
 ## Relationship to Mongo entity storage
 
-This strategy is **not** the Mongo entity-storage modernization.
+Application Data Storage is **not** the rich Mongo entity-storage modernization.
 
-The entity-storage lane handles rich first-class LagoVista entities, existing Cosmos/document repository behavior, provider parity, and entity-specific storage concerns.
+Entity storage handles rich first-class LagoVista entities, entity-specific repository behavior, and Cosmos/Mongo parity.
 
-Application Data Storage handles simple record-shaped persistence behind `IApplicationDataStore<TRecord>`.
+Application Data handles simple durable runtime/application records behind `IApplicationDataStore`.
 
-The two lanes may share only clearly reusable low-level Mongo plumbing such as client lifecycle/pooling. Do not refactor `DocumentDBRepoBase`, `MongoDocumentCollection`, or entity conversion machinery as part of implementing Application Data Storage.
+The lanes may share proven low-level Mongo serialization/client plumbing, but Application Data should not reintroduce `DocumentDBRepoBase`-style inheritance.
 
-## Migration from Azure Table Storage
+## Migration from Azure Table Storage or EntityBase persistence
 
-Migration is an external/operational concern, not hidden behavior inside `IApplicationDataStore<TRecord>`.
+Migration is an explicit operational concern, not hidden behavior inside the runtime store.
 
-A migration utility may support:
-
-```text
-Azure Table Storage
-       |
-       +--> selected/all records
-                |
-                +--> IApplicationDataStore<TRecord> / migration adapter
-                           |
-                           +--> MongoDB
-```
-
-Migration should support validation and repeatability and should not require the runtime store to dual-write indefinitely.
-
-Consumer repositories can be converted mechanically once the store implementation is stable:
+A typical repository conversion is:
 
 1. identify the existing record model and query patterns;
-2. make the record implement `IApplicationDataRecord`;
-3. declare key/index requirements during DI registration;
-4. inject `IApplicationDataStore<TRecord>` into the repository;
-5. remove Azure Table provider mechanics from the repository;
-6. validate behavior against migrated/recreated data.
+2. make the model implement `IApplicationDataRecord`;
+3. replace duplicate organization-id storage with canonical `Organization` where appropriate;
+4. declare only the indexes required by domain queries;
+5. inject `IApplicationDataStore` into the repository;
+6. replace inherited/provider CRUD calls with composed store calls;
+7. remove provider DTO/mapping layers that no longer have a purpose;
+8. migrate/recreate existing data explicitly;
+9. validate behavior before removing the old provider path.
 
 ## Testing strategy
 
-Most semantic behavior should be covered by fast unit/contract tests. Mongo-specific behavior should be covered by Docker-backed integration tests.
+Fast unit/contract tests cover conventions and provider-neutral behavior. Mongo-specific behavior should be covered by a Docker-backed integration harness.
 
-Important integration coverage includes:
+Important Mongo integration coverage includes:
 
 - authenticated connection through `ApplicationDataStorageSettings`;
-- collection creation/use;
+- deterministic collection selection for multiple record types;
 - insert then get;
 - duplicate insert behavior;
 - update preserves `CreationDate` and advances `LastUpdatedDate`;
 - delete;
-- declared index creation/reconciliation;
+- organization scoping;
+- nested declared index creation/reconciliation;
 - typed indexed queries;
+- sorting;
 - paging and continuation tokens;
 - additive POCO evolution;
-- startup/idempotent initialization;
-- persistence across Mongo container restart when the Docker harness uses durable test storage.
-
-Critical provider implementation paths should use LagoVista's `[CriticalCoverage]` marker where a regression would threaten data correctness or migration safety.
+- startup/idempotent index initialization;
+- persistence across Mongo restart when the harness uses durable storage.
 
 ## Non-goals
 
@@ -274,24 +350,24 @@ Application Data Storage is not intended to become:
 
 - the rich entity/document repository stack;
 - a relational database abstraction;
-- an append-only activity store;
+- an append-only activity/history store;
 - an account ledger;
 - a metrics/time-series store;
-- an arbitrary Mongo escape hatch exposed to application repositories.
+- an arbitrary Mongo escape hatch exposed to business repositories.
 
 ## Definition of done
 
-The Mongo Application Data capability is ready for first workload migration when:
+The Mongo Application Data capability is infrastructure-ready when:
 
-- `IApplicationDataStore<TRecord>` has a production Mongo implementation;
+- one non-generic `IApplicationDataStore` has a production Mongo implementation;
 - `ApplicationDataStorage` settings and DI are complete;
-- one record type maps deterministically to one collection;
+- record identity and organization scope are deterministic conventions;
+- one CLR record type maps deterministically to one collection;
 - direct POCO persistence is the normal path;
-- declared indexes reconcile safely and idempotently;
-- CRUD, typed query, and paging semantics are integration-tested;
+- no per-record store DI registration is required;
+- nested declared indexes reconcile safely and idempotently;
+- CRUD, typed query, sorting, and paging semantics are integration-tested;
 - timestamp behavior is defined and tested;
-- the Docker Mongo integration harness can run the provider suite repeatably;
-- the implementation does not depend on or refactor the concurrent Mongo entity-storage modernization;
-- migration tooling can populate the store independently of normal runtime repository behavior.
+- migration tooling remains separate from normal runtime storage behavior.
 
-At that point the provider is considered infrastructure-ready. Individual Azure Table/application repository migrations are separate work items.
+Individual consumer migrations remain separate work items after the provider is infrastructure-ready.
