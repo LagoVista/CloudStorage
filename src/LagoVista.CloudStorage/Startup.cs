@@ -26,7 +26,6 @@ namespace LagoVista.CloudStorage
             services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
             services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
             services.AddScoped<IDocumentCollectionNameResolver, DocumentCollectionNameResolver>();
-            services.AddScoped<IDocumentCollectionFactory, DocumentCollectionFactory>();
             services.AddScoped<ICosmosDocumentStorageClient, CosmosDocumentStorageClient>();
             services.AddScoped<IMongoDocumentStorageClient, MongoDocumentStorageClient>();
             services.AddScoped<IDocumentStorageClientProvider, DocumentStorageClientProvider>();
