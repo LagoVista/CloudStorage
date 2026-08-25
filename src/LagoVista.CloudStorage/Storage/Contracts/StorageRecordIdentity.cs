@@ -4,7 +4,7 @@ namespace LagoVista.CloudStorage.Storage
 {
     /// <summary>
     /// Canonical physical identity conventions for mutable record storage.
-    /// A CLR record type always maps to the same collection name and common field paths.
+    /// A CLR record type maps deterministically to one collection name and common field paths.
     /// Callers do not supply or override these values during CRUD operations.
     /// </summary>
     public static class StorageRecordIdentity
@@ -24,7 +24,8 @@ namespace LagoVista.CloudStorage.Storage
             if (recordType == null) throw new ArgumentNullException(nameof(recordType));
             if (String.IsNullOrWhiteSpace(recordType.Name)) throw new ArgumentException("Record type must have a name.", nameof(recordType));
 
-            return recordType.Name;
+            var attribute = (StorageRecordNameAttribute)Attribute.GetCustomAttribute(recordType, typeof(StorageRecordNameAttribute));
+            return attribute?.Name ?? recordType.Name;
         }
     }
 }
