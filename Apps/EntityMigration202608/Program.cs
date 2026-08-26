@@ -1,7 +1,7 @@
 using EntityMigration202608;
 
 var mode = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "dry-run";
-var environment = args.Length > 1 ? args[1].Trim().ToLowerInvariant() : "prod";
+var environment = args.Length > 1 ? args[1].Trim().ToLowerInvariant() : "dev";
 var maxPages = args.Length > 2 && Int32.TryParse(args[2], out var parsedMaxPages) ? parsedMaxPages : 5;
 var batchSize = args.Length > 3 && Int32.TryParse(args[3], out var parsedBatchSize) ? parsedBatchSize : 200;
 var continuationToken = args.Length > 4 ? args[4] : null;
