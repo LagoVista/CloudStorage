@@ -1,0 +1,29 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "metrics-postgres-store-gap",
+  "title": "Metrics Postgres Store Implementation + Integration Tests",
+  "status": "backlog",
+  "category": "architecture-gap",
+  "area": "metrics-storage",
+  "summary": "Close the CloudStorage Metrics capability by providing a concrete PostgreSQL-backed IMetricsStore implementation and comprehensive provider integration coverage.",
+  "source": [
+    "src/LagoVista.CloudStorage/Interfaces/StorageProviders/IMetricsStore.cs",
+    "src/LagoVista.CloudStorage/Storage/ConnectionSettings/MetricsStorageSettings.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/MetricsStorageServiceCollectionExtensions.cs"
+  ],
+  "data": {
+    "contract": "IMetricsStore",
+    "provider": "postgresql",
+    "implementationStatus": "missing",
+    "coverage": [
+      "concrete-store-implementation",
+      "dependency-registration",
+      "write",
+      "query",
+      "date-range-behavior",
+      "error-behavior"
+    ],
+    "tests": [],
+    "testProject": "tests/LagoVista.StorageProvider.Tests"
+  }
+}
