@@ -203,15 +203,15 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (!listRequest.ShowDeleted)
             {
                 filters.Add(Builders<TEntity>.Filter.Or(
-                    Builders<TEntity>.Filter.Exists(nameof(INoSQLEntity.IsDeleted), false),
-                    Builders<TEntity>.Filter.Eq(nameof(INoSQLEntity.IsDeleted), false)));
+                    Builders<TEntity>.Filter.Exists("IsDeleted", false),
+                    Builders<TEntity>.Filter.Eq("IsDeleted", false)));
             }
 
             if (!listRequest.ShowDrafts)
             {
                 filters.Add(Builders<TEntity>.Filter.Or(
-                    Builders<TEntity>.Filter.Exists(nameof(IAuditableEntity.IsDraft), false),
-                    Builders<TEntity>.Filter.Eq(nameof(IAuditableEntity.IsDraft), false)));
+                    Builders<TEntity>.Filter.Exists("IsDraft", false),
+                    Builders<TEntity>.Filter.Eq("IsDraft", false)));
             }
 
             var filter = Builders<TEntity>.Filter.And(filters);
