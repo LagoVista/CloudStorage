@@ -29,6 +29,19 @@ namespace LagoVista.CloudStorage.Storage
     }
 
     /// <summary>
+    /// Minimal record contract for mutable operational data. Operational records
+    /// are small, standalone, row-like records keyed by organization plus Id.
+    /// CloudStorage owns CreationDate and LastUpdatedDate invariants.
+    /// </summary>
+    public interface IOperationalDataRecord
+    {
+        string Id { get; set; }
+        string OrganizationId { get; set; }
+        DateTime CreationDate { get; set; }
+        DateTime LastUpdatedDate { get; set; }
+    }
+
+    /// <summary>
     /// Minimal transaction supplied to an account ledger. The store owns the
     /// authoritative running balance and integrity-chain metadata.
     /// </summary>
