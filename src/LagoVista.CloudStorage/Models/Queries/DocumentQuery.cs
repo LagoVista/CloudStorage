@@ -34,7 +34,13 @@ namespace LagoVista.CloudStorage.DocumentDB
         EntityUtilsDocumentById,
 
         /// <summary>Counts entities of one type owned by an organization.</summary>
-        EntityUtilsCountByType
+        EntityUtilsCountByType,
+
+        /// <summary>Returns entities whose Status.Id is missing/null or matches one of the requested status ids.</summary>
+        EntityUtilsDocumentsByStatusIds,
+
+        /// <summary>Returns entities where a named field is missing, null, or an empty string.</summary>
+        EntityUtilsDocumentsWithEmptyField,
     }
 
     public sealed class DocumentCountResult

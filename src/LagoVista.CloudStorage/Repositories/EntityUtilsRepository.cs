@@ -245,43 +245,15 @@ namespace LagoVista.CloudStorage.Storage
             if (!statusIds.Any()) return InvokeResult<List<JObject>>.Create(new List<JObject>());
             if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
 
-            const string sql =
-@"SELECT *
-FROM c
-WHERE c.EntityType = @entityType
-AND c.OwnerOrganization.Id = @orgId
-AND (
-    NOT IS_DEFINED(c.Status)
-    OR IS_NULL(c.Status)
-    OR NOT IS_DEFINED(c.Status.Id)
-    OR IS_NULL(c.Status.Id)
-    OR ARRAY_CONTAINS(@statusIds, c.Status.Id)
-)
-ORDER BY c.Name ASC";
-
-            var query = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@statusIds", statusIds.ToList());
-            var results = new List<JObject>();
-            var requestOptions = new QueryRequestOptions { MaxItemCount = Math.Min(maxItems, 100) };
-
             try
             {
-                using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByStatusIds)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("statusIds", statusIds.ToList())
+                    .WithParameter("maxItems", Math.Min(maxItems, 5000));
 
-                while (iterator.HasMoreResults && results.Count < maxItems)
-                {
-                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-
-                    foreach (var document in page.Resource)
-                    {
-                        if (document == null)
-                            continue;
-
-                        results.Add(document);
-
-                        if (results.Count >= maxItems)
-                            break;
-                    }
-                }
+                var results = (await _storageClient.QueryKnownAsync<JObject>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
 
                 _logger.Trace($"{this.Tag()} - Found {results.Count} {entityType} entities with Status.Id in [{String.Join(", ", statusIds)}].");
 
@@ -447,87 +419,27 @@ ORDER BY c.Name ASC";
         }
 
 
-        public async Task<InvokeResult<List<JObject>>> GetEntitiesWithEmptyFieldAsync(
-    string entityType,
-    string fieldName,
-    string orgId,
-    int maxItems,
-    CancellationToken ct)
+        public async Task<InvokeResult<List<JObject>>> GetEntitiesWithEmptyFieldAsync(string entityType, string fieldName, string orgId, int maxItems, CancellationToken ct)
         {
-            if (String.IsNullOrWhiteSpace(entityType))
-            {
-                throw new ArgumentException("entityType is required.", nameof(entityType));
-            }
-
-            if (String.IsNullOrWhiteSpace(fieldName))
-            {
-                throw new ArgumentException("fieldName is required.", nameof(fieldName));
-            }
-
-            if (String.IsNullOrWhiteSpace(orgId))
-            {
-                throw new ArgumentException("orgId is required.", nameof(orgId));
-            }
-
-            if (maxItems <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
-            }
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(fieldName)) throw new ArgumentException("fieldName is required.", nameof(fieldName));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+            if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
 
             var safeFieldName = fieldName.Trim();
 
-            if (!IsSafeCosmosPropertyName(safeFieldName))
-            {
-                return InvokeResult<List<JObject>>.FromError($"Field name '{fieldName}' is not safe for a Cosmos query.");
-            }
-
-            var results = new List<JObject>();
-
-            var sql =
-        $@"SELECT TOP {maxItems} *
-FROM c
-WHERE c.EntityType = @entityType
-AND c.OwnerOrganization.Id = @orgId
-AND (
-    NOT IS_DEFINED(c[""{safeFieldName}""])
-    OR IS_NULL(c[""{safeFieldName}""])
-    OR c[""{safeFieldName}""] = ''
-)";
-
-            var qd = new QueryDefinition(sql)
-                .WithParameter("@entityType", entityType.Trim())
-                .WithParameter("@orgId", orgId.Trim());
-
-            var requestOptions = new QueryRequestOptions
-            {
-                MaxItemCount = Math.Min(maxItems, 100)
-            };
+            if (!IsSafeDocumentPropertyName(safeFieldName))
+                return InvokeResult<List<JObject>>.FromError($"Field name '{fieldName}' is not safe for a document query.");
 
             try
             {
-                using var iterator = _container.GetItemQueryIterator<JObject>(
-                    qd,
-                    requestOptions: requestOptions);
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsWithEmptyField)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("fieldName", safeFieldName)
+                    .WithParameter("maxItems", Math.Min(maxItems, 5000));
 
-                while (iterator.HasMoreResults && results.Count < maxItems)
-                {
-                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-
-                    foreach (var doc in page.Resource)
-                    {
-                        if (doc == null)
-                        {
-                            continue;
-                        }
-
-                        results.Add(doc);
-
-                        if (results.Count >= maxItems)
-                        {
-                            break;
-                        }
-                    }
-                }
+                var results = (await _storageClient.QueryKnownAsync<JObject>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
 
                 _logger.Trace($"{this.Tag()} - Found {results.Count} {entityType} entities with empty field '{safeFieldName}'.");
 
@@ -540,28 +452,23 @@ AND (
             }
         }
 
-        private static bool IsSafeCosmosPropertyName(string fieldName)
+        private static bool IsSafeDocumentPropertyName(string fieldName)
         {
             if (String.IsNullOrWhiteSpace(fieldName))
-            {
                 return false;
-            }
 
             if (fieldName.Length > 128)
-            {
                 return false;
-            }
 
             foreach (var ch in fieldName)
             {
                 if (!(Char.IsLetterOrDigit(ch) || ch == '_'))
-                {
                     return false;
-                }
             }
 
             return true;
         }
+
 
         public async Task<InvokeResult> CalculateHashAsync(string id, CancellationToken ct)
         {
@@ -1980,7 +1887,7 @@ AND (
             if (String.IsNullOrWhiteSpace(value))
                 return true;
 
-            if (!IsSafeCosmosPropertyName(fieldName))
+            if (!IsSafeDocumentPropertyName(fieldName))
                 throw new ArgumentException($"Field name '{fieldName}' is not safe for a Cosmos query.", nameof(fieldName));
 
             var sql =

@@ -429,6 +429,12 @@ namespace LagoVista.CloudStorage.StorageProviders
             var collection = GetBsonCollection(collectionName);
             switch (request.QueryType)
             {
+                case DocumentQueryType.EntityUtilsDocumentsByStatusIds:
+                    return await QueryEntityUtilsByStatusIdsAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
+
+                case DocumentQueryType.EntityUtilsDocumentsWithEmptyField:
+                    return await QueryEntityUtilsWithEmptyFieldAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
+                    
                 case DocumentQueryType.CustomerIndustryNicheSalesStageCounts:
                     return Deserialize<TResult>(await collection.Aggregate<BsonDocument>(new BsonDocument[]
                     {
@@ -462,6 +468,59 @@ namespace LagoVista.CloudStorage.StorageProviders
                 default:
                     throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Mongo provider.");
             }
+        }
+
+        private static async Task<IEnumerable<TResult>> QueryEntityUtilsByStatusIdsAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            var statusIds = request.GetRequired<List<string>>("statusIds");
+            var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
+
+            var filter = Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+                Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")),
+                Builders<BsonDocument>.Filter.Or(
+                    Builders<BsonDocument>.Filter.Exists("Status", false),
+                    Builders<BsonDocument>.Filter.Eq("Status", BsonNull.Value),
+                    Builders<BsonDocument>.Filter.Exists("Status.Id", false),
+                    Builders<BsonDocument>.Filter.Eq("Status.Id", BsonNull.Value),
+                    Builders<BsonDocument>.Filter.In("Status.Id", statusIds)));
+
+            var documents = await collection
+                .Find(filter)
+                .Sort(Builders<BsonDocument>.Sort.Ascending("Name"))
+                .Limit(maxItems)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (typeof(TResult) == typeof(JObject))
+                return documents.Select(ToJObject).Cast<TResult>().ToList();
+
+            return Deserialize<TResult>(documents);
+        }
+
+        private static async Task<IEnumerable<TResult>> QueryEntityUtilsWithEmptyFieldAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            var fieldName = request.GetRequired<string>("fieldName");
+            var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
+
+            var filter = Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+                Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")),
+                Builders<BsonDocument>.Filter.Or(
+                    Builders<BsonDocument>.Filter.Exists(fieldName, false),
+                    Builders<BsonDocument>.Filter.Eq(fieldName, BsonNull.Value),
+                    Builders<BsonDocument>.Filter.Eq(fieldName, String.Empty)));
+
+            var documents = await collection
+                .Find(filter)
+                .Limit(maxItems)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (typeof(TResult) == typeof(JObject))
+                return documents.Select(ToJObject).Cast<TResult>().ToList();
+
+            return Deserialize<TResult>(documents);
         }
 
         private IMongoCollection<TEntity> GetCollection<TEntity>() where TEntity : class

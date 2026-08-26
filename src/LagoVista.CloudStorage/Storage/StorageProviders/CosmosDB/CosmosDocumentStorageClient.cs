@@ -410,10 +410,68 @@ namespace LagoVista.CloudStorage.StorageProviders
             return "/" + logicalPath.Trim().TrimStart('/').Replace('.', '/');
         }
 
+        private static bool IsSafeDocumentPropertyName(string fieldName)
+        {
+            if (String.IsNullOrWhiteSpace(fieldName) || fieldName.Length > 128)
+                return false;
+
+            foreach (var ch in fieldName)
+            {
+                if (!(Char.IsLetterOrDigit(ch) || ch == '_'))
+                    return false;
+            }
+
+            return true;
+        }
+
+
         private static QueryDefinition CreateKnownQuery(DocumentQueryRequest request)
         {
             switch (request.QueryType)
             {
+                case DocumentQueryType.EntityUtilsDocumentsByStatusIds:
+                    {
+                        var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
+
+                        return new QueryDefinition($@"
+SELECT TOP {maxItems} *
+FROM c
+WHERE c.EntityType = @entityType
+AND c.OwnerOrganization.Id = @orgId
+AND (
+    NOT IS_DEFINED(c.Status)
+    OR IS_NULL(c.Status)
+    OR NOT IS_DEFINED(c.Status.Id)
+    OR IS_NULL(c.Status.Id)
+    OR ARRAY_CONTAINS(@statusIds, c.Status.Id)
+)
+ORDER BY c.Name ASC")
+                            .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                            .WithParameter("@orgId", request.GetRequired<string>("orgId"))
+                            .WithParameter("@statusIds", request.GetRequired<List<string>>("statusIds"));
+                    }
+
+                case DocumentQueryType.EntityUtilsDocumentsWithEmptyField:
+                    {
+                        var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
+                        var fieldName = request.GetRequired<string>("fieldName");
+
+                        if (!IsSafeDocumentPropertyName(fieldName))
+                            throw new ArgumentException($"Field name '{fieldName}' is not safe for a document query.");
+
+                        return new QueryDefinition($@"
+SELECT TOP {maxItems} *
+FROM c
+WHERE c.EntityType = @entityType
+AND c.OwnerOrganization.Id = @orgId
+AND (
+    NOT IS_DEFINED(c[""{fieldName}""])
+    OR IS_NULL(c[""{fieldName}""])
+    OR c[""{fieldName}""] = ''
+)")
+                            .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                            .WithParameter("@orgId", request.GetRequired<string>("orgId"));
+                    }
                 case DocumentQueryType.CustomerIndustryNicheSalesStageCounts:
                     return new QueryDefinition("SELECT c.Industry, c.IndustryNiche, c.SalesStage, COUNT(c.id) AS CountLeads FROM c WHERE c.EntityType = 'CustomerEntity' AND c.OwnerOrganization.Id = @orgId GROUP BY c.Industry, c.IndustryNiche, c.SalesStage")
                         .WithParameter("@orgId", request.GetRequired<string>("orgId"));

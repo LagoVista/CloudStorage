@@ -16,4 +16,10 @@
     <ProjectReference Include="..\..\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Cassandra\" />
+    <Folder Include="Cosmos\" />
+    <Folder Include="Mongo\" />
+  </ItemGroup>
+
 </Project>
