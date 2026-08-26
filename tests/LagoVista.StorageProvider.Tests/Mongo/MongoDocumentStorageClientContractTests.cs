@@ -57,5 +57,9 @@ namespace LagoVista.StorageProvider.Tests.Mongo
         [TestMethod]
         public Task NotFoundSemantics_SatisfySharedContract() =>
             DocumentStorageClientContract.NotFoundSemanticsAsync(_client, "ORG1");
+
+        [TestMethod]
+        public Task QueryAndPaging_SatisfySharedContract() =>
+            DocumentStorageClientContract.QueryAndPagingAsync(_client);
     }
 }
