@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "metrics-postgres-store-gap",
   "title": "Metrics PostgreSQL + TimescaleDB Store",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "metrics-storage",
   "summary": "Exercise the concrete PostgreSQL + TimescaleDB IMetricsStore implementation, definition governance, dimensional writes, aggregates, bucketing, grouping, and validation.",
@@ -29,8 +29,7 @@
       "port": 19043
     },
     "coverageLayers": {
-      "completed": [],
-      "next": [
+      "completed": [
         "dependency-registration",
         "schema-and-hypertable-provisioning",
         "definition-registration-and-lookup",
@@ -41,7 +40,8 @@
         "dimension-filtering-and-grouping",
         "definition-and-dimension-validation",
         "batch-atomicity"
-      ]
+      ],
+      "next": []
     }
   }
 }
