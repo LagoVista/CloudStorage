@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using System;
 
 namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
@@ -11,8 +12,10 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         public const string SectionName = "ApplicationDataStorage";
 
         public ApplicationDataStorageSettings(IConfiguration configuration)
-            : base(configuration, SectionName)
+            : base(configuration)
         {
+            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
+            DatabaseName = configuration.GetSection(SectionName).Require("DatabaseName");
         }
     }
 }
