@@ -58,16 +58,6 @@ internal sealed class MigrationProgressStore
 
     private readonly IApplicationDataStore _store;
     private readonly string _environment;
-
-    public MigrationProgressStore(string environment)
-    {
-        _environment = environment;
-        var settings = MigrationApplicationDataSettings.FromEnvironment(environment);
-        _store = new MongoApplicationDataStore(settings, new MongoStorageClientFactory(), EmptyServiceProvider.Instance);
-    }
-
-    public string DatabaseName => ((MigrationApplicationDataSettings)_settings).DatabaseName;
-
     private readonly IApplicationDataStorageSettings _settings;
 
     private MigrationProgressStore(string environment, IApplicationDataStorageSettings settings)
@@ -76,6 +66,8 @@ internal sealed class MigrationProgressStore
         _settings = settings;
         _store = new MongoApplicationDataStore(settings, new MongoStorageClientFactory(), EmptyServiceProvider.Instance);
     }
+
+    public string DatabaseName => _settings.DatabaseName;
 
     public static MigrationProgressStore Create(string environment)
     {
