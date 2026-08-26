@@ -13,6 +13,10 @@ namespace LagoVista.CloudStorage.DocumentDB
 {
     public sealed class DocumentMigrationService : IDocumentMigrationService
     {
+        private const string EntitiesCollectionName = "Entities";
+        private const string MediaResourcesCollectionName = "MediaResources";
+        private const string DevicesCollectionName = "Devices";
+
         private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
 
@@ -29,7 +33,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             var excludedEntityTypes = new HashSet<string>(request.ExcludedEntityTypes ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
             var result = new CosmosToMongoMigrationResult { DryRun = request.DryRun };
             var sourceCollectionName = String.IsNullOrWhiteSpace(request.SourceCollectionName) ? $"{request.Source.DatabaseName}_Collections" : request.SourceCollectionName;
-            var targetCollectionName = _collectionNameResolver.GetFallback(request.Target.DatabaseName);
             var cosmosClient = _cosmosClientProvider.GetClient(request.Source.Endpoint, request.Source.SharedKey);
             var container = cosmosClient.GetContainer(request.Source.DatabaseName, sourceCollectionName);
             var query = CreateQuery(request.EntityType);
@@ -48,6 +51,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 {
                     result.DocumentsRead++;
                     var entityType = GetString(sourceDocument, "EntityType") ?? String.Empty;
+                    var targetCollectionName = GetTargetCollectionName(request.Target.DatabaseName, entityType);
                     var route = GetRoute(result, entityType, targetCollectionName);
                     route.Read++;
 
@@ -139,6 +143,21 @@ namespace LagoVista.CloudStorage.DocumentDB
             result.DestinationCount = result.Routes.Sum(item => item.DestinationCount);
             result.Matches = result.Routes.All(item => item.Matches);
             return result;
+        }
+
+        private string GetTargetCollectionName(string databaseName, string entityType)
+        {
+            if (String.Equals(entityType, "MediaResource", StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(entityType, "MediaLibrary", StringComparison.OrdinalIgnoreCase))
+                return MediaResourcesCollectionName;
+
+            if (String.Equals(entityType, "DeviceGroup", StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(entityType, "Device", StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(entityType, "DeviceRepository", StringComparison.OrdinalIgnoreCase) ||
+                String.Equals(entityType, "DeviceRouteHistory", StringComparison.OrdinalIgnoreCase))
+                return DevicesCollectionName;
+
+            return _collectionNameResolver.GetFallback(databaseName) ?? EntitiesCollectionName;
         }
 
         private static QueryDefinition CreateQuery(string entityType)
