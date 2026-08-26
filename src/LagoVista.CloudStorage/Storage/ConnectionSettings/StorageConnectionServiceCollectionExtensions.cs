@@ -13,8 +13,6 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
-            services.TryAddSingleton<ICassandraStorageSettings, CassandraStorageSettings>();
-            services.TryAddSingleton<ICassandraSessionFactory, CassandraSessionFactory>();
             services.TryAddEnumerable(ServiceDescriptor.Transient<IPlatformSmokeTest, CassandraPlatformSmokeTest>());
             return services;
         }
@@ -23,8 +21,6 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
-            services.TryAddSingleton<IMongoDocumentStorageConnectionSettings, MongoDocumentStorageConnectionSettings>();
-            services.TryAddSingleton<IMongoStorageClientFactory, MongoStorageClientFactory>();
             return services;
         }
 
@@ -32,9 +28,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
-            services.TryAddSingleton<IScratchStorageSettings, ScratchStorageSettings>();
-            services.TryAddSingleton<IMongoStorageClientFactory, MongoStorageClientFactory>();
-            services.TryAddSingleton<IScratchStore, MongoScratchStore>();
+            services.AddSingleton<IScratchStore, MongoScratchStore>();
             return services;
         }
 
@@ -42,9 +36,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
-            services.TryAddSingleton<IApplicationDataStorageSettings, ApplicationDataStorageSettings>();
             services.TryAddSingleton<IMongoStorageClientFactory, MongoStorageClientFactory>();
-            services.TryAddSingleton<IApplicationDataStore, MongoApplicationDataStore>();
             return services;
         }
     }
