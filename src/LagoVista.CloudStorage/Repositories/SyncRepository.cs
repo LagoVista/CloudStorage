@@ -183,74 +183,17 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<string> GetJsonByIdAsync(string id, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
-
-            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
-            const string sql = "SELECT * FROM c WHERE c.id = @id";
-            var qd = new QueryDefinition(sql)
-                .WithParameter("@id", id.Trim());
-
-            var requestOptions = new QueryRequestOptions
-            {
-                MaxItemCount = 1
-            };
-
-            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
-            {
-                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
-            }
-
-            using var iterator = _container.GetItemQueryIterator<JObject>(
-                qd,
-                requestOptions: requestOptions);
-
-            while (iterator.HasMoreResults)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                var doc = page.Resource?.FirstOrDefault();
-                if (doc == null) continue;
-
-                // Return raw JSON for UI side-by-side display.
-                return doc.ToString(Formatting.Indented);
-            }
-
-            return null;
+            var doc = await GetJObjectByIdAsync(id, ct).ConfigureAwait(false);
+            return doc?.ToString(Formatting.Indented);
         }
 
         public async Task<JObject> GetJObjectByIdAsync(string id, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
 
-            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
-            const string sql = "SELECT * FROM c WHERE c.id = @id";
-            var qd = new QueryDefinition(sql)
-                .WithParameter("@id", id.Trim());
-
-            var requestOptions = new QueryRequestOptions
-            {
-                MaxItemCount = 1
-            };
-
-            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
-            {
-                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
-            }
-
-            using var iterator = _container.GetItemQueryIterator<JObject>(
-                qd,
-                requestOptions: requestOptions);
-
-            while (iterator.HasMoreResults)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                var doc = page.Resource?.FirstOrDefault();
-                if (doc == null) continue;
-
-                // Return raw JSON for UI side-by-side display.
-                return doc;
-            }
-
-            return null;
+            return await _storageClient
+                .GetDocumentProjectionAsync<JObject>(id.Trim(), throwOnNotFound: false, cancellationToken: ct)
+                .ConfigureAwait(false);
         }
 
         public async Task<string> GetOwnedJsonByIdAsync(string id, string ownerOrganizationId, CancellationToken ct = default)
@@ -878,7 +821,7 @@ namespace LagoVista.CloudStorage.Storage
 
             _logger.Trace($"Deleted {result.DeletedCount} in {fullSw.Elapsed.TotalMilliseconds} ms");
 
-            return InvokeResult<EntityDeleteResult>.Create(result);
+            return InvokeResult<NodeLocatorResult>.Create(result);
         }
 
 
