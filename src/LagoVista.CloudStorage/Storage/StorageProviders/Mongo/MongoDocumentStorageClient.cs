@@ -304,15 +304,58 @@ namespace LagoVista.CloudStorage.StorageProviders
         public async Task<ListResponse<TEntityFactory>> QuerySummaryAsync<TEntityFactory>(string entityType, Expression<Func<TEntityFactory, bool>> query, Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest, bool descending)
             where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity
         {
-            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
-            if (query == null) throw new ArgumentNullException(nameof(query));
-            if (sort == null) throw new ArgumentNullException(nameof(sort));
-            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+            if (String.IsNullOrWhiteSpace(entityType))
+                throw new ArgumentException("Entity type is required.", nameof(entityType));
+
+            if (query == null)
+                throw new ArgumentNullException(nameof(query));
+
+            if (listRequest == null)
+                throw new ArgumentNullException(nameof(listRequest));
+
             var collection = GetCollection<TEntityFactory>();
-            var filter = Builders<TEntityFactory>.Filter.And(Builders<TEntityFactory>.Filter.Where(query), Builders<TEntityFactory>.Filter.Eq(item => item.EntityType, entityType));
+
+            var filters = new List<FilterDefinition<TEntityFactory>>
+    {
+        Builders<TEntityFactory>.Filter.Where(query),
+        Builders<TEntityFactory>.Filter.Eq(item => item.EntityType, entityType)
+    };
+
+            if (!listRequest.ShowDeleted)
+            {
+                filters.Add(Builders<TEntityFactory>.Filter.Or(
+                    Builders<TEntityFactory>.Filter.Exists("IsDeleted", false),
+                    Builders<TEntityFactory>.Filter.Eq("IsDeleted", false)));
+            }
+
+            if (!listRequest.ShowDrafts)
+            {
+                filters.Add(Builders<TEntityFactory>.Filter.Or(
+                    Builders<TEntityFactory>.Filter.Exists("IsDraft", false),
+                    Builders<TEntityFactory>.Filter.Eq("IsDraft", false)));
+            }
+
+            if (!String.IsNullOrWhiteSpace(listRequest.CategoryKey))
+                filters.Add(Builders<TEntityFactory>.Filter.Eq("Category.Key", listRequest.CategoryKey));
+
+            var filter = Builders<TEntityFactory>.Filter.And(filters);
             var find = collection.Find(filter);
-            var sortDefinition = descending ? Builders<TEntityFactory>.Sort.Descending(sort) : Builders<TEntityFactory>.Sort.Ascending(sort);
-            var entities = await find.Sort(sortDefinition).Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
+
+            if (sort != null)
+            {
+                var sortDefinition = descending
+                    ? Builders<TEntityFactory>.Sort.Descending(sort)
+                    : Builders<TEntityFactory>.Sort.Ascending(sort);
+
+                find = find.Sort(sortDefinition);
+            }
+
+            var entities = await find
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Limit(listRequest.PageSize)
+                .ToListAsync()
+                .ConfigureAwait(false);
+
             return ListResponse<TEntityFactory>.Create(listRequest, entities);
         }
 
