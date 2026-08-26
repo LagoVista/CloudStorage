@@ -1,0 +1,11 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cosmos-document-collection-provisioner-integration",
+  "title": "CosmosDocumentCollectionProvisioner Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "cosmos",
+  "summary": "Verify collection/database provisioning and repeat-safe behavior against the local Cosmos emulator.",
+  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/CosmosDB/CosmosDocumentCollectionProvisioner.cs"],
+  "data": {"component":"CosmosDocumentCollectionProvisioner","testProject":"tests/LagoVista.StorageProvider.Tests","harness":"tests/LagoVista.StorageProvider.Tests/PowerShell/start-storage-lab.ps1"}
+}

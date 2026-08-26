@@ -1,12 +1,21 @@
 {
   "$schema": "./schemas/coverage-board.schema.json",
-  "name": "Cloud Storage Test Coverage",
-  "description": "Tracks whether the major CloudStorage components and contracts have appropriate automated test coverage.",
+  "name": "Cloud Storage External Service Coverage",
+  "description": "Tracks automated coverage for LagoVista.CloudStorage classes that cross an external storage or cache boundary. Unit tests live in LagoVista.CloudStorage.Tests; provider integration tests live in LagoVista.StorageProvider.Tests. Relational projects are out of scope.",
   "version": 1,
   "cards": [
-    "cards/cosmos-document-storage-client.integration.json",
-    "cards/mongo-document-storage-client.integration.json",
     "cards/document-storage-client-provider.unit.json",
-    "cards/document-storage-client.parity.json"
+    "cards/cosmos-client-provider.integration.json",
+    "cards/cosmos-document-collection-provisioner.integration.json",
+    "cards/cosmos-document-storage-client.integration.json",
+    "cards/mongo-storage-client-provider.integration.json",
+    "cards/mongo-document-collection-provisioner.integration.json",
+    "cards/mongo-document-storage-client.integration.json",
+    "cards/mongo-application-data-store.integration.json",
+    "cards/mongo-mutable-record-store.integration.json",
+    "cards/mongo-scratch-store.integration.json",
+    "cards/cassandra-session-factory.integration.json",
+    "cards/cassandra-activity-record-store.integration.json",
+    "cards/cassandra-operational-data-store.integration.json"
   ]
 }

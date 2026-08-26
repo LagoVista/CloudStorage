@@ -1,0 +1,11 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cassandra-activity-record-store-integration",
+  "title": "CassandraActivityRecordStore Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "cassandra",
+  "summary": "Exercise historical activity-record writes, reads, ordering, TTL behavior, and partition access against local Cassandra.",
+  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraActivityRecordStore.cs"],
+  "data": {"component":"CassandraActivityRecordStore","testProject":"tests/LagoVista.StorageProvider.Tests","harness":"tests/LagoVista.StorageProvider.Tests/PowerShell/start-cassandra-tests.ps1"}
+}

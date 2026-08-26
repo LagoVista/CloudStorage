@@ -1,0 +1,11 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "mongo-storage-client-provider-integration",
+  "title": "MongoStorageClientProvider Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "mongo",
+  "summary": "Verify Mongo client creation, configuration, connectivity, and failure behavior against the local Mongo container.",
+  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoStorageClientProvider.cs"],
+  "data": {"component":"MongoStorageClientProvider","testProject":"tests/LagoVista.StorageProvider.Tests","harness":"tests/LagoVista.StorageProvider.Tests/PowerShell/start-mongo-tests.ps1"}
+}

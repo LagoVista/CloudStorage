@@ -1,0 +1,11 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "mongo-application-data-store-integration",
+  "title": "MongoApplicationDataStore Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "mongo",
+  "summary": "Exercise application-data persistence behavior against the local Mongo container.",
+  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoApplicationDataStore.cs"],
+  "data": {"component":"MongoApplicationDataStore","testProject":"tests/LagoVista.StorageProvider.Tests","harness":"tests/LagoVista.StorageProvider.Tests/PowerShell/start-mongo-tests.ps1"}
+}

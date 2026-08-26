@@ -1,0 +1,11 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cassandra-operational-data-store-integration",
+  "title": "CassandraOperationalDataStore Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "cassandra",
+  "summary": "Exercise operational-record writes, recent-window reads, TTL behavior, ordering, and partition access against local Cassandra.",
+  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraOperationalDataStore.cs"],
+  "data": {"component":"CassandraOperationalDataStore","testProject":"tests/LagoVista.StorageProvider.Tests","harness":"tests/LagoVista.StorageProvider.Tests/PowerShell/start-cassandra-tests.ps1"}
+}
