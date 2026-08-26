@@ -10,8 +10,12 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 
     public sealed class ScratchStorageSettings : MongoDocumentStorageConnectionSettings, IScratchStorageSettings
     {
+       public const string SectionName = "ScratchDataStorage";
+
         public ScratchStorageSettings(IConfiguration configuration) : base(configuration)
         {
+            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
+            DatabaseName = configuration.GetSection(SectionName).Require("DatabaseName");        
         }
 
     }
