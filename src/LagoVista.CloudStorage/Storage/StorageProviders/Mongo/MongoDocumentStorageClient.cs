@@ -172,7 +172,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             var priorETag = item.ETag;
             var filter = Builders<TEntity>.Filter.And(
-                Builders<TEntity>.Filter.Where(entity => entity.Id == item.Id),
+                Builders<TEntity>.Filter.Eq("_id", item.Id.Value),
                 Builders<TEntity>.Filter.Eq(entity => entity.EntityType, typeof(TEntity).Name));
 
             if (!String.IsNullOrWhiteSpace(eTag))
