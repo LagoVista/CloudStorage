@@ -12,6 +12,29 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     public sealed partial class CosmosDocumentStorageClient
     {
+        public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
+            where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id")
+                .WithParameter("@id", id);
+
+            using var iterator = GetContainer<TProjection>().GetItemQueryIterator<TProjection>(
+                query,
+                requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+
+            if (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+                var projection = response.Resource.FirstOrDefault();
+                if (projection != null) return projection;
+            }
+
+            if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
+            return null;
+        }
+
         public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string entityType, string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
             where TProjection : class
         {
