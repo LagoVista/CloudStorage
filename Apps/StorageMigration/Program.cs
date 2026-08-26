@@ -19,6 +19,10 @@ try
             RequireKey(args, command);
             await PrintStatusAsync(catalog.LoadByKey(args[1]));
             break;
+        case "probe":
+            RequireKey(args, command);
+            await ProbeAsync(catalog.LoadByKey(args[1]));
+            break;
         case "migrate":
             RequireKey(args, command);
             await MigrateAsync(catalog, catalog.LoadByKey(args[1]), HasOption(args, "--catch-up"));
@@ -40,6 +44,33 @@ catch (Exception ex)
 }
 
 static ApplicationDataMigrationStateStore StateStore() => ApplicationDataMigrationStateStore.Create(MigrationConnections.EnvironmentName);
+
+static async Task ProbeAsync(MigrationDefinition definition)
+{
+    Console.WriteLine($"Probing migration: {definition.DisplayName}");
+    Console.WriteLine($"Environment      : {MigrationConnections.EnvironmentName}");
+    Console.WriteLine($"Source connection: {definition.Source.Connection}");
+    Console.WriteLine($"Target table     : {definition.Target.Table}");
+    Console.WriteLine();
+
+    Console.WriteLine("[1/2] Resolving Azure Table source...");
+    var source = new AzureTableMigrationSource(MigrationConnections.AzureTableConnectionString(definition.Source.Connection));
+    var tables = await source.ResolveTablesAsync(definition);
+    if (tables.Count == 0)
+        throw new InvalidOperationException($"No Azure source tables matched migration definition '{definition.Key}'.");
+
+    foreach (var table in tables)
+        Console.WriteLine($"  {table}");
+    Console.WriteLine($"PASS: resolved {tables.Count:N0} source table(s).");
+    Console.WriteLine();
+
+    Console.WriteLine("[2/2] Connecting to Cassandra and validating target schema...");
+    using var writer = new CassandraActivityRecordMigrationWriter(MigrationConnections.Cassandra);
+    await writer.EnsureSchemaAsync(definition);
+    Console.WriteLine($"PASS: Cassandra target '{definition.Target.Table}' is ready.");
+    Console.WriteLine();
+    Console.WriteLine("PASS: migration probe completed. No records were migrated.");
+}
 
 static async Task MigrateAsync(MigrationCatalog catalog, MigrationDefinition definition, bool catchUp)
 {
@@ -128,7 +159,8 @@ static void PrintUsage()
     Console.Error.WriteLine("  catalog");
     Console.Error.WriteLine("  validate <migration-key>");
     Console.Error.WriteLine("  status <migration-key>");
+    Console.Error.WriteLine("  probe <migration-key>");
     Console.Error.WriteLine("  migrate <migration-key> [--catch-up]");
     Console.Error.WriteLine("  verify <migration-key>");
-    Console.Error.WriteLine("Environment: set MIGRATION_ENVIRONMENT=dev|prod for Application Data checkpoint storage.");
+    Console.Error.WriteLine("Environment: set MIGRATION_ENVIRONMENT=dev|prod for environment-prefixed storage settings.");
 }
