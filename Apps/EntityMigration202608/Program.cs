@@ -1,10 +1,9 @@
 using EntityMigration202608;
 
-var mode = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "dry-run";
+var mode = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "status";
 var environment = args.Length > 1 ? args[1].Trim().ToLowerInvariant() : "dev";
 var maxPages = args.Length > 2 && Int32.TryParse(args[2], out var parsedMaxPages) ? parsedMaxPages : 5;
 var batchSize = args.Length > 3 && Int32.TryParse(args[3], out var parsedBatchSize) ? parsedBatchSize : 200;
-var continuationToken = args.Length > 4 ? args[4] : null;
 
 var shutdownCts = new CancellationTokenSource();
 
@@ -39,14 +38,18 @@ try
 
     switch (mode)
     {
+        case "status":
+            await runner.ShowStatusAsync(shutdownCts.Token);
+            break;
+
         case "dry-run":
         case "migrate-entities-dryrun":
-            await runner.DryRunAsync(batchSize, maxPages, continuationToken, shutdownCts.Token);
+            await runner.DryRunAsync(batchSize, maxPages, shutdownCts.Token);
             break;
 
         case "migrate":
         case "migrate-entities":
-            await runner.MigrateAsync(batchSize, maxPages, continuationToken, shutdownCts.Token);
+            await runner.MigrateAsync(batchSize, maxPages, shutdownCts.Token);
             break;
 
         case "validate":
@@ -61,7 +64,7 @@ try
 
         default:
             Console.WriteLine($"Unknown mode '{mode}'.");
-            Console.WriteLine("Usage: EntityMigration202608 <dry-run|migrate|validate|reset> [prod|dev] [maxPages] [batchSize] [continuationToken]");
+            Console.WriteLine("Usage: EntityMigration202608 <status|dry-run|migrate|validate|reset> [prod|dev] [maxPages] [batchSize]");
             Environment.ExitCode = 1;
             break;
     }
