@@ -1,5 +1,5 @@
 CloudStorage Cassandra Activity Record Store Integration Test Evidence
-StartedUtc: 2026-08-26T22:30:38.9426671Z
+StartedUtc: 2026-08-26T22:36:05.5662780Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=CassandraActivityRecord
 Provider: Cassandra localhost:19042
@@ -15,7 +15,7 @@ Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin
 A total of 1 test files matched the specified pattern.
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\cassandra-activity-record-store\latest.trx
 
-Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 361 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 5 s - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T22:30:42.1131379Z
+CompletedUtc: 2026-08-26T22:36:13.9846330Z
 ExitCode: 0
