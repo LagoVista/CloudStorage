@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cassandra-activity-record-store-integration",
   "title": "CassandraActivityRecordStore Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "cassandra",
   "summary": "Exercise historical activity-record writes, reads, ordering, TTL behavior, and partition access against local Cassandra.",
@@ -25,8 +25,7 @@
       "keyspace": "nuviot_storage_tests"
     },
     "coverageLayers": {
-      "completed": [],
-      "next": [
+      "completed": [
         "schema-provisioning",
         "single-and-batch-insert",
         "partition-and-time-range-query",
@@ -35,7 +34,8 @@
         "bucketed-querying",
         "indexed-filtering",
         "retention-ttl"
-      ]
+      ],
+      "next": []
     }
   }
 }
