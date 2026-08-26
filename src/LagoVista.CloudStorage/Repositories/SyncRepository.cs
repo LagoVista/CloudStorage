@@ -113,46 +113,28 @@ namespace LagoVista.CloudStorage.Storage
 
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
             _logger.Trace($"{this.Tag()} - Request object for id {id}");
-            var sql = @"SELECT c.id, c.Key, c.Name, c.Namespace, c.UserName, c.EntityType, c.OwnerOrganization, c.IsPublic
-FROM c
-where c.id = @id";
 
-            var qd = new QueryDefinition(sql).WithParameter("@id", id);
+            var record = await _storageClient
+                .GetDocumentProjectionAsync<EntityHeaderRow>(id, throwOnNotFound: false, cancellationToken: ct)
+                .ConfigureAwait(false);
 
-            var requestOptions = new QueryRequestOptions
+            if (record != null)
             {
-                MaxItemCount = Math.Min(1, 1)
-            };
-
-            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
-            {
-                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
-            }
-
-            using var iterator = _container.GetItemQueryIterator<EntityHeaderRow>(qd, requestOptions: requestOptions);
-
-            if (iterator.HasMoreResults)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                var record = page.Resource?.FirstOrDefault();
-                if (record != null)
+                var eh = new EntityHeader()
                 {
-                    var eh = new EntityHeader()
-                    {
-                        Id = record.Id,
-                        Key = record.GetKey(),
-                        Text = record.Name,
-                        OwnerOrgId = record.OwnerOrganization?.Id,
-                        IsPublic = record.IsPublic,
-                        EntityType = record.EntityType
-                    };
-                    lock (_inMemoryCache)
-                    {
-                        if (!_inMemoryCache.ContainsKey(eh.Id))
-                            _inMemoryCache.Add(eh.Id, eh);
-                    }
-                    return eh;
+                    Id = record.Id,
+                    Key = record.GetKey(),
+                    Text = record.Name,
+                    OwnerOrgId = record.OwnerOrganization?.Id,
+                    IsPublic = record.IsPublic,
+                    EntityType = record.EntityType
+                };
+                lock (_inMemoryCache)
+                {
+                    if (!_inMemoryCache.ContainsKey(eh.Id))
+                        _inMemoryCache.Add(eh.Id, eh);
                 }
+                return eh;
             }
 
             return new EntityHeader()
@@ -517,7 +499,6 @@ where c.id = @id";
         {
             if (String.IsNullOrWhiteSpace(orgId) || String.IsNullOrWhiteSpace(entityType))
                 return;
-
             try
             {
                 await _entityListCacheInvalidator.InvalidateAsync(orgId, entityType);
