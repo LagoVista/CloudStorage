@@ -2,10 +2,38 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cache-provider-redis-integration",
   "title": "CacheProvider Integration Tests",
-  "status": "backlog",
+  "status": "in-process",
   "category": "integration-test",
   "area": "redis",
-  "summary": "Verify CacheProvider behavior against a Redis-compatible server.",
-  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/Cache/CacheProvider.cs"],
-  "data": {"component":"CacheProvider","testProject":"tests/LagoVista.StorageProvider.Tests"}
+  "summary": "Verify CacheProvider value storage, expiry, atomic operations, counters, distributed locks, dependency invalidation, and hash collections against local Redis.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Cache/CacheProvider.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/cache-provider-redis/latest.txt",
+    ".coverage/evidence/cache-provider-redis/latest.trx"
+  ],
+  "data": {
+    "component": "CacheProvider",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Redis/CacheProviderIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-redis-cache-provider-tests.ps1",
+    "environment": {
+      "type": "docker",
+      "provider": "redis",
+      "port": 19079
+    },
+    "coverageLayers": {
+      "completed": [],
+      "next": [
+        "add-get-remove",
+        "ttl-expiration",
+        "atomic-get-and-delete",
+        "increment-and-long-read",
+        "distributed-locks",
+        "dependency-invalidation",
+        "hash-collections"
+      ]
+    }
+  }
 }
