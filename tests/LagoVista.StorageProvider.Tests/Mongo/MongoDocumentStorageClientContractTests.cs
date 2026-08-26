@@ -89,5 +89,9 @@ namespace LagoVista.StorageProvider.Tests.Mongo
         [TestMethod]
         public Task SummaryQuery_SatisfiesSharedContract() =>
             DocumentStorageClientContract.SummaryQueryAsync(_client);
+
+        [TestMethod]
+        public Task QueryAll_SatisfiesSharedContract() =>
+            DocumentStorageClientContract.QueryAllAsync(_client);
     }
 }
