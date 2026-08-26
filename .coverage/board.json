@@ -2,11 +2,6 @@
   "name": "Cloud Storage Test Coverage",
   "description": "Tracks whether the major CloudStorage components and contracts have appropriate automated test coverage.",
   "version": 1,
-  "lanes": [
-    "backlog",
-    "in-process",
-    "completed"
-  ],
   "cards": [
     "cards/cosmos-document-storage-client.integration.json",
     "cards/mongo-document-storage-client.integration.json",
