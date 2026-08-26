@@ -674,7 +674,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 using var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
                 var listResponse = await _storageClient.QueryAsync(query, listRequest).ConfigureAwait(false);
-                var count = listResponse?.Model?.Count ?? 0;
+                var count = listResponse?.Model?.Count() ?? 0;
 
                 _logger.AddCustomEvent(LogLevel.Message,
                     $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest]",

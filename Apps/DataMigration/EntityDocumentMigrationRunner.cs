@@ -36,7 +36,7 @@ internal sealed class EntityDocumentMigrationRunner
             DatabaseName = sourceConnection.ResourceName
         };
 
-        _target = DocumentStorageSettingsResolver.ResolveMongo(_source.DatabaseName);
+      //  _target = DocumentStorageSettingsResolver.ResolveMongo(_source.DatabaseName);
         _migrationService = new DocumentMigrationService(CosmosClientProvider.Shared, new DocumentCollectionNameResolver());
     }
 

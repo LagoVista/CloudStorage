@@ -181,7 +181,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (String.IsNullOrWhiteSpace(request.Source.SharedKey)) throw new InvalidOperationException("Cosmos source shared key is required.");
             if (String.IsNullOrWhiteSpace(request.Source.DatabaseName)) throw new InvalidOperationException("Cosmos source database name is required.");
             if (request.Target == null) throw new InvalidOperationException("Mongo target settings are required.");
-            DocumentStorageSettingsResolver.Resolve(request.Source.Endpoint, request.Source.SharedKey, request.Source.DatabaseName, "mongo", request.Target);
             if (request.BatchSize <= 0) throw new InvalidOperationException("Migration batch size must be greater than zero.");
             if (request.MaxPages < 0) throw new InvalidOperationException("Migration maximum page count cannot be negative.");
         }

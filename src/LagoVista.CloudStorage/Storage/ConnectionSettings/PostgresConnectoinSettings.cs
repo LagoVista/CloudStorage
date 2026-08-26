@@ -32,6 +32,6 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         public string UserName { get; }
         public string Password { get; }
         public int Port { get; }
-        public string SchemaName { get; }
+        public string SchemaName { get; protected set; }
     }
 }
