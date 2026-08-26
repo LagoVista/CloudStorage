@@ -4,28 +4,30 @@
   "status": "backlog",
   "category": "parity-test",
   "area": "document-storage",
-  "component": "IDocumentStorageClient",
   "summary": "Run equivalent contract-level behavior against Cosmos and Mongo to prove provider-neutral semantics.",
-  "coverage": [
-    "create",
-    "read",
-    "update",
-    "delete",
-    "query",
-    "patch",
-    "optimistic-concurrency"
-  ],
   "source": [
     "src/LagoVista.CloudStorage/Interfaces/StorageProviders/IDocumentStorageClient.cs",
     "src/LagoVista.CloudStorage/Storage/StorageProviders/CosmosDB/CosmosDocumentStorageClient.cs",
     "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.cs"
   ],
-  "tests": [],
-  "environment": {
-    "type": "multi-provider",
-    "providers": [
-      "cosmos-emulator",
-      "mongodb"
-    ]
+  "data": {
+    "component": "IDocumentStorageClient",
+    "coverage": [
+      "create",
+      "read",
+      "update",
+      "delete",
+      "query",
+      "patch",
+      "optimistic-concurrency"
+    ],
+    "tests": [],
+    "environment": {
+      "type": "multi-provider",
+      "providers": [
+        "cosmos-emulator",
+        "mongodb"
+      ]
+    }
   }
 }
