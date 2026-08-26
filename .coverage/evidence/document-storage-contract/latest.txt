@@ -1,19 +1,24 @@
 CloudStorage Document Storage Contract Test Evidence
-StartedUtc: 2026-08-26T21:41:33.7323681Z
+StartedUtc: 2026-08-26T21:56:18.5658787Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\PowerShell\..\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=DocumentStorageContract
 Provider: MongoDB localhost:27018
 
   Determining projects to restore...
   All projects are up-to-date for restore.
-D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\ConnectionSettings\ApplicationDataStorageSettings.cs(12,29): warning CS0108: 'ApplicationDataStorageSettings.SectionName' hides inherited member 'MongoDocumentStorageConnectionSettings.SectionName'. Use the new keyword if hiding was intended. [D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj]
   LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
+  Failed QueryAll_SatisfiesSharedContract [27 ms]
+  Error Message:
+   CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<3>. Actual:<1>.
+  Stack Trace:
+     at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.QueryAllAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.QueryAll.cs:line 24
+
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\document-storage-contract\latest.trx
 
-Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11, Duration: 840 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Failed!  - Failed:     1, Passed:    11, Skipped:     0, Total:    12, Duration: 792 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T21:41:37.1818348Z
-ExitCode: 0
+CompletedUtc: 2026-08-26T21:56:21.3662761Z
+ExitCode: 1
