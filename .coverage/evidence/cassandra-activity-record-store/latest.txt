@@ -1,5 +1,5 @@
 CloudStorage Cassandra Activity Record Store Integration Test Evidence
-StartedUtc: 2026-08-26T22:27:35.1791455Z
+StartedUtc: 2026-08-26T22:30:38.9426671Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=CassandraActivityRecord
 Provider: Cassandra localhost:19042
@@ -13,15 +13,9 @@ D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\Cassandra\Cassan
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
-  Failed InsertAndQueryAsync_SatisfiesCoreActivityRecordContract [677 ms]
-  Error Message:
-   Assert.IsFalse failed. 
-  Stack Trace:
-     at LagoVista.StorageProvider.Tests.Cassandra.CassandraActivityRecordStoreIntegrationTests.InsertAndQueryAsync_SatisfiesCoreActivityRecordContract() in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\Cassandra\CassandraActivityRecordStoreIntegrationTests.cs:line 118
-
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\cassandra-activity-record-store\latest.trx
 
-Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 698 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 361 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T22:27:39.0812936Z
-ExitCode: 1
+CompletedUtc: 2026-08-26T22:30:42.1131379Z
+ExitCode: 0
