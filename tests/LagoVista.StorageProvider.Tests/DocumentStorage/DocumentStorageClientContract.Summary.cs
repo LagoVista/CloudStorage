@@ -13,8 +13,8 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
     {
         public static async Task SummaryQueryAsync(IDocumentStorageClient client)
         {
-            var categoryA = EntityHeader.Create("CAT-A", "Category A");
-            var categoryB = EntityHeader.Create("CAT-B", "Category B");
+            var categoryA = EntityHeader.Create("CAT-A", "CAT-A", "Category A");
+            var categoryB = EntityHeader.Create("CAT-B", "CAT-B", "Category B");
 
             var alpha = CreateSummaryEntity("Alpha", categoryA);
             var bravo = CreateSummaryEntity("Bravo", categoryA);
