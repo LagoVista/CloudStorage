@@ -821,7 +821,7 @@ namespace LagoVista.CloudStorage.Storage
 
             _logger.Trace($"Deleted {result.DeletedCount} in {fullSw.Elapsed.TotalMilliseconds} ms");
 
-            return InvokeResult<NodeLocatorResult>.Create(result);
+            return InvokeResult<EntityDeleteResult>.Create(result);
         }
 
 
