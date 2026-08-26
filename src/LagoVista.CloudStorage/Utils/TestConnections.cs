@@ -22,6 +22,9 @@ namespace LagoVista.CloudStorage.Utils
         public static MongoDocumentStorageConnectionSettings DevMongoDocumentStorage => CreateMongoDocumentStorageSettings("DEV");
         public static MongoDocumentStorageConnectionSettings TestMongoDocumentStorage => CreateLocalTestMongoDocumentStorageSettings();
 
+        public static CassandraStorageSettings ProductionCassandraStorage => CreateCassandraStorageSettings("PROD");
+        public static CassandraStorageSettings DevCassandraStorage => CreateCassandraStorageSettings("DEV");
+
         public static ConnectionSettings ProductionDocDB
         {
             get
@@ -224,8 +227,6 @@ namespace LagoVista.CloudStorage.Utils
             }
         }
 
-
-
         public static ConnectionSettings DevSQLServer
         {
             get
@@ -242,7 +243,6 @@ namespace LagoVista.CloudStorage.Utils
                 if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_USER as environment variable");
                 if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_DB as environment variable");
                 if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_PASSWORD as environment variable");
-
 
                 return cs;
             }
@@ -267,6 +267,22 @@ namespace LagoVista.CloudStorage.Utils
             if (String.IsNullOrEmpty(cs.AuthenticationDatabase)) Console.WriteLine($"[ERROR] - Missing {prefix}_MongoDocumentStorage:AuthenticationDatabase as environment variable");
          
             return cs;
+        }
+
+        private static CassandraStorageSettings CreateCassandraStorageSettings(string prefix)
+        {
+            var values = new Dictionary<string, string>
+            {
+                ["CassandraStorage:ContactPoints"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:ContactPoints"),
+                ["CassandraStorage:UserName"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:UserName"),
+                ["CassandraStorage:Password"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:Password"),
+                ["CassandraStorage:Keyspace"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:Keyspace"),
+                ["CassandraStorage:Port"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:Port"),
+                ["CassandraStorage:LocalDataCenter"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:LocalDataCenter")
+            };
+
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+            return new CassandraStorageSettings(configuration);
         }
 
         private static MongoDocumentStorageConnectionSettings CreateLocalTestMongoDocumentStorageSettings()
