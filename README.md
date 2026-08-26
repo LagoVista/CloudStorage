@@ -12,7 +12,7 @@ Storage is classified by **application behavior**, not by the physical database 
 | **Application Data** | Durable supporting application objects that do not rise to the level of a full entity; full CRUD and indexed queries | `IApplicationDataRecord` | MongoDB |
 | **Scratch Storage** | Temporary or intermediate working state; mutable get/upsert/delete with optional expiration | `IScratchDataRecord` | MongoDB |
 | **History Storage** | Immutable activity records; append/write and query only; optimized for high-volume time-oriented data | `IActivityRecord` | Cassandra |
-| **Operational Data** | Small, standalone, row-like records; non-relational; full CRUD; schema described by persisted class fields | `IOperationalDataRecord` *(planned)* | Cassandra |
+| **Operational Data** | Small, standalone, row-like records; non-relational; full CRUD; schema described by persisted class fields | `IOperationalDataRecord` | Cassandra |
 | **Relational Storage** | Data requiring relational semantics such as constraints, transactions, joins, or strongly related tables | Purpose-specific relational models | PostgreSQL |
 
 ## Canonical meanings
@@ -51,23 +51,24 @@ Operational Data:
 - consists of a relatively small number of scalar/row-like fields
 - does not require joins or relational navigation
 - derives its persisted column shape from the fields on the record class
-- is expected to use Cassandra as its primary backend
+- uses Cassandra as its primary backend
+- is conventionally partitioned by `OrganizationId` and keyed by `Id`
 
-The planned `IOperationalDataRecord` base contract is intentionally small. It establishes record identity, organization scope, and lifecycle metadata:
+`IOperationalDataRecord` intentionally establishes only record identity, organization scope, and lifecycle metadata:
 
 - `Id`
 - `OrganizationId`
 - `CreationDate`
 - `LastUpdatedDate`
 
-Additional operational fields belong on the concrete record type rather than the base contract.
+Additional operational fields belong on the concrete record type rather than the base contract. `CreationDate` is assigned on first upsert when not already supplied, while `LastUpdatedDate` is refreshed on each upsert.
 
 #### History vs. Operational Data
 
 | Behavior | History Storage | Operational Data |
 | --- | --- | --- |
 | Record contract | `IActivityRecord` | `IOperationalDataRecord` |
-| Store contract | `IActivityRecordStore<TRecord>` | `IOperationalDataStore<TRecord>` *(planned)* |
+| Store contract | `IActivityRecordStore<TRecord>` | `IOperationalDataStore<TRecord>` |
 | Primary backend | Cassandra | Cassandra |
 | Physical model | One table per record type | One table per record type |
 | Schema source | Persisted record fields | Persisted record fields |
@@ -76,12 +77,12 @@ Additional operational fields belong on the concrete record type rather than the
 | Read | Query | Get + query |
 | Update | No | Yes |
 | Delete | No | Yes |
-| Time buckets | Common / supported | Usually unnecessary |
+| Time buckets | Common / supported | Not supported |
 | Retention / TTL | Optional | Optional |
 | Time-oriented semantics | Yes | No; timestamps describe record lifecycle |
-| Typical Cassandra key shape | `((partition fields), CreationDate, Id)` | `((partition fields), Id)` |
+| Typical Cassandra key shape | `((partition fields), CreationDate, Id)` | `((OrganizationId), Id)` |
 
-The two storage classes should share Cassandra schema/type/index mapping infrastructure where practical. History-specific time and bucketing behavior should remain in the History store, while Operational Data adds deterministic key-based get, update/upsert, and delete semantics.
+The two storage classes intentionally keep their behavioral implementations separate. They share only mechanical Cassandra infrastructure where doing so remains obvious and low-risk. History-specific time and bucketing behavior stays in the History store; Operational Data owns deterministic key-based get, upsert, delete, and partition query semantics.
 
 ### Relational Storage
 
@@ -181,9 +182,15 @@ This inventory reflects the `refactor/cloudstorage-project-layout` branch and gr
 
 ### Operational Data
 
-No canonical Operational Data store exists yet. The planned Cassandra-backed implementation will use `IOperationalDataRecord` with `Id`, `OrganizationId`, `CreationDate`, and `LastUpdatedDate` as its minimal base fields, plus full CRUD and declared query/index behavior.
+| Component | Role | Status |
+| --- | --- | --- |
+| `IOperationalDataStore<TRecord>` | Operational Data contract | Canonical |
+| `IOperationalDataRecord` | Minimal operational record contract | Canonical |
+| `CassandraOperationalDataStore<TRecord>` | Cassandra Operational Data implementation | Canonical |
+| `CassandraOperationalRecordMap<TRecord>` | Operational record-to-Cassandra mapping | Supporting |
+| `OperationalDataStoreOptions<TRecord>` | Per-record index/retention configuration | Supporting |
 
-Operational Data should reuse the existing provider-neutral `StorageDefinition<TRecord>` and shared Cassandra mapping/schema infrastructure rather than duplicate the History Storage implementation.
+Operational records use the conventional Cassandra primary key `((OrganizationId), Id)`. `StorageDefinition<TRecord>` may declare additional indexes and retention, but Operational Data deliberately does not support redefining its primary-key convention or introducing time buckets.
 
 ### Relational Storage
 
