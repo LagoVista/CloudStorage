@@ -194,6 +194,35 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
 
+            var filter = CreatePagedQueryFilter(query, listRequest);
+            var items = await GetCollection<TEntity>().Find(filter)
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Limit(listRequest.PageSize)
+                .ToListAsync()
+                .ConfigureAwait(false);
+            return ListResponse<TEntity>.Create(listRequest, items);
+        }
+
+        public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (sort == null) throw new ArgumentNullException(nameof(sort));
+            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+
+            var filter = CreatePagedQueryFilter(query, listRequest);
+            var items = await GetCollection<TEntity>().Find(filter)
+                .SortBy(sort)
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Limit(listRequest.PageSize)
+                .ToListAsync()
+                .ConfigureAwait(false);
+            return ListResponse<TEntity>.Create(listRequest, items);
+        }
+
+        private static FilterDefinition<TEntity> CreatePagedQueryFilter<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
             var filters = new List<FilterDefinition<TEntity>>
             {
                 Builders<TEntity>.Filter.Where(query),
@@ -214,13 +243,7 @@ namespace LagoVista.CloudStorage.StorageProviders
                     Builders<TEntity>.Filter.Eq("IsDraft", false)));
             }
 
-            var filter = Builders<TEntity>.Filter.And(filters);
-            var items = await GetCollection<TEntity>().Find(filter)
-                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
-                .Limit(listRequest.PageSize)
-                .ToListAsync()
-                .ConfigureAwait(false);
-            return ListResponse<TEntity>.Create(listRequest, items);
+            return Builders<TEntity>.Filter.And(filters);
         }
 
         public async Task<IEnumerable<TResult>> QueryKnownAsync<TResult>(string entityType, DocumentQueryRequest request, CancellationToken cancellationToken = default)
