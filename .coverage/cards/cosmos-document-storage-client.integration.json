@@ -1,0 +1,24 @@
+{
+  "id": "cosmos-document-storage-client-integration",
+  "title": "CosmosDocumentStorageClient Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "document-storage",
+  "component": "CosmosDocumentStorageClient",
+  "summary": "Exercise the Cosmos implementation of IDocumentStorageClient against the local Cosmos emulator.",
+  "coverage": [
+    "create-read-update-delete",
+    "query",
+    "patch",
+    "optimistic-concurrency",
+    "error-behavior"
+  ],
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/CosmosDB/CosmosDocumentStorageClient.cs"
+  ],
+  "tests": [],
+  "environment": {
+    "type": "docker",
+    "provider": "cosmos-emulator"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "document-storage-client-provider-unit",
+  "title": "DocumentStorageClientProvider Unit Tests",
+  "status": "backlog",
+  "category": "unit-test",
+  "area": "document-storage",
+  "component": "DocumentStorageClientProvider",
+  "summary": "Verify provider selection and configuration behavior without requiring a live storage backend.",
+  "coverage": [
+    "provider-selection",
+    "configuration",
+    "unsupported-provider",
+    "error-behavior"
+  ],
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/DocumentStorageClientProvider.cs"
+  ],
+  "tests": [],
+  "environment": {
+    "type": "mock"
+  }
+}

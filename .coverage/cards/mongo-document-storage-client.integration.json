@@ -1,0 +1,24 @@
+{
+  "id": "mongo-document-storage-client-integration",
+  "title": "MongoDocumentStorageClient Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "document-storage",
+  "component": "MongoDocumentStorageClient",
+  "summary": "Exercise the Mongo implementation of IDocumentStorageClient against the local Mongo container.",
+  "coverage": [
+    "create-read-update-delete",
+    "query",
+    "patch",
+    "optimistic-concurrency",
+    "error-behavior"
+  ],
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/MongoDB/MongoDocumentStorageClient.cs"
+  ],
+  "tests": [],
+  "environment": {
+    "type": "docker",
+    "provider": "mongodb"
+  }
+}
