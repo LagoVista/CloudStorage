@@ -46,9 +46,15 @@ internal sealed class EntityMigrationRunner
             ? TestConnections.ProductionMongoDocumentStorage
             : TestConnections.DevMongoDocumentStorage;
 
+        var mongoUrlBuilder = new MongoUrlBuilder(mongoConnection.BuildConnectionString())
+        {
+            DirectConnection = true,
+            ReplicaSetName = null
+        };
+
         _target = new MongoDocumentStorageSettings
         {
-            ConnectionString = mongoConnection.BuildConnectionString(),
+            ConnectionString = mongoUrlBuilder.ToMongoUrl().ToString(),
             DatabaseName = String.IsNullOrWhiteSpace(mongoConnection.DatabaseName)
                 ? _source.DatabaseName
                 : mongoConnection.DatabaseName
@@ -330,6 +336,7 @@ internal sealed class EntityMigrationRunner
         Console.WriteLine($"Cosmos collections:   {String.Join(", ", GetSourceCollections())}");
         Console.WriteLine($"Mongo database:       {_target.DatabaseName}");
         Console.WriteLine($"Mongo collections:    {String.Join(", ", DestinationCollections)}");
+        Console.WriteLine($"Mongo connection:     direct (replica discovery disabled)");
         Console.WriteLine($"Application Data DB:  {_progressStore.DatabaseName}");
         Console.WriteLine($"Batch size:           {batchSize}");
         Console.WriteLine($"Max pages/source:     {(maxPages <= 0 ? "all" : maxPages)}");
@@ -342,6 +349,7 @@ internal sealed class EntityMigrationRunner
         Console.WriteLine($"Environment:          {_environment}");
         Console.WriteLine($"Mongo database:       {_target.DatabaseName}");
         Console.WriteLine($"Mongo collections:    {String.Join(", ", DestinationCollections)}");
+        Console.WriteLine($"Mongo connection:     direct (replica discovery disabled)");
         Console.WriteLine($"Application Data DB:  {_progressStore.DatabaseName}");
     }
 
