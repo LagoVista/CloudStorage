@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "mongo-document-storage-client-integration",
   "title": "MongoDocumentStorageClient Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "document-storage",
   "summary": "Exercise the Mongo implementation of IDocumentStorageClient through a shared provider contract suite. Mongo supplies only provider setup/cleanup; reusable contract bodies are intended to be reused by Cosmos.",
@@ -34,11 +34,10 @@
         "patch-and-optimistic-concurrency",
         "projections-and-owned-lookups",
         "raw-json-and-document-pages",
-        "known-and-summary-queries"
-      ],
-      "next": [
+        "known-and-summary-queries",
         "query-all-semantics"
-      ]
+      ],
+      "next": []
     }
   }
 }
