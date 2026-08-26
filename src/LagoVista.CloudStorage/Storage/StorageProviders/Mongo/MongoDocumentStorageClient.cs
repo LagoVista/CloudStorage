@@ -295,12 +295,34 @@ namespace LagoVista.CloudStorage.StorageProviders
             return CreateListResponseAsync(find.Sort(sortDefinition), listRequest);
         }
 
-        public Task<ListResponse<TEntity>> QueryAllAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest)
-            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => QueryAsync(query, listRequest);
+        public async Task<ListResponse<TEntity>> QueryAllAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
 
-        public Task<ListResponse<TEntity>> QueryAllAsync<TEntity, TKey>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, TKey>> sort, ListRequest listRequest, bool descending)
-            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => QueryAsync(query, sort, listRequest, descending);
+            var items = await GetCollection<TEntity>()
+                .Find(Builders<TEntity>.Filter.Where(query))
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Limit(listRequest.PageSize)
+                .ToListAsync()
+                .ConfigureAwait(false);
 
+            return ListResponse<TEntity>.Create(listRequest, items);
+        }
+
+        public async Task<ListResponse<TEntity>> QueryAllAsync<TEntity, TKey>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, TKey>> sort, ListRequest listRequest, bool descending)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (sort == null) throw new ArgumentNullException(nameof(sort));
+            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+
+            var find = GetCollection<TEntity>().Find(Builders<TEntity>.Filter.Where(query));
+            var sortDefinition = descending ? Builders<TEntity>.Sort.Descending(sort) : Builders<TEntity>.Sort.Ascending(sort);
+
+            return await CreateListResponseAsync(find.Sort(sortDefinition), listRequest).ConfigureAwait(false);
+        }
         public async Task<ListResponse<TEntityFactory>> QuerySummaryAsync<TEntityFactory>(string entityType, Expression<Func<TEntityFactory, bool>> query, Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest, bool descending)
             where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity
         {
