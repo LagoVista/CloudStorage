@@ -42,12 +42,12 @@ namespace LagoVista.CloudStorage.Models
                 return Namespace;
 
             if (!String.IsNullOrEmpty(UserName))
-                return CosmosSyncRepository.NormalizeAlphaNumericKey(UserName);
+                return SyncRepository.NormalizeAlphaNumericKey(UserName);
 
             if (String.IsNullOrEmpty(Key))
             {
                 if (!String.IsNullOrEmpty(Eemail))
-                    return CosmosSyncRepository.NormalizeAlphaNumericKey(Eemail);
+                    return SyncRepository.NormalizeAlphaNumericKey(Eemail);
                 else
                     return Id.ToLower();
             }

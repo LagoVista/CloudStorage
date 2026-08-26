@@ -29,7 +29,7 @@ namespace LagoVista.CloudStorage.Storage
     ///  2) full JSON by id (query-based)
     ///  3) raw JSON upsert (stream-based) + optional optimistic concurrency by _etag
     /// </summary>
-    public class CosmosSyncRepository : ISyncRepository
+    public class SyncRepository : ISyncRepository
     {
         private readonly CosmosClient _client;
         private readonly Container _container;
@@ -47,7 +47,7 @@ namespace LagoVista.CloudStorage.Storage
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
-        public CosmosSyncRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
+        public SyncRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
             INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider, ILogger logger, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -430,7 +430,7 @@ where c.id = @id";
             doc[nameof(EntityBase.Key)] = key;
             var hash = EntityHasher.CalculateHash(doc);
             doc[nameof(EntityBase.Sha256Hex)] = hash;
-            
+
             // We use stream APIs to avoid binding to any model types.
             var bytes = System.Text.Encoding.UTF8.GetBytes(doc.ToString(Formatting.None));
             using var ms = new MemoryStream(bytes);
@@ -493,7 +493,7 @@ where c.id = @id";
 
             var ownerOrgId = doc[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>()?.Trim();
             await InvalidateEntityListCacheAsync(ownerOrgId, entityType);
-           
+
             _logger.Trace($"{this.Tag()} - Success", resp.StatusCode.ToString().ToKVP("responseCode"));
 
             return new SyncUpsertResult
@@ -569,7 +569,7 @@ where c.id = @id";
                 var modelResult = await _entityDetailResponseFactory.LoadModelAsync(id, entityType, user, org);
                 if (modelResult.Model is IEntityBase model)
                 {
-                    if(model.ShouldVectorIndex)
+                    if (model.ShouldVectorIndex)
                         await _ragIndexingServices.IndexAsync(model);
                 }
 

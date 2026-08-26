@@ -29,7 +29,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static LagoVista.CloudStorage.Storage.CosmosSyncRepository;
+using static LagoVista.CloudStorage.Storage.SyncRepository;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
