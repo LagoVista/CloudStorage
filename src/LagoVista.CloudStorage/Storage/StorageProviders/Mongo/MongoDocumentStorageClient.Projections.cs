@@ -51,12 +51,35 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
             if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
 
-            var filter = Builders<TProjection>.Filter.And(
+            if (typeof(TProjection) == typeof(JObject))
+            {
+                if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
+                    throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+                var filter = Builders<BsonDocument>.Filter.And(
+                    Builders<BsonDocument>.Filter.Eq("_id", id),
+                    Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+
+                var document = await GetBsonCollection(collectionName)
+                    .Find(filter)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (document == null)
+                {
+                    if (throwOnNotFound) throw new RecordNotFoundException(entityType, id);
+                    return null;
+                }
+
+                return (TProjection)(object)ToJObject(document);
+            }
+
+            var typedFilter = Builders<TProjection>.Filter.And(
                 Builders<TProjection>.Filter.Eq("_id", id),
                 Builders<TProjection>.Filter.Eq("EntityType", entityType));
 
             var projection = await GetProjectionCollection<TProjection>(entityType)
-                .Find(filter)
+                .Find(typedFilter)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
 
