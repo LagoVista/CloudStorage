@@ -186,7 +186,9 @@ namespace LagoVista.CloudStorage.StorageProviders
             var items = new List<TEntity>();
             var linqQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>()
                 .Where(query)
-                .Where(item => item.EntityType == typeof(TEntity).Name)
+                .Where(item => item.EntityType == typeof(TEntity).Name &&
+                               (listRequest.ShowDeleted || item.IsDeleted.IsNull() || !item.IsDeleted.HasValue || !item.IsDeleted.Value) &&
+                               (listRequest.ShowDrafts || !item.IsDraft.IsDefined() || item.IsDraft == false))
                 .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
                 .Take(listRequest.PageSize);
 
