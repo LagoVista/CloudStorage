@@ -17,7 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CassandraCSharpDriver" Version="3.22.0" />
-    <PackageReference Include="LagoVista.IoT.Logging" Version="3.0.3387.1623" />
+    <PackageReference Include="LagoVista.IoT.Logging" Version="3.0.3388.0629" />
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.5.0" />
     <PackageReference Include="prometheus-net" Version="8.2.1" />

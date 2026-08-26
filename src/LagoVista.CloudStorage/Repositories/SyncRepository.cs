@@ -7,8 +7,11 @@ using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Serialization.HybridRow;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Pipelines.Sockets.Unofficial.Arenas;
 using System;
 using System.ClientModel;
 using System.Collections.Generic;
@@ -20,6 +23,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace LagoVista.CloudStorage.Storage
 {
@@ -189,13 +193,16 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<JObject> GetJObjectByIdAsync(string id, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+            if (string.IsNullOrWhiteSpace(id))
+                throw new ArgumentException("id is required.", nameof(id));
 
             return await _storageClient
-                .GetDocumentProjectionAsync<JObject>(id.Trim(), throwOnNotFound: false, cancellationToken: ct)
+                .GetDocumentProjectionAsync<JObject>(
+                    id.Trim(),
+                    throwOnNotFound: false,
+                    cancellationToken: ct)
                 .ConfigureAwait(false);
         }
-
         public async Task<string> GetOwnedJsonByIdAsync(string id, string ownerOrganizationId, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));

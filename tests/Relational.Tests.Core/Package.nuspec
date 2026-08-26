@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>LagoVista.Relational.Tests.Core</id>
-    <version>3.0.3387.1623</version>
+    <version>3.0.3388.0739</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -12,16 +12,16 @@
     <copyright>Copyright Software Logistics - 2026</copyright>
     <tags>HomeAutomation IoT LagoVista</tags>
     <icon>LagoVistaIcon.png</icon>
-    <releaseNotes>Build Date: 8/25/2026 8:23:28 PM UTC</releaseNotes>
+    <releaseNotes>Build Date: 8/26/2026 11:39:43 AM UTC</releaseNotes>
     <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
       <group targetFramework="net9.0">
-        <dependency id="LagoVista.Core.TestBase" version="3.0.3387.1623" />
+        <dependency id="LagoVista.Core.TestBase" version="3.0.3388.0629" />
         <dependency id="Microsoft.Data.Sqlite.Core" version="10.0.3" />
         <dependency id="Microsoft.EntityFrameworkCore.Sqlite" version="9.0.13" />
-        <dependency id="LagoVista.Crypto" version="3.0.3387.1623" />
-        <dependency id="LagoVista.CloudStorage" version="3.0.3387.1623" />
-        <dependency id="LagoVista.Relational" version="3.0.3387.1623" />
+        <dependency id="LagoVista.Crypto" version="3.0.3388.0629" />
+        <dependency id="LagoVista.CloudStorage" version="3.0.3388.0739" />
+        <dependency id="LagoVista.Relational" version="3.0.3388.0739" />
       </group>
     </dependencies>
   </metadata>

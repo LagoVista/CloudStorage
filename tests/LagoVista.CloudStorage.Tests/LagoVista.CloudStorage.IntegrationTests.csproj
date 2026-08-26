@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="CassandraCSharpDriver" Version="3.22.0" />
-    <PackageReference Include="LagoVista.Core.TestBase" Version="3.0.3387.1623" />
+    <PackageReference Include="LagoVista.Core.TestBase" Version="3.0.3388.0629" />
   </ItemGroup>
 
   <ItemGroup>
