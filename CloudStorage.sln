@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.2.11415.280
@@ -27,7 +27,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Relational.Tests", "tests\R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.Relational.Tests.Core", "tests\Relational.Tests.Core\LagoVista.Relational.Tests.Core.csproj", "{611832C7-3E25-EF1E-7A3B-29E133F3B90E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataMigration", "Apps\DataMigration\DataMigration.csproj", "{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityMigration202608", "Apps\EntityMigration202608\EntityMigration202608.csproj", "{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.StorageProvider.Tests", "tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj", "{F38FC923-9105-3C5A-CF02-E1D980D56DA7}"
 EndProject
