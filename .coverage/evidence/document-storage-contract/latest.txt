@@ -1,16 +1,17 @@
 CloudStorage Document Storage Contract Test Evidence
-StartedUtc: 2026-08-26T20:30:22.2780585Z
+StartedUtc: 2026-08-26T20:32:27.2304294Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\PowerShell\..\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=DocumentStorageContract
 Provider: MongoDB localhost:27018
 
   Determining projects to restore...
   All projects are up-to-date for restore.
+D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\ConnectionSettings\ApplicationDataStorageSettings.cs(11,29): warning CS0108: 'ApplicationDataStorageSettings.SectionName' hides inherited member 'MongoDocumentStorageConnectionSettings.SectionName'. Use the new keyword if hiding was intended. [D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj]
   LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
-  Failed CrudLifecycle_SatisfiesSharedContract [209 ms]
+  Failed CrudLifecycle_SatisfiesSharedContract [212 ms]
   Error Message:
    Test method LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests.CrudLifecycle_SatisfiesSharedContract threw exception: 
 MongoDB.Driver.MongoWriteException: A write operation resulted in an error. WriteError: { Category : "Uncategorized", Code : 224, Message : "$expr is not allowed in the query predicate for an upsert" }. ---> MongoDB.Driver.MongoBulkWriteException`1[LagoVista.StorageProvider.Tests.DocumentStorage.ContractDocumentEntity]: A bulk write operation resulted in one or more errors. WriteErrors: [ { Category : "Uncategorized", Code : 224, Message : "$expr is not allowed in the query predicate for an upsert" } ].
@@ -21,11 +22,11 @@ MongoDB.Driver.MongoWriteException: A write operation resulted in an error. Writ
 --- End of inner exception stack trace ---
    at MongoDB.Driver.MongoCollectionBase`1.ReplaceOneAsync(FilterDefinition`1 filter, TDocument replacement, ReplaceOptions options, Func`3 bulkWriteAsync)
    at LagoVista.CloudStorage.StorageProviders.MongoDocumentStorageClient.UpsertDocumentAsync[TEntity](TEntity item, String eTag) in D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\StorageProviders\Mongo\MongoDocumentStorageClient.cs:line 184
-   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.CrudLifecycleAsync(IDocumentStorageClient client, String partitionKey) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 41
+   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.CrudLifecycleAsync(IDocumentStorageClient client, String partitionKey) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 40
 
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\document-storage-contract\latest.trx
 
-Failed!  - Failed:     1, Passed:     2, Skipped:     0, Total:     3, Duration: 454 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Failed!  - Failed:     1, Passed:     2, Skipped:     0, Total:     3, Duration: 457 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T20:30:25.5248450Z
+CompletedUtc: 2026-08-26T20:32:30.2846387Z
 ExitCode: 1
