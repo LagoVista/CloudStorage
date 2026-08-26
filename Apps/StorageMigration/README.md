@@ -59,19 +59,30 @@ MIGRATION_AZURE_TABLE_ACCESS_KEY
 
 ## Cassandra target
 
-Local defaults match the CloudStorage Cassandra integration harness:
+The migration utility uses the standard `CassandraStorageSettings` shape through `LagoVista.CloudStorage.Utils.TestConnections`.
+
+Set `MIGRATION_ENVIRONMENT=dev` to load:
 
 ```text
-MIGRATION_CASSANDRA_HOSTS               localhost
-MIGRATION_CASSANDRA_PORT                19042
-MIGRATION_CASSANDRA_USERNAME            cassandra
-MIGRATION_CASSANDRA_PASSWORD            cassandra
-MIGRATION_CASSANDRA_KEYSPACE            nuviot_cloudstorage_tests
-MIGRATION_CASSANDRA_DATACENTER          datacenter1
-MIGRATION_CASSANDRA_REPLICATION_FACTOR  1
+DEV_CassandraStorage:ContactPoints
+DEV_CassandraStorage:Port
+DEV_CassandraStorage:UserName
+DEV_CassandraStorage:Password
+DEV_CassandraStorage:Keyspace
+DEV_CassandraStorage:LocalDataCenter
 ```
 
-Override these for the dev cluster. The three-node dev cluster should normally use replication factor `3`.
+Set `MIGRATION_ENVIRONMENT=prod` to use the same names with the `PROD_` prefix.
+
+`ContactPoints` accepts comma- or semicolon-separated hosts, matching the standard CloudStorage Cassandra settings parser.
+
+Replication factor is migration/bootstrap-specific rather than part of `CassandraStorageSettings`, so it remains:
+
+```text
+MIGRATION_CASSANDRA_REPLICATION_FACTOR
+```
+
+If omitted it defaults to `1`. The three-node dev cluster should normally use replication factor `3` when the migration utility is responsible for creating the keyspace.
 
 ## Migration checkpoint state
 
