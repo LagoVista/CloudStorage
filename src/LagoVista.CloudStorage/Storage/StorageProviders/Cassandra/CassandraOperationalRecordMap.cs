@@ -19,11 +19,6 @@ namespace LagoVista.CloudStorage.Storage
             if (options == null) throw new ArgumentNullException(nameof(options));
             Definition = options.Definition;
 
-            if (Definition.PartitionFields.Count == 0)
-            {
-                throw new InvalidOperationException($"Cassandra operational storage for {typeof(TRecord).Name} requires at least one PartitionBy(...) field.");
-            }
-
             Properties = typeof(TRecord)
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .Where(property => property.CanRead && property.CanWrite)
@@ -36,9 +31,14 @@ namespace LagoVista.CloudStorage.Storage
             PartitionProperties = Definition.PartitionFields.Select(GetRequired).ToList().AsReadOnly();
             IndexedProperties = Definition.IndexedFields.Select(GetRequired).ToList().AsReadOnly();
 
-            if (PartitionProperties.Any(property => property.Property.Name == Key.Property.Name))
+            if (!String.Equals(Key.Property.Name, nameof(IOperationalDataRecord.Id), StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Cassandra operational partition fields cannot also be the record Id field.");
+                throw new InvalidOperationException("Cassandra operational records are conventionally keyed by Id.");
+            }
+
+            if (PartitionProperties.Count != 1 || !String.Equals(PartitionProperties[0].Property.Name, nameof(IOperationalDataRecord.OrganizationId), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Cassandra operational records are conventionally partitioned by OrganizationId only.");
             }
 
             if (IndexedProperties.Any(property => PartitionProperties.Any(partition => partition.Property.Name == property.Property.Name)))
