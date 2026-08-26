@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.StorageProviders
 {
+    [CriticalCoverage]
     internal sealed class MongoMutableRecordStore
     {
         private const string ScratchExpirationField = "_storageExpiresUtc";
