@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="9ca83c22-1768-40f8-9a40-ab29ef672263" name="kevin@BEAST-LAPTOP 2026-08-26 19:03:52" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T19:03:52.9699343-04:00" queuing="2026-08-26T19:03:52.9699345-04:00" start="2026-08-26T19:03:49.7092410-04:00" finish="2026-08-26T19:03:52.9739146-04:00" />
+  <TestSettings name="default" id="87d08e87-0052-4404-83d7-f0a0a5292a22">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_19_03_52" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="db44374e-9e56-4c40-b5ae-b4360c2d5eea" testId="1829604c-d1fc-797f-7ad5-ba17571dee68" testName="AddGetRemoveAndTtlAsync_SatisfiesCacheContract" computerName="BEAST-LAPTOP" duration="00:00:02.0569145" startTime="2026-08-26T19:03:50.4014940-04:00" endTime="2026-08-26T19:03:52.7733693-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="db44374e-9e56-4c40-b5ae-b4360c2d5eea" />
+    <UnitTestResult executionId="243f5d8e-cd4a-4eec-9fd6-211d20dcda05" testId="358bc5f3-7ed5-0763-2b32-ae832a8b5067" testName="DependenciesAndCollectionsAsync_InvalidateAndRoundTrip" computerName="BEAST-LAPTOP" duration="00:00:00.0214167" startTime="2026-08-26T19:03:52.8304770-04:00" endTime="2026-08-26T19:03:52.8531189-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="243f5d8e-cd4a-4eec-9fd6-211d20dcda05" />
+    <UnitTestResult executionId="f72a5b8c-0446-4251-9a0b-1764794eb555" testId="dff52b1c-55cf-6453-9484-8c010bf3c1f1" testName="GetAndDeleteAndIncrementAsync_AreAtomicAndPersistent" computerName="BEAST-LAPTOP" duration="00:00:00.0308384" startTime="2026-08-26T19:03:52.7760045-04:00" endTime="2026-08-26T19:03:52.8071960-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f72a5b8c-0446-4251-9a0b-1764794eb555" />
+    <UnitTestResult executionId="3f2b5f33-f743-4e63-bb7e-c40aa818f007" testId="6faa9ecc-a429-2978-6454-8e27f615bdb1" testName="DistributedLockAsync_EnforcesOwnershipAndRelease" computerName="BEAST-LAPTOP" duration="00:00:00.0224386" startTime="2026-08-26T19:03:52.8075084-04:00" endTime="2026-08-26T19:03:52.8301060-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3f2b5f33-f743-4e63-bb7e-c40aa818f007" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="AddGetRemoveAndTtlAsync_SatisfiesCacheContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="1829604c-d1fc-797f-7ad5-ba17571dee68">
+      <TestCategory>
+        <TestCategoryItem TestCategory="RedisCacheProvider" />
+        <TestCategoryItem TestCategory="Redis" />
+      </TestCategory>
+      <Execution id="db44374e-9e56-4c40-b5ae-b4360c2d5eea" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Redis.CacheProviderIntegrationTests" name="AddGetRemoveAndTtlAsync_SatisfiesCacheContract" />
+    </UnitTest>
+    <UnitTest name="DependenciesAndCollectionsAsync_InvalidateAndRoundTrip" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="358bc5f3-7ed5-0763-2b32-ae832a8b5067">
+      <TestCategory>
+        <TestCategoryItem TestCategory="RedisCacheProvider" />
+        <TestCategoryItem TestCategory="Redis" />
+      </TestCategory>
+      <Execution id="243f5d8e-cd4a-4eec-9fd6-211d20dcda05" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Redis.CacheProviderIntegrationTests" name="DependenciesAndCollectionsAsync_InvalidateAndRoundTrip" />
+    </UnitTest>
+    <UnitTest name="DistributedLockAsync_EnforcesOwnershipAndRelease" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="6faa9ecc-a429-2978-6454-8e27f615bdb1">
+      <TestCategory>
+        <TestCategoryItem TestCategory="RedisCacheProvider" />
+        <TestCategoryItem TestCategory="Redis" />
+      </TestCategory>
+      <Execution id="3f2b5f33-f743-4e63-bb7e-c40aa818f007" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Redis.CacheProviderIntegrationTests" name="DistributedLockAsync_EnforcesOwnershipAndRelease" />
+    </UnitTest>
+    <UnitTest name="GetAndDeleteAndIncrementAsync_AreAtomicAndPersistent" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="dff52b1c-55cf-6453-9484-8c010bf3c1f1">
+      <TestCategory>
+        <TestCategoryItem TestCategory="RedisCacheProvider" />
+        <TestCategoryItem TestCategory="Redis" />
+      </TestCategory>
+      <Execution id="f72a5b8c-0446-4251-9a0b-1764794eb555" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Redis.CacheProviderIntegrationTests" name="GetAndDeleteAndIncrementAsync_AreAtomicAndPersistent" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="1829604c-d1fc-797f-7ad5-ba17571dee68" executionId="db44374e-9e56-4c40-b5ae-b4360c2d5eea" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="358bc5f3-7ed5-0763-2b32-ae832a8b5067" executionId="243f5d8e-cd4a-4eec-9fd6-211d20dcda05" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="dff52b1c-55cf-6453-9484-8c010bf3c1f1" executionId="f72a5b8c-0446-4251-9a0b-1764794eb555" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6faa9ecc-a429-2978-6454-8e27f615bdb1" executionId="3f2b5f33-f743-4e63-bb7e-c40aa818f007" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="4" executed="4" passed="4" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
+Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
+   NUnit3TestExecutor discovered 0 of 0 NUnit test cases using Current Discovery mode, Explicit run&#xD;
+NUnit Adapter 5.1.0.0: Test execution complete&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>
