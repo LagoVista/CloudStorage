@@ -42,12 +42,24 @@ namespace LagoVista.CloudStorage.StorageProviders
             return new OperationResponse<TEntity>(response);
         }
 
-        public async Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item)
+        public async Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item, string eTag = null)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
-            var response = await GetContainer<TEntity>().UpsertItemAsync(item).ConfigureAwait(false);
-            return new OperationResponse<TEntity>(response);
+
+            var options = String.IsNullOrWhiteSpace(eTag)
+                ? null
+                : new ItemRequestOptions { IfMatchEtag = eTag };
+
+            try
+            {
+                var response = await GetContainer<TEntity>().UpsertItemAsync(item, requestOptions: options).ConfigureAwait(false);
+                return new OperationResponse<TEntity>(response);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed || ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
+            }
         }
 
         public Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
@@ -88,7 +100,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var response = await GetContainer<TEntity>  ().DeleteItemAsync<TEntity>(
+                var response = await GetContainer<TEntity>().DeleteItemAsync<TEntity>(
                     id,
                     String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
                 return new OperationResponse<TEntity>(response);
@@ -112,7 +124,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             try
             {
-                var response = await GetContainer<TEntity>  ().PatchItemAsync<TEntity>(
+                var response = await GetContainer<TEntity>().PatchItemAsync<TEntity>(
                     request.Id,
                     String.IsNullOrWhiteSpace(request.PartitionKey) ? PartitionKey.None : new PartitionKey(request.PartitionKey),
                     operations,
