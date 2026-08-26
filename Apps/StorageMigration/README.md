@@ -34,28 +34,25 @@ dotnet run -- migrate useradmin-access-log --catch-up
 
 ## Source connections
 
-Definitions select logical Azure Table connections through `source.connection`.
+Definitions keep a logical `source.connection` label to describe the workload, but Azure Table credentials come from the standard CloudStorage `TestConnections` settings.
 
-Access log:
-
-```text
-MIGRATION_AZURE_ACCESS_LOG_ACCOUNT_ID
-MIGRATION_AZURE_ACCESS_LOG_ACCESS_KEY
-```
-
-User storage:
+Set `MIGRATION_ENVIRONMENT=dev` to use:
 
 ```text
-MIGRATION_AZURE_USER_STORAGE_ACCOUNT_ID
-MIGRATION_AZURE_USER_STORAGE_ACCESS_KEY
+TestConnections.DevTableStorageDB
+DEV_TS_STORAGE_ACCOUNT_ID
+DEV_TS_STORAGE_ACCOUNT_ACCESS_KEY
 ```
 
-Either can fall back to:
+Set `MIGRATION_ENVIRONMENT=prod` to use:
 
 ```text
-MIGRATION_AZURE_TABLE_ACCOUNT_ID
-MIGRATION_AZURE_TABLE_ACCESS_KEY
+TestConnections.ProductionTableStorageDB
+PROD_TS_STORAGE_ACCOUNT_ID
+PROD_TS_STORAGE_ACCOUNT_ACCESS_KEY
 ```
+
+The migration utility does not maintain a separate `MIGRATION_AZURE_*` credential namespace.
 
 ## Cassandra target
 
