@@ -7,7 +7,6 @@ using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
-using Microsoft.Azure.Cosmos;
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -46,12 +45,11 @@ namespace LagoVista.CloudStorage.Storage
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
-        public SyncRepository(ISyncConnectionSettings options, IDocumentStorageClientProvider storageProvider, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
+        public SyncRepository(ISyncConnectionSettings options, IDocumentStorageClientProvider storageProvider,  IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
             INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider, ILogger logger, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _storageClient = storageProvider?.GetClient() ?? throw new ArgumentNullException(nameof(storageProvider));
-            if (cosmosClientProvider == null) throw new ArgumentNullException(nameof(cosmosClientProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fkWriter = fkWriter ?? throw new ArgumentNullException(nameof(fkWriter));
             _nodeLocatorWriter = nodeLocatorWriter ?? throw new ArgumentNullException(nameof(nodeLocatorWriter));
