@@ -1,5 +1,5 @@
 CloudStorage Document Storage Contract Test Evidence
-StartedUtc: 2026-08-26T21:14:45.9823007Z
+StartedUtc: 2026-08-26T21:17:40.3053475Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\PowerShell\..\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=DocumentStorageContract
 Provider: MongoDB localhost:27018
@@ -13,7 +13,7 @@ Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin
 A total of 1 test files matched the specified pattern.
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\document-storage-contract\latest.trx
 
-Passed!  - Failed:     0, Passed:     9, Skipped:     0, Total:     9, Duration: 696 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    10, Skipped:     0, Total:    10, Duration: 770 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T21:14:49.3424211Z
+CompletedUtc: 2026-08-26T21:17:43.6744326Z
 ExitCode: 0
