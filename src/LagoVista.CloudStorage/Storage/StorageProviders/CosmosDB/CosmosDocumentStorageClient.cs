@@ -18,6 +18,11 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.StorageProviders
 {
+    /// <summary>
+    /// Cosmos-specific document persistence. Common repository concerns such as validation,
+    /// caching, dependency processing, audit preparation, and cache invalidation stay above
+    /// this boundary so they execute identically regardless of the selected provider.
+    /// </summary>
     public sealed class CosmosDocumentStorageClient : ICosmosDocumentStorageClient
     {
         private readonly ICosmosConnectionSettings _settings;
@@ -29,17 +34,23 @@ namespace LagoVista.CloudStorage.StorageProviders
             _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
         }
 
-        public async Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public async Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
             var response = await GetContainer<TEntity>().CreateItemAsync(item).ConfigureAwait(false);
             return new OperationResponse<TEntity>(response);
         }
 
-        public async Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item, string eTag = null) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public async Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item, string eTag = null)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
-            var options = String.IsNullOrWhiteSpace(eTag) ? null : new ItemRequestOptions { IfMatchEtag = eTag };
+
+            var options = String.IsNullOrWhiteSpace(eTag)
+                ? null
+                : new ItemRequestOptions { IfMatchEtag = eTag };
+
             try
             {
                 var response = await GetContainer<TEntity>().UpsertItemAsync(item, requestOptions: options).ConfigureAwait(false);
@@ -51,26 +62,43 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
         }
 
-        public Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => GetDocumentAsync<TEntity>(id, null, throwOnNotFound);
+        public Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity =>
+            GetDocumentAsync<TEntity>(id, null, throwOnNotFound);
 
-        public async Task<TEntity> GetDocumentAsync<TEntity>(string id, string partitionKey, bool throwOnNotFound = true) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public async Task<TEntity> GetDocumentAsync<TEntity>(string id, string partitionKey, bool throwOnNotFound = true)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             try
             {
                 TEntity entity;
+
                 if (String.IsNullOrWhiteSpace(partitionKey))
                 {
-                    var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id AND c.EntityType = @entityType").WithParameter("@id", id).WithParameter("@entityType", typeof(TEntity).Name);
+                    var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id AND c.EntityType = @entityType")
+                        .WithParameter("@id", id)
+                        .WithParameter("@entityType", typeof(TEntity).Name);
+
                     using var iterator = GetContainer<TEntity>().GetItemQueryIterator<TEntity>(query, requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
                     entity = null;
-                    if (iterator.HasMoreResults) entity = (await iterator.ReadNextAsync().ConfigureAwait(false)).Resource.FirstOrDefault();
+                    if (iterator.HasMoreResults)
+                    {
+                        var response = await iterator.ReadNextAsync().ConfigureAwait(false);
+                        entity = response.Resource.FirstOrDefault();
+                    }
                 }
-                else entity = (await GetContainer<TEntity>().ReadItemAsync<TEntity>(id, new PartitionKey(partitionKey)).ConfigureAwait(false)).Resource;
+                else
+                {
+                    var response = await GetContainer<TEntity>().ReadItemAsync<TEntity>(id, new PartitionKey(partitionKey)).ConfigureAwait(false);
+                    entity = response.Resource;
+                }
+
                 if (entity == null || !String.Equals(entity.EntityType, typeof(TEntity).Name, StringComparison.Ordinal))
                 {
                     if (throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
                     return null;
                 }
+
                 return entity;
             }
             catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -80,97 +108,172 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
         }
 
-        public Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => DeleteDocumentAsync<TEntity>(id, null);
+        public Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity =>
+            DeleteDocumentAsync<TEntity>(id, null);
 
-        public async Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id, string partitionKey) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public async Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id, string partitionKey)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             try
             {
-                var response = await GetContainer<TEntity>().DeleteItemAsync<TEntity>(id, String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
+                var response = await GetContainer<TEntity>().DeleteItemAsync<TEntity>(
+                    id,
+                    String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
                 return new OperationResponse<TEntity>(response);
             }
-            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound) { throw new RecordNotFoundException(typeof(TEntity).Name, id); }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new RecordNotFoundException(typeof(TEntity).Name, id);
+            }
         }
 
-        public async Task<OperationResponse<TEntity>> PatchDocumentAsync<TEntity>(PatchRequest request) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public async Task<OperationResponse<TEntity>> PatchDocumentAsync<TEntity>(PatchRequest request)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
             if (String.IsNullOrWhiteSpace(request.Id)) throw new ArgumentException("Patch request id is required.", nameof(request));
             if (request.Steps == null || request.Steps.Count == 0) throw new ArgumentException("Patch request must contain at least one step.", nameof(request));
+
             var operations = request.Steps.Select(CreatePatchOperation).ToList();
             var options = new PatchItemRequestOptions();
             if (!String.IsNullOrWhiteSpace(request.ETag)) options.IfMatchEtag = request.ETag;
+
             try
             {
-                var response = await GetContainer<TEntity>().PatchItemAsync<TEntity>(request.Id, String.IsNullOrWhiteSpace(request.PartitionKey) ? PartitionKey.None : new PartitionKey(request.PartitionKey), operations, options).ConfigureAwait(false);
+                var response = await GetContainer<TEntity>().PatchItemAsync<TEntity>(
+                    request.Id,
+                    String.IsNullOrWhiteSpace(request.PartitionKey) ? PartitionKey.None : new PartitionKey(request.PartitionKey),
+                    operations,
+                    options).ConfigureAwait(false);
                 return new OperationResponse<TEntity>(response.Resource);
             }
-            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound) { throw new RecordNotFoundException(typeof(TEntity).Name, request.Id); }
-            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed) { throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = request.Id }; }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new RecordNotFoundException(typeof(TEntity).Name, request.Id);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+            {
+                throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = request.Id };
+            }
         }
 
-        public async Task<IEnumerable<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public async Task<IEnumerable<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
+
             var items = new List<TEntity>();
-            var linqQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>().Where(query).Where(item => item.EntityType == typeof(TEntity).Name);
-            using var iterator = linqQuery.ToFeedIterator();
-            while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            var linqQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>()
+                .Where(query)
+                .Where(item => item.EntityType == typeof(TEntity).Name);
+
+            using (var iterator = linqQuery.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults)
+                    items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            }
+
             return items;
         }
 
-        public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+
             var items = new List<TEntity>();
-            var linqQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>().Where(query).Where(item => item.EntityType == typeof(TEntity).Name && (listRequest.ShowDeleted || item.IsDeleted.IsNull() || !item.IsDeleted.HasValue || !item.IsDeleted.Value) && (listRequest.ShowDrafts || !item.IsDraft.IsDefined() || item.IsDraft == false)).Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Take(listRequest.PageSize);
-            using var iterator = linqQuery.ToFeedIterator();
-            while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            var linqQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>()
+                .Where(query)
+                .Where(item => item.EntityType == typeof(TEntity).Name &&
+                               (listRequest.ShowDeleted || item.IsDeleted.IsNull() || !item.IsDeleted.HasValue || !item.IsDeleted.Value) &&
+                               (listRequest.ShowDrafts || !item.IsDraft.IsDefined() || item.IsDraft == false))
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Take(listRequest.PageSize);
+
+            using (var iterator = linqQuery.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults)
+                    items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            }
+
             return ListResponse<TEntity>.Create(listRequest, items);
         }
 
-        public Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => QueryAsync(query, sort, listRequest, false);
+        public Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity =>
+            QueryAsync(query, sort, listRequest, false);
 
-        public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest, bool descending) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest, bool descending)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (sort == null) throw new ArgumentNullException(nameof(sort));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
-            var baseQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>().Where(query).Where(item => item.EntityType == typeof(TEntity).Name && (listRequest.ShowDeleted || item.IsDeleted.IsNull() || !item.IsDeleted.HasValue || !item.IsDeleted.Value) && (listRequest.ShowDrafts || !item.IsDraft.IsDefined() || item.IsDraft == false));
+
+            var baseQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>()
+                .Where(query)
+                .Where(item => item.EntityType == typeof(TEntity).Name &&
+                               (listRequest.ShowDeleted || item.IsDeleted.IsNull() || !item.IsDeleted.HasValue || !item.IsDeleted.Value) &&
+                               (listRequest.ShowDrafts || !item.IsDraft.IsDefined() || item.IsDraft == false));
+
             var orderedQuery = descending ? baseQuery.OrderByDescending(sort) : baseQuery.OrderBy(sort);
-            var linqQuery = orderedQuery.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Take(listRequest.PageSize);
+            var linqQuery = orderedQuery
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Take(listRequest.PageSize);
+
             var items = new List<TEntity>();
-            using var iterator = linqQuery.ToFeedIterator();
-            while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            using (var iterator = linqQuery.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults)
+                    items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            }
+
             return ListResponse<TEntity>.Create(listRequest, items);
         }
 
-        public async Task<IEnumerable<TResult>> QueryKnownAsync<TResult>(string entityType, DocumentQueryRequest request, CancellationToken cancellationToken = default) where TResult : class
+        public async Task<IEnumerable<TResult>> QueryKnownAsync<TResult>(string entityType, DocumentQueryRequest request, CancellationToken cancellationToken = default)
+            where TResult : class
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
+
             var iterator = GetContainer<TResult>().GetItemQueryIterator<TResult>(CreateKnownQuery(request));
             var items = new List<TResult>();
-            while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
+            while (iterator.HasMoreResults)
+                items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
             return items;
         }
 
         private Container GetContainer<TEntity>()
         {
-            var containerName = typeof(TEntity).GetCustomAttributes(typeof(CollectionNameAttribute), true).OfType<CollectionNameAttribute>().FirstOrDefault()?.CollectionName ?? $"{_settings.DatabaseName}_Collections";
-            return _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey).GetContainer(_settings.DatabaseName, containerName);
+            var containerName = typeof(TEntity).GetCustomAttributes(typeof(CollectionNameAttribute), true)
+                .OfType<CollectionNameAttribute>()
+                .FirstOrDefault()
+                ?.CollectionName
+                ?? $"{_settings.DatabaseName}_Collections";
+
+            return _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey)
+                .GetContainer(_settings.DatabaseName, containerName);
         }
 
         private static PatchOperation CreatePatchOperation(PatchStep step)
         {
             if (step == null) throw new ArgumentException("Patch request contains a null step.");
-            var path = !String.IsNullOrWhiteSpace(step.CosmosPath) ? step.CosmosPath : ToCosmosPath(step.LogicalPath);
+            var path = !String.IsNullOrWhiteSpace(step.CosmosPath)
+                ? step.CosmosPath
+                : ToCosmosPath(step.LogicalPath);
+
             switch (step.Op)
             {
-                case PatchOp.Set: return PatchOperation.Set(path, step.Value?.ToObject<object>());
-                case PatchOp.Remove: return PatchOperation.Remove(path);
-                case PatchOp.Add: return PatchOperation.Add(path, step.Value?.ToObject<object>());
-                default: throw new NotSupportedException($"Patch operation '{step.Op}' is not supported by the Cosmos document client.");
+                case PatchOp.Set:
+                    return PatchOperation.Set(path, step.Value?.ToObject<object>());
+                case PatchOp.Remove:
+                    return PatchOperation.Remove(path);
+                case PatchOp.Add:
+                    return PatchOperation.Add(path, step.Value?.ToObject<object>());
+                default:
+                    throw new NotSupportedException($"Patch operation '{step.Op}' is not supported by the Cosmos document client.");
             }
         }
 
@@ -185,15 +288,26 @@ namespace LagoVista.CloudStorage.StorageProviders
             switch (request.QueryType)
             {
                 case DocumentQueryType.CustomerIndustryNicheSalesStageCounts:
-                    return new QueryDefinition("SELECT c.Industry, c.IndustryNiche, c.SalesStage, COUNT(c.id) AS CountLeads FROM c WHERE c.EntityType = 'CustomerEntity' AND c.OwnerOrganization.Id = @orgId GROUP BY c.Industry, c.IndustryNiche, c.SalesStage").WithParameter("@orgId", request.GetRequired<string>("orgId"));
+                    return new QueryDefinition("SELECT c.Industry, c.IndustryNiche, c.SalesStage, COUNT(c.id) AS CountLeads FROM c WHERE c.EntityType = 'CustomerEntity' AND c.OwnerOrganization.Id = @orgId GROUP BY c.Industry, c.IndustryNiche, c.SalesStage")
+                        .WithParameter("@orgId", request.GetRequired<string>("orgId"));
                 case DocumentQueryType.EntityUtilsDocumentsByType:
-                    return new QueryDefinition("SELECT * FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId ORDER BY c.Name ASC").WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
+                    return new QueryDefinition("SELECT * FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId ORDER BY c.Name ASC")
+                        .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                        .WithParameter("@orgId", request.GetRequired<string>("orgId"));
                 case DocumentQueryType.EntityUtilsDocumentById:
-                    return new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.EntityType = @entityType AND c.id = @entityId AND c.OwnerOrganization.Id = @orgId").WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@entityId", request.GetRequired<string>("entityId")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
+                    return new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.EntityType = @entityType AND c.id = @entityId AND c.OwnerOrganization.Id = @orgId")
+                        .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                        .WithParameter("@entityId", request.GetRequired<string>("entityId"))
+                        .WithParameter("@orgId", request.GetRequired<string>("orgId"));
                 case DocumentQueryType.EntityUtilsCountByType:
-                    return new QueryDefinition("SELECT COUNT(1) AS Count FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId").WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
+                    return new QueryDefinition("SELECT COUNT(1) AS Count FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId")
+                        .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                        .WithParameter("@orgId", request.GetRequired<string>("orgId"));
                 case DocumentQueryType.EntityPreparationCandidateById:
-                    return new QueryDefinition($"SELECT TOP 1 {EntityPreparationProjection} FROM c WHERE c.EntityType = @entityType AND c.id = @entityId AND c.OwnerOrganization.Id = @orgId").WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@entityId", request.GetRequired<string>("entityId")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
+                    return new QueryDefinition($"SELECT TOP 1 {EntityPreparationProjection} FROM c WHERE c.EntityType = @entityType AND c.id = @entityId AND c.OwnerOrganization.Id = @orgId")
+                        .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                        .WithParameter("@entityId", request.GetRequired<string>("entityId"))
+                        .WithParameter("@orgId", request.GetRequired<string>("orgId"));
                 case DocumentQueryType.EntityPreparationCandidatesByType:
                 case DocumentQueryType.IncompleteEntityPreparationCandidatesByType:
                     return CreatePreparationQuery(request);
@@ -201,7 +315,8 @@ namespace LagoVista.CloudStorage.StorageProviders
                 case DocumentQueryType.EntityListHeaders:
                 case DocumentQueryType.EntityListCategories:
                     return CreateEntityListQuery(request);
-                default: throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Cosmos provider.");
+                default:
+                    throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Cosmos provider.");
             }
         }
 
@@ -210,13 +325,19 @@ namespace LagoVista.CloudStorage.StorageProviders
             var incomplete = request.QueryType == DocumentQueryType.IncompleteEntityPreparationCandidatesByType;
             var top = incomplete ? $"TOP {Math.Min(request.GetRequired<int>("maxItems"), 5000)} " : String.Empty;
             var incompleteClause = incomplete ? " AND (NOT IS_DEFINED(c.MasterStatus) OR IS_NULL(c.MasterStatus) OR NOT IS_DEFINED(c.MasterStatus.IsProductionReady) OR IS_NULL(c.MasterStatus.IsProductionReady) OR c.MasterStatus.IsProductionReady != true)" : String.Empty;
-            return new QueryDefinition($"SELECT {top}{EntityPreparationProjection} FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId{incompleteClause} ORDER BY c.Name ASC").WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
+            return new QueryDefinition($"SELECT {top}{EntityPreparationProjection} FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId{incompleteClause} ORDER BY c.Name ASC")
+                .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                .WithParameter("@orgId", request.GetRequired<string>("orgId"));
         }
 
         private static QueryDefinition CreateEntityListQuery(DocumentQueryRequest request)
         {
             var type = request.QueryType;
-            var sql = type == DocumentQueryType.EntityListItems ? @"SELECT VALUE {""id"": c.id, ""Icon"": c.Icon, ""Name"": c.Name, ""Key"": c.Key, ""IsPublic"": c.IsPublic, ""IsDraft"": c.IsDraft, ""IsDeleted"": c.IsDeleted, ""Category"": c.Category.Text, ""Stars"": c.Stars, ""RatingsCount"": c.RatingsCount, ""Labels"": c.Labels, ""Status"": c.Status} FROM c" : type == DocumentQueryType.EntityListHeaders ? @"SELECT VALUE {""Id"": c.id, ""Key"": c.Key, ""Text"": c.Name} FROM c" : @"SELECT DISTINCT VALUE {""Id"": c.Category.Id, ""Key"": c.Category.Key, ""Text"": c.Category.Text} FROM c";
+            var sql = type == DocumentQueryType.EntityListItems
+                ? @"SELECT VALUE {""id"": c.id, ""Icon"": c.Icon, ""Name"": c.Name, ""Key"": c.Key, ""IsPublic"": c.IsPublic, ""IsDraft"": c.IsDraft, ""IsDeleted"": c.IsDeleted, ""Category"": c.Category.Text, ""Stars"": c.Stars, ""RatingsCount"": c.RatingsCount, ""Labels"": c.Labels, ""Status"": c.Status} FROM c"
+                : type == DocumentQueryType.EntityListHeaders
+                    ? @"SELECT VALUE {""Id"": c.id, ""Key"": c.Key, ""Text"": c.Name} FROM c"
+                    : @"SELECT DISTINCT VALUE {""Id"": c.Category.Id, ""Key"": c.Category.Key, ""Text"": c.Category.Text} FROM c";
             sql += " WHERE c.EntityType = @entityType AND (c.IsPublic = true OR c.OwnerOrganization.Id = @orgId)";
             if (type == DocumentQueryType.EntityListCategories) sql += " AND IS_DEFINED(c.Category) AND IS_DEFINED(c.Category.Key)";
             if (!request.GetRequired<bool>("showDeleted")) sql += " AND (NOT IS_DEFINED(c.IsDeleted) OR c.IsDeleted = false)";
@@ -238,10 +359,15 @@ namespace LagoVista.CloudStorage.StorageProviders
                 var pageSize = Math.Max(1, request.GetRequired<int>("pageSize"));
                 sql += $" OFFSET {(pageIndex - 1) * pageSize} LIMIT {pageSize}";
             }
-            var query = new QueryDefinition(sql).WithParameter("@entityType", request.GetRequired<string>("entityType")).WithParameter("@orgId", request.GetRequired<string>("orgId"));
+            var query = new QueryDefinition(sql)
+                .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                .WithParameter("@orgId", request.GetRequired<string>("orgId"));
             if (type != DocumentQueryType.EntityListCategories)
             {
-                var categoryKey = request.GetRequired<string>("categoryKey"); var statusKey = request.GetRequired<string>("statusKey"); var labelKey = request.GetRequired<string>("labelKey"); var searchText = request.GetRequired<string>("searchText");
+                var categoryKey = request.GetRequired<string>("categoryKey");
+                var statusKey = request.GetRequired<string>("statusKey");
+                var labelKey = request.GetRequired<string>("labelKey");
+                var searchText = request.GetRequired<string>("searchText");
                 if (!String.IsNullOrWhiteSpace(categoryKey)) query.WithParameter("@categoryKey", categoryKey);
                 if (!String.IsNullOrWhiteSpace(statusKey)) query.WithParameter("@statusKey", statusKey);
                 if (!String.IsNullOrWhiteSpace(labelKey)) query.WithParameter("@labelKey", labelKey);
