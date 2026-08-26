@@ -2,10 +2,40 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cassandra-activity-record-store-integration",
   "title": "CassandraActivityRecordStore Integration Tests",
-  "status": "backlog",
+  "status": "in-process",
   "category": "integration-test",
   "area": "cassandra",
   "summary": "Exercise historical activity-record writes, reads, ordering, TTL behavior, and partition access against local Cassandra.",
-  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraActivityRecordStore.cs"],
-  "data": {"component":"CassandraActivityRecordStore","testProject":"tests/LagoVista.StorageProvider.Tests","harness":"tests/LagoVista.StorageProvider.Tests/PowerShell/start-cassandra-tests.ps1"}
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraActivityRecordStore.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/cassandra-activity-record-store/latest.txt",
+    ".coverage/evidence/cassandra-activity-record-store/latest.trx"
+  ],
+  "data": {
+    "component": "CassandraActivityRecordStore",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Cassandra/CassandraActivityRecordStoreIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cassandra-activity-record-tests.ps1",
+    "environment": {
+      "type": "docker",
+      "provider": "cassandra",
+      "port": 19042,
+      "keyspace": "nuviot_storage_tests"
+    },
+    "coverageLayers": {
+      "completed": [],
+      "next": [
+        "schema-provisioning",
+        "single-and-batch-insert",
+        "partition-and-time-range-query",
+        "newest-first-ordering",
+        "continuation-paging",
+        "bucketed-querying",
+        "indexed-filtering",
+        "retention-ttl"
+      ]
+    }
+  }
 }
