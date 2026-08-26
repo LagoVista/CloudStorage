@@ -1,0 +1,19 @@
+CloudStorage Scratch Data Integration Test Evidence
+StartedUtc: 2026-08-26T20:01:09.0329182Z
+Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
+Filter: TestCategory=ScratchData
+Provider: MongoDB localhost:27018
+
+  Determining projects to restore...
+  Restored D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj (in 670 ms).
+  1 of 2 projects are up-to-date for restore.
+  LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
+  LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
+Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\scratch-data\latest.trx
+
+Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 343 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+
+CompletedUtc: 2026-08-26T20:01:12.8923915Z
+ExitCode: 0
