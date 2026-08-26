@@ -1,29 +1,47 @@
 {
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "metrics-postgres-store-gap",
-  "title": "Metrics Postgres Store Implementation + Integration Tests",
-  "status": "backlog",
-  "category": "architecture-gap",
+  "title": "Metrics PostgreSQL + TimescaleDB Store",
+  "status": "in-process",
+  "category": "integration-test",
   "area": "metrics-storage",
-  "summary": "Close the CloudStorage Metrics capability by providing a concrete PostgreSQL-backed IMetricsStore implementation and comprehensive provider integration coverage.",
+  "summary": "Exercise the concrete PostgreSQL + TimescaleDB IMetricsStore implementation, definition governance, dimensional writes, aggregates, bucketing, grouping, and validation.",
   "source": [
     "src/LagoVista.CloudStorage/Interfaces/StorageProviders/IMetricsStore.cs",
-    "src/LagoVista.CloudStorage/Storage/ConnectionSettings/MetricsStorageSettings.cs",
-    "src/LagoVista.CloudStorage/Storage/StorageProviders/MetricsStorageServiceCollectionExtensions.cs"
+    "src/LagoVista.CloudStorage/Models/Metrics/MetricModels.cs",
+    "src/LagoVista.Relational/Storage/PostgresMetricsStore.cs",
+    "src/LagoVista.Relational/Storage/PostgresMetricsStorageServiceCollectionExtensions.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/metrics-postgres-store/latest.txt",
+    ".coverage/evidence/metrics-postgres-store/latest.trx"
   ],
   "data": {
     "contract": "IMetricsStore",
-    "provider": "postgresql",
-    "implementationStatus": "missing",
-    "coverage": [
-      "concrete-store-implementation",
-      "dependency-registration",
-      "write",
-      "query",
-      "date-range-behavior",
-      "error-behavior"
-    ],
-    "tests": [],
-    "testProject": "tests/LagoVista.StorageProvider.Tests"
+    "provider": "postgresql-timescaledb",
+    "implementationStatus": "implemented",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Postgres/PostgresMetricsStoreIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-postgres-metrics-tests.ps1",
+    "environment": {
+      "type": "docker",
+      "provider": "postgresql-timescaledb",
+      "port": 19043
+    },
+    "coverageLayers": {
+      "completed": [],
+      "next": [
+        "dependency-registration",
+        "schema-and-hypertable-provisioning",
+        "definition-registration-and-lookup",
+        "single-and-batch-write",
+        "organization-and-date-range-isolation",
+        "count-sum-average-min-max",
+        "time-bucketing",
+        "dimension-filtering-and-grouping",
+        "definition-and-dimension-validation",
+        "batch-atomicity"
+      ]
+    }
   }
 }
