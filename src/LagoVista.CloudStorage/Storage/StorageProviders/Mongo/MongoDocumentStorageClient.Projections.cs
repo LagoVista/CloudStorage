@@ -10,6 +10,22 @@ namespace LagoVista.CloudStorage.StorageProviders
 {
     public sealed partial class MongoDocumentStorageClient
     {
+        public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
+            where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            var projection = await GetProjectionCollection<TProjection>()
+                .Find(Builders<TProjection>.Filter.Eq("_id", id))
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (projection == null && throwOnNotFound)
+                throw new RecordNotFoundException(typeof(TProjection).Name, id);
+
+            return projection;
+        }
+
         public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string entityType, string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
             where TProjection : class
         {
@@ -45,6 +61,15 @@ namespace LagoVista.CloudStorage.StorageProviders
                 .Find(filter)
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        private IMongoCollection<TProjection> GetProjectionCollection<TProjection>()
+            where TProjection : class
+        {
+            var collectionName = _collectionNameResolver.GetFallback(_settings.DatabaseName);
+            return _clientFactory
+                .GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName)
+                .GetCollection<TProjection>(collectionName);
         }
 
         private IMongoCollection<TProjection> GetProjectionCollection<TProjection>(string entityType)
