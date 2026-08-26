@@ -25,7 +25,7 @@ try
             break;
         case "migrate":
             RequireKey(args, command);
-            await MigrateAsync(catalog, catalog.LoadByKey(args[1]), HasOption(args, "--catch-up"));
+            await MigrateAsync(catalog, catalog.LoadByKey(args[1]), HasOption(args, "--catch-up"), GetPositiveIntOption(args, "--max-records"));
             break;
         case "verify":
             RequireKey(args, command);
@@ -72,7 +72,7 @@ static async Task ProbeAsync(MigrationDefinition definition)
     Console.WriteLine("PASS: migration probe completed. No records were migrated.");
 }
 
-static async Task MigrateAsync(MigrationCatalog catalog, MigrationDefinition definition, bool catchUp)
+static async Task MigrateAsync(MigrationCatalog catalog, MigrationDefinition definition, bool catchUp, int? maxRecords)
 {
     var sha = catalog.DefinitionSha256(definition);
     var source = new AzureTableMigrationSource(MigrationConnections.AzureTableConnectionString(definition.Source.Connection));
@@ -84,9 +84,10 @@ static async Task MigrateAsync(MigrationCatalog catalog, MigrationDefinition def
     Console.WriteLine($"Source    : {definition.Source.Connection}");
     Console.WriteLine($"Target    : {definition.Target.Table}");
     Console.WriteLine($"Mode      : {(catchUp ? "catch-up replay" : "resume/current pass")}");
+    Console.WriteLine($"Run limit : {(maxRecords.HasValue ? $"{maxRecords.Value:N0} records" : "none")}");
     Console.WriteLine();
 
-    PrintState(await engine.ExecuteAsync(definition, sha, catchUp));
+    PrintState(await engine.ExecuteAsync(definition, sha, catchUp, maxRecords));
 }
 
 static async Task VerifyAsync(MigrationCatalog catalog, MigrationDefinition definition)
@@ -153,6 +154,32 @@ static void PrintDefinition(MigrationCatalog catalog, MigrationDefinition defini
 
 static void RequireKey(string[] args, string command) { if (args.Length < 2) throw new ArgumentException($"{command} requires a migration key."); }
 static bool HasOption(string[] args, string option) => args.Any(arg => String.Equals(arg, option, StringComparison.OrdinalIgnoreCase));
+static int? GetPositiveIntOption(string[] args, string option)
+{
+    for (var index = 0; index < args.Length; index++)
+    {
+        var arg = args[index];
+        string? value = null;
+        if (String.Equals(arg, option, StringComparison.OrdinalIgnoreCase))
+        {
+            if (index + 1 >= args.Length) throw new ArgumentException($"{option} requires a positive integer value.");
+            value = args[index + 1];
+        }
+        else if (arg.StartsWith(option + "=", StringComparison.OrdinalIgnoreCase))
+        {
+            value = arg.Substring(option.Length + 1);
+        }
+
+        if (value != null)
+        {
+            if (!Int32.TryParse(value, out var parsed) || parsed <= 0)
+                throw new ArgumentException($"{option} requires a positive integer value.");
+            return parsed;
+        }
+    }
+
+    return null;
+}
 static void PrintUsage()
 {
     Console.Error.WriteLine("Commands:");
@@ -160,7 +187,7 @@ static void PrintUsage()
     Console.Error.WriteLine("  validate <migration-key>");
     Console.Error.WriteLine("  status <migration-key>");
     Console.Error.WriteLine("  probe <migration-key>");
-    Console.Error.WriteLine("  migrate <migration-key> [--catch-up]");
+    Console.Error.WriteLine("  migrate <migration-key> [--max-records N] [--catch-up]");
     Console.Error.WriteLine("  verify <migration-key>");
     Console.Error.WriteLine("Environment: set MIGRATION_ENVIRONMENT=dev|prod for environment-prefixed storage settings.");
 }
