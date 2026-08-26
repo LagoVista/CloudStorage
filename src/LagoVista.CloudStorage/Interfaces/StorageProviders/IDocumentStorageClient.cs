@@ -2,6 +2,7 @@ using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Models;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -17,6 +18,8 @@ namespace LagoVista.CloudStorage.Interfaces
 
         Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item, string eTag = null)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity;
+
+        Task<SyncUpsertResult> UpsertDocumentAsync(JObject document, string expectedETag = null, CancellationToken cancellationToken = default);
 
         Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity;
