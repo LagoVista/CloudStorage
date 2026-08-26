@@ -1,3 +1,4 @@
+using LagoVista;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Models;
@@ -11,6 +12,7 @@ namespace LagoVista.CloudStorage.StorageProviders
     /// MongoDB implementation of deterministic durable scratch storage.
     /// Retention is provider-owned and materialized through an internal Mongo TTL field.
     /// </summary>
+    [CriticalCoverage]
     public sealed class MongoScratchStore : IScratchStore
     {
         private readonly MongoMutableRecordStore _store;
