@@ -201,7 +201,6 @@ ON CONFLICT (id) DO UPDATE SET
 
                 await using var connection = new NpgsqlConnection(BuildConnectionString());
                 await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-                var schemaNameLiteral = _settings.SchemaName.Replace("'", "''");
                 var sql = $@"
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 CREATE SCHEMA IF NOT EXISTS {_schema};
@@ -223,9 +222,10 @@ CREATE TABLE IF NOT EXISTS {_recordsTable} (
 );
 CREATE INDEX IF NOT EXISTS ix_metric_records_org_metric_timestamp ON {_recordsTable} (organization_id, metric, timestamp DESC);
 CREATE INDEX IF NOT EXISTS ix_metric_records_dimensions ON {_recordsTable} USING GIN (dimensions);
-SELECT create_hypertable('{schemaNameLiteral}.metric_records', 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);";
+SELECT create_hypertable(format('%I.%I', @schema_name, 'metric_records')::regclass, 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);";
 
                 await using var command = new NpgsqlCommand(sql, connection);
+                command.Parameters.AddWithValue("schema_name", _settings.SchemaName);
                 await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                 _schemaReady = true;
             }
