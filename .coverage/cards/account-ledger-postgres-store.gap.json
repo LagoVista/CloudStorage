@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "account-ledger-postgres-store-gap",
   "title": "Account Ledger PostgreSQL Store",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "account-ledger-storage",
   "summary": "Exercise the concrete PostgreSQL IAccountLedgerStore implementation, authoritative balances, integrity chaining, serialized concurrent writes, stable paging, range queries, and failure semantics.",
@@ -29,8 +29,7 @@
       "port": 19044
     },
     "coverageLayers": {
-      "completed": [],
-      "next": [
+      "completed": [
         "dependency-registration",
         "schema-provisioning",
         "credit-and-debit-append",
@@ -41,7 +40,8 @@
         "date-range-query",
         "newest-first-ordering",
         "validation-and-rollback"
-      ]
+      ],
+      "next": []
     }
   }
 }
