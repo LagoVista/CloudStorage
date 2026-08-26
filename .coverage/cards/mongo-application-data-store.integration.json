@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "mongo-application-data-store-integration",
   "title": "MongoApplicationDataStore Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "application-data",
   "summary": "Exercise the Application Data contract and Mongo implementation against the local Mongo container, including storage invariants and physical collection/index behavior.",
