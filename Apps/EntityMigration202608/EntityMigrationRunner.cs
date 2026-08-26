@@ -2,6 +2,7 @@ using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Utils;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace EntityMigration202608;
@@ -57,16 +58,21 @@ internal sealed class EntityMigrationRunner
 
     public async Task DryRunAsync(int batchSize = 200, int maxPages = 0, string continuationToken = null, CancellationToken ct = default)
     {
-        var request = CreateRequest(true, batchSize, maxPages, continuationToken);
-        PrintPlan("DRY RUN", request);
-        var result = await _migrationService.MigrateCosmosToMongoAsync(request, ct).ConfigureAwait(false);
-        PrintMigrationResult(result);
+        PrintPlan("DRY RUN", batchSize, maxPages, continuationToken);
+
+        foreach (var sourceCollectionName in GetSourceCollections())
+        {
+            Console.WriteLine();
+            Console.WriteLine($"Source collection: {sourceCollectionName}");
+            var request = CreateRequest(sourceCollectionName, true, batchSize, maxPages, continuationToken);
+            var result = await _migrationService.MigrateCosmosToMongoAsync(request, ct).ConfigureAwait(false);
+            PrintMigrationResult(result);
+        }
     }
 
     public async Task MigrateAsync(int batchSize = 200, int maxPages = 0, string continuationToken = null, CancellationToken ct = default)
     {
-        var request = CreateRequest(false, batchSize, maxPages, continuationToken);
-        PrintPlan("WRITE", request);
+        PrintPlan("WRITE", batchSize, maxPages, continuationToken);
 
         Console.WriteLine();
         Console.Write("Type MIGRATE to copy eligible entity documents to Mongo: ");
@@ -76,29 +82,74 @@ internal sealed class EntityMigrationRunner
             return;
         }
 
-        var result = await _migrationService.MigrateCosmosToMongoAsync(request, ct).ConfigureAwait(false);
-        PrintMigrationResult(result);
+        foreach (var sourceCollectionName in GetSourceCollections())
+        {
+            Console.WriteLine();
+            Console.WriteLine($"Source collection: {sourceCollectionName}");
+            var request = CreateRequest(sourceCollectionName, false, batchSize, maxPages, continuationToken);
+            var result = await _migrationService.MigrateCosmosToMongoAsync(request, ct).ConfigureAwait(false);
+            PrintMigrationResult(result);
+        }
     }
 
     public async Task ValidateAsync(int batchSize = 200, CancellationToken ct = default)
     {
-        var request = CreateRequest(true, batchSize, 0, null);
-        PrintPlan("VALIDATE", request);
-        var result = await _migrationService.ValidateCosmosToMongoAsync(request, ct).ConfigureAwait(false);
+        PrintPlan("VALIDATE", batchSize, 0, null);
+
+        var sourceRoutes = new Dictionary<(string CollectionName, string EntityType), long>();
+
+        foreach (var sourceCollectionName in GetSourceCollections())
+        {
+            Console.WriteLine();
+            Console.WriteLine($"Inventorying source collection: {sourceCollectionName}");
+
+            var request = CreateRequest(sourceCollectionName, true, batchSize, 0, null);
+            var inventory = await _migrationService.MigrateCosmosToMongoAsync(request, ct).ConfigureAwait(false);
+
+            foreach (var route in inventory.Routes)
+            {
+                var key = (route.CollectionName ?? String.Empty, route.EntityType ?? String.Empty);
+                var eligibleCount = route.Read - route.Excluded;
+                sourceRoutes[key] = sourceRoutes.TryGetValue(key, out var existing)
+                    ? existing + eligibleCount
+                    : eligibleCount;
+            }
+        }
+
+        var client = new MongoClient(_target.ConnectionString);
+        var database = client.GetDatabase(_target.DatabaseName);
+        var validationRoutes = new List<DocumentMigrationValidationStatistics>();
+
+        foreach (var sourceRoute in sourceRoutes.OrderBy(item => item.Key.CollectionName, StringComparer.OrdinalIgnoreCase)
+                                                .ThenBy(item => item.Key.EntityType, StringComparer.OrdinalIgnoreCase))
+        {
+            var collection = database.GetCollection<BsonDocument>(sourceRoute.Key.CollectionName);
+            var destinationCount = await collection.CountDocumentsAsync(
+                CreateMongoEntityTypeFilter(sourceRoute.Key.EntityType),
+                cancellationToken: ct).ConfigureAwait(false);
+
+            validationRoutes.Add(new DocumentMigrationValidationStatistics
+            {
+                EntityType = sourceRoute.Key.EntityType,
+                CollectionName = sourceRoute.Key.CollectionName,
+                SourceCount = sourceRoute.Value,
+                DestinationCount = destinationCount
+            });
+        }
+
+        var sourceCount = validationRoutes.Sum(item => item.SourceCount);
+        var destinationCountTotal = validationRoutes.Sum(item => item.DestinationCount);
+        var matches = validationRoutes.All(item => item.Matches);
 
         Console.WriteLine();
-        Console.WriteLine($"Source eligible:      {result.SourceCount}");
-        Console.WriteLine($"Mongo destination:    {result.DestinationCount}");
-        Console.WriteLine($"Matches:              {result.Matches}");
+        Console.WriteLine($"Source eligible:      {sourceCount}");
+        Console.WriteLine($"Mongo destination:    {destinationCountTotal}");
+        Console.WriteLine($"Matches:              {matches}");
         Console.WriteLine();
         Console.WriteLine($"{"Collection",-20} {"EntityType",-40} {"Source",10} {"Mongo",10} {"Match",7}");
 
-        foreach (var route in result.Routes
-                     .OrderBy(item => item.CollectionName, StringComparer.OrdinalIgnoreCase)
-                     .ThenBy(item => item.EntityType, StringComparer.OrdinalIgnoreCase))
-        {
+        foreach (var route in validationRoutes)
             Console.WriteLine($"{route.CollectionName,-20} {DisplayEntityType(route.EntityType),-40} {route.SourceCount,10} {route.DestinationCount,10} {(route.Matches ? "yes" : "NO"),7}");
-        }
     }
 
     public async Task ResetMongoAsync(CancellationToken ct = default)
@@ -130,12 +181,19 @@ internal sealed class EntityMigrationRunner
         }
     }
 
-    private CosmosToMongoMigrationRequest CreateRequest(bool dryRun, int batchSize, int maxPages, string continuationToken)
+    private IEnumerable<string> GetSourceCollections()
+    {
+        yield return $"{_source.DatabaseName}_Collections";
+        yield return "Devices";
+    }
+
+    private CosmosToMongoMigrationRequest CreateRequest(string sourceCollectionName, bool dryRun, int batchSize, int maxPages, string continuationToken)
     {
         return new CosmosToMongoMigrationRequest
         {
             Source = _source,
             Target = _target,
+            SourceCollectionName = sourceCollectionName,
             BatchSize = batchSize,
             MaxPages = maxPages,
             ContinuationToken = continuationToken,
@@ -144,18 +202,21 @@ internal sealed class EntityMigrationRunner
         };
     }
 
-    private void PrintPlan(string operation, CosmosToMongoMigrationRequest request)
+    private void PrintPlan(string operation, int batchSize, int maxPages, string continuationToken)
     {
         Console.WriteLine($"August 2026 entity migration - {operation}");
         Console.WriteLine($"Environment:          {_environment}");
         Console.WriteLine($"Cosmos database:      {_source.DatabaseName}");
-        Console.WriteLine($"Cosmos collection:    {_source.DatabaseName}_Collections");
+        Console.WriteLine($"Cosmos collections:   {String.Join(", ", GetSourceCollections())}");
         Console.WriteLine($"Mongo database:       {_target.DatabaseName}");
         Console.WriteLine($"Mongo collections:    {String.Join(", ", DestinationCollections)}");
-        Console.WriteLine($"Batch size:           {request.BatchSize}");
-        Console.WriteLine($"Max pages:            {(request.MaxPages <= 0 ? "all" : request.MaxPages)}");
-        Console.WriteLine($"Continuation token:   {(String.IsNullOrWhiteSpace(request.ContinuationToken) ? "<none>" : "present")}");
+        Console.WriteLine($"Batch size:           {batchSize}");
+        Console.WriteLine($"Max pages/source:     {(maxPages <= 0 ? "all" : maxPages)}");
+        Console.WriteLine($"Continuation token:   {(String.IsNullOrWhiteSpace(continuationToken) ? "<none>" : "present")}");
         Console.WriteLine($"Excluded EntityTypes: {(ExcludedEntityTypes.Count == 0 ? "<none>" : String.Join(", ", ExcludedEntityTypes.OrderBy(item => item)))}");
+
+        if (!String.IsNullOrWhiteSpace(continuationToken))
+            Console.WriteLine("NOTE: the supplied continuation token is applied to each Cosmos source collection independently.");
     }
 
     private void PrintTarget()
@@ -164,6 +225,17 @@ internal sealed class EntityMigrationRunner
         Console.WriteLine($"Environment:          {_environment}");
         Console.WriteLine($"Mongo database:       {_target.DatabaseName}");
         Console.WriteLine($"Mongo collections:    {String.Join(", ", DestinationCollections)}");
+    }
+
+    private static FilterDefinition<BsonDocument> CreateMongoEntityTypeFilter(string entityType)
+    {
+        if (!String.IsNullOrWhiteSpace(entityType))
+            return Builders<BsonDocument>.Filter.Eq("EntityType", entityType);
+
+        return Builders<BsonDocument>.Filter.Or(
+            Builders<BsonDocument>.Filter.Exists("EntityType", false),
+            Builders<BsonDocument>.Filter.Eq("EntityType", BsonNull.Value),
+            Builders<BsonDocument>.Filter.Eq("EntityType", String.Empty));
     }
 
     private static void PrintMigrationResult(CosmosToMongoMigrationResult result)
