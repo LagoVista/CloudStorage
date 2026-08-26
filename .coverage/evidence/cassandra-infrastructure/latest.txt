@@ -1,5 +1,5 @@
 CloudStorage Cassandra Infrastructure Integration Test Evidence
-StartedUtc: 2026-08-26T22:58:28.8708246Z
+StartedUtc: 2026-08-26T23:01:25.0719820Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=CassandraInfrastructure
 Provider: Cassandra localhost:19042
@@ -7,17 +7,13 @@ Keyspace: nuviot_storage_tests
 
   Determining projects to restore...
   All projects are up-to-date for restore.
-D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\ConnectionSettings\ApplicationDataStorageSettings.cs(12,29): warning CS0108: 'ApplicationDataStorageSettings.SectionName' hides inherited member 'MongoDocumentStorageConnectionSettings.SectionName'. Use the new keyword if hiding was intended. [D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj]
-D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\ConnectionSettings\ScratchStorageSettings.cs(13,28): warning CS0108: 'ScratchStorageSettings.SectionName' hides inherited member 'MongoDocumentStorageConnectionSettings.SectionName'. Use the new keyword if hiding was intended. [D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj]
   LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
-D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\Cassandra\CassandraSessionFactoryIntegrationTests.cs(40,19): warning MSTEST0039: Use 'Assert.ThrowsExactly' instead of 'Assert.ThrowsException' (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0039) [D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj]
-D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\Cassandra\CassandraStorageSettingsTests.cs(53,10): warning MSTEST0044: 'DataTestMethod' is obsolete. Use 'TestMethod' instead. (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0044) [D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj]
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\cassandra-infrastructure\latest.trx
 
-Passed!  - Failed:     0, Passed:    10, Skipped:     0, Total:    10, Duration: 481 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    10, Skipped:     0, Total:    10, Duration: 452 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T22:58:33.3075701Z
+CompletedUtc: 2026-08-26T23:01:27.4867870Z
 ExitCode: 0
