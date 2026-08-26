@@ -4,6 +4,7 @@ using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace LagoVista.StorageProvider.Tests.DocumentStorage
@@ -71,14 +72,42 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
                 () => client.DeleteDocumentAsync<ContractDocumentEntity>(id, partitionKey));
         }
 
-        private static ContractDocumentEntity CreateEntity(string detail)
+        public static async Task QueryAndPagingAsync(IDocumentStorageClient client)
+        {
+            var alpha = CreateEntity("match", "Alpha");
+            var beta = CreateEntity("other", "Beta");
+            var charlie = CreateEntity("match", "Charlie");
+
+            await client.CreateDocumentAsync(alpha);
+            await client.CreateDocumentAsync(beta);
+            await client.CreateDocumentAsync(charlie);
+
+            var matching = (await client.QueryAsync<ContractDocumentEntity>(item => item.Detail == "match")).ToList();
+            Assert.AreEqual(2, matching.Count);
+            CollectionAssert.AreEquivalent(new[] { alpha.Id.Value, charlie.Id.Value }, matching.Select(item => item.Id.Value).ToArray());
+
+            var request = new ListRequest { PageIndex = 1, PageSize = 2 };
+            var page = await client.QueryAsync<ContractDocumentEntity>(item => item.Detail != "missing", item => item.Name, request);
+
+            Assert.IsNotNull(page);
+            Assert.IsNotNull(page.Model);
+            Assert.AreEqual(2, page.Model.Count());
+            CollectionAssert.AreEqual(new[] { "Alpha", "Beta" }, page.Model.Select(item => item.Name).ToArray());
+
+            request.PageIndex = 2;
+            var secondPage = await client.QueryAsync<ContractDocumentEntity>(item => item.Detail != "missing", item => item.Name, request);
+            Assert.AreEqual(1, secondPage.Model.Count());
+            Assert.AreEqual("Charlie", secondPage.Model.Single().Name);
+        }
+
+        private static ContractDocumentEntity CreateEntity(string detail, string name = null)
         {
             var id = Guid.NewGuid().ToString("N").ToUpperInvariant();
             return new ContractDocumentEntity
             {
                 Id = id,
                 Key = $"contract-{id.ToLowerInvariant()}",
-                Name = $"Contract {id}",
+                Name = name ?? $"Contract {id}",
                 EntityType = nameof(ContractDocumentEntity),
                 OwnerOrganization = EntityHeader.Create("ORG1", "Contract Org"),
                 Detail = detail
