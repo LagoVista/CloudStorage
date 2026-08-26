@@ -1,28 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TestRun id="13924a81-82e1-4214-a17e-10f09237c9c5" name="kevin@BEAST-LAPTOP 2026-08-26 16:32:59" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
-  <Times creation="2026-08-26T16:32:59.0183527-04:00" queuing="2026-08-26T16:32:59.0183532-04:00" start="2026-08-26T16:32:57.9870101-04:00" finish="2026-08-26T16:32:59.0240409-04:00" />
-  <TestSettings name="default" id="c1c4115f-f258-4375-a0ee-c44fdb69079b">
-    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_16_32_59" />
+<TestRun id="343bb8df-da52-4fcc-8868-28f6c296f1ba" name="kevin@BEAST-LAPTOP 2026-08-26 16:37:42" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T16:37:43.0031755-04:00" queuing="2026-08-26T16:37:43.0031757-04:00" start="2026-08-26T16:37:42.0499086-04:00" finish="2026-08-26T16:37:43.0074060-04:00" />
+  <TestSettings name="default" id="1c0c93a4-ceac-4622-a124-e260056f03cd">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_16_37_42" />
   </TestSettings>
   <Results>
-    <UnitTestResult executionId="16547ebd-2bd6-4ccd-8e51-b4d82bf19286" testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" testName="CrudLifecycle_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1914433" startTime="2026-08-26T16:32:58.6510713-04:00" endTime="2026-08-26T16:32:58.8445489-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="16547ebd-2bd6-4ccd-8e51-b4d82bf19286">
-      <Output>
-        <ErrorInfo>
-          <Message>Test method LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests.CrudLifecycle_SatisfiesSharedContract threw exception: &#xD;
-MongoDB.Driver.MongoWriteException: A write operation resulted in an error. WriteError: { Category : "Uncategorized", Code : 224, Message : "$expr is not allowed in the query predicate for an upsert" }. ---&gt; MongoDB.Driver.MongoBulkWriteException`1[LagoVista.StorageProvider.Tests.DocumentStorage.ContractDocumentEntity]: A bulk write operation resulted in one or more errors. WriteErrors: [ { Category : "Uncategorized", Code : 224, Message : "$expr is not allowed in the query predicate for an upsert" } ].</Message>
-          <StackTrace>   at MongoDB.Driver.MongoCollectionImpl`1.BulkWriteAsync(IClientSessionHandle session, IEnumerable`1 requests, BulkWriteOptions options, CancellationToken cancellationToken)&#xD;
-   at MongoDB.Driver.MongoCollectionImpl`1.BulkWriteAsync(IEnumerable`1 requests, BulkWriteOptions options, CancellationToken cancellationToken)&#xD;
-   at MongoDB.Driver.MongoCollectionBase`1.ReplaceOneAsync(FilterDefinition`1 filter, TDocument replacement, ReplaceOptions options, Func`3 bulkWriteAsync)&#xD;
---- End of inner exception stack trace ---&#xD;
-   at MongoDB.Driver.MongoCollectionBase`1.ReplaceOneAsync(FilterDefinition`1 filter, TDocument replacement, ReplaceOptions options, Func`3 bulkWriteAsync)&#xD;
-   at LagoVista.CloudStorage.StorageProviders.MongoDocumentStorageClient.UpsertDocumentAsync[TEntity](TEntity item, String eTag) in D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\StorageProviders\Mongo\MongoDocumentStorageClient.cs:line 184&#xD;
-   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.CrudLifecycleAsync(IDocumentStorageClient client, String partitionKey) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 40&#xD;
-</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="177e8ae5-47d6-430c-8beb-296e79356d6b" testId="7ab050b8-5a69-2260-e077-287155f4f99e" testName="DatabaseIdentity_MatchesConfiguredDatabase" computerName="BEAST-LAPTOP" duration="00:00:00.2120107" startTime="2026-08-26T16:32:58.4245772-04:00" endTime="2026-08-26T16:32:58.6480546-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="177e8ae5-47d6-430c-8beb-296e79356d6b" />
-    <UnitTestResult executionId="bd945b59-b504-4fa8-8493-039fe3b92f22" testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" testName="NotFoundSemantics_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0177792" startTime="2026-08-26T16:32:58.8446749-04:00" endTime="2026-08-26T16:32:58.8637409-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bd945b59-b504-4fa8-8493-039fe3b92f22" />
+    <UnitTestResult executionId="731a7789-6375-4c98-bdce-4a6605194ab5" testId="7ab050b8-5a69-2260-e077-287155f4f99e" testName="DatabaseIdentity_MatchesConfiguredDatabase" computerName="BEAST-LAPTOP" duration="00:00:00.1916284" startTime="2026-08-26T16:37:42.4492474-04:00" endTime="2026-08-26T16:37:42.6513131-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="731a7789-6375-4c98-bdce-4a6605194ab5" />
+    <UnitTestResult executionId="0f502168-5a97-4a96-9f7b-7a0966a236e7" testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" testName="NotFoundSemantics_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0080793" startTime="2026-08-26T16:37:42.8453810-04:00" endTime="2026-08-26T16:37:42.8545481-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0f502168-5a97-4a96-9f7b-7a0966a236e7" />
+    <UnitTestResult executionId="a9af9643-c713-4ce9-a558-346b22657f31" testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" testName="CrudLifecycle_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1892004" startTime="2026-08-26T16:37:42.6542979-04:00" endTime="2026-08-26T16:37:42.8451159-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a9af9643-c713-4ce9-a558-346b22657f31" />
   </Results>
   <TestDefinitions>
     <UnitTest name="NotFoundSemantics_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="a5f7bab7-f0a8-9b4c-0362-2588492d3849">
@@ -30,7 +15,7 @@ MongoDB.Driver.MongoWriteException: A write operation resulted in an error. Writ
         <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="DocumentStorageContract" />
       </TestCategory>
-      <Execution id="bd945b59-b504-4fa8-8493-039fe3b92f22" />
+      <Execution id="0f502168-5a97-4a96-9f7b-7a0966a236e7" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="NotFoundSemantics_SatisfySharedContract" />
     </UnitTest>
     <UnitTest name="DatabaseIdentity_MatchesConfiguredDatabase" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="7ab050b8-5a69-2260-e077-287155f4f99e">
@@ -38,7 +23,7 @@ MongoDB.Driver.MongoWriteException: A write operation resulted in an error. Writ
         <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="DocumentStorageContract" />
       </TestCategory>
-      <Execution id="177e8ae5-47d6-430c-8beb-296e79356d6b" />
+      <Execution id="731a7789-6375-4c98-bdce-4a6605194ab5" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="DatabaseIdentity_MatchesConfiguredDatabase" />
     </UnitTest>
     <UnitTest name="CrudLifecycle_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="7c53ee9f-6323-9c16-1f25-adeb7a495fd3">
@@ -46,21 +31,21 @@ MongoDB.Driver.MongoWriteException: A write operation resulted in an error. Writ
         <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="DocumentStorageContract" />
       </TestCategory>
-      <Execution id="16547ebd-2bd6-4ccd-8e51-b4d82bf19286" />
+      <Execution id="a9af9643-c713-4ce9-a558-346b22657f31" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="CrudLifecycle_SatisfiesSharedContract" />
     </UnitTest>
   </TestDefinitions>
   <TestEntries>
-    <TestEntry testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" executionId="16547ebd-2bd6-4ccd-8e51-b4d82bf19286" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="7ab050b8-5a69-2260-e077-287155f4f99e" executionId="177e8ae5-47d6-430c-8beb-296e79356d6b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" executionId="bd945b59-b504-4fa8-8493-039fe3b92f22" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7ab050b8-5a69-2260-e077-287155f4f99e" executionId="731a7789-6375-4c98-bdce-4a6605194ab5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" executionId="0f502168-5a97-4a96-9f7b-7a0966a236e7" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" executionId="a9af9643-c713-4ce9-a558-346b22657f31" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
   </TestEntries>
   <TestLists>
     <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
     <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
   </TestLists>
-  <ResultSummary outcome="Failed">
-    <Counters total="3" executed="3" passed="2" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  <ResultSummary outcome="Completed">
+    <Counters total="3" executed="3" passed="3" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
     <Output>
       <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
 Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
