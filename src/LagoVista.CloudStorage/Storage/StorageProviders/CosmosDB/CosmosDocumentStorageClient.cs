@@ -71,11 +71,28 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var response = await GetContainer<TEntity>().ReadItemAsync<TEntity>(
-                    id,
-                    String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
+                TEntity entity;
 
-                var entity = response.Resource;
+                if (String.IsNullOrWhiteSpace(partitionKey))
+                {
+                    var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id AND c.EntityType = @entityType")
+                        .WithParameter("@id", id)
+                        .WithParameter("@entityType", typeof(TEntity).Name);
+
+                    using var iterator = GetContainer<TEntity>().GetItemQueryIterator<TEntity>(query, requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+                    entity = null;
+                    if (iterator.HasMoreResults)
+                    {
+                        var response = await iterator.ReadNextAsync().ConfigureAwait(false);
+                        entity = response.Resource.FirstOrDefault();
+                    }
+                }
+                else
+                {
+                    var response = await GetContainer<TEntity>().ReadItemAsync<TEntity>(id, new PartitionKey(partitionKey)).ConfigureAwait(false);
+                    entity = response.Resource;
+                }
+
                 if (entity == null || !String.Equals(entity.EntityType, typeof(TEntity).Name, StringComparison.Ordinal))
                 {
                     if (throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
