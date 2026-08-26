@@ -1,6 +1,7 @@
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -30,12 +31,26 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
             Assert.IsNotNull(rows.FirstOrDefault());
         }
 
+        [TestMethod]
+        public async Task GetSessionAsync_MissingKeyspaceFails()
+        {
+            var settings = new TestCassandraStorageSettings($"missing_{Guid.NewGuid():N}");
+
+            using var factory = new CassandraSessionFactory(settings);
+            await Assert.ThrowsExceptionAsync<global::Cassandra.InvalidQueryException>(() => factory.GetSessionAsync());
+        }
+
         private sealed class TestCassandraStorageSettings : ICassandraStorageSettings
         {
+            public TestCassandraStorageSettings(string keyspace = "nuviot_storage_tests")
+            {
+                Keyspace = keyspace;
+            }
+
             public IReadOnlyList<string> ContactPoints { get; } = new[] { "127.0.0.1" };
             public string UserName => "cassandra";
             public string Password => "cassandra";
-            public string Keyspace => "nuviot_storage_tests";
+            public string Keyspace { get; }
             public int Port => 19042;
             public string LocalDataCenter => "datacenter1";
         }
