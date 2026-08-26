@@ -7,16 +7,16 @@ public static class MigrationConnections
 {
     public static string AzureTableConnectionString(string logicalConnection)
     {
-        var prefix = logicalConnection?.Trim().ToLowerInvariant() switch
-        {
-            "access-log" => "MIGRATION_AZURE_ACCESS_LOG",
-            "user-storage" => "MIGRATION_AZURE_USER_STORAGE",
-            _ => "MIGRATION_AZURE_TABLE"
-        };
+        var settings = String.Equals(EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase)
+            ? TestConnections.ProductionTableStorageDB
+            : TestConnections.DevTableStorageDB;
 
-        var accountId = Optional($"{prefix}_ACCOUNT_ID") ?? Required("MIGRATION_AZURE_TABLE_ACCOUNT_ID");
-        var accessKey = Optional($"{prefix}_ACCESS_KEY") ?? Required("MIGRATION_AZURE_TABLE_ACCESS_KEY");
-        return $"DefaultEndpointsProtocol=https;AccountName={accountId};AccountKey={accessKey}";
+        if (String.IsNullOrWhiteSpace(settings.AccountId))
+            throw new InvalidOperationException($"Missing {EnvironmentName.ToUpperInvariant()} table storage account id.");
+        if (String.IsNullOrWhiteSpace(settings.AccessKey))
+            throw new InvalidOperationException($"Missing {EnvironmentName.ToUpperInvariant()} table storage access key.");
+
+        return $"DefaultEndpointsProtocol=https;AccountName={settings.AccountId};AccountKey={settings.AccessKey}";
     }
 
     public static CassandraMigrationConnection Cassandra
@@ -41,13 +41,6 @@ public static class MigrationConnections
     }
 
     public static string EnvironmentName => String.Equals(Optional("MIGRATION_ENVIRONMENT"), "prod", StringComparison.OrdinalIgnoreCase) ? "prod" : "dev";
-
-    private static string Required(string name)
-    {
-        var value = Optional(name);
-        if (String.IsNullOrWhiteSpace(value)) throw new InvalidOperationException($"Missing required migration environment variable {name}.");
-        return value;
-    }
 
     private static string? Optional(string name)
     {
