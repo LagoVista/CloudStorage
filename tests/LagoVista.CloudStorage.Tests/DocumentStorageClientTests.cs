@@ -101,7 +101,7 @@ namespace LagoVista.CloudStorage.Tests
         private abstract class FakeClient : IDocumentStorageClient
         {
             public Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
-            public Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
+            public Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item, string eTag = null) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<TEntity> GetDocumentAsync<TEntity>(string id, string partitionKey, bool throwOnNotFound = true) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
