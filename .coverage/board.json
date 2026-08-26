@@ -16,6 +16,10 @@
     "cards/mongo-scratch-store.integration.json",
     "cards/cassandra-session-factory.integration.json",
     "cards/cassandra-activity-record-store.integration.json",
-    "cards/cassandra-operational-data-store.integration.json"
+    "cards/cassandra-operational-data-store.integration.json",
+    "cards/cache-provider-redis.integration.json",
+    "cards/azure-table-storage.legacy.integration.json",
+    "cards/cloud-file-storage.legacy.integration.json",
+    "cards/blob-table-storage-repo-base.legacy.integration.json"
   ]
 }

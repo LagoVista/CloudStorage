@@ -1,0 +1,16 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "azure-table-storage-legacy-integration",
+  "title": "Legacy Azure Table Storage Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "azure-table",
+  "summary": "Cover the remaining legacy Azure Table boundary classes sufficiently to protect migration and archive behavior.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/AzureTable/TableStorageBase.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/AzureTable/FKeyWriter.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/AzureTable/NodeLocatorReader.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/AzureTable/NodeLocatorWriter.cs"
+  ],
+  "data": {"legacy":true,"testProject":"tests/LagoVista.StorageProvider.Tests"}
+}

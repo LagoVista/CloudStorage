@@ -1,0 +1,11 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cache-provider-redis-integration",
+  "title": "CacheProvider Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "redis",
+  "summary": "Verify CacheProvider behavior against a Redis-compatible server.",
+  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/Cache/CacheProvider.cs"],
+  "data": {"component":"CacheProvider","testProject":"tests/LagoVista.StorageProvider.Tests"}
+}
