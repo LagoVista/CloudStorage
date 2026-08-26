@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.StorageProvider.Tests.DocumentStorage
 {
-    internal static class DocumentStorageClientContract
+    internal static partial class DocumentStorageClientContract
     {
         public static Task DatabaseIdentityAsync(IDocumentStorageClient client, string expectedDatabaseName)
         {
