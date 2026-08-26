@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
@@ -216,7 +217,16 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             var filter = CreatePagedQueryFilter(query, listRequest);
             var find = GetCollection<TEntity>().Find(filter);
-            var sorted = descending ? find.SortByDescending(sort) : find.SortBy(sort);
+            var parameter = sort.Parameters[0];
+            var objectSort = Expression.Lambda<Func<TEntity, object>>(
+                Expression.Convert(sort.Body, typeof(object)),
+                parameter);
+
+            var sortDefinition = descending
+                ? Builders<TEntity>.Sort.Descending(objectSort)
+                : Builders<TEntity>.Sort.Ascending(objectSort);
+
+            var sorted = find.Sort(sortDefinition);
             var items = await sorted
                 .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
                 .Limit(listRequest.PageSize)
@@ -377,7 +387,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             var clauses = new BsonArray
             {
                 new BsonDocument("EntityType", request.GetRequired<string>("entityType")),
-                new BsonDocument("$or", new BsonArray { new BsonDocument("IsPublic", true), new BsonDocument("OwnerOrganization.Id", request.GetRequired<string>("orgId") })
+                new BsonDocument("$or", new BsonArray { new BsonDocument("IsPublic", true), new BsonDocument("OwnerOrganization.Id", request.GetRequired<string>("orgId") ) })
             };
             if (!request.GetRequired<bool>("showDeleted")) clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDeleted", new BsonDocument("$exists", false)), new BsonDocument("IsDeleted", false) }));
             if (!request.GetRequired<bool>("showDrafts")) clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDraft", new BsonDocument("$exists", false)), new BsonDocument("IsDraft", false) }));
