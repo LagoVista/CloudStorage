@@ -9,6 +9,10 @@
   "source": [
     "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.cs"
   ],
+  "evidence": [
+    ".coverage/evidence/mongo/latest.txt",
+    ".coverage/evidence/mongo/latest.trx"
+  ],
   "data": {
     "component": "MongoDocumentStorageClient",
     "coverage": ["create-read-update-delete", "query", "patch", "optimistic-concurrency", "error-behavior"],
