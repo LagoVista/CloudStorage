@@ -6,48 +6,69 @@ var maxPages = args.Length > 2 && Int32.TryParse(args[2], out var parsedMaxPages
 var batchSize = args.Length > 3 && Int32.TryParse(args[3], out var parsedBatchSize) ? parsedBatchSize : 200;
 var continuationToken = args.Length > 4 ? args[4] : null;
 
-using var shutdownCts = new CancellationTokenSource();
+var shutdownCts = new CancellationTokenSource();
 
-Console.CancelKeyPress += (_, e) =>
+void RequestShutdown()
+{
+    try
+    {
+        if (!shutdownCts.IsCancellationRequested)
+            shutdownCts.Cancel();
+    }
+    catch (ObjectDisposedException)
+    {
+        // Process shutdown may race with normal cleanup.
+    }
+}
+
+ConsoleCancelEventHandler cancelHandler = (_, e) =>
 {
     Console.WriteLine("Ctrl+C received, shutting down...");
     e.Cancel = true;
-    shutdownCts.Cancel();
+    RequestShutdown();
 };
 
-AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+EventHandler processExitHandler = (_, _) => RequestShutdown();
+
+Console.CancelKeyPress += cancelHandler;
+AppDomain.CurrentDomain.ProcessExit += processExitHandler;
+
+try
 {
-    if (!shutdownCts.IsCancellationRequested)
-        shutdownCts.Cancel();
-};
+    var runner = new EntityMigrationRunner(environment);
 
-var runner = new EntityMigrationRunner(environment);
+    switch (mode)
+    {
+        case "dry-run":
+        case "migrate-entities-dryrun":
+            await runner.DryRunAsync(batchSize, maxPages, continuationToken, shutdownCts.Token);
+            break;
 
-switch (mode)
+        case "migrate":
+        case "migrate-entities":
+            await runner.MigrateAsync(batchSize, maxPages, continuationToken, shutdownCts.Token);
+            break;
+
+        case "validate":
+        case "validate-entities":
+            await runner.ValidateAsync(batchSize, shutdownCts.Token);
+            break;
+
+        case "reset":
+        case "reset-mongo-entities":
+            await runner.ResetMongoAsync(shutdownCts.Token);
+            break;
+
+        default:
+            Console.WriteLine($"Unknown mode '{mode}'.");
+            Console.WriteLine("Usage: EntityMigration202608 <dry-run|migrate|validate|reset> [prod|dev] [maxPages] [batchSize] [continuationToken]");
+            Environment.ExitCode = 1;
+            break;
+    }
+}
+finally
 {
-    case "dry-run":
-    case "migrate-entities-dryrun":
-        await runner.DryRunAsync(batchSize, maxPages, continuationToken, shutdownCts.Token);
-        break;
-
-    case "migrate":
-    case "migrate-entities":
-        await runner.MigrateAsync(batchSize, maxPages, continuationToken, shutdownCts.Token);
-        break;
-
-    case "validate":
-    case "validate-entities":
-        await runner.ValidateAsync(batchSize, shutdownCts.Token);
-        break;
-
-    case "reset":
-    case "reset-mongo-entities":
-        await runner.ResetMongoAsync(shutdownCts.Token);
-        break;
-
-    default:
-        Console.WriteLine($"Unknown mode '{mode}'.");
-        Console.WriteLine("Usage: EntityMigration202608 <dry-run|migrate|validate|reset> [prod|dev] [maxPages] [batchSize] [continuationToken]");
-        Environment.ExitCode = 1;
-        break;
+    Console.CancelKeyPress -= cancelHandler;
+    AppDomain.CurrentDomain.ProcessExit -= processExitHandler;
+    shutdownCts.Dispose();
 }
