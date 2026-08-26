@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $composeFile = Join-Path $PSScriptRoot "docker-compose.cassandra.yml"
 $containerName = "nuviot-cloudstorage-cassandra-tests"
+$keyspace = "nuviot_storage_tests"
 
 Write-Host "Starting local Cassandra integration-test container..."
 docker info | Out-Null
@@ -31,6 +32,9 @@ for ($attempt = 1; $attempt -le 30; $attempt++) {
     docker exec $containerName cqlsh -u cassandra -p cassandra -e "SELECT release_version FROM system.local;" *> $null
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Cassandra integration-test container is ready for authenticated CQL on localhost:19042."
+        docker exec $containerName cqlsh -u cassandra -p cassandra -e "CREATE KEYSPACE IF NOT EXISTS $keyspace WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};" *> $null
+        if ($LASTEXITCODE -ne 0) { throw "Unable to create Cassandra integration-test keyspace '$keyspace'." }
+        Write-Host "Cassandra integration-test keyspace '$keyspace' is ready."
         exit 0
     }
 
