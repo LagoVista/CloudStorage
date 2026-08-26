@@ -59,13 +59,22 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
         }
 
-        public async Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item)
+        public async Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item, string eTag = null)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
-            await GetCollection<TEntity>()
-                .ReplaceOneAsync(entity => entity.Id == item.Id, item, new ReplaceOptions { IsUpsert = true })
+
+            var filter = Builders<TEntity>.Filter.Where(entity => entity.Id == item.Id);
+            if (!String.IsNullOrWhiteSpace(eTag))
+                filter &= Builders<TEntity>.Filter.Eq("_etag", eTag);
+
+            var result = await GetCollection<TEntity>()
+                .ReplaceOneAsync(filter, item, new ReplaceOptions { IsUpsert = String.IsNullOrWhiteSpace(eTag) })
                 .ConfigureAwait(false);
+
+            if (!String.IsNullOrWhiteSpace(eTag) && result.MatchedCount == 0)
+                throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
+
             return new OperationResponse<TEntity>(item);
         }
 
