@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "mongo-scratch-store-integration",
   "title": "MongoScratchStore Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "scratch-data",
   "summary": "Exercise the Scratch Data contract and Mongo implementation against the local Mongo container, including upsert/query behavior and provider-owned TTL/index semantics.",
