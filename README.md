@@ -53,7 +53,35 @@ Operational Data:
 - derives its persisted column shape from the fields on the record class
 - is expected to use Cassandra as its primary backend
 
-`IOperationalDataRecord` is the planned base contract for this class and will be finalized with the implementation.
+The planned `IOperationalDataRecord` base contract is intentionally small. It establishes record identity, organization scope, and lifecycle metadata:
+
+- `Id`
+- `OrganizationId`
+- `CreationDate`
+- `LastUpdatedDate`
+
+Additional operational fields belong on the concrete record type rather than the base contract.
+
+#### History vs. Operational Data
+
+| Behavior | History Storage | Operational Data |
+| --- | --- | --- |
+| Record contract | `IActivityRecord` | `IOperationalDataRecord` |
+| Store contract | `IActivityRecordStore<TRecord>` | `IOperationalDataStore<TRecord>` *(planned)* |
+| Primary backend | Cassandra | Cassandra |
+| Physical model | One table per record type | One table per record type |
+| Schema source | Persisted record fields | Persisted record fields |
+| Storage definition | `StorageDefinition<TRecord>` | `StorageDefinition<TRecord>` |
+| Create | Insert / append | Create / upsert |
+| Read | Query | Get + query |
+| Update | No | Yes |
+| Delete | No | Yes |
+| Time buckets | Common / supported | Usually unnecessary |
+| Retention / TTL | Optional | Optional |
+| Time-oriented semantics | Yes | No; timestamps describe record lifecycle |
+| Typical Cassandra key shape | `((partition fields), CreationDate, Id)` | `((partition fields), Id)` |
+
+The two storage classes should share Cassandra schema/type/index mapping infrastructure where practical. History-specific time and bucketing behavior should remain in the History store, while Operational Data adds deterministic key-based get, update/upsert, and delete semantics.
 
 ### Relational Storage
 
@@ -153,7 +181,9 @@ This inventory reflects the `refactor/cloudstorage-project-layout` branch and gr
 
 ### Operational Data
 
-No canonical Operational Data store exists yet. Its contract will be finalized when the Cassandra-backed full-CRUD implementation is designed.
+No canonical Operational Data store exists yet. The planned Cassandra-backed implementation will use `IOperationalDataRecord` with `Id`, `OrganizationId`, `CreationDate`, and `LastUpdatedDate` as its minimal base fields, plus full CRUD and declared query/index behavior.
+
+Operational Data should reuse the existing provider-neutral `StorageDefinition<TRecord>` and shared Cassandra mapping/schema infrastructure rather than duplicate the History Storage implementation.
 
 ### Relational Storage
 
