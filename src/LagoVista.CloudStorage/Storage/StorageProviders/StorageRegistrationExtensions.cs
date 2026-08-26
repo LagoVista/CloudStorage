@@ -15,6 +15,21 @@ namespace LagoVista.CloudStorage.Storage
         public StorageDefinition<TRecord> Definition { get; }
     }
 
+    public sealed class OperationalDataStoreOptions<TRecord>
+        where TRecord : class, IOperationalDataRecord
+    {
+        internal OperationalDataStoreOptions(Action<StorageDefinition<TRecord>> configure = null)
+        {
+            Definition = new StorageDefinition<TRecord>()
+                .KeyBy(record => record.Id)
+                .PartitionBy(record => record.OrganizationId);
+
+            configure?.Invoke(Definition);
+        }
+
+        public StorageDefinition<TRecord> Definition { get; }
+    }
+
     public sealed class ScratchStoreOptions<TRecord>
         where TRecord : class, IScratchDataRecord
     {
@@ -46,9 +61,8 @@ namespace LagoVista.CloudStorage.Storage
     }
 
     /// <summary>
-    /// DI conventions for record-shaped storage capabilities. Mutable application and
-    /// scratch stores are registered once. Per-record configuration is optional and
-    /// only declares additional query/index/retention behavior; identity and scope are conventions.
+    /// DI conventions for record-shaped storage capabilities. Per-record configuration
+    /// declares additional query/index/retention behavior while identity and scope remain conventions.
     /// </summary>
     public static class StorageRegistrationExtensions
     {
@@ -68,6 +82,19 @@ namespace LagoVista.CloudStorage.Storage
 
             services.AddSingleton(new ActivityRecordStoreOptions<TRecord>(definition));
             services.AddScoped<IActivityRecordStore<TRecord>, TStore>();
+            return services;
+        }
+
+        public static IServiceCollection AddOperationalDataStore<TRecord, TStore>(
+            this IServiceCollection services,
+            Action<StorageDefinition<TRecord>> configure = null)
+            where TRecord : class, IOperationalDataRecord
+            where TStore : class, IOperationalDataStore<TRecord>
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            services.AddSingleton(new OperationalDataStoreOptions<TRecord>(configure));
+            services.AddScoped<IOperationalDataStore<TRecord>, TStore>();
             return services;
         }
 
