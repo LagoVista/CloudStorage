@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Coverage Card",
+  "description": "A generic unit of coverage tracked on a three-state board.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "status"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["backlog", "in-process", "completed"] },
+    "category": { "type": "string" },
+    "area": { "type": "string" },
+    "summary": { "type": "string" },
+    "source": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "references": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "data": {
+      "type": "object",
+      "description": "Effort-specific metadata intentionally left unconstrained."
+    }
+  }
+}
