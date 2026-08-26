@@ -1,6 +1,7 @@
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.CloudStorage.Utils;
 using LagoVista.Core;
 using LagoVista.Core.Models;
 
@@ -157,70 +158,47 @@ internal sealed class MigrationProgressStore
         public object GetService(Type serviceType) => null;
     }
 
+    /// <summary>
+    /// The migration tracker uses the same Mongo server connection as entity storage.
+    /// Application Data differs only by database name.
+    /// </summary>
     private sealed class MigrationApplicationDataSettings : IApplicationDataStorageSettings
     {
-        private MigrationApplicationDataSettings()
+        private readonly MongoDocumentStorageConnectionSettings _mongo;
+
+        private MigrationApplicationDataSettings(MongoDocumentStorageConnectionSettings mongo, string databaseName)
         {
+            _mongo = mongo ?? throw new ArgumentNullException(nameof(mongo));
+            DatabaseName = databaseName;
         }
 
-        public IReadOnlyList<string> Hosts { get; private set; }
-        public int Port { get; private set; }
-        public string UserName { get; private set; }
-        public string Password { get; private set; }
-        public string AuthenticationDatabase { get; private set; }
-        public string DatabaseName { get; private set; }
-        public string ReplicaSet { get; private set; }
-        public bool UseTls { get; private set; }
+        public IReadOnlyList<string> Hosts => _mongo.Hosts;
+        public int Port => _mongo.Port;
+        public string UserName => _mongo.UserName;
+        public string Password => _mongo.Password;
+        public string AuthenticationDatabase => _mongo.AuthenticationDatabase;
+        public string DatabaseName { get; }
+        public string ReplicaSet => _mongo.ReplicaSet;
+        public bool UseTls => _mongo.UseTls;
 
         public static MigrationApplicationDataSettings FromEnvironment(string environment)
         {
             var prefix = String.Equals(environment, "prod", StringComparison.OrdinalIgnoreCase) ? "PROD" : "DEV";
-            var mongoFallback = prefix == "PROD"
-                ? LagoVista.CloudStorage.Utils.TestConnections.ProductionMongoDocumentStorage
-                : LagoVista.CloudStorage.Utils.TestConnections.DevMongoDocumentStorage;
+            var mongo = prefix == "PROD"
+                ? TestConnections.ProductionMongoDocumentStorage
+                : TestConnections.DevMongoDocumentStorage;
 
-            var hosts = Read(prefix, "Hosts");
-            var databaseName = Read(prefix, "DatabaseName");
+            var databaseName = Environment.GetEnvironmentVariable($"{prefix}_ApplicationDataStorage:DatabaseName")
+                ?? Environment.GetEnvironmentVariable($"{prefix}_ApplicationDataStorage__DatabaseName")
+                ?? Environment.GetEnvironmentVariable("ApplicationDataStorage:DatabaseName")
+                ?? Environment.GetEnvironmentVariable("ApplicationDataStorage__DatabaseName");
+
             if (String.IsNullOrWhiteSpace(databaseName))
                 throw new InvalidOperationException($"Missing {prefix}_ApplicationDataStorage:DatabaseName environment variable.");
 
-            return new MigrationApplicationDataSettings
-            {
-                Hosts = String.IsNullOrWhiteSpace(hosts)
-                    ? mongoFallback.Hosts
-                    : hosts.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(value => value.Trim()).ToArray(),
-                Port = Int32.TryParse(Read(prefix, "Port"), out var port) ? port : mongoFallback.Port,
-                UserName = Read(prefix, "UserName") ?? mongoFallback.UserName,
-                Password = Read(prefix, "Password") ?? mongoFallback.Password,
-                AuthenticationDatabase = Read(prefix, "AuthenticationDatabase") ?? mongoFallback.AuthenticationDatabase ?? "admin",
-                DatabaseName = databaseName,
-                ReplicaSet = Read(prefix, "ReplicaSet") ?? mongoFallback.ReplicaSet,
-                UseTls = Boolean.TryParse(Read(prefix, "UseTls"), out var useTls) ? useTls : mongoFallback.UseTls
-            };
+            return new MigrationApplicationDataSettings(mongo, databaseName);
         }
 
-        public string BuildConnectionString()
-        {
-            var settings = new MongoDocumentStorageConnectionSettings
-            {
-                Hosts = Hosts,
-                Port = Port,
-                UserName = UserName,
-                Password = Password,
-                AuthenticationDatabase = AuthenticationDatabase,
-                DatabaseName = DatabaseName,
-                ReplicaSet = ReplicaSet,
-                UseTls = UseTls
-            };
-            return settings.BuildConnectionString();
-        }
-
-        private static string Read(string prefix, string name)
-        {
-            return Environment.GetEnvironmentVariable($"{prefix}_ApplicationDataStorage:{name}")
-                ?? Environment.GetEnvironmentVariable($"{prefix}_ApplicationDataStorage__{name}")
-                ?? Environment.GetEnvironmentVariable($"ApplicationDataStorage:{name}")
-                ?? Environment.GetEnvironmentVariable($"ApplicationDataStorage__{name}");
-        }
+        public string BuildConnectionString() => _mongo.BuildConnectionString();
     }
 }
