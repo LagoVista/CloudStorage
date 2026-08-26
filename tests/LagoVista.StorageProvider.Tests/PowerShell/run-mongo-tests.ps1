@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 & (Join-Path $PSScriptRoot "start-mongo-tests.ps1")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$project = Join-Path $PSScriptRoot "LagoVista.CloudStorage.IntegrationTests.csproj"
+$project = Resolve-Path (Join-Path $PSScriptRoot "..\LagoVista.StorageProvider.Tests.csproj")
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..\..")
 $evidenceDir = Join-Path $repoRoot ".coverage\evidence\mongo"
 $logPath = Join-Path $evidenceDir "latest.txt"
@@ -16,14 +16,13 @@ Write-Host "Running Mongo integration tests against local Docker Mongo..."
 Write-Host "Evidence: $evidenceDir"
 
 $startedUtc = [DateTime]::UtcNow.ToString("o")
-$header = @(
+@(
     "CloudStorage Mongo Integration Test Evidence"
     "StartedUtc: $startedUtc"
     "Project: $project"
     "Filter: TestCategory=Mongo"
     ""
-)
-$header | Set-Content -Path $logPath
+) | Set-Content -Path $logPath
 
 dotnet test $project `
     --filter "TestCategory=Mongo" `
