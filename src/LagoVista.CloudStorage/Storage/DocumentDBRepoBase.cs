@@ -1032,47 +1032,18 @@ namespace LagoVista.CloudStorage.DocumentDB
             try
             {
                 var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+                using var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
-                var items = new List<TEntity>();
-                var requestCharge = 0.0;
+                var listResponse = await _storageClient.QueryAsync(query, sort, listRequest, true).ConfigureAwait(false);
+                var count = listResponse?.Model?.Count() ?? 0;
 
-                var container = await GetContainerAsync();
-                var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                        .Where(query)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (!itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
-                        .OrderByDescending(sort)
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
+                _logger.AddCustomEvent(LogLevel.Message,
+                    $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryDescendingAsync]",
+                    $"Descending paged query returned {count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms",
+                    typeof(TEntity).Name.ToKVP("recordType"),
+                    count.ToString().ToKVP("recordCount"),
+                    sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
-                var page = 1;
-
-                using (var iterator = linqQuery.ToFeedIterator<TEntity>())
-                {
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryDescendingAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
-
-                    while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryDescendingAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
-                }
-
-                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryDescendingAsync] Query {page++} Query Document {linqQuery}; Timing {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {requestCharge}");
-
-                var listResponse = ListResponse<TEntity>.Create(listRequest, items);
-
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-                _logger.Trace(listRequest.ToString());
-                _logger.Trace(listResponse.ToString());
                 return listResponse;
             }
             catch (Exception ex)
