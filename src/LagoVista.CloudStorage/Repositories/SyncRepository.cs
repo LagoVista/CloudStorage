@@ -1,29 +1,24 @@
-﻿using LagoVista.CloudStorage.Interfaces;
+﻿using LagoVista.CloudStorage.Exceptions;
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.Core;
+using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Cosmos.Serialization.HybridRow;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Pipelines.Sockets.Unofficial.Arenas;
 using System;
-using System.ClientModel;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace LagoVista.CloudStorage.Storage
 {
@@ -35,8 +30,6 @@ namespace LagoVista.CloudStorage.Storage
     /// </summary>
     public class SyncRepository : ISyncRepository
     {
-        private readonly CosmosClient _client;
-        private readonly Container _container;
         private readonly ISyncConnectionSettings _options;
         private readonly ILogger _logger;
         private readonly IFkIndexTableWriterBatched _fkWriter;
@@ -68,8 +61,6 @@ namespace LagoVista.CloudStorage.Storage
             _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
             _entityListCacheInvalidator = entityListCacheInvalidator ?? throw new ArgumentNullException(nameof(entityListCacheInvalidator));
             _dbName = _options.SyncConnectionSettings.ResourceName;
-            _client = cosmosClientProvider.GetClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey);
-            _container = _client.GetContainer(_options.SyncConnectionSettings.ResourceName, $"{_options.SyncConnectionSettings.ResourceName}_Collections");
         }
 
         public static string NormalizeAlphaNumericKey(string input)
@@ -205,80 +196,23 @@ namespace LagoVista.CloudStorage.Storage
         }
         public async Task<string> GetOwnedJsonByIdAsync(string id, string ownerOrganizationId, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+            if (String.IsNullOrWhiteSpace(ownerOrganizationId)) throw new ArgumentException("ownerOrganizationId is required.", nameof(ownerOrganizationId));
 
-            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
-            const string sql = "SELECT * FROM c WHERE c.id = @id and c.OwnerOrganization.Id = @ownerOrganizationId";
-            var qd = new QueryDefinition(sql)
-                .WithParameter("@id", id.Trim())
-                .WithParameter("@ownerOrganizationId", ownerOrganizationId);
+            var doc = await _storageClient.GetOwnedDocumentProjectionAsync<JObject>(id.Trim(), ownerOrganizationId.Trim(), throwOnNotFound: false, cancellationToken: ct).ConfigureAwait(false);
 
-            var requestOptions = new QueryRequestOptions
-            {
-                MaxItemCount = 1
-            };
-
-            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
-            {
-                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
-            }
-
-
-            using var iterator = _container.GetItemQueryIterator<JObject>(
-                qd,
-                requestOptions: requestOptions);
-
-            while (iterator.HasMoreResults)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                var doc = page.Resource?.FirstOrDefault();
-                if (doc == null) continue;
-
-                // Return raw JSON for UI side-by-side display.
-                return doc.ToString(Formatting.Indented);
-            }
-
-            return null;
+            return doc?.ToString(Formatting.Indented);
         }
 
         public async Task<string> GetJsonByEntityTypeAndKeyAsync(string key, string entityType, string ownerOrganizationId, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("key is required.", nameof(key));
+            if (String.IsNullOrWhiteSpace(key)) throw new ArgumentException("key is required.", nameof(key));
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(ownerOrganizationId)) throw new ArgumentException("ownerOrganizationId is required.", nameof(ownerOrganizationId));
 
-            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
-            const string sql = "SELECT * FROM c WHERE c.id = @id and c.EntityType = @entityType and c.OwnerOrganization.Id = @ownerOrganizationId";
-            var qd = new QueryDefinition(sql)
-                .WithParameter("@key", key.Trim())
-                .WithParameter("@entityType", entityType.Trim())
-                .WithParameter("@ownerOrganizationId", ownerOrganizationId);
+            var doc = await _storageClient.GetDocumentProjectionByKeyAsync<JObject>(entityType.Trim(), key.Trim(), ownerOrganizationId.Trim(), throwOnNotFound: false, cancellationToken: ct).ConfigureAwait(false);
 
-            var requestOptions = new QueryRequestOptions
-            {
-                MaxItemCount = 1
-            };
-
-
-            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
-            {
-                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
-            }
-
-
-            using var iterator = _container.GetItemQueryIterator<JObject>(
-                qd,
-                requestOptions: requestOptions);
-
-            while (iterator.HasMoreResults)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                var doc = page.Resource?.FirstOrDefault();
-                if (doc == null) continue;
-
-                // Return raw JSON for UI side-by-side display.
-                return doc.ToString(Formatting.Indented);
-            }
-
-            return null;
+            return doc?.ToString(Formatting.Indented);
         }
 
         public async Task<SyncUpsertResult> UpsertJsonAsync(JObject doc, string expectedETag = null, CancellationToken ct = default)
@@ -583,42 +517,66 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<InvokeResult<EhResolvedEntity>> ResolveEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false)
         {
-            var json = await GetJsonByIdAsync(id);
+            var json = await GetJsonByIdAsync(id, ct);
+            if (String.IsNullOrWhiteSpace(json))
+                return InvokeResult<EhResolvedEntity>.FromError($"Could not load entity for id {id}");
+
             var entity = JsonConvert.DeserializeObject<EntityBase>(json);
             var token = JToken.Parse(json);
+
+            var wasUpdated = false;
+
             if (entity.EntityType == "AppUser")
             {
                 var userName = token["UserName"]?.Value<string>();
+
                 if (userName == null)
                 {
                     userName = token["Email"]?.Value<string>();
                     token["UserName"] = userName;
+                    wasUpdated = true;
                 }
-                token["Key"] = NormalizeAlphaNumericKey(userName);
+
+                var key = NormalizeAlphaNumericKey(userName);
+                if (!String.Equals(token["Key"]?.Value<string>(), key, StringComparison.Ordinal))
+                {
+                    token["Key"] = key;
+                    wasUpdated = true;
+                }
             }
 
             if (entity.EntityType == "Organization")
             {
-                token["Key"] = token["Namespace"]?.Value<string>();
+                var key = token["Namespace"]?.Value<string>();
+
+                if (!String.Equals(token["Key"]?.Value<string>(), key, StringComparison.Ordinal))
+                {
+                    token["Key"] = key;
+                    wasUpdated = true;
+                }
             }
 
             var nodes = EntityHeaderJson.FindEntityHeaderNodes(token);
-            var wasUpdated = false;
+
             foreach (var node in nodes)
             {
                 if (String.IsNullOrEmpty(node.Key) || String.IsNullOrEmpty(node.EntityType) &&
                     (node.EntityType != "AppUser" && !node.Path.EndsWith("OwnerOrganization") && !node.Path.EndsWith("CreatedBy") && !node.Path.EndsWith("LastUpdatedBy") && String.IsNullOrEmpty(node.OwnerOrgId)))
                 {
                     wasUpdated = true;
-                    var eh = await GetEntityHeaderForRecordAsync(node.Id);
+
+                    var eh = await GetEntityHeaderForRecordAsync(node.Id, ct);
+
                     if (eh != null)
                     {
                         if (eh.Id == NOT_FOUND_ID)
                         {
-                            var childNode = await _nodeLocator.TryGetAsync(eh.Id, ct);
+                            var childNode = await _nodeLocator.TryGetAsync(node.Id, ct);
+
                             if (childNode == null)
                             {
                                 EntityHeaderJson.SetResolved(node.Object, false);
+
                                 if (!dryRun)
                                 {
                                     if (String.IsNullOrEmpty(node.Key))
@@ -626,16 +584,19 @@ namespace LagoVista.CloudStorage.Storage
                                     else
                                         await _fkWriter.AddOrphanedEHAsync(entity, node.NormalizedPath, EntityHeader.Create(node.Id, node.Key, node.Text));
                                 }
+
                                 _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"Unable to resolve EntityHeader for id {node.Id} referenced by entity {entity.Id}");
                             }
                             else
                             {
-                                eh = await GetEntityHeaderForRecordAsync(childNode.RootId);
+                                eh = await GetEntityHeaderForRecordAsync(childNode.RootId, ct);
                                 EntityHeaderJson.Update(node.Object, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
                             }
                         }
                         else
+                        {
                             EntityHeaderJson.Update(node.Object, eh.Key, eh.Text, eh.OwnerOrgId, eh.IsPublic, eh.EntityType);
+                        }
                     }
                 }
             }
@@ -643,37 +604,25 @@ namespace LagoVista.CloudStorage.Storage
             _logger.Trace($"{this.Tag()} - Resolved {nodes.Count} entity header nodes for entity {entity.Id} of type {entity.EntityType}. Updated: {wasUpdated}");
 
             var fkNodes = ForeignKeyEdgeFactory.FromEntityHeaderNodes(entity, nodes);
+
             if (!dryRun)
                 await _fkWriter.UpsertAllAsync(fkNodes);
 
             token["Sha256Hex"] = EntityHasher.CalculateHash(token.DeepClone());
 
             if (wasUpdated && !dryRun)
-            {
-                await UpsertJsonAsync(token.ToString());
+                await UpsertJsonAsync(token.ToString(Formatting.None), ct: ct);
 
-                var result = new EhResolvedEntity()
-                {
-                    UpdatedEntity = wasUpdated,
-                    Entity = entity,
-                    EntityHeaderNodes = nodes,
-                    ForeignKeyEdges = fkNodes.ToList(),
-                    NotFoundEntityHeaderNodes = nodes.Where(n => String.IsNullOrEmpty(n.Key) || String.IsNullOrEmpty(n.EntityType)).ToList()
-                };
-                return InvokeResult<EhResolvedEntity>.Create(result);
-            }
-            else
+            var result = new EhResolvedEntity()
             {
-                var result = new EhResolvedEntity()
-                {
-                    UpdatedEntity = wasUpdated,
-                    Entity = entity,
-                    EntityHeaderNodes = nodes,
-                    ForeignKeyEdges = fkNodes.ToList(),
-                    NotFoundEntityHeaderNodes = nodes.Where(n => String.IsNullOrEmpty(n.Key) || String.IsNullOrEmpty(n.EntityType)).ToList()
-                };
-                return InvokeResult<EhResolvedEntity>.Create(result);
-            }
+                UpdatedEntity = wasUpdated,
+                Entity = entity,
+                EntityHeaderNodes = nodes,
+                ForeignKeyEdges = fkNodes.ToList(),
+                NotFoundEntityHeaderNodes = nodes.Where(n => String.IsNullOrEmpty(n.Key) || String.IsNullOrEmpty(n.EntityType)).ToList()
+            };
+
+            return InvokeResult<EhResolvedEntity>.Create(result);
         }
 
         public async Task<List<NodeLocatorEntry>> WriteNodesAsync(string id, CancellationToken ct = default)
@@ -758,21 +707,23 @@ namespace LagoVista.CloudStorage.Storage
             var result = new EntityDeleteResult();
 
             var fullSw = Stopwatch.StartNew();
+
             result.ContinuationToken = await ScanContainerAsync(async (rec, ct) =>
             {
                 if (dryRun)
                 {
                     _logger.Trace($"{result.DeletedCount} - Would Delete {rec.Id} - {rec.EntityType}");
-                }
-                else
-                {
-                    var sw = Stopwatch.StartNew();
-                    var deleteResult = await _container.DeleteItemAsync<EntityBase>(rec.Id, PartitionKey.None, cancellationToken: ct);
-                    _logger.Trace($"{result.DeletedCount:0000} - Did Delete {rec.Id} - {rec.EntityType} in {sw.Elapsed.TotalMilliseconds}ms");
-                    result.DeletedCount++;
+                    return;
                 }
 
-            }, continuationToken, entityType, pageSize, maxPagesThisRun);
+                var sw = Stopwatch.StartNew();
+
+                await _storageClient.DeleteDocumentAsync(rec.EntityType, rec.Id, cancellationToken: ct).ConfigureAwait(false);
+
+                _logger.Trace($"{result.DeletedCount:0000} - Did Delete {rec.Id} - {rec.EntityType} in {sw.Elapsed.TotalMilliseconds}ms");
+
+                result.DeletedCount++;
+            }, continuationToken, entityType, pageSize, maxPagesThisRun, ct: ct).ConfigureAwait(false);
 
             _logger.Trace($"Deleted {result.DeletedCount} in {fullSw.Elapsed.TotalMilliseconds} ms");
 
@@ -785,38 +736,18 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<InvokeResult> PatchEntityAsync(PatchRequest request, EntityHeader org, EntityHeader user, CancellationToken ct = default)
         {
-            _logger.Trace($"{this.Tag()} - Starting patch for entity {request.Id} of type {request.EntityType} with {request.Steps.Count} steps.");
+            if (request == null)
+                return InvokeResult.FromError("Patch request is required.");
 
-            if (string.IsNullOrWhiteSpace(request.Id))
+            _logger.Trace($"{this.Tag()} - Starting patch for entity {request.Id} of type {request.EntityType} with {request.Steps?.Count ?? 0} steps.");
+
+            if (String.IsNullOrWhiteSpace(request.Id))
                 return InvokeResult.FromError("id is required.");
 
-            var ops = new List<PatchOperation>();
+            if (String.IsNullOrWhiteSpace(request.EntityType))
+                return InvokeResult.FromError("entityType is required.");
 
-            foreach (var step in request.Steps)
-            {
-                switch (step.Op)
-                {
-                    case PatchOp.Remove:
-                        ops.Add(PatchOperation.Remove(step.CosmosPath));
-                        break;
-
-                    case PatchOp.Set:
-                        ops.Add(PatchOperation.Set(step.CosmosPath, step.Value));
-                        break;
-                    case PatchOp.Add:
-                        ops.Add(PatchOperation.Add(step.CosmosPath, step.Value));
-                        break;
-                }
-                _logger.Trace($"{this.Tag()} - Patch {step.Op} - {step.CosmosPath}.");
-
-            }
-
-            var options = new PatchItemRequestOptions
-            {
-                IfMatchEtag = request.ETag
-            };
-
-            if (ops.Count == 0)
+            if (request.Steps == null || request.Steps.Count == 0)
             {
                 _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "No operations for patch", request.Id.ToKVP("id"), request.EntityType.ToKVP("entityType"));
                 return InvokeResult.FromError("No patch operations were provided.");
@@ -824,74 +755,46 @@ namespace LagoVista.CloudStorage.Storage
 
             try
             {
-                var patchResult = await _container.PatchItemAsync<JObject>(
-                   id: request.Id,
-                   partitionKey: request.PartitionKey == null ? PartitionKey.None : new PartitionKey(request.PartitionKey),
-                   patchOperations: ops,
-                   requestOptions: options,
-                   cancellationToken: ct);
+                var patchResult = await _storageClient.PatchDocumentAsync(request.EntityType, request, ct).ConfigureAwait(false);
 
-                _logger.Trace($"{this.Tag()} - Status Response: {patchResult.StatusCode} - Patched entity {request.Id} of type {request.EntityType} with {request.Steps.Count} steps.",
-                    request.Id.ToKVP("id"),
-                    request.EntityType.ToKVP("entityType"));
+                if (!patchResult.Successful)
+                    return patchResult;
 
-                if (patchResult.StatusCode == HttpStatusCode.PreconditionFailed)
-                {
-                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "Patch failed due to ETag mismatch (412 Precondition Failed).", request.Id.ToKVP("id"), request.EntityType.ToKVP("entityType"));
-                    return InvokeResult.FromError("Patch failed due to ETag mismatch (412 Precondition Failed).");
-                }
-
-                await SetEntityHashAsync(request.Id);
+                await SetEntityHashAsync(request.Id, ct).ConfigureAwait(false);
                 await _cacheProvider.RemoveAsync(GetCacheKey(request.EntityType, request.Id));
+
                 if (request.EntityType == "Module")
                 {
                     await _cacheProvider.RemoveAsync(ALL_MODULES_CACHE_KEY);
-                    var json = await GetJsonByIdAsync(request.Id);
+
+                    var json = await GetJsonByIdAsync(request.Id, ct).ConfigureAwait(false);
                     if (!String.IsNullOrEmpty(json))
                     {
                         var module = JsonConvert.DeserializeObject<EntityBase>(json);
-                        await _cacheProvider.RemoveAsync($"{MODULE_CACHE_KEY}{module.Key}");
+
+                        if (!String.IsNullOrWhiteSpace(module?.Key))
+                            await _cacheProvider.RemoveAsync($"{MODULE_CACHE_KEY}{module.Key}");
                     }
                 }
+
+                _logger.Trace($"{this.Tag()} - Successfully patched entity {request.Id} of type {request.EntityType} with {request.Steps.Count} steps.", request.Id.ToKVP("id"), request.EntityType.ToKVP("entityType"));
+
                 return InvokeResult.Success;
             }
-            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
+            catch (ContentModifiedException)
             {
-                _logger.AddCustomEvent(LogLevel.Error, this.Tag(),
-                    "Patch failed due to ETag mismatch (412 Precondition Failed).",
-                    request.Id.ToKVP("id"),
-                    request.EntityType.ToKVP("entityType"));
-
-                return InvokeResult.FromError("Patch failed due to ETag mismatch (412 Precondition Failed).");
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "Patch failed due to ETag mismatch.", request.Id.ToKVP("id"), request.EntityType.ToKVP("entityType"));
+                return InvokeResult.FromError("Patch failed due to ETag mismatch.");
             }
-            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            catch (RecordNotFoundException)
             {
-                _logger.AddCustomEvent(LogLevel.Error, this.Tag(),
-                    "Patch failed (404 NotFound) - item missing or wrong partition key.",
-                    request.Id.ToKVP("id"),
-                    (request.PartitionKey ?? request.Id).ToKVP("pk"),
-                    request.EntityType.ToKVP("entityType"));
-
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "Patch failed because the document was not found.", request.Id.ToKVP("id"), request.EntityType.ToKVP("entityType"));
                 return InvokeResult.FromError("Patch failed because the document was not found.");
             }
-            catch (CosmosException ex) when (ex.StatusCode == (HttpStatusCode)429)
+            catch (Exception ex)
             {
-                _logger.AddCustomEvent(LogLevel.Warning, this.Tag(),
-                    "Patch throttled (429 TooManyRequests).",
-                    request.Id.ToKVP("id"),
-                    ex.RetryAfter.ToString().ToKVP("retryAfter"));
-
-                return InvokeResult.FromError("Cosmos throttled the request. Please retry.");
-            }
-            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.BadRequest)
-            {
-                _logger.AddCustomEvent(LogLevel.Error, this.Tag(),
-                    "Patch failed (400 BadRequest) - invalid patch operations.",
-                    request.Id.ToKVP("id"),
-                    request.EntityType.ToKVP("entityType"),
-                    ex.Message.ToKVP("cosmosMessage"));
-
-                return InvokeResult.FromError("Patch failed due to invalid patch operations.");
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "Patch failed.", request.Id.ToKVP("id"), request.EntityType.ToKVP("entityType"), ex.Message.ToKVP("exception"));
+                return InvokeResult.FromException(this.Tag(), ex);
             }
         }
     }

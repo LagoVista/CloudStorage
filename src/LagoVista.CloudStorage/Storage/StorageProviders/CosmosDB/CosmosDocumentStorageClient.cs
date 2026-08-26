@@ -68,6 +68,21 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
         }
 
+        public async Task DeleteDocumentAsync(string entityType, string id, string partitionKey = null, CancellationToken cancellationToken = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            try
+            {
+                await GetRawDocumentContainer().DeleteItemAsync<JObject>(id, String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey), cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                throw new RecordNotFoundException(entityType, id);
+            }
+        }
+
         public async Task<InvokeResult> PatchDocumentAsync(string entityType, PatchRequest request, CancellationToken cancellationToken = default)
         {
             if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));

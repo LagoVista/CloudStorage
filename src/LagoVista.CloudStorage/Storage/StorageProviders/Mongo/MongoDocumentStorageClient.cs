@@ -83,6 +83,23 @@ namespace LagoVista.CloudStorage.StorageProviders
             };
         }
 
+        public async Task DeleteDocumentAsync(string entityType, string id, string partitionKey = null, CancellationToken cancellationToken = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
+                throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+            var collection = GetBsonCollection(collectionName);
+            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", id), Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+
+            var result = await collection.DeleteOneAsync(filter, cancellationToken).ConfigureAwait(false);
+
+            if (result.DeletedCount == 0)
+                throw new RecordNotFoundException(entityType, id);
+        }
+
         public async Task<DocumentPage<TProjection>> GetDocumentPageAsync<TProjection>(string entityType = null, string continuationToken = null, int pageSize = 100, CancellationToken cancellationToken = default) where TProjection : class
         {
             if (pageSize <= 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
