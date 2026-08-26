@@ -1,0 +1,30 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "account-ledger-postgres-store-gap",
+  "title": "Account Ledger Postgres Store Implementation + Integration Tests",
+  "status": "backlog",
+  "category": "architecture-gap",
+  "area": "account-ledger-storage",
+  "summary": "Close the CloudStorage Account Ledger capability by providing a concrete PostgreSQL-backed IAccountLedgerStore implementation and comprehensive provider integration coverage.",
+  "source": [
+    "src/LagoVista.CloudStorage/Interfaces/StorageProviders/IAccountLedgerStore.cs",
+    "src/LagoVista.CloudStorage/Storage/ConnectionSettings/AccountLedgerStorageSettings.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/AccountLedgerStorageServiceCollectionExtensions.cs"
+  ],
+  "data": {
+    "contract": "IAccountLedgerStore<TRecord>",
+    "provider": "postgresql",
+    "implementationStatus": "missing",
+    "coverage": [
+      "concrete-store-implementation",
+      "dependency-registration",
+      "append",
+      "read",
+      "range-query",
+      "ordering",
+      "error-behavior"
+    ],
+    "tests": [],
+    "testProject": "tests/LagoVista.StorageProvider.Tests"
+  }
+}
