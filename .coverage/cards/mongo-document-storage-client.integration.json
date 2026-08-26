@@ -14,7 +14,7 @@
     "error-behavior"
   ],
   "source": [
-    "src/LagoVista.CloudStorage/Storage/StorageProviders/MongoDB/MongoDocumentStorageClient.cs"
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.cs"
   ],
   "tests": [],
   "environment": {

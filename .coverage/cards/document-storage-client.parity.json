@@ -18,7 +18,7 @@
   "source": [
     "src/LagoVista.CloudStorage/Interfaces/StorageProviders/IDocumentStorageClient.cs",
     "src/LagoVista.CloudStorage/Storage/StorageProviders/CosmosDB/CosmosDocumentStorageClient.cs",
-    "src/LagoVista.CloudStorage/Storage/StorageProviders/MongoDB/MongoDocumentStorageClient.cs"
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.cs"
   ],
   "tests": [],
   "environment": {
