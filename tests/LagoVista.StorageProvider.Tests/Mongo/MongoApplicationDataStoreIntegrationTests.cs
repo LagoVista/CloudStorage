@@ -31,7 +31,7 @@ namespace LagoVista.StorageProvider.Tests.Mongo
         [TestInitialize]
         public void Setup()
         {
-            _databaseName = $"CloudStorageApplicationDataTests_{Guid.NewGuid():N}";
+            _databaseName = $"appdata_tests_{Guid.NewGuid():N}";
             var settings = new TestApplicationDataStorageSettings(_databaseName);
 
             var services = new ServiceCollection();
