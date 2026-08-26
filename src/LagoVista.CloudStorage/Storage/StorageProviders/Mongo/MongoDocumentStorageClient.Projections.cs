@@ -1,5 +1,7 @@
 using LagoVista.Core.Exceptions;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -14,6 +16,23 @@ namespace LagoVista.CloudStorage.StorageProviders
             where TProjection : class
         {
             if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            if (typeof(TProjection) == typeof(JObject))
+            {
+                var collectionName = _collectionNameResolver.GetFallback(_settings.DatabaseName);
+                var document = await GetBsonCollection(collectionName)
+                    .Find(Builders<BsonDocument>.Filter.Eq("_id", id))
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (document == null)
+                {
+                    if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
+                    return null;
+                }
+
+                return (TProjection)(object)ToJObject(document);
+            }
 
             var projection = await GetProjectionCollection<TProjection>()
                 .Find(Builders<TProjection>.Filter.Eq("_id", id))
