@@ -154,65 +154,31 @@ namespace LagoVista.CloudStorage.Storage
 
             _logger.Trace($"{this.Tag()} - Request object of entity type {entityType}");
 
-            // Projection-only query: cheap RU and fast.
-            // We keep it tolerant: if some fields are missing, Cosmos returns null/defaults.
-            var sql =
-                "SELECT " +
-                "  c.id, c.EntityType, c.Key, c.Name, " +
-                "  c.Revision, c.RevisionTimeStamp, c._etag, " +
-                "  c.IsDeleted, c.IsDeprecated, c.IsDraft, c.LastUpdatedDate, c.Sha256Hex " +
-                "FROM c " +
-                "WHERE c.EntityType = @entityType " +
-                "  AND (NOT IS_DEFINED(c.IsDeleted) or c.IsDeleted = false)" +
-                "  AND (IS_NULL(@search) OR @search = ''" +
-                "       OR CONTAINS(LOWER(c.Name), @search) " +
-                "       OR CONTAINS(LOWER(c.Key), @search)) " +
-                "  AND c.OwnerOrganization.Id = @ownerOrganizationId " +
-                "ORDER BY c.Name";
+            var records = await _storageClient
+                .GetDocumentProjectionsAsync<SyncEntitySummaryProjection>(
+                    entityType,
+                    item => item.OwnerOrganization != null &&
+                            item.OwnerOrganization.Id == ownerOrganizationId &&
+                            item.IsDeleted != true,
+                    ct)
+                .ConfigureAwait(false);
 
-
-            _logger.Trace($"{this.Tag()} - Query {sql}");
-
-            var qd = new QueryDefinition(sql)
-                .WithParameter("@entityType", entityType)
-                .WithParameter("@ownerOrganizationId", ownerOrganizationId)
-                .WithParameter("@search", string.IsNullOrWhiteSpace(search) ? null : search.Trim().ToLowerInvariant());
-
-            var results = new List<SyncEntitySummary>(Math.Min(take, 512));
-
-            // Fixed PK makes cross-store easier if you're truly single-partition or known partition value.
-            var requestOptions = new QueryRequestOptions
+            var query = records.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                MaxItemCount = Math.Min(take, 200)
-            };
-
-            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
-            {
-                requestOptions.PartitionKey = new PartitionKey(FIXED_PARITIONKEY);
+                var searchText = search.Trim();
+                query = query.Where(item =>
+                    (!string.IsNullOrWhiteSpace(item.Name) && item.Name.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                    (!string.IsNullOrWhiteSpace(item.Key) && item.Key.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0));
             }
 
-            using var iterator = _container.GetItemQueryIterator<SyncEntitySummary>(
-                qd,
-                requestOptions: requestOptions);
-
-            while (iterator.HasMoreResults && results.Count < take)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                results.AddRange(page.Resource);
-
-                if (results.Count >= take) break;
-            }
+            var results = query
+                .OrderBy(item => item.Name)
+                .Take(take)
+                .Select(item => item.ToSummary())
+                .ToList();
 
             _logger.Trace($"{this.Tag()} - Retrieved {results.Count} summaries for entity type {entityType}");
-
-            // Defensive normalization: entityType/key should be there, but trim for stable UI.
-            foreach (var r in results)
-            {
-                r.EntityType = r.EntityType?.Trim();
-                r.Key = r.Key?.Trim();
-                r.Name = r.Name?.Trim();
-            }
-
             return results;
         }
 
@@ -407,6 +373,9 @@ namespace LagoVista.CloudStorage.Storage
                     };
                 }
             }
+
+            if (string.IsNullOrWhiteSpace(key))
+                key = doc["key"]?.Value<string>()?.Trim();
 
             _logger.Trace($"{this.Tag()} - Apply", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
 
