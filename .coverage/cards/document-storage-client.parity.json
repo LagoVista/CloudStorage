@@ -1,4 +1,5 @@
 {
+  "$schema": "../schemas/coverage-card.schema.json",
   "id": "document-storage-client-parity",
   "title": "IDocumentStorageClient Cosmos/Mongo Parity",
   "status": "backlog",
@@ -12,22 +13,11 @@
   ],
   "data": {
     "component": "IDocumentStorageClient",
-    "coverage": [
-      "create",
-      "read",
-      "update",
-      "delete",
-      "query",
-      "patch",
-      "optimistic-concurrency"
-    ],
+    "coverage": ["create", "read", "update", "delete", "query", "patch", "optimistic-concurrency"],
     "tests": [],
     "environment": {
       "type": "multi-provider",
-      "providers": [
-        "cosmos-emulator",
-        "mongodb"
-      ]
+      "providers": ["cosmos-emulator", "mongodb"]
     }
   }
 }
