@@ -2,13 +2,16 @@ using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
+using LagoVista.Core.Validation;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -65,6 +68,35 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
         }
 
+        public async Task<InvokeResult> PatchDocumentAsync(string entityType, PatchRequest request, CancellationToken cancellationToken = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (String.IsNullOrWhiteSpace(request.Id)) throw new ArgumentException("Patch request id is required.", nameof(request));
+            if (request.Steps == null || request.Steps.Count == 0) throw new ArgumentException("Patch request must contain at least one step.", nameof(request));
+
+            var operations = request.Steps.Select(CreatePatchOperation).ToList();
+            var options = new PatchItemRequestOptions();
+
+            if (!String.IsNullOrWhiteSpace(request.ETag))
+                options.IfMatchEtag = request.ETag;
+
+            try
+            {
+                await GetRawDocumentContainer().PatchItemAsync<JObject>(request.Id, String.IsNullOrWhiteSpace(request.PartitionKey) ? PartitionKey.None : new PartitionKey(request.PartitionKey), operations, options, cancellationToken).ConfigureAwait(false);
+
+                return InvokeResult.Success;
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                throw new RecordNotFoundException(entityType, request.Id);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed || ex.StatusCode == HttpStatusCode.Conflict)
+            {
+                throw new ContentModifiedException { EntityType = entityType, Id = request.Id };
+            }
+        }
+
         public async Task<DocumentStorageWriteResult> UpsertRawDocumentAsync(string entityType, string id, string json, string expectedETag = null, CancellationToken cancellationToken = default)
         {
             if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
@@ -98,11 +130,50 @@ namespace LagoVista.CloudStorage.StorageProviders
             };
         }
 
+
+        public async Task<DocumentPage<TProjection>> GetDocumentPageAsync<TProjection>(string entityType = null, string continuationToken = null, int pageSize = 100, CancellationToken cancellationToken = default) where TProjection : class
+        {
+            if (pageSize <= 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
+
+            var sql = "SELECT * FROM c";
+
+            QueryDefinition query;
+            if (String.IsNullOrWhiteSpace(entityType))
+                query = new QueryDefinition(sql);
+            else
+                query = new QueryDefinition(sql + " WHERE c.EntityType = @entityType").WithParameter("@entityType", entityType);
+
+            var options = new QueryRequestOptions { MaxItemCount = pageSize };
+            using var iterator = GetRawCollection().GetItemQueryIterator<TProjection>(query, continuationToken: continuationToken, requestOptions: options);
+
+            if (!iterator.HasMoreResults)
+            {
+                return new DocumentPage<TProjection>
+                {
+                    Items = Array.Empty<TProjection>(),
+                    ContinuationToken = null
+                };
+            }
+
+            var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+
+            return new DocumentPage<TProjection>
+            {
+                Items = response.Resource.ToList(),
+                ContinuationToken = response.ContinuationToken
+            };
+        }
+
+        private Container GetRawCollection()
+        {
+            return _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey).GetContainer(_settings.DatabaseName, $"{_settings.DatabaseName}_Collections");
+        }
+
         private Container GetRawDocumentContainer()
         {
             return _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey).GetContainer(_settings.DatabaseName, $"{_settings.DatabaseName}_Collections");
         }
-    
+
         public Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity =>
             GetDocumentAsync<TEntity>(id, null, throwOnNotFound);

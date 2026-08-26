@@ -1,4 +1,6 @@
-﻿using LagoVista.CloudStorage.Interfaces;
+﻿using LagoVista.CloudStorage.DocumentDB;
+using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
@@ -31,9 +33,10 @@ namespace LagoVista.CloudStorage.Storage
         public const string ALL_MODULES_CACHE_KEY = "NUVIOT_ALL_MODULES";
         public const string MODULE_CACHE_KEY = "NUVIOT_MODULE_";
         private readonly string _dbName;
+        private readonly IDocumentStorageClient _storageClient;
 
 
-        public EntityUtilsRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
+        public EntityUtilsRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, IDocumentStorageClientProvider documentStorageClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
@@ -42,8 +45,9 @@ namespace LagoVista.CloudStorage.Storage
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ragIndexingServices = ragIndexingServices ?? throw new ArgumentNullException(nameof(ragIndexingServices));
             _entityListCacheInvalidator = entityListCacheInvalidator ?? throw new ArgumentNullException(nameof(entityListCacheInvalidator));
-            _dbName = _options.SyncConnectionSettings.ResourceName;
+            _dbName = _storageClient.DatabaseName;
             _dependencyManager = dependencyManager ?? throw new ArgumentNullException(nameof(dependencyManager));
+            _storageClient = documentStorageClientProvider?.GetClient() ?? throw new ArgumentNullException(nameof(documentStorageClientProvider));
 
             _client = _cosmosClientProvider.GetClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey);
             _container = _client.GetContainer(_options.SyncConnectionSettings.ResourceName, $"{_options.SyncConnectionSettings.ResourceName}_Collections");
@@ -820,28 +824,9 @@ AND (
             return InvokeResult.FromError($"Could not upsert AI entity session for entity '{id}' because the document was updated concurrently.");
         }
 
-        private async Task<JObject> LoadDocumentByIdAsync(string id, CancellationToken ct)
+        private Task<JObject> LoadDocumentByIdAsync(string id, CancellationToken ct)
         {
-            const string sql = "SELECT * FROM c WHERE c.id = @id";
-            var qd = new QueryDefinition(sql).WithParameter("@id", id);
-
-            var requestOptions = new QueryRequestOptions
-            {
-                MaxItemCount = 1
-            };
-
-            using var iterator = _container.GetItemQueryIterator<JObject>(qd, requestOptions: requestOptions);
-
-            while (iterator.HasMoreResults)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                var doc = page.Resource?.FirstOrDefault();
-
-                if (doc != null)
-                    return doc;
-            }
-
-            return null;
+            return _storageClient.GetDocumentProjectionAsync<JObject>(id, false, ct);
         }
 
         public async Task<JObject> GetEntityByIdAsync(string entityId, string orgId, CancellationToken token)
@@ -1211,20 +1196,13 @@ AND (
 
             try
             {
-                if (String.IsNullOrWhiteSpace(entityType))
-                {
-                    return InvokeResult<int>.FromError("Entity type is required.");
-                }
+                if (String.IsNullOrWhiteSpace(entityType)) return InvokeResult<int>.FromError("Entity type is required.");
+                if (String.IsNullOrWhiteSpace(orgId)) return InvokeResult<int>.FromError("Organization id is required.");
 
-                if (String.IsNullOrWhiteSpace(orgId))
-                {
-                    return InvokeResult<int>.FromError("Organization id is required.");
-                }
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsCountByType).WithParameter("entityType", entityType.Trim()).WithParameter("orgId", orgId.Trim());
+                var result = (await _storageClient.QueryKnownAsync<DocumentCountResult>(entityType.Trim(), request, ct).ConfigureAwait(false)).FirstOrDefault();
 
-                var qd = new QueryDefinition("SELECT VALUE COUNT(1) FROM c WHERE c.EntityType = @entityType AND c.OwnerOrganization.Id = @orgId").WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim());
-                var count = await ExecuteScalarIntAsync(qd, ct).ConfigureAwait(false);
-
-                return InvokeResult<int>.Create(count);
+                return InvokeResult<int>.Create(result?.Count ?? 0);
             }
             catch (Exception ex)
             {
@@ -1731,52 +1709,13 @@ AND (
         {
             try
             {
-                if (String.IsNullOrWhiteSpace(entityType))
-                {
-                    throw new ArgumentException("entityType is required.", nameof(entityType));
-                }
+                if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+                if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
 
-                if (String.IsNullOrWhiteSpace(orgId))
-                {
-                    throw new ArgumentException("orgId is required.", nameof(orgId));
-                }
-
-                const string sql =
-        @"SELECT *
-FROM c
-WHERE c.EntityType = @entityType
-AND c.OwnerOrganization.Id = @orgId
-ORDER BY c.Name ASC";
-
-                var query = new QueryDefinition(sql)
-                    .WithParameter("@entityType", entityType.Trim())
-                    .WithParameter("@orgId", orgId.Trim());
-
-                var results = new List<JObject>();
-                var requestOptions = new QueryRequestOptions
-                {
-                    MaxItemCount = 100
-                };
-
-                using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
-
-                while (iterator.HasMoreResults)
-                {
-                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-
-                    foreach (var document in page.Resource)
-                    {
-                        if (document == null)
-                        {
-                            continue;
-                        }
-
-                        results.Add(document);
-                    }
-                }
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByType).WithParameter("entityType", entityType.Trim()).WithParameter("orgId", orgId.Trim());
+                var results = (await _storageClient.QueryKnownAsync<JObject>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
 
                 _logger.Trace($"{this.Tag()} - Found {results.Count} entities of type '{entityType}' for organization '{orgId}'.");
-
                 return InvokeResult<List<JObject>>.Create(results);
             }
             catch (Exception ex)

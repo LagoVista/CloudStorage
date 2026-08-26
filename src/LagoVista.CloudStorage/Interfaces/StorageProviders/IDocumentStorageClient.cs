@@ -1,7 +1,9 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
+using LagoVista.Core.Validation;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -60,6 +62,8 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<OperationResponse<TEntity>> PatchDocumentAsync<TEntity>(PatchRequest request)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity;
 
+        Task<InvokeResult> PatchDocumentAsync(string entityType, PatchRequest request, CancellationToken cancellationToken = default);
+
         Task<IEnumerable<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity;
 
@@ -88,6 +92,7 @@ namespace LagoVista.CloudStorage.Interfaces
             where TResult : class;
 
         Task<DocumentStorageWriteResult> UpsertRawDocumentAsync(string entityType, string id, string json, string expectedETag = null, CancellationToken cancellationToken = default);
+        Task<DocumentPage<TProjection>> GetDocumentPageAsync<TProjection>(string entityType = null, string continuationToken = null, int pageSize = 100, CancellationToken cancellationToken = default) where TProjection : class;
     }
 
     public interface ICosmosDocumentStorageClient : IDocumentStorageClient

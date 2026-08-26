@@ -30,7 +30,7 @@ namespace LagoVista.CloudStorage.Interfaces
 
         Task<InvokeResult<EntityDeleteResult>> DeleteByEntityTypeAsync(string entityType, string continuationToken, bool dryRun, int pageSize = 100, int maxPagesThisRun = 10, CancellationToken ct = default);
 
-        Task<string> ScanContainerAsync(Func<CosmosScanRow, CancellationToken, Task> handleRowAsync,
+        Task<string> ScanContainerAsync(Func<DocumentScanRow, CancellationToken, Task> handleRowAsync,
             string continuationToken = null, string entityType = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default);
 
         Task<InvokeResult> PatchEntityAsync(PatchRequest request, EntityHeader org, EntityHeader user, CancellationToken ct = default);

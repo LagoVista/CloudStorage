@@ -2,11 +2,13 @@ using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
+using LagoVista.Core.Validation;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -81,6 +83,47 @@ namespace LagoVista.CloudStorage.StorageProviders
             };
         }
 
+        public async Task<DocumentPage<TProjection>> GetDocumentPageAsync<TProjection>(string entityType = null, string continuationToken = null, int pageSize = 100, CancellationToken cancellationToken = default) where TProjection : class
+        {
+            if (pageSize <= 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
+
+            var collectionName = String.IsNullOrWhiteSpace(entityType)
+                ? _collectionNameResolver.GetFallback(_settings.DatabaseName)
+                : _collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var resolvedCollectionName)
+                    ? resolvedCollectionName
+                    : throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+            var collection = GetBsonCollection(collectionName);
+            var filters = new List<FilterDefinition<BsonDocument>>();
+
+            if (!String.IsNullOrWhiteSpace(entityType))
+                filters.Add(Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+
+            if (!String.IsNullOrWhiteSpace(continuationToken))
+                filters.Add(Builders<BsonDocument>.Filter.Gt("_id", continuationToken));
+
+            var filter = filters.Count == 0 ? Builders<BsonDocument>.Filter.Empty : Builders<BsonDocument>.Filter.And(filters);
+
+            var documents = await collection.Find(filter).Sort(Builders<BsonDocument>.Sort.Ascending("_id")).Limit(pageSize).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            var items = documents.Select(ToProjection<TProjection>).ToList();
+            var nextToken = documents.Count == pageSize ? documents.Last()["_id"].AsString : null;
+
+            return new DocumentPage<TProjection>
+            {
+                Items = items,
+                ContinuationToken = nextToken
+            };
+        }
+
+        private static TProjection ToProjection<TProjection>(BsonDocument document) where TProjection : class
+        {
+            if (typeof(TProjection) == typeof(JObject))
+                return (TProjection)(object)ToJObject(document);
+
+            return Newtonsoft.Json.JsonConvert.DeserializeObject<TProjection>(ToJObject(document).ToString());
+        }
+   
         public async Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
@@ -213,6 +256,67 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
 
             return new OperationResponse<TEntity>(entity);
+        }
+
+        public async Task<InvokeResult> PatchDocumentAsync(string entityType, PatchRequest request, CancellationToken cancellationToken = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (String.IsNullOrWhiteSpace(request.Id)) throw new ArgumentException("Patch request id is required.", nameof(request));
+            if (request.Steps == null || request.Steps.Count == 0) throw new ArgumentException("Patch request must contain at least one step.", nameof(request));
+
+            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
+                throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+            var collection = GetBsonCollection(collectionName);
+
+            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", request.Id), Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+
+            if (!String.IsNullOrWhiteSpace(request.ETag))
+                filter &= Builders<BsonDocument>.Filter.Eq("ETag", request.ETag);
+
+            var updates = request.Steps.Select(CreateRuntimePatchUpdate).ToList();
+            updates.Add(Builders<BsonDocument>.Update.Set("ETag", CreateETag()));
+
+            var update = Builders<BsonDocument>.Update.Combine(updates);
+
+            var result = await collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            if (result.MatchedCount == 0)
+            {
+                if (!String.IsNullOrWhiteSpace(request.ETag))
+                {
+                    var existsFilter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", request.Id), Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+                    var exists = await collection.Find(existsFilter).AnyAsync(cancellationToken).ConfigureAwait(false);
+
+                    if (exists)
+                        throw new ContentModifiedException { EntityType = entityType, Id = request.Id };
+                }
+
+                throw new RecordNotFoundException(entityType, request.Id);
+            }
+
+            return InvokeResult.Success;
+        }
+
+        private static UpdateDefinition<BsonDocument> CreateRuntimePatchUpdate(PatchStep step)
+        {
+            if (step == null) throw new ArgumentException("Patch request contains a null step.");
+
+            var path = ToMongoPath(step);
+
+            switch (step.Op)
+            {
+                case PatchOp.Set:
+                case PatchOp.Add:
+                    return Builders<BsonDocument>.Update.Set(path, ToBsonValue(step.Value));
+
+                case PatchOp.Remove:
+                    return Builders<BsonDocument>.Update.Unset(path);
+
+                default:
+                    throw new NotSupportedException($"Patch operation '{step.Op}' is not supported by the Mongo document client.");
+            }
         }
 
         public async Task<IEnumerable<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query)

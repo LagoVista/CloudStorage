@@ -448,7 +448,7 @@ namespace LagoVista.CloudStorage.Storage
             return UpsertJsonAsync(doc, expectedETag, ct);
         }
 
-        public sealed class CosmosScanRow
+        public class DocumentScanRow
         {
             [JsonProperty("id")]
             public string Id { get; set; }
@@ -456,50 +456,40 @@ namespace LagoVista.CloudStorage.Storage
             [JsonProperty("EntityType")]
             public string EntityType { get; set; }
 
-            // Cosmos system property for concurrency/change detection
             [JsonProperty("_etag")]
-            public string ETag { get; set; }
+            public string CosmosETag { get; set; }
+
+            [JsonProperty("ETag")]
+            public string MongoETag { get; set; }
+
+            [JsonIgnore]
+            public string ETag => !String.IsNullOrWhiteSpace(CosmosETag) ? CosmosETag : MongoETag;
         }
 
         /// <summary>
         /// Scans a container using Cosmos paging and returns the continuation token to resume later.
         /// Persist the returned continuationToken somewhere durable.
         /// </summary>
-        public async Task<string> ScanContainerAsync(Func<CosmosScanRow, CancellationToken, Task> handleRowAsync,
-            string continuationToken = null, string entityType = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default)
+        public async Task<string> ScanContainerAsync(Func<DocumentScanRow, CancellationToken, Task> handleRowAsync, string continuationToken = null, string entityType = null, int pageSize = 100, int maxPagesThisRun = 10, string fixedPartitionKey = null, CancellationToken ct = default)
         {
-            var requestOptions = new QueryRequestOptions
-            {
-                MaxItemCount = pageSize
-            };
+            if (handleRowAsync == null) throw new ArgumentNullException(nameof(handleRowAsync));
 
-            if (!string.IsNullOrWhiteSpace(fixedPartitionKey))
-            {
-                requestOptions.PartitionKey = new PartitionKey(fixedPartitionKey);
-            }
-
-            var query = "SELECT c.id, c.EntityType, c._etag FROM c";
-            if (!String.IsNullOrEmpty(entityType))
-                query += " WHERE c.EntityType = @entityType";
-
-            // Minimal SELECT keeps RU and payload down. Add fields as needed.
-            var qd = !String.IsNullOrEmpty(entityType) ?
-                new QueryDefinition(query).WithParameter("@entityType", entityType) :
-                new QueryDefinition(query);
-
-            using var iterator = _container.GetItemQueryIterator<CosmosScanRow>(qd, continuationToken: continuationToken, requestOptions: requestOptions);
             var pagesRead = 0;
 
-            while (iterator.HasMoreResults && pagesRead < maxPagesThisRun)
+            while (pagesRead < maxPagesThisRun)
             {
-                FeedResponse<CosmosScanRow> page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                pagesRead++;
+                var page = await _storageClient.GetDocumentPageAsync<DocumentScanRow>(entityType, continuationToken, pageSize, ct).ConfigureAwait(false);
+
+                if (page.Items.Count == 0)
+                    return null;
+
                 var dop = 16;
                 using var gate = new SemaphoreSlim(dop);
 
-                var tasks = page.Select(async row =>
+                var tasks = page.Items.Select(async row =>
                 {
-                    await gate.WaitAsync(ct);
+                    await gate.WaitAsync(ct).ConfigureAwait(false);
+
                     try
                     {
                         await handleRowAsync(row, ct).ConfigureAwait(false);
@@ -510,13 +500,16 @@ namespace LagoVista.CloudStorage.Storage
                     }
                 });
 
-                await Task.WhenAll(tasks);
+                await Task.WhenAll(tasks).ConfigureAwait(false);
 
-                // This is the real “resume from here” cursor.
                 continuationToken = page.ContinuationToken;
+                pagesRead++;
+
+                if (String.IsNullOrWhiteSpace(continuationToken))
+                    break;
             }
 
-            return continuationToken; // null means you're done (or you started at end)
+            return continuationToken;
         }
 
         public async Task<InvokeResult> SetEntityHashAsync(string id, CancellationToken ct = default)
@@ -527,51 +520,65 @@ namespace LagoVista.CloudStorage.Storage
 
             var token = JToken.Parse(json);
             var entity = JsonConvert.DeserializeObject<EntityBase>(json);
+            var steps = new List<PatchStep>();
+
             if (entity.EntityType == "AppUser")
             {
                 var userName = token["UserName"]?.Value<string>();
+
                 if (userName == null)
                 {
                     userName = token["Email"]?.Value<string>();
                     token["UserName"] = userName;
+                    steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = "UserName", Value = userName });
                 }
-                token["Key"] = NormalizeAlphaNumericKey(userName);
+
+                var key = NormalizeAlphaNumericKey(userName);
+                token["Key"] = key;
+                steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = "Key", Value = key });
             }
 
             if (entity.EntityType == "Organization")
             {
-                token["Key"] = token["Namespace"]?.Value<string>();
+                var key = token["Namespace"]?.Value<string>();
+                token["Key"] = key;
+                steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = "Key", Value = key });
             }
 
-            var key = token["Key"]?.Value<string>();
-            if (key == null)
+            if (token["Key"]?.Value<string>() == null)
             {
-                token["Key"] = Guid.NewGuid().ToId().Value.ToLowerInvariant();
+                var key = Guid.NewGuid().ToId().Value.ToLowerInvariant();
+                token["Key"] = key;
+                steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = "Key", Value = key });
             }
 
+            var hash = EntityHasher.CalculateHash(token.DeepClone());
+            steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = "Sha256Hex", Value = hash });
 
-            token["Sha256Hex"] = EntityHasher.CalculateHash(token.DeepClone());
-            var bytes = System.Text.Encoding.UTF8.GetBytes(token.ToString(Formatting.None));
-            using var ms = new MemoryStream(bytes);
+            var request = new PatchRequest
+            {
+                Id = id,
+                EntityType = entity.EntityType,
+                Steps = steps
+            };
 
-            var requestOptions = new ItemRequestOptions();
-            var cacheKey = GetCacheKey(entity.EntityType, entity.Id);
             try
             {
-                var resp = await _container.UpsertItemStreamAsync(ms, PartitionKey.None, requestOptions, ct).ConfigureAwait(false);
-                await _cacheProvider.RemoveAsync(cacheKey);
+                var result = await _storageClient.PatchDocumentAsync(entity.EntityType, request, ct).ConfigureAwait(false);
 
-                if (resp.IsSuccessStatusCode)
+                if (result.Successful)
+                {
+                    await _cacheProvider.RemoveAsync(GetCacheKey(entity.EntityType, entity.Id));
                     await InvalidateEntityListCacheAsync(entity.OwnerOrganization?.Id, entity.EntityType);
+                }
 
-                return resp.IsSuccessStatusCode ? InvokeResult.Success : InvokeResult.FromError($"Error upserting entity with id {id} to set hash. Response code: {resp.StatusCode}");
+                return result;
             }
             catch (Exception ex)
             {
-                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Error upserting entity with id {id} to set hash.", ex.Message.ToKVP("exception"));
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Error patching entity with id {id} to set hash.", ex.Message.ToKVP("exception"));
                 return InvokeResult.FromException(this.Tag(), ex);
             }
-
         }
 
         public async Task<InvokeResult<EhResolvedEntity>> ResolveEntityHeadersAsync(string id, CancellationToken ct = default, bool dryRun = false)
@@ -667,7 +674,6 @@ namespace LagoVista.CloudStorage.Storage
                 };
                 return InvokeResult<EhResolvedEntity>.Create(result);
             }
-
         }
 
         public async Task<List<NodeLocatorEntry>> WriteNodesAsync(string id, CancellationToken ct = default)
