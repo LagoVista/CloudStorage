@@ -61,6 +61,60 @@ Use **Relational Storage** when the relationships and transactional behavior are
 
 PostgreSQL is the primary relational platform.
 
+## Critical relational storage
+
+A small but important portion of the platform remains in **SQL Server relational storage**.
+
+This is the system of record for data where loss is unacceptable, including financial and other critical transactional data. It currently represents roughly 30 tables and should be treated as a distinct legacy/critical relational estate during modernization.
+
+The eventual PostgreSQL direction does not change the durability and integrity requirements of these workloads.
+
+## Legacy storage patterns
+
+The following patterns still exist and should be treated as migration sources rather than new architectural choices.
+
+### Legacy Table Storage
+
+- flat, row-like records
+- commonly used for archive/history-style workloads
+- base record: `TableStorageEntity`
+- provider: Microsoft Azure Table Storage
+
+### Legacy Cloud File Storage
+
+- read/write blob or file payloads
+- provider: Microsoft Azure Blob Storage
+
+### Legacy Blob + Table Storage
+
+`BlobTableStorageRepoBase` combines:
+
+- a summary/index record in Azure Table Storage
+- a larger detail payload in Azure Blob Storage
+
+This pattern is conceptually closest to modern **Application Data** in many cases and should normally be evaluated for migration there rather than reproduced as a new storage abstraction.
+
+## Utility repositories
+
+**Utility Repositories** are provider-specific data-access helpers that perform general-purpose operations against entities.
+
+They are primarily a side door into the Entity Storage universe for operations that do not cleanly belong in a business-specific repository.
+
+Utility repositories should remain narrowly scoped. New business behavior should prefer business-specific repositories or provider-neutral storage contracts rather than growing utility repositories into broad alternate persistence APIs.
+
+## Repository base classes
+
+CloudStorage contains repository **base classes** used to build concrete repositories.
+
+These typically:
+
+- are generic over the persisted entity or record type
+- centralize common repository behavior
+- historically encapsulate provider-specific storage mechanics
+- are inherited by business-specific repositories
+
+As storage is modernized, inheritance-based provider coupling should be reduced where practical in favor of constructor-injected semantic storage contracts. Existing base classes remain part of the legacy and transitional architecture and should not automatically become the model for new storage capabilities.
+
 ## Provider mapping
 
 ```text
@@ -70,9 +124,13 @@ Scratch Storage      -> MongoDB
 History Storage      -> Cassandra
 Operational Data     -> Cassandra
 Relational Storage   -> PostgreSQL
+
+Legacy Table         -> Azure Table Storage
+Legacy Cloud File    -> Azure Blob Storage
+Critical Relational  -> SQL Server
 ```
 
-These mappings are implementation choices. Application code should depend on the semantic storage contract rather than MongoDB, Cassandra, PostgreSQL, Azure Table Storage, or another provider directly.
+These mappings are implementation choices. Application code should depend on the semantic storage contract rather than MongoDB, Cassandra, PostgreSQL, SQL Server, Azure Table Storage, Azure Blob Storage, or another provider directly.
 
 ## Terminology
 
