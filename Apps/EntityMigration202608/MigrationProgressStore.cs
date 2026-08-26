@@ -15,6 +15,8 @@ internal sealed class EntityMigration202608Progress : IApplicationDataRecord
 
     public string MigrationName { get; set; }
     public string Environment { get; set; }
+    public string SourceDatabaseName { get; set; }
+    public string TargetDatabaseName { get; set; }
     public string Status { get; set; }
     public int RunCount { get; set; }
     public DateTime? CompletedUtc { get; set; }
@@ -75,11 +77,16 @@ internal sealed class MigrationProgressStore
         return new MigrationProgressStore(environment, settings);
     }
 
-    public async Task<EntityMigration202608Progress> LoadOrCreateAsync(IEnumerable<string> sourceCollections, CancellationToken ct)
+    public async Task<EntityMigration202608Progress> LoadOrCreateAsync(
+        string sourceDatabaseName,
+        string targetDatabaseName,
+        IEnumerable<string> sourceCollections,
+        CancellationToken ct)
     {
         var existing = await FindAsync(ct).ConfigureAwait(false);
         if (existing != null)
         {
+            ValidateIdentity(existing, sourceDatabaseName, targetDatabaseName);
             EnsureSources(existing, sourceCollections);
             return existing;
         }
@@ -90,6 +97,8 @@ internal sealed class MigrationProgressStore
             Organization = MigrationOrganization,
             MigrationName = MigrationName,
             Environment = _environment,
+            SourceDatabaseName = sourceDatabaseName,
+            TargetDatabaseName = targetDatabaseName,
             Status = "NotStarted"
         };
         EnsureSources(record, sourceCollections);
@@ -119,6 +128,17 @@ internal sealed class MigrationProgressStore
             .WithPage(new StoragePageRequest(1)), ct).ConfigureAwait(false);
 
         return page.Items.FirstOrDefault();
+    }
+
+    private static void ValidateIdentity(EntityMigration202608Progress progress, string sourceDatabaseName, string targetDatabaseName)
+    {
+        if (!String.Equals(progress.SourceDatabaseName, sourceDatabaseName, StringComparison.OrdinalIgnoreCase) ||
+            !String.Equals(progress.TargetDatabaseName, targetDatabaseName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Saved migration progress belongs to Cosmos '{progress.SourceDatabaseName}' -> Mongo '{progress.TargetDatabaseName}', " +
+                $"but current settings resolve to Cosmos '{sourceDatabaseName}' -> Mongo '{targetDatabaseName}'. Reset or correct the settings before resuming.");
+        }
     }
 
     private static void EnsureSources(EntityMigration202608Progress progress, IEnumerable<string> sourceCollections)
