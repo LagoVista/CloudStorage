@@ -1,10 +1,12 @@
 {
   "$schema": "./schemas/coverage-board.schema.json",
   "name": "Cloud Storage External Service Coverage",
-  "description": "Tracks automated coverage for LagoVista.CloudStorage classes that cross an external storage or cache boundary. Unit tests live in LagoVista.CloudStorage.Tests; provider integration tests live in LagoVista.StorageProvider.Tests. Relational projects are out of scope.",
+  "description": "Tracks automated coverage and architectural completeness for LagoVista.CloudStorage capabilities that cross an external storage or cache boundary. Unit tests live in LagoVista.CloudStorage.Tests; provider integration tests live in LagoVista.StorageProvider.Tests. Relational domain projects are out of scope, but PostgreSQL-backed storage capabilities owned by CloudStorage are in scope.",
   "version": 1,
   "cards": [
     "cards/document-storage-client-provider.unit.json",
+    "cards/metrics-postgres-store.gap.json",
+    "cards/account-ledger-postgres-store.gap.json",
     "cards/cosmos-client-provider.integration.json",
     "cards/cosmos-document-collection-provisioner.integration.json",
     "cards/cosmos-document-storage-client.integration.json",
