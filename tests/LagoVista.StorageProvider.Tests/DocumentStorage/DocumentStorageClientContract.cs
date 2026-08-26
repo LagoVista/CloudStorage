@@ -1,8 +1,11 @@
+using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Models;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -74,30 +77,102 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
 
         public static async Task QueryAndPagingAsync(IDocumentStorageClient client)
         {
-            var alpha = CreateEntity("match", "Alpha");
-            var beta = CreateEntity("other", "Beta");
-            var charlie = CreateEntity("match", "Charlie");
+            var alpha = CreateEntity("keep", "Alpha");
+            var bravo = CreateEntity("skip", "Bravo");
+            var charlie = CreateEntity("keep", "Charlie");
 
-            await client.CreateDocumentAsync(alpha);
-            await client.CreateDocumentAsync(beta);
             await client.CreateDocumentAsync(charlie);
+            await client.CreateDocumentAsync(alpha);
+            await client.CreateDocumentAsync(bravo);
 
-            var matching = (await client.QueryAsync<ContractDocumentEntity>(item => item.Detail == "match")).ToList();
-            Assert.AreEqual(2, matching.Count);
-            CollectionAssert.AreEquivalent(new[] { alpha.Id.Value, charlie.Id.Value }, matching.Select(item => item.Id.Value).ToArray());
+            var unpaged = (await client.QueryAsync<ContractDocumentEntity>(item => item.Detail == "keep")).ToList();
+            Assert.AreEqual(2, unpaged.Count);
+            CollectionAssert.AreEquivalent(new[] { alpha.Id.Value, charlie.Id.Value }, unpaged.Select(item => item.Id.Value).ToArray());
 
-            var request = new ListRequest { PageIndex = 1, PageSize = 2 };
-            var page = await client.QueryAsync<ContractDocumentEntity>(item => item.Detail != "missing", item => item.Name, request);
+            var firstPage = await client.QueryAsync<ContractDocumentEntity>(
+                item => item.Detail == "keep",
+                item => item.Name,
+                new ListRequest { PageIndex = 1, PageSize = 1 });
 
-            Assert.IsNotNull(page);
-            Assert.IsNotNull(page.Model);
-            Assert.AreEqual(2, page.Model.Count());
-            CollectionAssert.AreEqual(new[] { "Alpha", "Beta" }, page.Model.Select(item => item.Name).ToArray());
+            Assert.AreEqual(1, firstPage.Model.Count());
+            Assert.AreEqual("Alpha", firstPage.Model.Single().Name);
 
-            request.PageIndex = 2;
-            var secondPage = await client.QueryAsync<ContractDocumentEntity>(item => item.Detail != "missing", item => item.Name, request);
+            var secondPage = await client.QueryAsync<ContractDocumentEntity>(
+                item => item.Detail == "keep",
+                item => item.Name,
+                new ListRequest { PageIndex = 2, PageSize = 1 });
+
             Assert.AreEqual(1, secondPage.Model.Count());
             Assert.AreEqual("Charlie", secondPage.Model.Single().Name);
+        }
+
+        public static async Task OptimisticConcurrencyAsync(IDocumentStorageClient client)
+        {
+            var entity = CreateEntity("Original");
+            await client.CreateDocumentAsync(entity);
+
+            var originalETag = entity.ETag;
+            entity.Detail = "Updated with valid ETag";
+            await client.UpsertDocumentAsync(entity, originalETag);
+
+            Assert.AreNotEqual(originalETag, entity.ETag);
+            var currentETag = entity.ETag;
+
+            entity.Detail = "Stale update";
+            await Assert.ThrowsExactlyAsync<ContentModifiedException>(
+                () => client.UpsertDocumentAsync(entity, originalETag));
+
+            Assert.AreEqual(currentETag, entity.ETag);
+
+            var reloaded = await client.GetDocumentAsync<ContractDocumentEntity>(entity.Id);
+            Assert.AreEqual("Updated with valid ETag", reloaded.Detail);
+            Assert.AreEqual(currentETag, reloaded.ETag);
+        }
+
+        public static async Task PatchAsync(IDocumentStorageClient client)
+        {
+            var entity = CreateEntity("Original");
+            entity.OptionalDetail = "Remove Me";
+            await client.CreateDocumentAsync(entity);
+
+            var originalETag = entity.ETag;
+            var request = new PatchRequest
+            {
+                Id = entity.Id.Value,
+                EntityType = nameof(ContractDocumentEntity),
+                ETag = originalETag,
+                Steps = new[]
+                {
+                    new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(ContractDocumentEntity.Detail), Value = JToken.FromObject("Patched") },
+                    new PatchStep { Op = PatchOp.Remove, LogicalPath = nameof(ContractDocumentEntity.OptionalDetail) }
+                }
+            };
+
+            var result = await client.PatchDocumentAsync<ContractDocumentEntity>(request);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Resource);
+            Assert.AreEqual("Patched", result.Resource.Detail);
+            Assert.IsNull(result.Resource.OptionalDetail);
+            Assert.AreNotEqual(originalETag, result.Resource.ETag);
+
+            var reloaded = await client.GetDocumentAsync<ContractDocumentEntity>(entity.Id);
+            Assert.AreEqual("Patched", reloaded.Detail);
+            Assert.IsNull(reloaded.OptionalDetail);
+            Assert.AreEqual(result.Resource.ETag, reloaded.ETag);
+
+            var staleRequest = new PatchRequest
+            {
+                Id = entity.Id.Value,
+                EntityType = nameof(ContractDocumentEntity),
+                ETag = originalETag,
+                Steps = new[]
+                {
+                    new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(ContractDocumentEntity.Detail), Value = JToken.FromObject("Should Fail") }
+                }
+            };
+
+            await Assert.ThrowsExactlyAsync<ContentModifiedException>(
+                () => client.PatchDocumentAsync<ContractDocumentEntity>(staleRequest));
         }
 
         private static ContractDocumentEntity CreateEntity(string detail, string name = null)
@@ -118,5 +193,6 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
     internal sealed class ContractDocumentEntity : EntityBase
     {
         public string Detail { get; set; }
+        public string OptionalDetail { get; set; }
     }
 }
