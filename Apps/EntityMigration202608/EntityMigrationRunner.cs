@@ -24,6 +24,7 @@ internal sealed class EntityMigrationRunner
     private readonly IDocumentMigrationService _migrationService;
     private readonly DocumentStorageSettings _source;
     private readonly MongoDocumentStorageSettings _target;
+    private readonly MigrationProgressStore _progressStore;
 
     public EntityMigrationRunner(string environment)
     {
@@ -54,47 +55,159 @@ internal sealed class EntityMigrationRunner
         };
 
         _migrationService = new DocumentMigrationService(CosmosClientProvider.Shared, new DocumentCollectionNameResolver());
+        _progressStore = MigrationProgressStore.Create(_environment);
     }
 
-    public async Task DryRunAsync(int batchSize = 200, int maxPages = 0, string continuationToken = null, CancellationToken ct = default)
+    public async Task DryRunAsync(int batchSize = 200, int maxPages = 0, CancellationToken ct = default)
     {
-        PrintPlan("DRY RUN", batchSize, maxPages, continuationToken);
+        PrintPlan("DRY RUN", batchSize, maxPages);
 
         foreach (var sourceCollectionName in GetSourceCollections())
         {
             Console.WriteLine();
             Console.WriteLine($"Source collection: {sourceCollectionName}");
-            var request = CreateRequest(sourceCollectionName, true, batchSize, maxPages, continuationToken);
+            var request = CreateRequest(sourceCollectionName, true, batchSize, maxPages, null);
             var result = await _migrationService.MigrateCosmosToMongoAsync(request, ct).ConfigureAwait(false);
             PrintMigrationResult(result);
         }
     }
 
-    public async Task MigrateAsync(int batchSize = 200, int maxPages = 0, string continuationToken = null, CancellationToken ct = default)
+    public async Task MigrateAsync(int batchSize = 200, int maxPages = 0, CancellationToken ct = default)
     {
-        PrintPlan("WRITE", batchSize, maxPages, continuationToken);
+        var sourceCollections = GetSourceCollections().ToArray();
+        var progress = await _progressStore.LoadOrCreateAsync(sourceCollections, ct).ConfigureAwait(false);
+
+        PrintPlan("WRITE", batchSize, maxPages);
+        PrintProgress(progress);
+
+        if (progress.Sources.All(source => source.Completed))
+        {
+            Console.WriteLine();
+            Console.WriteLine("Migration is already complete. Use reset if you intentionally want to start over.");
+            return;
+        }
 
         Console.WriteLine();
-        Console.Write("Type MIGRATE to copy eligible entity documents to Mongo: ");
+        Console.Write("Type MIGRATE to copy eligible entity documents to Mongo and advance the saved checkpoint: ");
         if (!String.Equals(Console.ReadLine(), "MIGRATE", StringComparison.Ordinal))
         {
             Console.WriteLine("Migration cancelled.");
             return;
         }
 
-        foreach (var sourceCollectionName in GetSourceCollections())
+        var run = new EntityMigrationRunSummary
+        {
+            RunId = Guid.NewGuid().ToString("N"),
+            Operation = "migrate",
+            StartedUtc = DateTime.UtcNow,
+            Status = "Running",
+            BatchSize = batchSize,
+            MaxPagesPerSource = maxPages
+        };
+
+        progress.RunCount++;
+        progress.Status = "InProgress";
+        progress.CompletedUtc = null;
+        progress.Runs ??= new List<EntityMigrationRunSummary>();
+        progress.Runs.Add(run);
+        TrimRunHistory(progress);
+        await _progressStore.SaveAsync(progress, ct).ConfigureAwait(false);
+
+        try
+        {
+            foreach (var sourceCollectionName in sourceCollections)
+            {
+                var sourceProgress = progress.Sources.Single(source =>
+                    String.Equals(source.SourceCollectionName, sourceCollectionName, StringComparison.OrdinalIgnoreCase));
+
+                if (sourceProgress.Completed)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine($"Source collection: {sourceCollectionName} [already complete]");
+                    continue;
+                }
+
+                Console.WriteLine();
+                Console.WriteLine($"Source collection: {sourceCollectionName}");
+
+                var pagesThisRun = 0;
+                while (!sourceProgress.Completed && (maxPages <= 0 || pagesThisRun < maxPages))
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    var request = CreateRequest(
+                        sourceCollectionName,
+                        false,
+                        batchSize,
+                        1,
+                        sourceProgress.ContinuationToken);
+
+                    var result = await _migrationService.MigrateCosmosToMongoAsync(request, ct).ConfigureAwait(false);
+                    ApplyPage(progress, sourceProgress, run, result);
+                    pagesThisRun += result.PagesRead;
+
+                    await _progressStore.SaveAsync(progress, ct).ConfigureAwait(false);
+                    PrintPageCheckpoint(sourceProgress, result);
+
+                    if (result.PagesRead == 0)
+                        break;
+                }
+            }
+
+            var completed = progress.Sources.All(source => source.Completed);
+            progress.Status = completed ? "Completed" : "Paused";
+            progress.CompletedUtc = completed ? DateTime.UtcNow : null;
+            run.Status = completed ? "Completed" : "Paused";
+            run.FinishedUtc = DateTime.UtcNow;
+            await _progressStore.SaveAsync(progress, ct).ConfigureAwait(false);
+
+            Console.WriteLine();
+            PrintProgress(progress);
+        }
+        catch (OperationCanceledException)
+        {
+            progress.Status = "Paused";
+            run.Status = "Cancelled";
+            run.FinishedUtc = DateTime.UtcNow;
+            await TrySaveProgressAsync(progress).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            progress.Status = "Failed";
+            run.Status = "Failed";
+            run.Error = ex.Message;
+            run.FinishedUtc = DateTime.UtcNow;
+            await TrySaveProgressAsync(progress).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    public async Task ShowStatusAsync(CancellationToken ct = default)
+    {
+        var progress = await _progressStore.GetAsync(ct).ConfigureAwait(false);
+        if (progress == null)
+        {
+            Console.WriteLine($"No saved EntityMigration202608 progress exists for {_environment}.");
+            Console.WriteLine($"Application Data database: {_progressStore.DatabaseName}");
+            return;
+        }
+
+        PrintProgress(progress);
+
+        if (progress.Runs?.Count > 0)
         {
             Console.WriteLine();
-            Console.WriteLine($"Source collection: {sourceCollectionName}");
-            var request = CreateRequest(sourceCollectionName, false, batchSize, maxPages, continuationToken);
-            var result = await _migrationService.MigrateCosmosToMongoAsync(request, ct).ConfigureAwait(false);
-            PrintMigrationResult(result);
+            Console.WriteLine("Recent runs:");
+            Console.WriteLine($"{"Started UTC",-22} {"Status",-12} {"Pages",8} {"Read",10} {"Written",10} {"Failed",8}");
+            foreach (var run in progress.Runs.OrderByDescending(item => item.StartedUtc).Take(10))
+                Console.WriteLine($"{run.StartedUtc:u} {run.Status,-12} {run.PagesRead,8} {run.DocumentsRead,10} {run.DocumentsWritten,10} {run.DocumentsFailed,8}");
         }
     }
 
     public async Task ValidateAsync(int batchSize = 200, CancellationToken ct = default)
     {
-        PrintPlan("VALIDATE", batchSize, 0, null);
+        PrintPlan("VALIDATE", batchSize, 0);
 
         var sourceRoutes = new Dictionary<(string CollectionName, string EntityType), long>();
 
@@ -156,7 +269,7 @@ internal sealed class EntityMigrationRunner
     {
         PrintTarget();
         Console.WriteLine();
-        Console.WriteLine($"This will permanently drop: {String.Join(", ", DestinationCollections)}.");
+        Console.WriteLine($"This will permanently drop Mongo collections {String.Join(", ", DestinationCollections)} and delete the saved migration checkpoint.");
         Console.Write("Type RESET to continue: ");
         if (!String.Equals(Console.ReadLine(), "RESET", StringComparison.Ordinal))
         {
@@ -179,6 +292,9 @@ internal sealed class EntityMigrationRunner
             await database.DropCollectionAsync(collectionName, ct).ConfigureAwait(false);
             Console.WriteLine($"Dropped {_target.DatabaseName}.{collectionName}.");
         }
+
+        await _progressStore.DeleteAsync(ct).ConfigureAwait(false);
+        Console.WriteLine("Deleted saved EntityMigration202608 progress.");
     }
 
     private IEnumerable<string> GetSourceCollections()
@@ -202,7 +318,7 @@ internal sealed class EntityMigrationRunner
         };
     }
 
-    private void PrintPlan(string operation, int batchSize, int maxPages, string continuationToken)
+    private void PrintPlan(string operation, int batchSize, int maxPages)
     {
         Console.WriteLine($"August 2026 entity migration - {operation}");
         Console.WriteLine($"Environment:          {_environment}");
@@ -210,13 +326,10 @@ internal sealed class EntityMigrationRunner
         Console.WriteLine($"Cosmos collections:   {String.Join(", ", GetSourceCollections())}");
         Console.WriteLine($"Mongo database:       {_target.DatabaseName}");
         Console.WriteLine($"Mongo collections:    {String.Join(", ", DestinationCollections)}");
+        Console.WriteLine($"Application Data DB:  {_progressStore.DatabaseName}");
         Console.WriteLine($"Batch size:           {batchSize}");
         Console.WriteLine($"Max pages/source:     {(maxPages <= 0 ? "all" : maxPages)}");
-        Console.WriteLine($"Continuation token:   {(String.IsNullOrWhiteSpace(continuationToken) ? "<none>" : "present")}");
         Console.WriteLine($"Excluded EntityTypes: {(ExcludedEntityTypes.Count == 0 ? "<none>" : String.Join(", ", ExcludedEntityTypes.OrderBy(item => item)))}");
-
-        if (!String.IsNullOrWhiteSpace(continuationToken))
-            Console.WriteLine("NOTE: the supplied continuation token is applied to each Cosmos source collection independently.");
     }
 
     private void PrintTarget()
@@ -225,6 +338,75 @@ internal sealed class EntityMigrationRunner
         Console.WriteLine($"Environment:          {_environment}");
         Console.WriteLine($"Mongo database:       {_target.DatabaseName}");
         Console.WriteLine($"Mongo collections:    {String.Join(", ", DestinationCollections)}");
+        Console.WriteLine($"Application Data DB:  {_progressStore.DatabaseName}");
+    }
+
+    private static void ApplyPage(
+        EntityMigration202608Progress progress,
+        EntityMigrationSourceProgress source,
+        EntityMigrationRunSummary run,
+        CosmosToMongoMigrationResult result)
+    {
+        source.PagesRead += result.PagesRead;
+        source.DocumentsRead += result.DocumentsRead;
+        source.DocumentsWritten += result.DocumentsWritten;
+        source.DocumentsExcluded += result.DocumentsExcluded;
+        source.DocumentsSkipped += result.DocumentsSkipped;
+        source.DocumentsFailed += result.DocumentsFailed;
+        source.ContinuationToken = result.ContinuationToken;
+        source.Completed = result.Completed;
+
+        run.PagesRead += result.PagesRead;
+        run.DocumentsRead += result.DocumentsRead;
+        run.DocumentsWritten += result.DocumentsWritten;
+        run.DocumentsFailed += result.DocumentsFailed;
+
+        progress.Status = "InProgress";
+    }
+
+    private static void PrintPageCheckpoint(EntityMigrationSourceProgress source, CosmosToMongoMigrationResult result)
+    {
+        Console.WriteLine(
+            $"  checkpoint: page +{result.PagesRead}, read +{result.DocumentsRead}, written +{result.DocumentsWritten}, " +
+            $"total pages={source.PagesRead}, total read={source.DocumentsRead}, complete={source.Completed}");
+    }
+
+    private void PrintProgress(EntityMigration202608Progress progress)
+    {
+        Console.WriteLine();
+        Console.WriteLine("Saved migration progress");
+        Console.WriteLine($"Status:               {progress.Status}");
+        Console.WriteLine($"Runs:                 {progress.RunCount}");
+        Console.WriteLine($"Last updated:         {progress.LastUpdatedDate}");
+        Console.WriteLine($"Application Data DB:  {_progressStore.DatabaseName}");
+        Console.WriteLine();
+        Console.WriteLine($"{"Source Collection",-36} {"Done",6} {"Pages",8} {"Read",10} {"Written",10} {"Failed",8} {"Token",8}");
+
+        foreach (var source in progress.Sources)
+        {
+            Console.WriteLine(
+                $"{source.SourceCollectionName,-36} {(source.Completed ? "yes" : "no"),6} {source.PagesRead,8} {source.DocumentsRead,10} " +
+                $"{source.DocumentsWritten,10} {source.DocumentsFailed,8} {(String.IsNullOrWhiteSpace(source.ContinuationToken) ? "<none>" : "saved"),8}");
+        }
+    }
+
+    private async Task TrySaveProgressAsync(EntityMigration202608Progress progress)
+    {
+        try
+        {
+            await _progressStore.SaveAsync(progress, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Unable to save final migration checkpoint: {ex.Message}");
+        }
+    }
+
+    private static void TrimRunHistory(EntityMigration202608Progress progress)
+    {
+        const int maxRunHistory = 25;
+        if (progress.Runs.Count <= maxRunHistory) return;
+        progress.Runs = progress.Runs.OrderByDescending(run => run.StartedUtc).Take(maxRunHistory).OrderBy(run => run.StartedUtc).ToList();
     }
 
     private static FilterDefinition<BsonDocument> CreateMongoEntityTypeFilter(string entityType)
@@ -248,7 +430,7 @@ internal sealed class EntityMigrationRunner
         Console.WriteLine($"Documents skipped:    {result.DocumentsSkipped}");
         Console.WriteLine($"Documents failed:     {result.DocumentsFailed}");
         Console.WriteLine($"Completed:            {result.Completed}");
-        Console.WriteLine($"Continuation token:   {(String.IsNullOrWhiteSpace(result.ContinuationToken) ? "<none>" : result.ContinuationToken)}");
+        Console.WriteLine($"Continuation token:   {(String.IsNullOrWhiteSpace(result.ContinuationToken) ? "<none>" : "present")}");
         Console.WriteLine();
         Console.WriteLine($"{"Collection",-20} {"EntityType",-40} {"Read",8} {"Excluded",10} {"Written",9} {"Failed",8}");
 
