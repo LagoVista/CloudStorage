@@ -89,8 +89,7 @@ namespace LagoVista.CloudStorage.Tests
             Assert.That(provider.GetClient(), Is.SameAs(mongo));
         }
 
-        private static IConfiguration Build(IDictionary<string, string> values) =>
-            new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        private static IConfiguration Build(IDictionary<string, string> values) => new ConfigurationBuilder().AddInMemoryCollection(values).Build();
 
         private sealed class FakeSettings : IDocumentStorageProviderSettings
         {
@@ -104,6 +103,9 @@ namespace LagoVista.CloudStorage.Tests
             public Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item, string eTag = null) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<TEntity> GetDocumentAsync<TEntity>(string id, string partitionKey, bool throwOnNotFound = true) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
+            public Task<TProjection> GetDocumentProjectionAsync<TProjection>(string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default) where TProjection : class => throw new NotSupportedException();
+            public Task<TProjection> GetDocumentProjectionAsync<TProjection>(string entityType, string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default) where TProjection : class => throw new NotSupportedException();
+            public Task<IEnumerable<TProjection>> GetDocumentProjectionsAsync<TProjection>(string entityType, Expression<Func<TProjection, bool>> query, CancellationToken cancellationToken = default) where TProjection : class => throw new NotSupportedException();
             public Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id, string partitionKey) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<OperationResponse<TEntity>> PatchDocumentAsync<TEntity>(PatchRequest request) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
@@ -111,6 +113,7 @@ namespace LagoVista.CloudStorage.Tests
             public Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest, bool descending) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
+            public Task<ListResponse<TEntity>> QueryAsync<TEntity, TKey>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, TKey>> sort, ListRequest listRequest, bool descending) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<ListResponse<TEntity>> QueryAllAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity => throw new NotSupportedException();
             public Task<IEnumerable<TResult>> QueryKnownAsync<TResult>(string entityType, DocumentQueryRequest request, CancellationToken cancellationToken = default) where TResult : class => throw new NotSupportedException();
         }
