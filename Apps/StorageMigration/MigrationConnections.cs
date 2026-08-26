@@ -1,3 +1,4 @@
+using LagoVista.CloudStorage.Utils;
 using System.Globalization;
 
 namespace LagoVista.StorageMigration;
@@ -18,16 +19,26 @@ public static class MigrationConnections
         return $"DefaultEndpointsProtocol=https;AccountName={accountId};AccountKey={accessKey}";
     }
 
-    public static CassandraMigrationConnection Cassandra => new()
+    public static CassandraMigrationConnection Cassandra
     {
-        ContactPoints = (Optional("MIGRATION_CASSANDRA_HOSTS") ?? "localhost").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-        Port = Int32.Parse(Optional("MIGRATION_CASSANDRA_PORT") ?? "19042", CultureInfo.InvariantCulture),
-        UserName = Optional("MIGRATION_CASSANDRA_USERNAME") ?? "cassandra",
-        Password = Optional("MIGRATION_CASSANDRA_PASSWORD") ?? "cassandra",
-        Keyspace = Optional("MIGRATION_CASSANDRA_KEYSPACE") ?? "nuviot_cloudstorage_tests",
-        LocalDataCenter = Optional("MIGRATION_CASSANDRA_DATACENTER") ?? "datacenter1",
-        ReplicationFactor = Int32.Parse(Optional("MIGRATION_CASSANDRA_REPLICATION_FACTOR") ?? "1", CultureInfo.InvariantCulture)
-    };
+        get
+        {
+            var settings = String.Equals(EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase)
+                ? TestConnections.ProductionCassandraStorage
+                : TestConnections.DevCassandraStorage;
+
+            return new CassandraMigrationConnection
+            {
+                ContactPoints = settings.ContactPoints.ToArray(),
+                Port = settings.Port,
+                UserName = settings.UserName,
+                Password = settings.Password,
+                Keyspace = settings.Keyspace,
+                LocalDataCenter = settings.LocalDataCenter,
+                ReplicationFactor = Int32.Parse(Optional("MIGRATION_CASSANDRA_REPLICATION_FACTOR") ?? "1", CultureInfo.InvariantCulture)
+            };
+        }
+    }
 
     public static string EnvironmentName => String.Equals(Optional("MIGRATION_ENVIRONMENT"), "prod", StringComparison.OrdinalIgnoreCase) ? "prod" : "dev";
 
