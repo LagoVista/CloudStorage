@@ -1,4 +1,5 @@
 {
+  "$schema": "../schemas/coverage-card.schema.json",
   "id": "cosmos-document-storage-client-integration",
   "title": "CosmosDocumentStorageClient Integration Tests",
   "status": "backlog",
@@ -10,17 +11,8 @@
   ],
   "data": {
     "component": "CosmosDocumentStorageClient",
-    "coverage": [
-      "create-read-update-delete",
-      "query",
-      "patch",
-      "optimistic-concurrency",
-      "error-behavior"
-    ],
+    "coverage": ["create-read-update-delete", "query", "patch", "optimistic-concurrency", "error-behavior"],
     "tests": [],
-    "environment": {
-      "type": "docker",
-      "provider": "cosmos-emulator"
-    }
+    "environment": { "type": "docker", "provider": "cosmos-emulator" }
   }
 }
