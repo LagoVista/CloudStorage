@@ -44,6 +44,12 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         /// <summary>Returns document ids where a named field equals the requested value.</summary>
         EntityUtilsDocumentsByFieldValue,
+
+        /// <summary>Returns entities where every requested checklist step has a LastRun.</summary>
+        EntityUtilsCompletedChecklistCandidates,
+
+        /// <summary>Counts entities where every requested checklist step has a LastRun.</summary>
+        EntityUtilsCompletedChecklistCount,
     }
 
     public sealed class DocumentCountResult

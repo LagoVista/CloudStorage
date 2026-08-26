@@ -490,6 +490,11 @@ AND (
                             .WithParameter("@entityType", request.GetRequired<string>("entityType"))
                             .WithParameter("@orgId", request.GetRequired<string>("orgId"));
                     }
+                case DocumentQueryType.EntityUtilsCompletedChecklistCandidates:
+                    return CreateCompletedChecklistQuery(request, false);
+
+                case DocumentQueryType.EntityUtilsCompletedChecklistCount:
+                    return CreateCompletedChecklistQuery(request, true);
                 case DocumentQueryType.CustomerIndustryNicheSalesStageCounts:
                     return new QueryDefinition("SELECT c.Industry, c.IndustryNiche, c.SalesStage, COUNT(c.id) AS CountLeads FROM c WHERE c.EntityType = 'CustomerEntity' AND c.OwnerOrganization.Id = @orgId GROUP BY c.Industry, c.IndustryNiche, c.SalesStage")
                         .WithParameter("@orgId", request.GetRequired<string>("orgId"));
@@ -521,6 +526,59 @@ AND (
                 default:
                     throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Cosmos provider.");
             }
+        }
+
+        private static QueryDefinition CreateCompletedChecklistQuery(DocumentQueryRequest request, bool count)
+        {
+            var stepKeys = request.GetRequired<List<string>>("stepKeys");
+
+            var predicates = new List<string>
+    {
+        "c.EntityType = @entityType",
+        "c.OwnerOrganization.Id = @orgId"
+    };
+
+            for (var idx = 0; idx < stepKeys.Count; idx++)
+            {
+                predicates.Add($@"EXISTS (
+    SELECT VALUE status
+    FROM status IN c.ChecklistStatus
+    WHERE status.StepKey = @stepKey{idx}
+    AND IS_DEFINED(status.LastRun)
+    AND NOT IS_NULL(status.LastRun)
+)");
+            }
+
+            string sql;
+
+            if (count)
+            {
+                sql = $"SELECT COUNT(1) AS Count FROM c WHERE {String.Join(" AND ", predicates)}";
+            }
+            else
+            {
+                var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
+
+                sql = $@"SELECT TOP {maxItems}
+    c.id AS Id,
+    c.EntityType AS EntityType,
+    c.Name AS Name,
+    c.Key AS Key,
+    c.Description AS Description,
+    c.ChecklistStatus AS ChecklistStatus
+FROM c
+WHERE {String.Join(Environment.NewLine + "AND ", predicates)}
+ORDER BY c.Name";
+            }
+
+            var query = new QueryDefinition(sql)
+                .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                .WithParameter("@orgId", request.GetRequired<string>("orgId"));
+
+            for (var idx = 0; idx < stepKeys.Count; idx++)
+                query = query.WithParameter($"@stepKey{idx}", stepKeys[idx]);
+
+            return query;
         }
 
         private static QueryDefinition CreatePreparationQuery(DocumentQueryRequest request)

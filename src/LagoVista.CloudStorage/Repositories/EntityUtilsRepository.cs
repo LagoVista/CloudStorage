@@ -918,73 +918,40 @@ namespace LagoVista.CloudStorage.Storage
 
         private async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsInternalAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, string targetChecklistStepKey, int maxItems, CancellationToken ct)
         {
-            if (String.IsNullOrWhiteSpace(entityType))
-            {
-                throw new ArgumentException("entityType is required.", nameof(entityType));
-            }
-
-            if (String.IsNullOrWhiteSpace(orgId))
-            {
-                throw new ArgumentException("orgId is required.", nameof(orgId));
-            }
-
-            if (checklistStepKeys == null)
-            {
-                throw new ArgumentNullException(nameof(checklistStepKeys));
-            }
-
-            if (maxItems <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
-            }
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+            if (checklistStepKeys == null) throw new ArgumentNullException(nameof(checklistStepKeys));
+            if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
 
             var stepKeys = NormalizeChecklistStepKeys(checklistStepKeys);
 
             if (!stepKeys.Any())
-            {
                 return InvokeResult<List<EntityChecklistCandidateSummary>>.FromError("At least one checklist step key is required.");
-            }
 
             var validation = ValidateChecklistStepKeys(stepKeys);
 
             if (!validation.Successful)
-            {
                 return InvokeResult<List<EntityChecklistCandidateSummary>>.FromInvokeResult(validation);
-            }
 
-            var take = Math.Min(maxItems, 5000);
-            var predicates = new List<string>
-    {
-        "c.EntityType = @entityType",
-        "c.OwnerOrganization.Id = @orgId"
-    };
-
-            for (var idx = 0; idx < stepKeys.Count; idx++)
+            try
             {
-                predicates.Add(BuildCompletedChecklistStepPredicate($"@stepKey{idx}"));
+                var take = Math.Min(maxItems, 5000);
+
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsCompletedChecklistCandidates)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("stepKeys", stepKeys)
+                    .WithParameter("maxItems", take);
+
+                var documents = (await _storageClient.QueryKnownAsync<EntityChecklistCandidateDocument>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
+
+                return BuildChecklistCandidateSummaries(documents, stepKeys, targetChecklistStepKey, $"{this.Tag()} - Found completed checklist candidates for {entityType} with steps [{String.Join(", ", stepKeys)}].");
             }
-
-            var sql = BuildCandidateSummarySql(predicates, take);
-
-            var qd = new QueryDefinition(sql)
-                .WithParameter("@entityType", entityType.Trim())
-                .WithParameter("@orgId", orgId.Trim())
-                .WithParameter("@completedStatus", EntityChecklistStatus.Completed);
-
-            for (var idx = 0; idx < stepKeys.Count; idx++)
+            catch (Exception ex)
             {
-                qd = qd.WithParameter($"@stepKey{idx}", stepKeys[idx]);
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromException(this.Tag(), ex);
             }
-
-            _logger.Trace($"{this.Tag()} - Finding completed check lists", sql.ToKVP("query"));
-
-            return await ExecuteCandidateSummaryQueryAsync(
-                qd,
-                stepKeys,
-                targetChecklistStepKey,
-                take,
-                $"{this.Tag()} - Found completed checklist candidates for {entityType} with steps [{String.Join(", ", stepKeys)}].",
-                ct).ConfigureAwait(false);
         }
 
 
@@ -1097,6 +1064,50 @@ namespace LagoVista.CloudStorage.Storage
                 return InvokeResult<int>.FromException(tag, ex);
             }
         }
+        private InvokeResult<List<EntityChecklistCandidateSummary>> BuildChecklistCandidateSummaries(IEnumerable<EntityChecklistCandidateDocument> documents, IEnumerable<string> checklistStepKeys, string targetChecklistStepKey, string successMessage)
+        {
+            var normalizedChecklistStepKeys = NormalizeChecklistStepKeys(checklistStepKeys ?? Enumerable.Empty<string>());
+            var checklistStepKeySet = normalizedChecklistStepKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var results = (documents ?? Enumerable.Empty<EntityChecklistCandidateDocument>())
+                .Select(document =>
+                {
+                    var checklistStatus = document.ChecklistStatus ?? new List<EntityChecklistStatus>();
+
+                    var completedTargetStepKeys = checklistStatus
+                        .Where(status => status != null &&
+                                         !String.IsNullOrWhiteSpace(status.StepKey) &&
+                                         checklistStepKeySet.Contains(status.StepKey) &&
+                                         status.Status != null &&
+                                         String.Equals(status.Status.Key, EntityChecklistStatus.Completed, StringComparison.OrdinalIgnoreCase))
+                        .Select(status => status.StepKey)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    var targetChecklistStatus = String.IsNullOrWhiteSpace(targetChecklistStepKey)
+                        ? null
+                        : checklistStatus.FirstOrDefault(status => status != null && String.Equals(status.StepKey, targetChecklistStepKey, StringComparison.OrdinalIgnoreCase));
+
+                    return new EntityChecklistCandidateSummary
+                    {
+                        Id = document.Id,
+                        EntityType = document.EntityType,
+                        Name = document.Name,
+                        Key = document.Key,
+                        Description = document.Description,
+                        CompletedTargetStepKeys = completedTargetStepKeys,
+                        CompletedTargetStepCount = completedTargetStepKeys.Count,
+                        TargetStepCount = normalizedChecklistStepKeys.Count,
+                        TargetChecklistStatus = targetChecklistStatus
+                    };
+                })
+                .ToList();
+
+            _logger.Trace(successMessage);
+
+            return InvokeResult<List<EntityChecklistCandidateSummary>>.Create(results);
+        }
+
 
         public async Task<InvokeResult<int>> CountEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, CancellationToken ct)
         {
@@ -1104,54 +1115,28 @@ namespace LagoVista.CloudStorage.Storage
 
             try
             {
-                if (String.IsNullOrWhiteSpace(entityType))
-                {
-                    return InvokeResult<int>.FromError("Entity type is required.");
-                }
-
-                if (String.IsNullOrWhiteSpace(orgId))
-                {
-                    return InvokeResult<int>.FromError("Organization id is required.");
-                }
-
-                if (checklistStepKeys == null)
-                {
-                    throw new ArgumentNullException(nameof(checklistStepKeys));
-                }
+                if (String.IsNullOrWhiteSpace(entityType)) return InvokeResult<int>.FromError("Entity type is required.");
+                if (String.IsNullOrWhiteSpace(orgId)) return InvokeResult<int>.FromError("Organization id is required.");
+                if (checklistStepKeys == null) throw new ArgumentNullException(nameof(checklistStepKeys));
 
                 var stepKeys = NormalizeChecklistStepKeys(checklistStepKeys);
 
                 if (!stepKeys.Any())
-                {
                     return InvokeResult<int>.FromError("At least one completed checklist step key is required.");
-                }
 
                 var validation = ValidateChecklistStepKeys(stepKeys);
+
                 if (!validation.Successful)
-                {
                     return InvokeResult<int>.FromInvokeResult(validation);
-                }
 
-                var predicates = new List<string> { "c.EntityType = @entityType", "c.OwnerOrganization.Id = @orgId" };
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsCompletedChecklistCount)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("stepKeys", stepKeys);
 
-                for (var idx = 0; idx < stepKeys.Count; idx++)
-                {
-                    predicates.Add(BuildCompletedChecklistStepPredicate($"@stepKey{idx}"));
-                }
+                var result = (await _storageClient.QueryKnownAsync<DocumentCountResult>(entityType.Trim(), request, ct).ConfigureAwait(false)).FirstOrDefault();
 
-                var sql = $"SELECT VALUE COUNT(1) FROM c WHERE {String.Join(" AND ", predicates)}";
-                var qd = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@completedStatus", EntityChecklistStatus.Completed);
-
-                _logger.Trace($"{this.Tag()} - Finding completed check lists", sql.ToKVP("query"));
-
-                for (var idx = 0; idx < stepKeys.Count; idx++)
-                {
-                    qd = qd.WithParameter($"@stepKey{idx}", stepKeys[idx]);
-                }
-
-                var count = await ExecuteScalarIntAsync(qd, ct).ConfigureAwait(false);
-
-                return InvokeResult<int>.Create(count);
+                return InvokeResult<int>.Create(result?.Count ?? 0);
             }
             catch (Exception ex)
             {

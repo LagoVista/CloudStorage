@@ -429,6 +429,15 @@ namespace LagoVista.CloudStorage.StorageProviders
             var collection = GetBsonCollection(collectionName);
             switch (request.QueryType)
             {
+                case DocumentQueryType.EntityUtilsCompletedChecklistCandidates:
+                    return await QueryCompletedChecklistCandidatesAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
+
+                case DocumentQueryType.EntityUtilsCompletedChecklistCount:
+                    {
+                        var count = await CountCompletedChecklistCandidatesAsync(collection, request, cancellationToken).ConfigureAwait(false);
+                        return new[] { (TResult)(object)new DocumentCountResult { Count = checked((int)count) } };
+                    }
+
                 case DocumentQueryType.EntityUtilsDocumentsByFieldValue:
                     return await QueryEntityUtilsByFieldValueAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
 
@@ -451,13 +460,14 @@ namespace LagoVista.CloudStorage.StorageProviders
                     return await QueryEntityUtilsDocumentsAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
 
                 case DocumentQueryType.EntityUtilsCountByType:
-                    var count = await collection.CountDocumentsAsync(new BsonDocument
                     {
-                        { "EntityType", request.GetRequired<string>("entityType") },
-                        { "OwnerOrganization.Id", request.GetRequired<string>("orgId") }
-                    }, cancellationToken: cancellationToken).ConfigureAwait(false);
-                    return new[] { (TResult)(object)new DocumentCountResult { Count = checked((int)count) } };
-
+                        var count = await collection.CountDocumentsAsync(new BsonDocument
+                        {
+                            { "EntityType", request.GetRequired<string>("entityType") },
+                            { "OwnerOrganization.Id", request.GetRequired<string>("orgId") }
+                        }, cancellationToken: cancellationToken).ConfigureAwait(false);
+                            return new[] { (TResult)(object)new DocumentCountResult { Count = checked((int)count) } };
+                    }
                 case DocumentQueryType.EntityPreparationCandidateById:
                 case DocumentQueryType.EntityPreparationCandidatesByType:
                 case DocumentQueryType.IncompleteEntityPreparationCandidatesByType:
@@ -471,6 +481,57 @@ namespace LagoVista.CloudStorage.StorageProviders
                 default:
                     throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Mongo provider.");
             }
+        }
+
+        private static Task<long> CountCompletedChecklistCandidatesAsync(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken)
+        {
+            return collection.CountDocumentsAsync(BuildCompletedChecklistFilter(request), cancellationToken: cancellationToken);
+        }
+
+        private static async Task<IEnumerable<TResult>> QueryCompletedChecklistCandidatesAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
+            var filter = BuildCompletedChecklistFilter(request);
+
+            var documents = await collection
+                .Find(filter)
+                .Sort(Builders<BsonDocument>.Sort.Ascending("Name"))
+                .Limit(maxItems)
+                .Project(new BsonDocument
+                {
+            { "_id", 1 },
+            { "EntityType", 1 },
+            { "Name", 1 },
+            { "Key", 1 },
+            { "Description", 1 },
+            { "ChecklistStatus", 1 }
+                })
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return Deserialize<TResult>(documents);
+        }
+        private static FilterDefinition<BsonDocument> BuildCompletedChecklistFilter(DocumentQueryRequest request)
+        {
+            var stepKeys = request.GetRequired<List<string>>("stepKeys");
+
+            var filters = new List<FilterDefinition<BsonDocument>>
+    {
+        Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+        Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId"))
+    };
+
+            foreach (var stepKey in stepKeys)
+            {
+                filters.Add(Builders<BsonDocument>.Filter.ElemMatch<BsonValue>("ChecklistStatus",
+                    new BsonDocument
+                    {
+                { "StepKey", stepKey },
+                { "LastRun", new BsonDocument { { "$exists", true }, { "$ne", BsonNull.Value } } }
+                    }));
+            }
+
+            return Builders<BsonDocument>.Filter.And(filters);
         }
 
         private static async Task<IEnumerable<TResult>> QueryEntityUtilsByFieldValueAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
