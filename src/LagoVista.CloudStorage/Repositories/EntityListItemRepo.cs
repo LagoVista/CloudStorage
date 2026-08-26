@@ -23,7 +23,7 @@ namespace LagoVista.CloudStorage.Repositories
         private readonly IAdminLogger _logger;
         private readonly IDocumentStorageClient _storageClient;
 
-        public EntityListItemRepo(string endpoint, string sharedKey, string dbName, IDocumentCloudCachedServices cloudServices) : base(endpoint, sharedKey, dbName, cloudServices)
+        public EntityListItemRepo(IDocumentCloudCachedServices cloudServices) : base(cloudServices)
         {
             if (cloudServices == null) throw new ArgumentNullException(nameof(cloudServices));
             _logger = cloudServices.AdminLogger;

@@ -17,5 +17,7 @@ namespace LagoVista.CloudStorage.Interfaces
         IRagIndexingServices RagIndexingServices { get; }
 
         IFkIndexTableWriterBatched FkIndexTableWriter { get; }
+
+        ISystemUsers SystemUsers { get; }
     }
 }
