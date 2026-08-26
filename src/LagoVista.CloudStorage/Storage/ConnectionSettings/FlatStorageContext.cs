@@ -3,11 +3,8 @@ using System.Collections.Generic;
 
 namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
-    public interface IFlatStorageConnectionSettings
-    {
-    }
 
-    public sealed class AzureTableStorageConnectionSettings : IFlatStorageConnectionSettings
+    public sealed class AzureTableStorageConnectionSettings 
     {
         public AzureTableStorageConnectionSettings(string accountId, string accountKey)
         {
@@ -22,7 +19,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         public string AccountKey { get; }
     }
 
-    public sealed class CassandraConnectionSettings : IFlatStorageConnectionSettings
+    public sealed class CassandraConnectionSettings 
     {
         public CassandraConnectionSettings(
             IEnumerable<string> contactPoints,
@@ -66,53 +63,5 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         public string Keyspace { get; }
         public int Port { get; }
         public string LocalDataCenter { get; }
-    }
-
-    public sealed class FlatStorageContext
-    {
-        public FlatStorageContext(FlatStorageProvider provider, IFlatStorageConnectionSettings connection)
-        {
-            Connection = connection ?? throw new ArgumentNullException(nameof(connection));
-            Provider = provider;
-
-            ValidateProviderMatchesConnection();
-        }
-
-        public FlatStorageProvider Provider { get; }
-        public IFlatStorageConnectionSettings Connection { get; }
-
-        public TConnection GetConnection<TConnection>() where TConnection : class, IFlatStorageConnectionSettings
-        {
-            var connection = Connection as TConnection;
-            if (connection == null)
-            {
-                throw new InvalidOperationException(
-                    $"Flat storage provider {Provider} is configured with {Connection.GetType().Name}, not {typeof(TConnection).Name}.");
-            }
-
-            return connection;
-        }
-
-        public static FlatStorageContext AzureTableStorage(string accountId, string accountKey)
-        {
-            return new FlatStorageContext(
-                FlatStorageProvider.AzureTableStorage,
-                new AzureTableStorageConnectionSettings(accountId, accountKey));
-        }
-
-        private void ValidateProviderMatchesConnection()
-        {
-            var valid =
-                (Provider == FlatStorageProvider.AzureTableStorage && Connection is AzureTableStorageConnectionSettings) ||
-                (Provider == FlatStorageProvider.Cassandra && Connection is CassandraConnectionSettings) ||
-                (Provider == FlatStorageProvider.MongoDB && Connection is MongoConnectionSettings);
-
-            if (!valid)
-            {
-                throw new ArgumentException(
-                    $"Connection settings type {Connection.GetType().Name} does not match flat storage provider {Provider}.",
-                    nameof(Connection));
-            }
-        }
     }
 }

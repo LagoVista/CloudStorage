@@ -4,31 +4,15 @@ using System;
 
 namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
-    public interface IApplicationDataStorageSettings
+    public interface IApplicationDataStorageSettings : IMongoDocumentStorageConnectionSettings
     {
-        string ConnectionString { get; }
-        string DatabaseName { get; }
+ 
     }
 
-    public sealed class ApplicationDataStorageSettings : IApplicationDataStorageSettings
+    public sealed class ApplicationDataStorageSettings : MongoDocumentStorageConnectionSettings, IApplicationDataStorageSettings
     {
-        public const string SectionName = "ApplicationDataStorage";
-
-        public ApplicationDataStorageSettings(IConfiguration configuration)
+        public ApplicationDataStorageSettings(IConfiguration configuration) : base(configuration)
         {
-            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
-
-            var section = configuration.GetSection(SectionName);
-            ConnectionString = section.Require("ConnectionString");
-            DatabaseName = section.Require("DatabaseName");
-        }
-
-        public string ConnectionString { get; }
-        public string DatabaseName { get; }
-
-        public override string ToString()
-        {
-            return $"ApplicationDataStorageSettings(DatabaseName={DatabaseName}, ConnectionString=<redacted>)";
         }
     }
 }

@@ -3,6 +3,7 @@ using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections.Generic;
 
 namespace LagoVista.CloudStorage.Storage
 {
@@ -21,12 +22,6 @@ namespace LagoVista.CloudStorage.Storage
     {
         string Endpoint { get; }
         string AccessKey { get; }
-        string DatabaseName { get; }
-    }
-
-    public interface IMongoConnectionSettings : IFlatStorageConnectionSettings
-    {
-        string ConnectionString { get; }
         string DatabaseName { get; }
     }
 }
@@ -67,24 +62,6 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 
         public string Endpoint { get; }
         public string AccessKey { get; }
-        public string DatabaseName { get; }
-    }
-
-    public sealed class MongoConnectionSettings : IMongoConnectionSettings
-    {
-        public const string SectionName = "MongoDocumentStorage";
-
-        public MongoConnectionSettings(IConfiguration configuration)
-        {
-            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
-            var mongo = new MongoDocumentStorageConnectionSettings(configuration);
-            ConnectionString = mongo.BuildConnectionString();
-
-            var section = configuration.GetSection(SectionName);
-            DatabaseName = section.Require("DatabaseName");
-        }
-
-        public string ConnectionString { get; }
         public string DatabaseName { get; }
     }
 }

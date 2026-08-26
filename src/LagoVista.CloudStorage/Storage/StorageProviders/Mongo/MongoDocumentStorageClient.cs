@@ -3,6 +3,7 @@ using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
@@ -28,12 +29,12 @@ namespace LagoVista.CloudStorage.StorageProviders
     /// </summary>
     public sealed class MongoDocumentStorageClient : IMongoDocumentStorageClient
     {
-        private readonly IMongoConnectionSettings _settings;
+        private readonly IMongoDocumentStorageConnectionSettings _settings;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
         private readonly IMongoStorageClientFactory _clientFactory;
 
         public MongoDocumentStorageClient(
-            IMongoConnectionSettings settings,
+            IMongoDocumentStorageConnectionSettings settings,
             IDocumentCollectionNameResolver collectionNameResolver,
             IMongoStorageClientFactory clientFactory)
         {
@@ -217,11 +218,11 @@ namespace LagoVista.CloudStorage.StorageProviders
         private IMongoCollection<TEntity> GetCollection<TEntity>() where TEntity : class
         {
             var collectionName = _collectionNameResolver.Resolve(_settings.DatabaseName, typeof(TEntity), null);
-            return _clientFactory.GetDatabase(_settings.ConnectionString, _settings.DatabaseName).GetCollection<TEntity>(collectionName);
+            return _clientFactory.GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName).GetCollection<TEntity>(collectionName);
         }
 
         private IMongoCollection<BsonDocument> GetBsonCollection(string collectionName) =>
-            _clientFactory.GetDatabase(_settings.ConnectionString, _settings.DatabaseName).GetCollection<BsonDocument>(collectionName);
+            _clientFactory.GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName).GetCollection<BsonDocument>(collectionName);
 
         private static UpdateDefinition<TEntity> CreatePatchUpdate<TEntity>(PatchStep step) where TEntity : class
         {

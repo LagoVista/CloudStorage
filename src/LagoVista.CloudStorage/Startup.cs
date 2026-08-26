@@ -22,6 +22,11 @@ namespace LagoVista.CloudStorage
     {
         public static void ConfigureServices(IServiceCollection services)
         {
+            services.AddCassandraStorageConnection();
+            services.AddMongoDocumentStorageConnection();
+            services.AddScratchStorageConnection();
+            services.AddApplicationDataStorageConnection();
+
             services.AddScoped<IStorageUtils, StorageUtils>();
             services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
             services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
@@ -51,7 +56,6 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
             services.AddSingleton<IDocumentStorageProviderSettings, DocumentStorageProviderSettings>();
             services.AddSingleton<ICosmosConnectionSettings, CosmosConnectionSettings>();
-            services.AddSingleton<IMongoConnectionSettings, MongoConnectionSettings>();
             services.AddSingleton<ICosmosClientProvider>(CosmosClientProvider.Shared);
             services.AddMongoDocumentStorageConnection();
 

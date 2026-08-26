@@ -25,7 +25,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (settings == null) throw new ArgumentNullException(nameof(settings));
             if (clientFactory == null) throw new ArgumentNullException(nameof(clientFactory));
 
-            var database = clientFactory.GetDatabase(settings.ConnectionString, settings.DatabaseName);
+            var database = clientFactory.GetDatabase(settings.BuildConnectionString(), settings.DatabaseName);
             _store = new MongoMutableRecordStore(database, serviceProvider);
         }
 

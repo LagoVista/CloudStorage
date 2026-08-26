@@ -14,12 +14,13 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         string UserName { get; }
         string Password { get; }
         string AuthenticationDatabase { get; }
+        string DatabaseName { get; }
         string ReplicaSet { get; }
         bool UseTls { get; }
         string BuildConnectionString();
     }
 
-    public sealed class MongoDocumentStorageConnectionSettings : IMongoDocumentStorageConnectionSettings
+    public class MongoDocumentStorageConnectionSettings : IMongoDocumentStorageConnectionSettings
     {
         public const string SectionName = "MongoDocumentStorage";
 
@@ -41,6 +42,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
             Password = section.Require("Password");
             var authenticationDatabase = section.Optional("AuthenticationDatabase");
             AuthenticationDatabase = String.IsNullOrWhiteSpace(authenticationDatabase) ? "admin" : authenticationDatabase.Trim();
+            DatabaseName = section.Require("DatabaseName");
             var replicaSet = section.Optional("ReplicaSet");
             ReplicaSet = String.IsNullOrWhiteSpace(replicaSet) ? null : replicaSet.Trim();
             var useTls = section.Optional("UseTls");
@@ -51,6 +53,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         public int Port { get; set;} = 27018;
         public string UserName { get; set;}
         public string Password { get; set;}
+        public string DatabaseName { get; set;}
         public string AuthenticationDatabase { get; set;}
         public string ReplicaSet { get; set;}
         public bool UseTls { get; set;}

@@ -3,6 +3,7 @@ using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
@@ -37,7 +38,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
-            var response = await GetContainer().CreateItemAsync(item).ConfigureAwait(false);
+            var response = await GetContainer<TEntity>().CreateItemAsync(item).ConfigureAwait(false);
             return new OperationResponse<TEntity>(response);
         }
 
@@ -45,7 +46,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
-            var response = await GetContainer().UpsertItemAsync(item).ConfigureAwait(false);
+            var response = await GetContainer<TEntity>().UpsertItemAsync(item).ConfigureAwait(false);
             return new OperationResponse<TEntity>(response);
         }
 
@@ -58,7 +59,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var response = await GetContainer().ReadItemAsync<TEntity>(
+                var response = await GetContainer<TEntity>().ReadItemAsync<TEntity>(
                     id,
                     String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
 
@@ -87,7 +88,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var response = await GetContainer().DeleteItemAsync<TEntity>(
+                var response = await GetContainer<TEntity>  ().DeleteItemAsync<TEntity>(
                     id,
                     String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
                 return new OperationResponse<TEntity>(response);
@@ -111,7 +112,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             try
             {
-                var response = await GetContainer().PatchItemAsync<TEntity>(
+                var response = await GetContainer<TEntity>  ().PatchItemAsync<TEntity>(
                     request.Id,
                     String.IsNullOrWhiteSpace(request.PartitionKey) ? PartitionKey.None : new PartitionKey(request.PartitionKey),
                     operations,
@@ -134,7 +135,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (query == null) throw new ArgumentNullException(nameof(query));
 
             var items = new List<TEntity>();
-            var linqQuery = GetContainer().GetItemLinqQueryable<TEntity>()
+            var linqQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>()
                 .Where(query)
                 .Where(item => item.EntityType == typeof(TEntity).Name);
 
@@ -154,7 +155,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
 
             var items = new List<TEntity>();
-            var linqQuery = GetContainer().GetItemLinqQueryable<TEntity>()
+            var linqQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>()
                 .Where(query)
                 .Where(item => item.EntityType == typeof(TEntity).Name)
                 .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
@@ -174,16 +175,24 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
 
-            var iterator = GetContainer().GetItemQueryIterator<TResult>(CreateKnownQuery(request));
+            var iterator = GetContainer<TResult>().GetItemQueryIterator<TResult>(CreateKnownQuery(request));
             var items = new List<TResult>();
             while (iterator.HasMoreResults)
                 items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
             return items;
         }
 
-        private Container GetContainer() =>
-            _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey)
-                .GetContainer(_settings.DatabaseName, $"{_settings.DatabaseName}_Collections");
+        private Container GetContainer<TEntity>()
+        {
+            var containerName = typeof(TEntity).GetCustomAttributes(typeof(CollectionNameAttribute), true)
+                .OfType<CollectionNameAttribute>()
+                .FirstOrDefault()
+                ?.CollectionName
+                ?? $"{_settings.DatabaseName}_Collections";
+
+            return _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey)
+                .GetContainer(_settings.DatabaseName, containerName);
+        }
 
         private static PatchOperation CreatePatchOperation(PatchStep step)
         {
