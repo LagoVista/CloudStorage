@@ -1,0 +1,17 @@
+CloudStorage Document Storage Contract Test Evidence
+StartedUtc: 2026-08-26T20:26:28.1816145Z
+Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\PowerShell\..\LagoVista.StorageProvider.Tests.csproj
+Filter: TestCategory=DocumentStorageContract
+Provider: MongoDB localhost:27018
+
+  Determining projects to restore...
+  Restored D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj (in 410 ms).
+  1 of 2 projects are up-to-date for restore.
+  LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
+D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs(67,47): error CS0246: The type or namespace name 'RecordNotFoundException' could not be found (are you missing a using directive or an assembly reference?) [D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj]
+D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs(70,47): error CS0246: The type or namespace name 'RecordNotFoundException' could not be found (are you missing a using directive or an assembly reference?) [D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj]
+D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs(67,19): warning MSTEST0039: Use 'Assert.ThrowsExactly' instead of 'Assert.ThrowsException' (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0039) [D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj]
+D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs(70,19): warning MSTEST0039: Use 'Assert.ThrowsExactly' instead of 'Assert.ThrowsException' (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0039) [D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj]
+
+CompletedUtc: 2026-08-26T20:26:30.0033111Z
+ExitCode: 1
