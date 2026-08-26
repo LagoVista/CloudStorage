@@ -26,142 +26,71 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
             var store = services.GetRequiredService<IActivityRecordStore<TestActivityRecord>>();
             var organizationId = Guid.NewGuid().ToString("N").ToUpperInvariant();
             var otherOrganizationId = Guid.NewGuid().ToString("N").ToUpperInvariant();
-            var start = new DateTime(
-                2026,
-                8,
-                26,
-                12,
-                0,
-                0,
-                DateTimeKind.Utc);
+            var start = new DateTime(2026, 8, 26, 12, 0, 0, DateTimeKind.Utc);
 
-            var first = CreateRecord(
-                organizationId,
-                "First",
-                start.AddMinutes(1));
-            var second = CreateRecord(
-                organizationId,
-                "Second",
-                start.AddMinutes(2));
-            var third = CreateRecord(
-                organizationId,
-                "Third",
-                start.AddMinutes(3));
-            var fourth = CreateRecord(
-                organizationId,
-                "Fourth",
-                start.AddMinutes(4));
-            var other = CreateRecord(
-                otherOrganizationId,
-                "Other",
-                start.AddMinutes(5));
+            var first = CreateRecord(organizationId, "First", start.AddMinutes(1));
+            var second = CreateRecord(organizationId, "Second", start.AddMinutes(2));
+            var third = CreateRecord(organizationId, "Third", start.AddMinutes(3));
+            var fourth = CreateRecord(organizationId, "Fourth", start.AddMinutes(4));
+            var fifth = CreateRecord(organizationId, "Fifth", start.AddMinutes(5));
+            var other = CreateRecord(otherOrganizationId, "Other", start.AddMinutes(6));
 
             await store.InsertAsync(first);
-            await store.InsertBatchAsync(
-                new[]
-                {
-                    second,
-                    third,
-                    fourth,
-                    other
-                });
+            await store.InsertBatchAsync(new[] { second, third, fourth, fifth, other });
 
             var firstPage = await store.QueryAsync(
                 new HistoryQuery<TestActivityRecord>()
-                    .Between(
-                        start,
-                        start.AddMinutes(10))
-                    .Where(
-                        record => record.OrganizationId,
-                        StorageFilterOperator.Equal,
-                        organizationId)
-                    .WithPage(
-                        new StoragePageRequest(
-                            pageSize: 2)));
+                    .Between(start, start.AddMinutes(10))
+                    .Where(record => record.OrganizationId, StorageFilterOperator.Equal, organizationId)
+                    .WithPage(new StoragePageRequest(pageSize: 2)));
 
-            Assert.AreEqual(
-                2,
-                firstPage.Items.Count);
-            CollectionAssert.AreEqual(
-                new[]
-                {
-                    fourth.Id,
-                    third.Id
-                },
-                firstPage.Items.Select(record => record.Id).ToArray());
+            Assert.AreEqual(2, firstPage.Items.Count);
+            CollectionAssert.AreEqual(new[] { fifth.Id, fourth.Id }, firstPage.Items.Select(record => record.Id).ToArray());
             Assert.IsTrue(firstPage.HasMoreRecords);
 
             var secondPage = await store.QueryAsync(
                 new HistoryQuery<TestActivityRecord>()
-                    .Between(
-                        start,
-                        start.AddMinutes(10))
-                    .Where(
-                        record => record.OrganizationId,
-                        StorageFilterOperator.Equal,
-                        organizationId)
-                    .WithPage(
-                        new StoragePageRequest(
-                            pageSize: 2,
-                            continuationToken: firstPage.ContinuationToken)));
+                    .Between(start, start.AddMinutes(10))
+                    .Where(record => record.OrganizationId, StorageFilterOperator.Equal, organizationId)
+                    .WithPage(new StoragePageRequest(pageSize: 2, continuationToken: firstPage.ContinuationToken)));
 
-            Assert.AreEqual(
-                2,
-                secondPage.Items.Count);
-            CollectionAssert.AreEqual(
-                new[]
-                {
-                    second.Id,
-                    first.Id
-                },
-                secondPage.Items.Select(record => record.Id).ToArray());
-            Assert.IsFalse(secondPage.HasMoreRecords);
+            Assert.AreEqual(2, secondPage.Items.Count);
+            CollectionAssert.AreEqual(new[] { third.Id, second.Id }, secondPage.Items.Select(record => record.Id).ToArray());
+            Assert.IsTrue(secondPage.HasMoreRecords);
+
+            var thirdPage = await store.QueryAsync(
+                new HistoryQuery<TestActivityRecord>()
+                    .Between(start, start.AddMinutes(10))
+                    .Where(record => record.OrganizationId, StorageFilterOperator.Equal, organizationId)
+                    .WithPage(new StoragePageRequest(pageSize: 2, continuationToken: secondPage.ContinuationToken)));
+
+            Assert.AreEqual(1, thirdPage.Items.Count);
+            Assert.AreEqual(first.Id, thirdPage.Items.Single().Id);
+            Assert.IsFalse(thirdPage.HasMoreRecords);
 
             var narrowRange = await store.QueryAsync(
                 new HistoryQuery<TestActivityRecord>()
-                    .Between(
-                        start.AddMinutes(2),
-                        start.AddMinutes(3))
-                    .Where(
-                        record => record.OrganizationId,
-                        StorageFilterOperator.Equal,
-                        organizationId)
-                    .WithPage(
-                        new StoragePageRequest(
-                            pageSize: 10)));
+                    .Between(start.AddMinutes(2), start.AddMinutes(3))
+                    .Where(record => record.OrganizationId, StorageFilterOperator.Equal, organizationId)
+                    .WithPage(new StoragePageRequest(pageSize: 10)));
 
-            CollectionAssert.AreEqual(
-                new[]
-                {
-                    third.Id,
-                    second.Id
-                },
-                narrowRange.Items.Select(record => record.Id).ToArray());
+            CollectionAssert.AreEqual(new[] { third.Id, second.Id }, narrowRange.Items.Select(record => record.Id).ToArray());
 
             var session = await factory.GetSessionAsync();
-            var tableRows = await session.ExecuteAsync(
-                new global::Cassandra.SimpleStatement(
-                    "SELECT table_name FROM system_schema.tables WHERE keyspace_name = ? AND table_name = ?",
-                    settings.Keyspace,
-                    "test_activity_record"));
+            var tableRows = await session.ExecuteAsync(new global::Cassandra.SimpleStatement("SELECT table_name FROM system_schema.tables WHERE keyspace_name = ? AND table_name = ?", settings.Keyspace, "test_activity_record"));
 
             Assert.IsNotNull(tableRows.FirstOrDefault());
         }
 
-        private static ServiceProvider CreateServices(
-            ICassandraSessionFactory factory)
+        private static ServiceProvider CreateServices(ICassandraSessionFactory factory)
         {
             var services = new ServiceCollection();
             services.AddSingleton(factory);
-            services.AddActivityRecordStore<TestActivityRecord, CassandraActivityRecordStore<TestActivityRecord>>(
-                definition => definition.PartitionBy(record => record.OrganizationId));
+            services.AddActivityRecordStore<TestActivityRecord, CassandraActivityRecordStore<TestActivityRecord>>(definition => definition.PartitionBy(record => record.OrganizationId));
             return services.BuildServiceProvider();
         }
 
-        private static TestActivityRecord CreateRecord(
-            string organizationId,
-            string message,
-            DateTime creationDate)
+        private static TestActivityRecord CreateRecord(string organizationId, string message, DateTime creationDate)
         {
             return new TestActivityRecord
             {
