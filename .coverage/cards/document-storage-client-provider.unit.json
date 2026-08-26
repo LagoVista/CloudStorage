@@ -1,4 +1,5 @@
 {
+  "$schema": "../schemas/coverage-card.schema.json",
   "id": "document-storage-client-provider-unit",
   "title": "DocumentStorageClientProvider Unit Tests",
   "status": "backlog",
@@ -10,15 +11,8 @@
   ],
   "data": {
     "component": "DocumentStorageClientProvider",
-    "coverage": [
-      "provider-selection",
-      "configuration",
-      "unsupported-provider",
-      "error-behavior"
-    ],
+    "coverage": ["provider-selection", "configuration", "unsupported-provider", "error-behavior"],
     "tests": [],
-    "environment": {
-      "type": "mock"
-    }
+    "environment": { "type": "mock" }
   }
 }
