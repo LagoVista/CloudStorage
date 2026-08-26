@@ -1,4 +1,5 @@
 {
+  "$schema": "./schemas/coverage-board.schema.json",
   "name": "Cloud Storage Test Coverage",
   "description": "Tracks whether the major CloudStorage components and contracts have appropriate automated test coverage.",
   "version": 1,
