@@ -167,7 +167,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             var collection = _database.GetCollection<TRecord>(collectionName);
             var indexes = new List<CreateIndexModel<TRecord>>();
-            FlatStorageDefinition<TRecord> definition = null;
+            StorageDefinition<TRecord> definition = null;
 
             if (typeof(IApplicationDataRecord).IsAssignableFrom(typeof(TRecord)))
                 definition = GetDefinition<TRecord>(typeof(ApplicationDataStoreOptions<>));
@@ -191,7 +191,7 @@ namespace LagoVista.CloudStorage.StorageProviders
                 await collection.Indexes.CreateManyAsync(indexes, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
-        private FlatStorageDefinition<TRecord> GetDefinition<TRecord>(Type openOptionsType)
+        private StorageDefinition<TRecord> GetDefinition<TRecord>(Type openOptionsType)
             where TRecord : class
         {
             var closedOptionsType = openOptionsType.MakeGenericType(typeof(TRecord));
@@ -200,10 +200,10 @@ namespace LagoVista.CloudStorage.StorageProviders
                 return null;
 
             var definitionProperty = closedOptionsType.GetProperty("Definition", BindingFlags.Instance | BindingFlags.Public);
-            return definitionProperty?.GetValue(options) as FlatStorageDefinition<TRecord>;
+            return definitionProperty?.GetValue(options) as StorageDefinition<TRecord>;
         }
 
-        private static void AddCommonAndConfiguredIndexes<TRecord>(List<CreateIndexModel<TRecord>> indexes, FlatStorageDefinition<TRecord> definition)
+        private static void AddCommonAndConfiguredIndexes<TRecord>(List<CreateIndexModel<TRecord>> indexes, StorageDefinition<TRecord> definition)
             where TRecord : class
         {
             AddIndex(indexes, StorageRecordIdentity.OrganizationIdPath);

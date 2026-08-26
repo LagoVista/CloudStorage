@@ -227,7 +227,7 @@ public class AccessLogRepo : IAccessLogRepo
         _store = store;
     }
 
-    public static void ConfigureStorage(FlatStorageDefinition<AccessLog> definition)
+    public static void ConfigureStorage(StorageDefinition<AccessLog> definition)
     {
         definition
             .PartitionBy(x => x.OrganizationId)

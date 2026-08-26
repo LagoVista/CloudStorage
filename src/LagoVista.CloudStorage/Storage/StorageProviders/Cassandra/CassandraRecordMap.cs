@@ -76,7 +76,7 @@ namespace LagoVista.CloudStorage.Storage
             TableName = ToSnakeCase(typeof(TRecord).Name);
         }
 
-        public FlatStorageDefinition<TRecord> Definition { get; }
+        public StorageDefinition<TRecord> Definition { get; }
         public string TableName { get; }
         public IReadOnlyList<CassandraRecordProperty> Properties { get; }
         public IReadOnlyList<CassandraRecordProperty> PartitionProperties { get; }

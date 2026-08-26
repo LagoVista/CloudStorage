@@ -7,42 +7,42 @@ namespace LagoVista.CloudStorage.Storage
     public sealed class ActivityRecordStoreOptions<TRecord>
         where TRecord : IActivityRecord
     {
-        internal ActivityRecordStoreOptions(FlatStorageDefinition<TRecord> definition)
+        internal ActivityRecordStoreOptions(StorageDefinition<TRecord> definition)
         {
             Definition = definition ?? throw new ArgumentNullException(nameof(definition));
         }
 
-        public FlatStorageDefinition<TRecord> Definition { get; }
+        public StorageDefinition<TRecord> Definition { get; }
     }
 
     public sealed class ScratchStoreOptions<TRecord>
         where TRecord : class, IScratchDataRecord
     {
-        internal ScratchStoreOptions(Action<FlatStorageDefinition<TRecord>> configure = null)
+        internal ScratchStoreOptions(Action<StorageDefinition<TRecord>> configure = null)
         {
-            Definition = new FlatStorageDefinition<TRecord>()
+            Definition = new StorageDefinition<TRecord>()
                 .KeyBy(record => record.Id)
                 .PartitionBy(record => record.Organization.Id);
 
             configure?.Invoke(Definition);
         }
 
-        public FlatStorageDefinition<TRecord> Definition { get; }
+        public StorageDefinition<TRecord> Definition { get; }
     }
 
     public sealed class ApplicationDataStoreOptions<TRecord>
         where TRecord : class, IApplicationDataRecord
     {
-        internal ApplicationDataStoreOptions(Action<FlatStorageDefinition<TRecord>> configure = null)
+        internal ApplicationDataStoreOptions(Action<StorageDefinition<TRecord>> configure = null)
         {
-            Definition = new FlatStorageDefinition<TRecord>()
+            Definition = new StorageDefinition<TRecord>()
                 .KeyBy(record => record.Id)
                 .PartitionBy(record => record.Organization.Id);
 
             configure?.Invoke(Definition);
         }
 
-        public FlatStorageDefinition<TRecord> Definition { get; }
+        public StorageDefinition<TRecord> Definition { get; }
     }
 
     /// <summary>
@@ -54,13 +54,13 @@ namespace LagoVista.CloudStorage.Storage
     {
         public static IServiceCollection AddActivityRecordStore<TRecord, TStore>(
             this IServiceCollection services,
-            Action<FlatStorageDefinition<TRecord>> configure = null)
+            Action<StorageDefinition<TRecord>> configure = null)
             where TRecord : IActivityRecord
             where TStore : class, IActivityRecordStore<TRecord>
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
-            var definition = new FlatStorageDefinition<TRecord>()
+            var definition = new StorageDefinition<TRecord>()
                 .KeyBy(record => record.Id)
                 .TimeBy(record => record.CreationDate);
 
@@ -91,7 +91,7 @@ namespace LagoVista.CloudStorage.Storage
 
         public static IServiceCollection ConfigureScratchData<TRecord>(
             this IServiceCollection services,
-            Action<FlatStorageDefinition<TRecord>> configure)
+            Action<StorageDefinition<TRecord>> configure)
             where TRecord : class, IScratchDataRecord
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
@@ -103,7 +103,7 @@ namespace LagoVista.CloudStorage.Storage
 
         public static IServiceCollection ConfigureApplicationData<TRecord>(
             this IServiceCollection services,
-            Action<FlatStorageDefinition<TRecord>> configure)
+            Action<StorageDefinition<TRecord>> configure)
             where TRecord : class, IApplicationDataRecord
         {
             if (services == null) throw new ArgumentNullException(nameof(services));

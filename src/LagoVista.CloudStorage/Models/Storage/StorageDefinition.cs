@@ -9,7 +9,7 @@ namespace LagoVista.CloudStorage.Storage
     /// Describes the logical storage shape required by a repository without
     /// coupling the repository to a specific physical backend.
     /// </summary>
-    public sealed class FlatStorageDefinition<TEntity>
+    public sealed class StorageDefinition<TEntity>
     {
         private readonly List<string> _partitionFields = new List<string>();
         private readonly List<string> _indexedFields = new List<string>();
@@ -29,37 +29,37 @@ namespace LagoVista.CloudStorage.Storage
 
         public TimeSpan? Retention { get; private set; }
 
-        public FlatStorageDefinition<TEntity> KeyBy<TValue>(Expression<Func<TEntity, TValue>> selector)
+        public StorageDefinition<TEntity> KeyBy<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
             KeyField = GetPropertyPath(selector);
             return this;
         }
 
-        public FlatStorageDefinition<TEntity> PartitionBy<TValue>(Expression<Func<TEntity, TValue>> selector)
+        public StorageDefinition<TEntity> PartitionBy<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
             AddUnique(_partitionFields, GetPropertyPath(selector));
             return this;
         }
 
-        public FlatStorageDefinition<TEntity> TimeBy<TValue>(Expression<Func<TEntity, TValue>> selector)
+        public StorageDefinition<TEntity> TimeBy<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
             TimeField = GetPropertyPath(selector);
             return this;
         }
 
-        public FlatStorageDefinition<TEntity> Index<TValue>(Expression<Func<TEntity, TValue>> selector)
+        public StorageDefinition<TEntity> Index<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
             AddUnique(_indexedFields, GetPropertyPath(selector));
             return this;
         }
 
-        public FlatStorageDefinition<TEntity> BucketBy(StoragePeriod storagePeriod)
+        public StorageDefinition<TEntity> BucketBy(StoragePeriod storagePeriod)
         {
             BucketPeriod = storagePeriod;
             return this;
         }
 
-        public FlatStorageDefinition<TEntity> RetainFor(TimeSpan retention)
+        public StorageDefinition<TEntity> RetainFor(TimeSpan retention)
         {
             if (retention <= TimeSpan.Zero)
             {

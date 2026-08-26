@@ -149,11 +149,11 @@ This inventory reflects the `refactor/cloudstorage-project-layout` branch and gr
 | `CassandraSessionFactory` | Cassandra connection/session lifecycle | Supporting |
 | `CassandraStorageSettings` | Cassandra storage configuration | Canonical |
 
+`StorageDefinition<TRecord>` is the provider-neutral description of a record's logical storage shape, including keys, partitions, indexes, time buckets, and retention. It is shared by semantic storage capabilities and is not itself a storage class.
+
 ### Operational Data
 
-No canonical Operational Data store exists yet.
-
-`FlatStorageDefinition` remains in the repository, but **Flat Storage is retired terminology** and this type should be reviewed as part of the Operational Data design rather than automatically treated as its new contract.
+No canonical Operational Data store exists yet. Its contract will be finalized when the Cassandra-backed full-CRUD implementation is designed.
 
 ### Relational Storage
 
@@ -250,8 +250,7 @@ The inventory highlights several areas that do not fit the final architecture cl
 2. `SyncRepository` still carries historical query/provider assumptions.
 3. `DocumentDBRepoBase<T>` is a transitional inheritance seam and should delegate storage mechanics to the provider-neutral client.
 4. The Azure Table stack remains substantial and must be classified workload-by-workload into History, Operational Data, Application Data, or an intentional legacy remainder.
-5. `FlatStorageDefinition` uses retired terminology and should be resolved when Operational Data is implemented.
-6. Cosmos provider code is now a migration/compatibility implementation, not the architectural center of Entity Storage.
+5. Cosmos provider code is now a migration/compatibility implementation, not the architectural center of Entity Storage.
 
 ## Provider mapping
 
@@ -269,9 +268,3 @@ Critical Relational  -> SQL Server
 ```
 
 These mappings are implementation choices. Application code should depend on the semantic storage contract rather than MongoDB, Cassandra, PostgreSQL, SQL Server, Azure Table Storage, Azure Blob Storage, or another provider directly.
-
-## Terminology
-
-**FlatStorage / Flat Storage is retired terminology.**
-
-It originated as a general description for Azure Table Storage replacement work, but no longer describes the architecture accurately. Use the specific storage class above instead.
