@@ -1,0 +1,61 @@
+using LagoVista.CloudStorage.DocumentDB;
+using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
+using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.StorageProvider.Tests.DocumentStorage;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using MongoDB.Driver;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace LagoVista.StorageProvider.Tests.Mongo
+{
+    [TestClass]
+    [DoNotParallelize]
+    [TestCategory("Mongo")]
+    [TestCategory("DocumentStorageContract")]
+    public class MongoDocumentStorageClientContractTests
+    {
+        private MongoDocumentStorageConnectionSettings _settings;
+        private MongoClient _cleanupClient;
+        private MongoDocumentStorageClient _client;
+
+        [TestInitialize]
+        public void Setup()
+        {
+            _settings = new MongoDocumentStorageConnectionSettings
+            {
+                Hosts = new List<string> { "localhost" }.AsReadOnly(),
+                Port = 27018,
+                UserName = "nuviot-test",
+                Password = "nuviot-test-password",
+                AuthenticationDatabase = "admin",
+                DatabaseName = $"doc_contract_{Guid.NewGuid():N}"
+            };
+
+            var factory = new MongoStorageClientFactory();
+            _client = new MongoDocumentStorageClient(_settings, new DocumentCollectionNameResolver(), factory);
+            _cleanupClient = new MongoClient(_settings.BuildConnectionString());
+        }
+
+        [TestCleanup]
+        public async Task Cleanup()
+        {
+            if (_cleanupClient != null && _settings != null && !String.IsNullOrWhiteSpace(_settings.DatabaseName))
+                await _cleanupClient.DropDatabaseAsync(_settings.DatabaseName);
+        }
+
+        [TestMethod]
+        public Task DatabaseIdentity_MatchesConfiguredDatabase() =>
+            DocumentStorageClientContract.DatabaseIdentityAsync(_client, _settings.DatabaseName);
+
+        [TestMethod]
+        public Task CrudLifecycle_SatisfiesSharedContract() =>
+            DocumentStorageClientContract.CrudLifecycleAsync(_client, "ORG1");
+
+        [TestMethod]
+        public Task NotFoundSemantics_SatisfySharedContract() =>
+            DocumentStorageClientContract.NotFoundSemanticsAsync(_client, "ORG1");
+    }
+}
