@@ -1,5 +1,5 @@
 CloudStorage Document Storage Contract Test Evidence
-StartedUtc: 2026-08-26T20:32:27.2304294Z
+StartedUtc: 2026-08-26T20:32:56.0722987Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\PowerShell\..\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=DocumentStorageContract
 Provider: MongoDB localhost:27018
@@ -11,7 +11,7 @@ D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\ConnectionSettings\
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
-  Failed CrudLifecycle_SatisfiesSharedContract [212 ms]
+  Failed CrudLifecycle_SatisfiesSharedContract [191 ms]
   Error Message:
    Test method LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests.CrudLifecycle_SatisfiesSharedContract threw exception: 
 MongoDB.Driver.MongoWriteException: A write operation resulted in an error. WriteError: { Category : "Uncategorized", Code : 224, Message : "$expr is not allowed in the query predicate for an upsert" }. ---> MongoDB.Driver.MongoBulkWriteException`1[LagoVista.StorageProvider.Tests.DocumentStorage.ContractDocumentEntity]: A bulk write operation resulted in one or more errors. WriteErrors: [ { Category : "Uncategorized", Code : 224, Message : "$expr is not allowed in the query predicate for an upsert" } ].
@@ -26,7 +26,7 @@ MongoDB.Driver.MongoWriteException: A write operation resulted in an error. Writ
 
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\document-storage-contract\latest.trx
 
-Failed!  - Failed:     1, Passed:     2, Skipped:     0, Total:     3, Duration: 457 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Failed!  - Failed:     1, Passed:     2, Skipped:     0, Total:     3, Duration: 439 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T20:32:30.2846387Z
+CompletedUtc: 2026-08-26T20:32:59.1097254Z
 ExitCode: 1

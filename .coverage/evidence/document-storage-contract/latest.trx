@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TestRun id="8f453d95-2a72-45b1-bb29-9d745dd53397" name="kevin@BEAST-LAPTOP 2026-08-26 16:32:30" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
-  <Times creation="2026-08-26T16:32:30.2030039-04:00" queuing="2026-08-26T16:32:30.2030043-04:00" start="2026-08-26T16:32:29.1831577-04:00" finish="2026-08-26T16:32:30.2090985-04:00" />
-  <TestSettings name="default" id="ad15d890-d079-472c-b2d9-353c9a1c225d">
-    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_16_32_30" />
+<TestRun id="13924a81-82e1-4214-a17e-10f09237c9c5" name="kevin@BEAST-LAPTOP 2026-08-26 16:32:59" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T16:32:59.0183527-04:00" queuing="2026-08-26T16:32:59.0183532-04:00" start="2026-08-26T16:32:57.9870101-04:00" finish="2026-08-26T16:32:59.0240409-04:00" />
+  <TestSettings name="default" id="c1c4115f-f258-4375-a0ee-c44fdb69079b">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_16_32_59" />
   </TestSettings>
   <Results>
-    <UnitTestResult executionId="d0d23f8c-a2bb-4bda-87cf-4cf829ca8187" testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" testName="CrudLifecycle_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.2128774" startTime="2026-08-26T16:32:29.8157774-04:00" endTime="2026-08-26T16:32:30.0303280-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d0d23f8c-a2bb-4bda-87cf-4cf829ca8187">
+    <UnitTestResult executionId="16547ebd-2bd6-4ccd-8e51-b4d82bf19286" testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" testName="CrudLifecycle_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1914433" startTime="2026-08-26T16:32:58.6510713-04:00" endTime="2026-08-26T16:32:58.8445489-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="16547ebd-2bd6-4ccd-8e51-b4d82bf19286">
       <Output>
         <ErrorInfo>
           <Message>Test method LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests.CrudLifecycle_SatisfiesSharedContract threw exception: &#xD;
@@ -21,39 +21,39 @@ MongoDB.Driver.MongoWriteException: A write operation resulted in an error. Writ
         </ErrorInfo>
       </Output>
     </UnitTestResult>
-    <UnitTestResult executionId="55dbe9e6-4ba3-42fd-860b-f4c66c4750b7" testId="7ab050b8-5a69-2260-e077-287155f4f99e" testName="DatabaseIdentity_MatchesConfiguredDatabase" computerName="BEAST-LAPTOP" duration="00:00:00.2094242" startTime="2026-08-26T16:32:29.5907973-04:00" endTime="2026-08-26T16:32:29.8123183-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="55dbe9e6-4ba3-42fd-860b-f4c66c4750b7" />
-    <UnitTestResult executionId="ad65f05d-47e8-4c11-9fae-8456fc474201" testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" testName="NotFoundSemantics_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0168990" startTime="2026-08-26T16:32:30.0304453-04:00" endTime="2026-08-26T16:32:30.0484018-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ad65f05d-47e8-4c11-9fae-8456fc474201" />
+    <UnitTestResult executionId="177e8ae5-47d6-430c-8beb-296e79356d6b" testId="7ab050b8-5a69-2260-e077-287155f4f99e" testName="DatabaseIdentity_MatchesConfiguredDatabase" computerName="BEAST-LAPTOP" duration="00:00:00.2120107" startTime="2026-08-26T16:32:58.4245772-04:00" endTime="2026-08-26T16:32:58.6480546-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="177e8ae5-47d6-430c-8beb-296e79356d6b" />
+    <UnitTestResult executionId="bd945b59-b504-4fa8-8493-039fe3b92f22" testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" testName="NotFoundSemantics_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0177792" startTime="2026-08-26T16:32:58.8446749-04:00" endTime="2026-08-26T16:32:58.8637409-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bd945b59-b504-4fa8-8493-039fe3b92f22" />
   </Results>
   <TestDefinitions>
     <UnitTest name="NotFoundSemantics_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="a5f7bab7-f0a8-9b4c-0362-2588492d3849">
       <TestCategory>
-        <TestCategoryItem TestCategory="DocumentStorageContract" />
         <TestCategoryItem TestCategory="Mongo" />
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
       </TestCategory>
-      <Execution id="ad65f05d-47e8-4c11-9fae-8456fc474201" />
+      <Execution id="bd945b59-b504-4fa8-8493-039fe3b92f22" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="NotFoundSemantics_SatisfySharedContract" />
     </UnitTest>
     <UnitTest name="DatabaseIdentity_MatchesConfiguredDatabase" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="7ab050b8-5a69-2260-e077-287155f4f99e">
       <TestCategory>
-        <TestCategoryItem TestCategory="DocumentStorageContract" />
         <TestCategoryItem TestCategory="Mongo" />
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
       </TestCategory>
-      <Execution id="55dbe9e6-4ba3-42fd-860b-f4c66c4750b7" />
+      <Execution id="177e8ae5-47d6-430c-8beb-296e79356d6b" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="DatabaseIdentity_MatchesConfiguredDatabase" />
     </UnitTest>
     <UnitTest name="CrudLifecycle_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="7c53ee9f-6323-9c16-1f25-adeb7a495fd3">
       <TestCategory>
-        <TestCategoryItem TestCategory="DocumentStorageContract" />
         <TestCategoryItem TestCategory="Mongo" />
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
       </TestCategory>
-      <Execution id="d0d23f8c-a2bb-4bda-87cf-4cf829ca8187" />
+      <Execution id="16547ebd-2bd6-4ccd-8e51-b4d82bf19286" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="CrudLifecycle_SatisfiesSharedContract" />
     </UnitTest>
   </TestDefinitions>
   <TestEntries>
-    <TestEntry testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" executionId="d0d23f8c-a2bb-4bda-87cf-4cf829ca8187" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="7ab050b8-5a69-2260-e077-287155f4f99e" executionId="55dbe9e6-4ba3-42fd-860b-f4c66c4750b7" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" executionId="ad65f05d-47e8-4c11-9fae-8456fc474201" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" executionId="16547ebd-2bd6-4ccd-8e51-b4d82bf19286" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7ab050b8-5a69-2260-e077-287155f4f99e" executionId="177e8ae5-47d6-430c-8beb-296e79356d6b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" executionId="bd945b59-b504-4fa8-8493-039fe3b92f22" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
   </TestEntries>
   <TestLists>
     <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
