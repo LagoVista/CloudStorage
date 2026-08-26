@@ -319,6 +319,10 @@ VALUES (@id, @organization_id, @organization, @metric, @timestamp, @value, CAST(
 
         private sealed class StoredMetricDimension
         {
+            public StoredMetricDimension()
+            {
+            }
+
             public string Key { get; set; }
             public string Name { get; set; }
             public bool QueryImportant { get; set; }
