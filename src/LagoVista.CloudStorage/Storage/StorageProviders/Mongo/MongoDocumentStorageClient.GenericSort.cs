@@ -19,7 +19,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             var linqQuery = GetCollection<TEntity>().AsQueryable().Where(query).Where(item => item.EntityType == typeof(TEntity).Name);
             if (!listRequest.ShowDeleted) linqQuery = linqQuery.Where(item => !item.IsDeleted.HasValue || !item.IsDeleted.Value);
-            if (!listRequest.ShowDrafts) linqQuery = linqQuery.Where(item => item.IsDraft == false);
+            if (!listRequest.ShowDrafts) linqQuery = linqQuery.Where(item => item.IsDraft != true);
 
             var orderedQuery = descending ? linqQuery.OrderByDescending(sort) : linqQuery.OrderBy(sort);
             var items = await orderedQuery.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Take(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
