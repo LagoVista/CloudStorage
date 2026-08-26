@@ -5,16 +5,14 @@
   "status": "backlog",
   "category": "integration-test",
   "area": "document-storage",
-  "summary": "Exercise the Mongo implementation of IDocumentStorageClient against the local Mongo container.",
+  "summary": "Exercise the Mongo implementation of IDocumentStorageClient against the local Mongo container. Prefer a shared provider contract-test suite rather than duplicating the Cosmos and Mongo test bodies.",
   "source": [
+    "src/LagoVista.CloudStorage/Interfaces/StorageProviders/IDocumentStorageClient.cs",
     "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.cs"
-  ],
-  "evidence": [
-    ".coverage/evidence/mongo/latest.txt",
-    ".coverage/evidence/mongo/latest.trx"
   ],
   "data": {
     "component": "MongoDocumentStorageClient",
+    "testStrategy": "shared-provider-contract-suite",
     "coverage": ["create-read-update-delete", "query", "patch", "optimistic-concurrency", "error-behavior"],
     "tests": [],
     "environment": { "type": "docker", "provider": "mongodb" }
