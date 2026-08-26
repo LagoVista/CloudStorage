@@ -1,5 +1,7 @@
 ﻿using LagoVista.CloudStorage.DocumentDB;
+using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.Interfaces;
@@ -45,12 +47,17 @@ namespace LagoVista.CloudStorage.Storage
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ragIndexingServices = ragIndexingServices ?? throw new ArgumentNullException(nameof(ragIndexingServices));
             _entityListCacheInvalidator = entityListCacheInvalidator ?? throw new ArgumentNullException(nameof(entityListCacheInvalidator));
-            _dbName = _storageClient.DatabaseName;
             _dependencyManager = dependencyManager ?? throw new ArgumentNullException(nameof(dependencyManager));
             _storageClient = documentStorageClientProvider?.GetClient() ?? throw new ArgumentNullException(nameof(documentStorageClientProvider));
+            _dbName = _storageClient.DatabaseName;
 
             _client = _cosmosClientProvider.GetClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey);
             _container = _client.GetContainer(_options.SyncConnectionSettings.ResourceName, $"{_options.SyncConnectionSettings.ResourceName}_Collections");
+        }
+
+        private static string GetDocumentETag(JObject document)
+        {
+            return document?["_etag"]?.Value<string>() ?? document?[nameof(IEntityBase.ETag)]?.Value<string>();
         }
 
         private string GetCacheKey(string entityType, string id)
@@ -574,46 +581,41 @@ AND (
 
         public async Task<InvokeResult> CalculateHashAsync(string id, CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
 
-            // Query-by-id avoids needing partitionKey. Small datasets -> acceptable.
-            const string sql = "SELECT * FROM c WHERE c.id = @id";
-            var qd = new QueryDefinition(sql).WithParameter("@id", id.Trim());
+            var doc = await LoadDocumentByIdAsync(id.Trim(), ct).ConfigureAwait(false);
 
-            var requestOptions = new QueryRequestOptions
-            {
-                MaxItemCount = 1
-            };
+            if (doc == null)
+                return InvokeResult.FromError($"Could not find record with id: {id}");
 
-            using var iterator = _container.GetItemQueryIterator<JObject>(qd, requestOptions: requestOptions);
+            var entityType = doc[nameof(EntityBase.EntityType)]?.Value<string>()?.Trim();
 
-            JObject doc = null;
-
-            while (iterator.HasMoreResults)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                doc = page.Resource?.FirstOrDefault();
-                if (doc == null)
-                    return InvokeResult.FromError($"Could not find record with id: {id}");
-            }
+            if (String.IsNullOrWhiteSpace(entityType))
+                return InvokeResult.FromError($"Could not calculate hash for '{id}' because EntityType was missing.");
 
             var sha256Hex = EntityHasher.CalculateHash(doc);
 
-            var sha256HexJsonPropertyName = nameof(IEntityBase.Sha256Hex);
-
-
-            var patchOperations = new[]
+            var request = new PatchRequest
             {
-                PatchOperation.Set($"/{sha256HexJsonPropertyName}", sha256Hex)
+                Id = id.Trim(),
+                EntityType = entityType,
+                Steps = new[]
+                {
+                    new PatchStep
+                    {
+                        Op = PatchOp.Set,
+                        LogicalPath = nameof(IEntityBase.Sha256Hex),
+                        Value = sha256Hex
+                    }
+                }
             };
 
-            await _container.PatchItemAsync<JObject>(id, partitionKey: PartitionKey.None, patchOperations: patchOperations,
-                requestOptions: new PatchItemRequestOptions { EnableContentResponseOnWrite = false }, cancellationToken: ct).ConfigureAwait(false);
+            await _storageClient.PatchDocumentAsync(entityType, request, ct).ConfigureAwait(false);
 
-            var entityType = doc["EntityType"]?.Value<string>()?.Trim();
-            var key = doc["Key"]?.Value<string>()?.Trim();
+            var key = doc[nameof(EntityBase.Key)]?.Value<string>()?.Trim();
 
             await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
+
             if (entityType == "Module")
             {
                 await _cacheProvider.RemoveAsync(ALL_MODULES_CACHE_KEY);
@@ -656,106 +658,80 @@ AND (
                     return InvokeResult.FromError($"Could not find record with id: {documentId}");
                 }
 
-                var etag = doc["_etag"]?.Value<string>();
-
-                if (String.IsNullOrWhiteSpace(etag))
-                {
-                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not patch entity '{documentId}' because its ETag was missing.");
-                    return InvokeResult.FromError($"Could not patch entity '{documentId}' because its ETag was missing.");
-                }
-
                 var entityTypeName = doc[nameof(EntityBase.EntityType)]?.Value<string>();
                 var ownerOrgId = doc[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>();
                 var existingName = doc[nameof(EntityBase.Name)]?.Value<string>();
+                var eTag = GetDocumentETag(doc);
+
+                if (String.IsNullOrWhiteSpace(entityTypeName))
+                    return InvokeResult.FromError($"Could not patch entity '{documentId}' because EntityType was missing.");
+
+                if (String.IsNullOrWhiteSpace(eTag))
+                    return InvokeResult.FromError($"Could not patch entity '{documentId}' because its ETag was missing.");
 
                 var nameField = fields.FirstOrDefault(field => String.Equals(field.Key, nameof(EntityBase.Name), StringComparison.OrdinalIgnoreCase));
                 var updatedName = nameField.Value?.Type == JTokenType.String ? nameField.Value.Value<string>() : null;
-
-                var nameChanged =
-                    !String.IsNullOrWhiteSpace(updatedName) &&
-                    !String.Equals(existingName, updatedName, StringComparison.Ordinal);
+                var nameChanged = !String.IsNullOrWhiteSpace(updatedName) && !String.Equals(existingName, updatedName, StringComparison.Ordinal);
 
                 var now = UtcTimestamp.Now.Value;
-                var patchOperations = new List<PatchOperation>();
+                var steps = new List<PatchStep>();
 
                 foreach (var field in fields)
                 {
                     if (String.IsNullOrWhiteSpace(field.Key))
                         return InvokeResult.FromError("Could not patch entity because a field name was empty.");
 
-                    patchOperations.Add(PatchOperation.Set($"/{field.Key}", field.Value ?? JValue.CreateNull()));
+                    steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = field.Key, Value = field.Value ?? JValue.CreateNull() });
                 }
 
-                patchOperations.Add(PatchOperation.Set($"/{nameof(EntityBase.LastUpdatedDate)}", now));
-                patchOperations.Add(PatchOperation.Set($"/{nameof(EntityBase.RevisionTimeStamp)}", now));
+                steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(EntityBase.LastUpdatedDate), Value = now });
+                steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(EntityBase.RevisionTimeStamp), Value = now });
 
                 if (doc[nameof(EntityBase.Revision)] != null)
                 {
                     var currentRevision = doc[nameof(EntityBase.Revision)].Value<int>();
-                    patchOperations.Add(PatchOperation.Set($"/{nameof(EntityBase.Revision)}", currentRevision + 1));
+                    steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(EntityBase.Revision), Value = currentRevision + 1 });
                 }
 
-                patchOperations.Add(PatchOperation.Set($"/{nameof(EntityBase.LastUpdatedBy)}", JObject.FromObject(user)));
+                steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(EntityBase.LastUpdatedBy), Value = JObject.FromObject(user) });
+
+                var request = new PatchRequest
+                {
+                    Id = documentId,
+                    EntityType = entityTypeName,
+                    ETag = eTag,
+                    Steps = steps
+                };
 
                 try
                 {
-                    await _container.PatchItemAsync<JObject>(
-                        documentId,
-                        PartitionKey.None,
-                        patchOperations,
-                        requestOptions: new PatchItemRequestOptions
-                        {
-                            EnableContentResponseOnWrite = false,
-                            IfMatchEtag = etag
-                        },
-                        cancellationToken: ct).ConfigureAwait(false);
+                    await _storageClient.PatchDocumentAsync(entityTypeName, request, ct).ConfigureAwait(false);
 
                     _logger.Trace($"{this.Tag()} - Patched fields [{String.Join(", ", fields.Keys)}] for entity '{documentId}' on attempt {attempt}.");
 
                     await RemoveEntityCachesAsync(doc).ConfigureAwait(false);
 
-                    if (nameChanged &&
-                        !String.IsNullOrWhiteSpace(entityTypeName) &&
-                        !String.IsNullOrWhiteSpace(ownerOrgId))
+                    if (nameChanged && !String.IsNullOrWhiteSpace(ownerOrgId))
                     {
-                        var sourceType = EntityReferenceRegistry
-                            .GetAllRegistrations()
-                            .Where(registration => String.Equals(registration.SourceType.Name, entityTypeName, StringComparison.Ordinal))
-                            .Select(registration => registration.SourceType)
-                            .FirstOrDefault();
+                        var sourceType = EntityReferenceRegistry.GetAllRegistrations().Where(registration => String.Equals(registration.SourceType.Name, entityTypeName, StringComparison.Ordinal)).Select(registration => registration.SourceType).FirstOrDefault();
 
                         if (sourceType != null)
-                        {
-                            await _dependencyManager.RenameRegisteredReferencesAsync(
-                                user,
-                                sourceType,
-                                documentId,
-                                ownerOrgId,
-                                updatedName,
-                                ct).ConfigureAwait(false);
-                        }
+                            await _dependencyManager.RenameRegisteredReferencesAsync(user, sourceType, documentId, ownerOrgId, updatedName, ct).ConfigureAwait(false);
                     }
 
                     return InvokeResult.Success;
                 }
-                catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
+                catch (ContentModifiedException)
                 {
                     if (attempt == maxAttempts)
                     {
                         _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"ETag conflict while patching fields for entity '{documentId}'. All {maxAttempts} attempts failed.");
-
-                        return InvokeResult.FromError(
-                            $"Could not patch fields for entity '{documentId}' because the document was updated concurrently.");
+                        return InvokeResult.FromError($"Could not patch fields for entity '{documentId}' because the document was updated concurrently.");
                     }
 
-                    var exponentialDelayMs = 50 * (1 << (attempt - 1));
-                    var jitterMs = new Random().Next(0, 50);
-                    var delay = TimeSpan.FromMilliseconds(exponentialDelayMs + jitterMs);
+                    var delay = TimeSpan.FromMilliseconds(50 * (1 << (attempt - 1)) + new Random().Next(0, 50));
 
-                    _logger.AddCustomEvent(
-                        LogLevel.Warning,
-                        this.Tag(),
-                        $"ETag conflict while patching fields for entity '{documentId}'. Retrying attempt {attempt + 1} after {delay.TotalMilliseconds:0} ms.");
+                    _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"ETag conflict while patching fields for entity '{documentId}'. Retrying attempt {attempt + 1}.");
 
                     await Task.Delay(delay, ct).ConfigureAwait(false);
                 }
@@ -767,23 +743,31 @@ AND (
 
         public async Task<InvokeResult> UpsertAiEntitySessionAsync(string id, AiEntitySession session, CancellationToken ct)
         {
-            _logger.Trace($"{this.Tag()} - Upserted AI entity session for entity '{id}' with session {session.Session.Id} and key {session.SessionType}/{session.SessionTypeKey}.");
-
             if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
             if (session == null) throw new ArgumentNullException(nameof(session));
             if (session.Session == null || String.IsNullOrWhiteSpace(session.Session.Id)) throw new ArgumentException("session.Session is required.", nameof(session));
             if (String.IsNullOrWhiteSpace(session.SessionType)) throw new ArgumentException("session.SessionType is required.", nameof(session));
             if (String.IsNullOrWhiteSpace(session.SessionTypeKey)) throw new ArgumentException("session.SessionTypeKey is required.", nameof(session));
 
+            var documentId = id.Trim();
+
             for (var attempt = 1; attempt <= 3; attempt++)
             {
-                var doc = await LoadDocumentByIdAsync(id.Trim(), ct);
+                ct.ThrowIfCancellationRequested();
+
+                var doc = await LoadDocumentByIdAsync(documentId, ct).ConfigureAwait(false);
 
                 if (doc == null)
-                {
-                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not find document with id '{id}' to upsert AI entity session.");
                     return InvokeResult.FromError($"Could not find record with id: {id}");
-                }
+
+                var entityType = doc[nameof(EntityBase.EntityType)]?.Value<string>();
+                var eTag = GetDocumentETag(doc);
+
+                if (String.IsNullOrWhiteSpace(entityType))
+                    return InvokeResult.FromError($"Could not update AI entity sessions for '{id}' because EntityType was missing.");
+
+                if (String.IsNullOrWhiteSpace(eTag))
+                    return InvokeResult.FromError($"Could not update AI entity sessions for '{id}' because its ETag was missing.");
 
                 var sessions = ReadAiEntitySessions(doc);
                 var existing = sessions.SingleOrDefault(item => String.Equals(item.SessionType, session.SessionType, StringComparison.OrdinalIgnoreCase) && String.Equals(item.SessionTypeKey, session.SessionTypeKey, StringComparison.OrdinalIgnoreCase));
@@ -801,23 +785,35 @@ AND (
                     existing.CreatedBy = session.CreatedBy;
                 }
 
-                var etag = doc["_etag"]?.Value<string>();
-                var patchOperations = new[]
+                var request = new PatchRequest
                 {
-                    PatchOperation.Set($"/{nameof(EntityBase.AiEntitySessions)}", JArray.FromObject(sessions))
+                    Id = documentId,
+                    EntityType = entityType,
+                    ETag = eTag,
+                    Steps = new[]
+                    {
+                new PatchStep
+                {
+                    Op = PatchOp.Set,
+                    LogicalPath = nameof(EntityBase.AiEntitySessions),
+                    Value = JArray.FromObject(sessions)
+                }
+            }
                 };
 
                 try
                 {
-                    await _container.PatchItemAsync<JObject>(id.Trim(), PartitionKey.None, patchOperations,
-                        requestOptions: new PatchItemRequestOptions { EnableContentResponseOnWrite = false, IfMatchEtag = etag }, cancellationToken: ct).ConfigureAwait(false);
+                    await _storageClient.PatchDocumentAsync(entityType, request, ct).ConfigureAwait(false);
+
                     _logger.Trace($"{this.Tag()} - Upserted AI entity session for entity '{id}' on attempt {attempt}.");
-                    await RemoveEntityCachesAsync(doc);
+
+                    await RemoveEntityCachesAsync(doc).ConfigureAwait(false);
+
                     return InvokeResult.Success;
                 }
-                catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed && attempt < 3)
+                catch (ContentModifiedException) when (attempt < 3)
                 {
-                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"ETag conflict while upserting AI entity session for entity '{id}'. Retrying attempt {attempt + 1}.");
+                    _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"ETag conflict while upserting AI entity session for entity '{id}'. Retrying attempt {attempt + 1}.");
                 }
             }
 
@@ -831,7 +827,7 @@ AND (
 
         public async Task<JObject> GetEntityByIdAsync(string entityId, string orgId, CancellationToken token)
         {
-           
+
             if (String.IsNullOrWhiteSpace(entityId))
             {
                 throw new ArgumentException("Entity id is required.", nameof(entityId));
