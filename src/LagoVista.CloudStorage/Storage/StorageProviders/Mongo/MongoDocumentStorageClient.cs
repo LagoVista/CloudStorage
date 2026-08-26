@@ -27,7 +27,7 @@ namespace LagoVista.CloudStorage.StorageProviders
     /// caching, dependency processing, audit preparation, and cache invalidation stay above
     /// this boundary so they execute identically regardless of the selected provider.
     /// </summary>
-    public sealed class MongoDocumentStorageClient : IMongoDocumentStorageClient
+    public sealed partial class MongoDocumentStorageClient : IMongoDocumentStorageClient
     {
         private readonly IMongoDocumentStorageConnectionSettings _settings;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
