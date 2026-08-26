@@ -15,7 +15,7 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity;
 
-        Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item)
+        Task<OperationResponse<TEntity>> UpsertDocumentAsync<TEntity>(TEntity item, string eTag = null)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity;
 
         Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
