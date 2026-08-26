@@ -44,13 +44,16 @@ namespace LagoVista.CloudStorage.Storage
         private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
         private readonly string _dbName;
 
+        private readonly IDocumentStorageClient _storageClient;
+
         public const int DEFAULT_TAKE = 200;
         public const string FIXED_PARITIONKEY = null;
 
-        public SyncRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
+        public SyncRepository(ISyncConnectionSettings options, IDocumentStorageClientProvider storageProvider, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkWriter, INodeLocatorTableWriterBatched nodeLocatorWriter, IRagIndexingServices ragIndexingServices, IEntityDetailResponseFactory entityDetailResponseFactory,
             INodeLocatorTableReader nodeLocator, ICacheProvider cacheProvider, ILogger logger, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _storageClient = storageProvider?.GetClient() ?? throw new ArgumentNullException(nameof(storageProvider));
             if (cosmosClientProvider == null) throw new ArgumentNullException(nameof(cosmosClientProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fkWriter = fkWriter ?? throw new ArgumentNullException(nameof(fkWriter));
