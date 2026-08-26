@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="8a6415b1-675a-4bbf-a367-964a1ffd821d" name="kevin@BEAST-LAPTOP 2026-08-26 18:40:50" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T18:40:50.3150528-04:00" queuing="2026-08-26T18:40:50.3150534-04:00" start="2026-08-26T18:40:48.4379275-04:00" finish="2026-08-26T18:40:54.2671414-04:00" />
+  <TestSettings name="default" id="452ecaa0-fe2d-487f-9fd6-37e1d84bdb36">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_18_40_50" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="bac69962-c675-4e7c-b713-a58be61509eb" testId="59e9ff4a-f7c0-adf3-72d0-2ffe90caa869" testName="IndexedQueryAsync_UsesDeclaredSaiIndex" computerName="BEAST-LAPTOP" duration="00:00:00.4554133" startTime="2026-08-26T18:40:49.3515779-04:00" endTime="2026-08-26T18:40:49.8075019-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bac69962-c675-4e7c-b713-a58be61509eb" />
+    <UnitTestResult executionId="6d253e07-fadf-4331-93c3-1e214b6ed9df" testId="3a917d39-d038-3214-413b-2e82caca11bd" testName="CrudAndPagingAsync_SatisfiesCoreOperationalDataContract" computerName="BEAST-LAPTOP" duration="00:00:00.5014408" startTime="2026-08-26T18:40:48.8354871-04:00" endTime="2026-08-26T18:40:49.3487927-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6d253e07-fadf-4331-93c3-1e214b6ed9df" />
+    <UnitTestResult executionId="2c249be0-c482-4808-9935-790bead7904f" testId="12adea5e-bde7-5718-45f0-ffe53f4ab77e" testName="RetentionAsync_ExpiresOperationalRecords" computerName="BEAST-LAPTOP" duration="00:00:04.3563401" startTime="2026-08-26T18:40:49.8081107-04:00" endTime="2026-08-26T18:40:54.1658537-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2c249be0-c482-4808-9935-790bead7904f" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="IndexedQueryAsync_UsesDeclaredSaiIndex" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="59e9ff4a-f7c0-adf3-72d0-2ffe90caa869">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraOperationalData" />
+        <TestCategoryItem TestCategory="Cassandra" />
+      </TestCategory>
+      <Execution id="bac69962-c675-4e7c-b713-a58be61509eb" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraOperationalDataStoreIntegrationTests" name="IndexedQueryAsync_UsesDeclaredSaiIndex" />
+    </UnitTest>
+    <UnitTest name="CrudAndPagingAsync_SatisfiesCoreOperationalDataContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="3a917d39-d038-3214-413b-2e82caca11bd">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraOperationalData" />
+        <TestCategoryItem TestCategory="Cassandra" />
+      </TestCategory>
+      <Execution id="6d253e07-fadf-4331-93c3-1e214b6ed9df" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraOperationalDataStoreIntegrationTests" name="CrudAndPagingAsync_SatisfiesCoreOperationalDataContract" />
+    </UnitTest>
+    <UnitTest name="RetentionAsync_ExpiresOperationalRecords" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="12adea5e-bde7-5718-45f0-ffe53f4ab77e">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraOperationalData" />
+        <TestCategoryItem TestCategory="Cassandra" />
+      </TestCategory>
+      <Execution id="2c249be0-c482-4808-9935-790bead7904f" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraOperationalDataStoreIntegrationTests" name="RetentionAsync_ExpiresOperationalRecords" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="59e9ff4a-f7c0-adf3-72d0-2ffe90caa869" executionId="bac69962-c675-4e7c-b713-a58be61509eb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3a917d39-d038-3214-413b-2e82caca11bd" executionId="6d253e07-fadf-4331-93c3-1e214b6ed9df" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="12adea5e-bde7-5718-45f0-ffe53f4ab77e" executionId="2c249be0-c482-4808-9935-790bead7904f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="3" executed="3" passed="3" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
+Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
+   NUnit3TestExecutor discovered 0 of 0 NUnit test cases using Current Discovery mode, Explicit run&#xD;
+NUnit Adapter 5.1.0.0: Test execution complete&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>
