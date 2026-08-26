@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "mongo-document-collection-provisioner-integration",
   "title": "MongoDocumentCollectionProvisioner Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "mongo-infrastructure",
   "summary": "Verify missing collection creation, repeat-safe ensure behavior, and first-use NamespaceExists race handling against the local Mongo container.",
