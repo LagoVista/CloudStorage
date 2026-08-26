@@ -1,37 +1,18 @@
 CloudStorage Document Storage Contract Test Evidence
-StartedUtc: 2026-08-26T20:47:54.9847562Z
+StartedUtc: 2026-08-26T20:58:43.5050688Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\PowerShell\..\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=DocumentStorageContract
 Provider: MongoDB localhost:27018
 
   Determining projects to restore...
   All projects are up-to-date for restore.
-D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\ConnectionSettings\ApplicationDataStorageSettings.cs(12,29): warning CS0108: 'ApplicationDataStorageSettings.SectionName' hides inherited member 'MongoDocumentStorageConnectionSettings.SectionName'. Use the new keyword if hiding was intended. [D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj]
   LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
-  Failed Patch_SatisfiesSharedContract [36 ms]
-  Error Message:
-   Test method LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests.Patch_SatisfiesSharedContract threw exception: 
-MongoDB.Driver.Linq.ExpressionNotSupportedException: Expression not supported: item.Id.Value.
-  Stack Trace:
-     at MongoDB.Driver.Linq.Linq3Implementation.Translators.ExpressionToFilterTranslators.ToFilterFieldTranslators.MemberExpressionToFilterFieldTranslator.Translate(TranslationContext context, MemberExpression memberExpression)
-   at MongoDB.Driver.Linq.Linq3Implementation.Translators.ExpressionToFilterTranslators.ToFilterFieldTranslators.ExpressionToFilterFieldTranslator.Translate(TranslationContext context, Expression expression)
-   at MongoDB.Driver.Linq.LinqProviderAdapter.TranslateExpressionToField[TDocument,TField](Expression`1 expression, IBsonSerializer`1 documentSerializer, IBsonSerializerRegistry serializerRegistry, ExpressionTranslationOptions translationOptions, Boolean allowScalarValueForArrayField)
-   at MongoDB.Driver.ExpressionFieldDefinition`2.Render(RenderArgs`1 args)
-   at MongoDB.Driver.SimpleFilterDefinition`2.Render(RenderArgs`1 args)
-   at MongoDB.Driver.AndFilterDefinition`1.Render(RenderArgs`1 args)
-   at MongoDB.Driver.AndFilterDefinition`1.Render(RenderArgs`1 args)
-   at MongoDB.Driver.MongoCollectionImpl`1.CreateFindOneAndUpdateOperation[TProjection](FilterDefinition`1 filter, UpdateDefinition`1 update, FindOneAndUpdateOptions`2 options)
-   at MongoDB.Driver.MongoCollectionImpl`1.FindOneAndUpdateAsync[TProjection](IClientSessionHandle session, FilterDefinition`1 filter, UpdateDefinition`1 update, FindOneAndUpdateOptions`2 options, CancellationToken cancellationToken)
-   at MongoDB.Driver.MongoCollectionImpl`1.FindOneAndUpdateAsync[TProjection](FilterDefinition`1 filter, UpdateDefinition`1 update, FindOneAndUpdateOptions`2 options, CancellationToken cancellationToken)
-   at LagoVista.CloudStorage.StorageProviders.MongoDocumentStorageClient.PatchDocumentAsync[TEntity](PatchRequest request) in D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\StorageProviders\Mongo\MongoDocumentStorageClient.cs:line 257
-   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.PatchAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 151
-
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\document-storage-contract\latest.trx
 
-Failed!  - Failed:     1, Passed:     5, Skipped:     0, Total:     6, Duration: 505 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     6, Skipped:     0, Total:     6, Duration: 461 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T20:47:58.0976690Z
-ExitCode: 1
+CompletedUtc: 2026-08-26T20:58:46.0257901Z
+ExitCode: 0

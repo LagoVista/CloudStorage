@@ -1,19 +1,18 @@
 CloudStorage Mongo Infrastructure Integration Test Evidence
-StartedUtc: 2026-08-26T20:16:40.9837805Z
+StartedUtc: 2026-08-26T20:58:18.0258180Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=MongoInfrastructure
 Provider: MongoDB localhost:27018
 
   Determining projects to restore...
-  Restored D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj (in 435 ms).
-  1 of 2 projects are up-to-date for restore.
+  All projects are up-to-date for restore.
   LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\mongo-infrastructure\latest.trx
 
-Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration: 321 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration: 232 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T20:16:45.6294604Z
+CompletedUtc: 2026-08-26T20:58:20.2697416Z
 ExitCode: 0
