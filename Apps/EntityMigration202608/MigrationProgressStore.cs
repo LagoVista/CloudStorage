@@ -76,6 +76,7 @@ internal sealed class MigrationProgressStore
     public static MigrationProgressStore Create(string environment)
     {
         var settings = MigrationApplicationDataSettings.FromEnvironment(environment);
+        PrintConnectionDiagnostics(environment, settings);
         return new MigrationProgressStore(environment, settings);
     }
 
@@ -130,6 +131,21 @@ internal sealed class MigrationProgressStore
             .WithPage(new StoragePageRequest(1)), ct).ConfigureAwait(false);
 
         return page.Items.FirstOrDefault();
+    }
+
+    private static void PrintConnectionDiagnostics(string environment, IApplicationDataStorageSettings settings)
+    {
+        Console.WriteLine("Application Data Mongo connection");
+        Console.WriteLine($"Environment:          {environment}");
+        Console.WriteLine($"Hosts:                {(settings.Hosts == null ? "<null>" : String.Join(", ", settings.Hosts))}");
+        Console.WriteLine($"Port:                 {settings.Port}");
+        Console.WriteLine($"User name:            {(String.IsNullOrWhiteSpace(settings.UserName) ? "<missing>" : settings.UserName)}");
+        Console.WriteLine($"Password:             {(String.IsNullOrEmpty(settings.Password) ? "<missing>" : $"<set, {settings.Password.Length} chars>")}");
+        Console.WriteLine($"Authentication DB:    {(String.IsNullOrWhiteSpace(settings.AuthenticationDatabase) ? "<missing>" : settings.AuthenticationDatabase)}");
+        Console.WriteLine($"Application Data DB:  {(String.IsNullOrWhiteSpace(settings.DatabaseName) ? "<missing>" : settings.DatabaseName)}");
+        Console.WriteLine($"Replica set:          {(String.IsNullOrWhiteSpace(settings.ReplicaSet) ? "<none>" : settings.ReplicaSet)}");
+        Console.WriteLine($"TLS:                  {settings.UseTls}");
+        Console.WriteLine();
     }
 
     private static void ValidateIdentity(EntityMigration202608Progress progress, string sourceDatabaseName, string targetDatabaseName)
