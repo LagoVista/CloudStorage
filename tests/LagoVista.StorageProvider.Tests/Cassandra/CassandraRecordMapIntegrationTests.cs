@@ -84,7 +84,7 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
             Assert.ThrowsExactly<NotSupportedException>(() => provider.GetRequiredService<IActivityRecordStore<UnsupportedTypeActivityRecord>>());
         }
 
-        private static ServiceProvider CreateServices<TRecord>(ICassandraSessionFactory factory, Action<StorageDefinitionBuilder<TRecord>> configure) where TRecord : IActivityRecord, new()
+        private static ServiceProvider CreateServices<TRecord>(ICassandraSessionFactory factory, Action<StorageDefinition<TRecord>> configure) where TRecord : IActivityRecord, new()
         {
             var services = new ServiceCollection();
             services.AddSingleton<ICassandraSessionFactory>(factory);
