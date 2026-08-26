@@ -13,6 +13,8 @@ namespace LagoVista.CloudStorage.Interfaces
 {
     public interface IDocumentStorageClient
     {
+        string DatabaseName { get; }
+
         Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity;
 
