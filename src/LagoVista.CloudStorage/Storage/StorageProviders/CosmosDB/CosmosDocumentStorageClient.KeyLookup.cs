@@ -1,3 +1,4 @@
+using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.Core.Exceptions;
 using Microsoft.Azure.Cosmos;
 using System;
