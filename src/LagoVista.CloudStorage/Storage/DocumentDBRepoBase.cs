@@ -611,41 +611,19 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected async Task<IEnumerable<TEntity>> QueryAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query)
         {
             var sw = Stopwatch.StartNew();
-            var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+            using var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
-            var items = new List<TEntity>();
+            var items = await _storageClient.QueryAsync(query).ConfigureAwait(false);
+            var result = items?.ToList() ?? new List<TEntity>();
 
-            var container = await GetContainerAsync();
-            var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                    .Where(query)
-                    .Where(itm => itm.EntityType == typeof(TEntity).Name);
+            _logger.AddCustomEvent(LogLevel.Message,
+                $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]",
+                $"Query returned {result.Count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms",
+                typeof(TEntity).Name.ToKVP("recordType"),
+                result.Count.ToString().ToKVP("recordCount"),
+                sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
-            var page = 1;
-
-            var requestCharge = 0.0;
-
-            using (var iterator = linqQuery.ToFeedIterator<TEntity>())
-            {
-                while (iterator.HasMoreResults)
-                {
-                    var response = await iterator.ReadNextAsync();
-                    if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                    requestCharge += response.RequestCharge;
-                    foreach (var item in response)
-                    {
-                        items.Add(item);
-                    }
-                }
-            }
-
-            timer.Dispose();
-            DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync] in {sw.Elapsed.TotalMilliseconds} ms",
-                new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
-
-
-            return items;
+            return result;
         }
 
         private async Task<IEnumerable<TEntity>> QueryAsync(string sql, params QueryParameter[] sqlParams)
@@ -998,7 +976,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id).Select(itm => itm.First()).ToList();
                 if (listResponse.Categories.Any())
                 {
-                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
+                    listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-");
                 }
 
                 _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] in {sw.Elapsed.TotalMilliseconds} ms",
