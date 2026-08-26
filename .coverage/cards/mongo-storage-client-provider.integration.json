@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "mongo-storage-client-provider-integration",
   "title": "MongoStorageClientFactory Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "mongo-infrastructure",
   "summary": "Verify Mongo client reuse, requested database resolution, and live connectivity against the local Mongo container.",
