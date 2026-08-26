@@ -12,8 +12,11 @@ public sealed class StorageMigrationEngine
         _source = source; _mapper = mapper; _writer = writer; _stateStore = stateStore;
     }
 
-    public async Task<MigrationRunState> ExecuteAsync(MigrationDefinition definition, string definitionSha256, bool catchUp = false, CancellationToken cancellationToken = default)
+    public async Task<MigrationRunState> ExecuteAsync(MigrationDefinition definition, string definitionSha256, bool catchUp = false, int? maxRecords = null, CancellationToken cancellationToken = default)
     {
+        if (maxRecords.HasValue && maxRecords.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxRecords), "Maximum records must be greater than zero.");
+
         var state = await _stateStore.GetAsync(definition.Key, cancellationToken).ConfigureAwait(false) ?? NewState(definition.Key, definitionSha256);
         if (!String.Equals(state.DefinitionSha256, definitionSha256, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException($"Migration {definition.Key} was started with definition {state.DefinitionSha256}, but current definition is {definitionSha256}.");
         var completed = String.Equals(state.State, "Completed", StringComparison.OrdinalIgnoreCase);
@@ -26,6 +29,7 @@ public sealed class StorageMigrationEngine
         await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
         await _writer.EnsureSchemaAsync(definition, cancellationToken).ConfigureAwait(false);
 
+        var processedThisRun = 0;
         foreach (var table in await _source.ResolveTablesAsync(definition, cancellationToken).ConfigureAwait(false))
         {
             if (!String.IsNullOrWhiteSpace(state.CurrentTable))
@@ -42,10 +46,18 @@ public sealed class StorageMigrationEngine
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 state.RecordsRead++;
+                processedThisRun++;
                 try { batch.Add(_mapper.Map(definition, table, row)); headPartition = row.PartitionKey; headRow = row.RowKey; }
                 catch { state.RecordsFailed++; state.LastUpdatedDate = DateTime.UtcNow; await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false); throw; }
-                if (batch.Count >= 100) await FlushAsync(definition, state, table, batch, headPartition, headRow, cancellationToken).ConfigureAwait(false);
+
+                var limitReached = maxRecords.HasValue && processedThisRun >= maxRecords.Value;
+                if (batch.Count >= 100 || limitReached)
+                    await FlushAsync(definition, state, table, batch, headPartition, headRow, cancellationToken).ConfigureAwait(false);
+
+                if (limitReached)
+                    return state;
             }
+
             if (batch.Count > 0) await FlushAsync(definition, state, table, batch, headPartition, headRow, cancellationToken).ConfigureAwait(false);
             state.CurrentTable = table; state.HeadPartitionKey = null; state.HeadRowKey = null; state.LastUpdatedDate = DateTime.UtcNow;
             await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
