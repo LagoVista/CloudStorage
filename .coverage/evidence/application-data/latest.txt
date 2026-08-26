@@ -1,0 +1,28 @@
+CloudStorage Application Data Integration Test Evidence
+StartedUtc: 2026-08-26T19:31:51.4442271Z
+Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
+Filter: TestCategory=ApplicationData
+Provider: MongoDB localhost:27018
+
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
+  LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
+Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+  Failed CrudQueryPagingAndDeterministicCollections_WorkEndToEnd [364 ms]
+  Error Message:
+   One or more errors occurred. (Test method LagoVista.StorageProvider.Tests.Mongo.MongoApplicationDataStoreIntegrationTests.CrudQueryPagingAndDeterministicCollections_WorkEndToEnd threw exception: 
+MongoDB.Driver.MongoCommandException: Command createIndexes failed: db name must be at most 63 characters, found: 65.) (TestCleanup method LagoVista.StorageProvider.Tests.Mongo.MongoApplicationDataStoreIntegrationTests.TearDownAsync threw exception. MongoDB.Driver.MongoCommandException: Command dropDatabase failed: db name must be at most 63 characters, found: 65..)
+
+  Failed Insert_PreservesAuthoritativeSourceTimestamps [11 ms]
+  Error Message:
+   One or more errors occurred. (Test method LagoVista.StorageProvider.Tests.Mongo.MongoApplicationDataStoreIntegrationTests.Insert_PreservesAuthoritativeSourceTimestamps threw exception: 
+MongoDB.Driver.MongoCommandException: Command createIndexes failed: db name must be at most 63 characters, found: 65.) (TestCleanup method LagoVista.StorageProvider.Tests.Mongo.MongoApplicationDataStoreIntegrationTests.TearDownAsync threw exception. MongoDB.Driver.MongoCommandException: Command dropDatabase failed: db name must be at most 63 characters, found: 65..)
+
+Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\application-data\latest.trx
+
+Failed!  - Failed:     2, Passed:     0, Skipped:     0, Total:     2, Duration: 398 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+
+CompletedUtc: 2026-08-26T19:32:22.7147456Z
+ExitCode: 1
