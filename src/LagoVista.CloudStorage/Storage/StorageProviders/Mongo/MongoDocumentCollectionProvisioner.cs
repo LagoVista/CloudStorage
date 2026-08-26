@@ -1,3 +1,4 @@
+using LagoVista;
 using LagoVista.CloudStorage.DocumentDB;
 using MongoDB.Driver;
 using System;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.StorageProviders
 {
+    [CriticalCoverage]
     public sealed class MongoDocumentCollectionProvisioner
     {
         private static readonly ConcurrentDictionary<string, MongoClient> _clients = new ConcurrentDictionary<string, MongoClient>(StringComparer.Ordinal);
