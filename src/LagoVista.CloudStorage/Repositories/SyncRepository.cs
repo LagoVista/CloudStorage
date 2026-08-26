@@ -158,12 +158,11 @@ namespace LagoVista.CloudStorage.Storage
                 .GetDocumentProjectionsAsync<SyncEntitySummaryProjection>(
                     entityType,
                     item => item.OwnerOrganization != null &&
-                            item.OwnerOrganization.Id == ownerOrganizationId &&
-                            item.IsDeleted != true,
+                            item.OwnerOrganization.Id == ownerOrganizationId,
                     ct)
                 .ConfigureAwait(false);
 
-            var query = records.AsEnumerable();
+            var query = records.Where(item => item.IsDeleted != true);
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var searchText = search.Trim();
@@ -373,9 +372,6 @@ namespace LagoVista.CloudStorage.Storage
                     };
                 }
             }
-
-            if (string.IsNullOrWhiteSpace(key))
-                key = doc["key"]?.Value<string>()?.Trim();
 
             _logger.Trace($"{this.Tag()} - Apply", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
 
