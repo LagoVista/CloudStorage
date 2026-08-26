@@ -143,7 +143,8 @@ internal sealed class MigrationProgressStore
         Console.WriteLine($"Password:             {(String.IsNullOrEmpty(settings.Password) ? "<missing>" : $"<set, {settings.Password.Length} chars>")}");
         Console.WriteLine($"Authentication DB:    {(String.IsNullOrWhiteSpace(settings.AuthenticationDatabase) ? "<missing>" : settings.AuthenticationDatabase)}");
         Console.WriteLine($"Application Data DB:  {(String.IsNullOrWhiteSpace(settings.DatabaseName) ? "<missing>" : settings.DatabaseName)}");
-        Console.WriteLine($"Replica set:          {(String.IsNullOrWhiteSpace(settings.ReplicaSet) ? "<none>" : settings.ReplicaSet)}");
+        Console.WriteLine($"Configured replica:   {(String.IsNullOrWhiteSpace(settings.ReplicaSet) ? "<none>" : settings.ReplicaSet)}");
+        Console.WriteLine("Connection mode:      direct (replica discovery disabled)");
         Console.WriteLine($"TLS:                  {settings.UseTls}");
         Console.WriteLine();
     }
@@ -177,7 +178,9 @@ internal sealed class MigrationProgressStore
 
     /// <summary>
     /// The migration tracker uses the same Mongo server connection as entity storage.
-    /// Application Data differs only by database name.
+    /// Application Data differs only by database name. Because this utility runs outside
+    /// the cluster and only the externally mapped primary is reachable, it connects
+    /// directly and deliberately disables replica-set discovery.
     /// </summary>
     private sealed class MigrationApplicationDataSettings : IApplicationDataStorageSettings
     {
@@ -216,6 +219,24 @@ internal sealed class MigrationProgressStore
             return new MigrationApplicationDataSettings(mongo, databaseName);
         }
 
-        public string BuildConnectionString() => _mongo.BuildConnectionString();
+        public string BuildConnectionString()
+        {
+            if (Hosts == null || Hosts.Count != 1 || String.IsNullOrWhiteSpace(Hosts[0]))
+                throw new InvalidOperationException("EntityMigration202608 direct Mongo mode requires exactly one externally reachable Mongo host.");
+
+            var directSettings = new MongoDocumentStorageConnectionSettings
+            {
+                Hosts = Hosts,
+                Port = Port,
+                UserName = UserName,
+                Password = Password,
+                AuthenticationDatabase = AuthenticationDatabase,
+                DatabaseName = DatabaseName,
+                ReplicaSet = null,
+                UseTls = UseTls
+            };
+
+            return directSettings.BuildConnectionString() + "&directConnection=true";
+        }
     }
 }
