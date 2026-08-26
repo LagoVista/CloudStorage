@@ -1,3 +1,4 @@
+using LagoVista;
 using MongoDB.Driver;
 using System;
 using System.Collections.Concurrent;
@@ -10,6 +11,7 @@ namespace LagoVista.CloudStorage.Storage
         IMongoDatabase GetDatabase(string connectionString, string databaseName);
     }
 
+    [CriticalCoverage]
     public sealed class MongoStorageClientFactory : IMongoStorageClientFactory
     {
         private readonly ConcurrentDictionary<string, IMongoClient> _clients =
