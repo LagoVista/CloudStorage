@@ -1,5 +1,6 @@
 using LagoVista.Core.Exceptions;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using Newtonsoft.Json.Linq;
 using System;
@@ -108,6 +109,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         private IMongoCollection<TProjection> GetProjectionCollection<TProjection>()
             where TProjection : class
         {
+            EnsureProjectionClassMap<TProjection>();
             var collectionName = _collectionNameResolver.GetFallback(_settings.DatabaseName);
             return _clientFactory
                 .GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName)
@@ -117,12 +119,25 @@ namespace LagoVista.CloudStorage.StorageProviders
         private IMongoCollection<TProjection> GetProjectionCollection<TProjection>(string entityType)
             where TProjection : class
         {
+            EnsureProjectionClassMap<TProjection>();
             if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
                 throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
 
             return _clientFactory
                 .GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName)
                 .GetCollection<TProjection>(collectionName);
+        }
+
+        private static void EnsureProjectionClassMap<TProjection>()
+            where TProjection : class
+        {
+            if (BsonClassMap.IsClassMapRegistered(typeof(TProjection))) return;
+
+            BsonClassMap.RegisterClassMap<TProjection>(classMap =>
+            {
+                classMap.AutoMap();
+                classMap.SetIgnoreExtraElements(true);
+            });
         }
     }
 }
