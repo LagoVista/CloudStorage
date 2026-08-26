@@ -45,6 +45,42 @@ namespace LagoVista.CloudStorage.StorageProviders
             MongoBsonSerialization.Configure();
         }
 
+        public async Task<DocumentStorageWriteResult> UpsertRawDocumentAsync(string entityType, string id, string json, string expectedETag = null, CancellationToken cancellationToken = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+            if (String.IsNullOrWhiteSpace(json)) throw new ArgumentException("Document JSON is required.", nameof(json));
+
+            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
+                throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+            var document = BsonDocument.Parse(json);
+
+            document.Remove("id");
+            document["_id"] = id;
+            document["EntityType"] = entityType;
+
+            var newETag = CreateETag();
+            document["ETag"] = newETag;
+
+            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", id), Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+
+            if (!String.IsNullOrWhiteSpace(expectedETag))
+                filter &= Builders<BsonDocument>.Filter.Eq("ETag", expectedETag);
+
+            var result = await GetBsonCollection(collectionName).ReplaceOneAsync(filter, document, new ReplaceOptions { IsUpsert = String.IsNullOrWhiteSpace(expectedETag) }, cancellationToken).ConfigureAwait(false);
+
+            if (!String.IsNullOrWhiteSpace(expectedETag) && result.MatchedCount == 0)
+                throw new ContentModifiedException { EntityType = entityType, Id = id };
+
+            return new DocumentStorageWriteResult
+            {
+                ETag = newETag,
+                StatusCode = result.MatchedCount > 0 ? 200 : 201,
+                RequestCharge = null
+            };
+        }
+
         public async Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {

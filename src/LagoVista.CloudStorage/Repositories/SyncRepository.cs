@@ -285,17 +285,16 @@ namespace LagoVista.CloudStorage.Storage
         {
             _logger.Trace($"{this.Tag()} - Apply");
 
-            // Validate minimum shape.
             var id = doc["id"]?.Value<string>()?.Trim();
-            var entityType = doc["EntityType"]?.Value<string>()?.Trim();
-            var key = doc["Key"]?.Value<string>()?.Trim();
+            var entityType = doc[nameof(EntityBase.EntityType)]?.Value<string>()?.Trim();
+            var key = doc[nameof(EntityBase.Key)]?.Value<string>()?.Trim();
 
             if (string.IsNullOrWhiteSpace(id))
             {
                 return new SyncUpsertResult()
                 {
                     StatusCode = 500,
-                    Messsage = $"Entity missing id - should never happen."
+                    Messsage = "Entity missing id - should never happen."
                 };
             }
 
@@ -311,10 +310,11 @@ namespace LagoVista.CloudStorage.Storage
             if (string.IsNullOrWhiteSpace(key))
             {
                 if (entityType == "VerificationResults" || entityType == "CalendarEvent" || entityType == "UserFavorites" || entityType == "MostRecentlyUsed" || entityType == "Meeting")
-                    doc["key"] = Guid.NewGuid().ToId().Value.ToLower();
+                    key = Guid.NewGuid().ToId().Value.ToLowerInvariant();
                 else
                 {
                     Debugger.Break();
+
                     return new SyncUpsertResult()
                     {
                         StatusCode = 500,
@@ -325,83 +325,25 @@ namespace LagoVista.CloudStorage.Storage
 
             _logger.Trace($"{this.Tag()} - Apply", id.ToKVP("id"), key.ToKVP("key"), entityType.ToKVP("entityType"));
 
-            // Ensure trimmed values are persisted.
             doc[nameof(EntityBase.EntityType)] = entityType;
             doc[nameof(EntityBase.Key)] = key;
-            var hash = EntityHasher.CalculateHash(doc);
-            doc[nameof(EntityBase.Sha256Hex)] = hash;
+            doc[nameof(EntityBase.Sha256Hex)] = EntityHasher.CalculateHash(doc);
 
-            // We use stream APIs to avoid binding to any model types.
-            var bytes = System.Text.Encoding.UTF8.GetBytes(doc.ToString(Formatting.None));
-            using var ms = new MemoryStream(bytes);
-
-            var requestOptions = new ItemRequestOptions();
-            if (!string.IsNullOrWhiteSpace(expectedETag))
-            {
-                requestOptions.IfMatchEtag = expectedETag;
-            }
-
-            // If you truly have a fixed/single partition key value, this makes writes deterministic.
-            PartitionKey? pk = null;
-            if (!string.IsNullOrWhiteSpace(FIXED_PARITIONKEY))
-            {
-                pk = new PartitionKey(FIXED_PARITIONKEY);
-            }
-
-            ResponseMessage resp;
-            if (pk.HasValue)
-            {
-                resp = await _container.UpsertItemStreamAsync(
-                    ms,
-                    pk.Value,
-                    requestOptions,
-                    cancellationToken: ct).ConfigureAwait(false);
-            }
-            else
-            {
-                resp = await _container.UpsertItemStreamAsync(
-                    ms,
-                    partitionKey: PartitionKey.None,
-                    requestOptions: requestOptions,
-                    cancellationToken: ct).ConfigureAwait(false);
-            }
-
-            // Surface common concurrency conflicts clearly.
-            if (resp.StatusCode == HttpStatusCode.PreconditionFailed)
-            {
-                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "Upsert failed due to ETag mismatch (412 Precondition Failed).");
-                throw new InvalidOperationException("Upsert failed due to ETag mismatch (412 Precondition Failed).");
-            }
-
-            if (!resp.IsSuccessStatusCode)
-            {
-                var body = resp.Content != null ? await new StreamReader(resp.Content).ReadToEndAsync().ConfigureAwait(false) : null;
-
-                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), "No success code updating", body.ToKVP("error"));
-                throw new InvalidOperationException($"Upsert failed ({(int)resp.StatusCode} {resp.StatusCode}). {body}");
-            }
-
-            string returnedEtag = resp.Headers?.ETag;
-            if (string.IsNullOrWhiteSpace(returnedEtag))
-            {
-                // Cosmos also includes _etag in the response body, but that requires parsing the stream again.
-                // Header ETag is usually present; keep it optional.
-                returnedEtag = null;
-            }
+            var result = await _storageClient.UpsertRawDocumentAsync(entityType, id, doc.ToString(Formatting.None), expectedETag, ct).ConfigureAwait(false);
 
             await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
 
             var ownerOrgId = doc[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>()?.Trim();
             await InvalidateEntityListCacheAsync(ownerOrgId, entityType);
 
-            _logger.Trace($"{this.Tag()} - Success", resp.StatusCode.ToString().ToKVP("responseCode"));
+            _logger.Trace($"{this.Tag()} - Success", result.StatusCode.ToString().ToKVP("responseCode"));
 
-            return new SyncUpsertResult
+            return new SyncUpsertResult()
             {
                 Id = id,
-                ETag = returnedEtag,
-                StatusCode = (int)resp.StatusCode,
-                RequestCharge = resp.Headers?.RequestCharge
+                ETag = result.ETag,
+                StatusCode = result.StatusCode,
+                RequestCharge = result.RequestCharge
             };
         }
 

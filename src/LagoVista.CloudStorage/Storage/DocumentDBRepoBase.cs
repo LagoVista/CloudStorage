@@ -4,8 +4,6 @@
 // --- END CODE INDEX META ---
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
-using LagoVista.CloudStorage.Models;
-using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.AI.Interfaces;
 using LagoVista.Core.Attributes;
@@ -16,8 +14,6 @@ using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using LagoVista.IoT.Logging.Loggers;
-using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Cosmos.Linq;
 using Newtonsoft.Json;
 using Prometheus;
 using System;
@@ -26,23 +22,15 @@ using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static LagoVista.CloudStorage.Storage.SyncRepository;
 
 namespace LagoVista.CloudStorage.DocumentDB
 {
     public class DocumentDBRepoBase<TEntity> where TEntity : class, IEntityBase
     {
-        private string _endPointString;
-        private string _sharedKey;
-        private string _dbName;
-        private string _defaultCollectionName;
-        private readonly ICosmosClientProvider _cosmosClientProvider;
-        private readonly IDocumentCollectionNameResolver _collectionNameResolver = new DocumentCollectionNameResolver();
-        private readonly CosmosDocumentCollectionProvisioner _cosmosCollectionProvisioner = new CosmosDocumentCollectionProvisioner();
+        private readonly string _dbName;
         private readonly IDocumentStorageClient _storageClient;
         private readonly IAdminLogger _logger;
         private readonly ICacheProvider _cacheProvider;
@@ -55,7 +43,6 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         private bool _verboseLogging = false;
 
-        protected static readonly Gauge DocumentRequestCharge = Metrics.CreateGauge("nuviot_document_request_charge", "Elapsed time for document get.", "collection");
         protected static readonly Histogram DocumentGet = Metrics.CreateHistogram("nuviot_document_get", "Elapsed time for document get.",
           new HistogramConfiguration
           {
@@ -97,20 +84,20 @@ namespace LagoVista.CloudStorage.DocumentDB
         protected static readonly Counter DocumentCacheMiss = Metrics.CreateCounter("nuviot_document_cache_miss", "Document Cache Miss.", "entity");
         protected static readonly Counter DocumentNotCached = Metrics.CreateCounter("nuviot_document_not_cached", "Document Not Cached.", "entity");
 
+        // GUARD: Replace the complete private DocumentDBRepoBase(...) constructor.
         private DocumentDBRepoBase(IAdminLogger logger, ICacheProvider cacheProvider = null, IDependencyManager dependencyManager = null, IFkIndexTableWriterBatched fkWriter = null, IDocumentStorageClientProvider documentStorageClientProvider = null)
         {
             _logger = logger;
             _cacheProvider = cacheProvider;
             _dependencyManager = dependencyManager;
             _fkeyIndexWriter = fkWriter;
-            if (documentStorageClientProvider == null) throw new ArgumentNullException(nameof(documentStorageClientProvider));
-            _storageClient = documentStorageClientProvider.GetClient() ?? throw new InvalidOperationException("Document storage client provider returned null.");
 
-            _defaultCollectionName = typeof(TEntity).Name;
-            if (!_defaultCollectionName.ToLower().EndsWith("s"))
-            {
-                _defaultCollectionName += "s";
-            }
+            if (documentStorageClientProvider == null) throw new ArgumentNullException(nameof(documentStorageClientProvider));
+
+            _storageClient = documentStorageClientProvider.GetClient() ?? throw new InvalidOperationException("Document storage client provider returned null.");
+            _dbName = _storageClient.DatabaseName;
+
+            if (String.IsNullOrWhiteSpace(_dbName)) throw new InvalidOperationException("Document storage client returned an empty database name.");
         }
 
         public DocumentDBRepoBase(IDocumentCloudCachedServices cloudServices) :
@@ -129,44 +116,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             _producedArtifactService = cloudServices.ProducedArtifactService;
         }
 
-
-        public virtual string GetPartitionKey()
-        {
-            return EntityDocumentStoragePolicy.CosmosPartitionKeyPath;
-        }
-
-        private Task<CosmosClient> GetDocumentClientAsync()
-        {
-            if (_endPointString == null)
-            {
-                var ex = new ArgumentNullException($"Invalid or missing end point information on {GetType().Name}");
-                _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__GetDocumentClientAsync]", ex);
-                throw ex;
-            }
-
-            if (String.IsNullOrEmpty(_sharedKey))
-            {
-                var ex = new ArgumentNullException($"Invalid or missing shared key information on {GetType().Name}");
-                _logger.AddException($"[DocumentDbRepo<{typeof(TEntity).Name}>__GetDocumentClientAsync]", ex);
-                throw ex;
-            }
-
-            return Task.FromResult(_cosmosClientProvider.GetClient(_endPointString, _sharedKey));
-        }
-
-        private async Task<Container> GetContainerAsync()
-        {
-            var docClient = await GetDocumentClientAsync();
-            var collectionName = GetCollectionName();
-            await _cosmosCollectionProvisioner.EnsureExistsAsync(docClient, _endPointString, _dbName, collectionName, EntityDocumentStoragePolicy.CosmosPartitionKeyPath).ConfigureAwait(false);
-            return docClient.GetContainer(_dbName, collectionName);
-        }
-
-        public virtual String GetCollectionName()
-        {
-            return _collectionNameResolver.Resolve(_dbName, typeof(TEntity));
-        }
-
+ 
         protected virtual bool IsRuntimeData { get { return false; } }
 
         protected async Task<OperationResponse<TEntity>> CreateDocumentAsync(TEntity item)
@@ -676,123 +626,68 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
-                           System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ICategorized, ISummaryFactory, INoSQLEntity, INamedEntity, IRatedEntity, IAuditableEntity
+        protected async Task<ListResponse<TEntitySummary>> QuerySummaryAsync<TEntitySummary, TEntityFactory>(Expression<Func<TEntityFactory, bool>> query, Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ICategorized, ISummaryFactory, INoSQLEntity, INamedEntity, IRatedEntity, IAuditableEntity
         {
             try
             {
                 var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
-
-                var items = new List<TEntityFactory>();
-                var requestCharge = 0.0;
+                using var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
                 if (listRequest.OrderBy != null && listRequest.OrderByDesc != null)
-                {
                     return ListResponse<TEntitySummary>.FromError("order by AND order by desc were both provided, must either be both empty or only provide one of the two.");
-                }
+
+                var descending = false;
 
                 if (listRequest.OrderBy != null)
                 {
                     switch (listRequest.OrderBy.Value)
                     {
                         case OrderByTypes.Name:
-                            sort = (ele => ele.Name);
+                            sort = ele => ele.Name;
                             break;
                         case OrderByTypes.Rating:
-                            sort = (ele => ele.Stars.ToString());
+                            sort = ele => ele.Stars.ToString();
                             break;
                         case OrderByTypes.CreationDate:
-                            sort = (ele => ele.CreationDate);
+                            sort = ele => ele.CreationDate;
                             break;
                         case OrderByTypes.LastUpdateDate:
-                            sort = (ele => ele.LastUpdatedDate);
+                            sort = ele => ele.LastUpdatedDate;
                             break;
                     }
                 }
-
-                System.Linq.Expressions.Expression<Func<TEntityFactory, string>> orderByDesc = null;
 
                 if (listRequest.OrderByDesc != null)
                 {
+                    descending = true;
+
                     switch (listRequest.OrderByDesc.Value)
                     {
                         case OrderByTypes.Name:
-                            orderByDesc = (ele => ele.Name);
+                            sort = ele => ele.Name;
                             break;
                         case OrderByTypes.Rating:
-                            orderByDesc = (ele => ele.Stars.ToString());
+                            sort = ele => ele.Stars.ToString();
                             break;
                         case OrderByTypes.CreationDate:
-                            orderByDesc = (ele => ele.CreationDate);
+                            sort = ele => ele.CreationDate;
                             break;
                         case OrderByTypes.LastUpdateDate:
-                            orderByDesc = (ele => ele.LastUpdatedDate);
+                            sort = ele => ele.LastUpdatedDate;
                             break;
                     }
                 }
 
-                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> entityTypeQuery = (qry) => qry.EntityType == typeof(TEntity).Name;
-                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> isDeletedQuery = qry => !qry.IsDeleted.IsDefined() || qry.IsDeleted == false;
-                if (listRequest.ShowDeleted)
-                    isDeletedQuery = qry => true;
+                var factoryResponse = await _storageClient.QuerySummaryAsync(typeof(TEntity).Name, query, sort, listRequest, descending).ConfigureAwait(false);
+                var items = factoryResponse?.Model?.ToList() ?? new List<TEntityFactory>();
 
-                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> isDraftQuery = (qry) => !qry.IsDraft.IsDefined() || qry.IsDraft == false;
-                if (listRequest.ShowDrafts)
-                    isDraftQuery = qry => true;
-
-                System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> categoryQuery = (qry) => qry.Category.Key == listRequest.CategoryKey; ;
-                if (String.IsNullOrEmpty(listRequest.CategoryKey))
-                    categoryQuery = qry => true;
-
-                var container = await GetContainerAsync();
-                var baseQuery = container.GetItemLinqQueryable<TEntityFactory>();
-
-                var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
-                                                        .Where(query)
-                                                        .Where(entityTypeQuery)
-                                                        .Where(categoryQuery)
-                                                        .Where(isDeletedQuery)
-                                                        .Where(isDraftQuery);
-
-                if (orderByDesc != null)
-                    linqQuery = linqQuery.OrderByDescending(orderByDesc);
-                else if (sort != null)
-                    linqQuery = linqQuery.OrderBy(sort);
-
-                linqQuery = linqQuery.Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                                         .Take(listRequest.PageSize);
-
-                var page = 1;
-
-                using (var iterator = linqQuery.ToFeedIterator<TEntityFactory>())
-                {
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
-
-                    while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
-                }
-
-                var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm => itm.CreateSummary() as TEntitySummary));
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-                var categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).ToList();
-                var groupedCategories = categories.Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id);
-                listResponse.Categories = groupedCategories.Select(itm => itm.First()).ToList();
+                var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(item => item.CreateSummary() as TEntitySummary));
+                var categories = listResponse.Model.Where(item => !String.IsNullOrEmpty(item.CategoryKey)).ToList();
+                var groupedCategories = categories.Select(item => EnumDescription.Create(item.CategoryId, item.CategoryKey, item.Category)).GroupBy(item => item.Id);
+                listResponse.Categories = groupedCategories.Select(item => item.First()).ToList();
                 listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync] in {sw.Elapsed.TotalMilliseconds} ms",
-                        items.Count.ToString().ToKVP("recordCount"),
-                        new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
+                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync]", $"Summary query returned {items.Count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", items.Count.ToString().ToKVP("recordCount"), typeof(TEntity).Name.ToKVP("recordType"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
                 return listResponse;
             }
@@ -808,57 +703,24 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        protected async Task<ListResponse<TEntitySummary>> QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(System.Linq.Expressions.Expression<Func<TEntityFactory, bool>> query,
-                   System.Linq.Expressions.Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity
+        // GUARD: Replace the complete QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory> method.
+        protected async Task<ListResponse<TEntitySummary>> QuerySummaryDescendingAsync<TEntitySummary, TEntityFactory>(Expression<Func<TEntityFactory, bool>> query, Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest) where TEntitySummary : class, ISummaryData where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity
         {
             try
             {
                 var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+                using var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
-                var items = new List<TEntityFactory>();
-                var requestCharge = 0.0;
+                var factoryResponse = await _storageClient.QuerySummaryAsync(typeof(TEntity).Name, query, sort, listRequest, true).ConfigureAwait(false);
+                var items = factoryResponse?.Model?.ToList() ?? new List<TEntityFactory>();
 
-                var container = await GetContainerAsync();
-                var linqQuery = container.GetItemLinqQueryable<TEntityFactory>()
-                        .Where(query)
-                        .Where(itm => String.IsNullOrEmpty(listRequest.CategoryKey) || itm.Category.Key == listRequest.CategoryKey)
-                        .Where(itm => itm.EntityType == typeof(TEntity).Name && (itm.IsDeleted.IsNull() || !itm.IsDeleted.HasValue || !itm.IsDeleted.Value || listRequest.ShowDeleted) && (!itm.IsDraft.IsDefined() || itm.IsDraft == false || listRequest.ShowDrafts))
-                        .OrderByDescending(sort)
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
+                var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(item => item.CreateSummary() as TEntitySummary));
+                listResponse.Categories = listResponse.Model.Where(item => !String.IsNullOrEmpty(item.CategoryKey)).Select(item => EnumDescription.Create(item.CategoryId, item.CategoryKey, item.Category)).GroupBy(item => item.Id).Select(item => item.First()).ToList();
 
-                var page = 1;
-
-                using (var iterator = linqQuery.ToFeedIterator<TEntityFactory>())
-                {
-                    if (_verboseLogging && !iterator.HasMoreResults)
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms");
-
-                    while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        if (_verboseLogging) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
-                }
-
-                var listResponse = ListResponse<TEntitySummary>.Create(listRequest, items.Select(itm => itm.CreateSummary() as TEntitySummary));
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-                listResponse.Categories = listResponse.Model.Where(itm => !String.IsNullOrEmpty(itm.CategoryKey)).Select(itm => EnumDescription.Create(itm.CategoryId, itm.CategoryKey, itm.Category)).GroupBy(itm => itm.Id).Select(itm => itm.First()).ToList();
                 if (listResponse.Categories.Any())
-                {
                     listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
-                }
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync]", $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync] in {sw.Elapsed.TotalMilliseconds} ms",
-                        items.Count.ToString().ToKVP("recordCount"),
-                        new KeyValuePair<string, string>("recordType", typeof(TEntity).Name), linqQuery.ToString().ToKVP("linqQuery"));
+                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync]", $"Descending summary query returned {items.Count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", items.Count.ToString().ToKVP("recordCount"), typeof(TEntity).Name.ToKVP("recordType"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
                 return listResponse;
             }
@@ -874,7 +736,6 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-      
 
         protected async Task<ListResponse<TEntity>> QueryDescendingAsync(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
                           System.Linq.Expressions.Expression<Func<TEntity, string>> sort, ListRequest listRequest)
@@ -935,49 +796,26 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
         }
 
-        protected async Task<ListResponse<TEntity>> DescOrderQueryAsync<TKey>(System.Linq.Expressions.Expression<Func<TEntity, bool>> query,
-                                                    System.Linq.Expressions.Expression<Func<TEntity, TKey>> orderBy,
-                                                    ListRequest listRequest)
+        // GUARD: Replace the complete DescOrderQueryAsync<TKey> method.
+        protected async Task<ListResponse<TEntity>> DescOrderQueryAsync<TKey>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, TKey>> orderBy, ListRequest listRequest)
         {
             try
             {
                 var sw = Stopwatch.StartNew();
-                var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
+                using var timer = DocumentQuery.WithLabels(typeof(TEntity).Name).NewTimer();
 
-                var items = new List<TEntity>();
+                var listResponse = await _storageClient.QueryAllAsync(query, orderBy, listRequest, true).ConfigureAwait(false);
+                var count = listResponse?.Model?.Count() ?? 0;
 
-                var container = await GetContainerAsync();
-                var linqQuery = container.GetItemLinqQueryable<TEntity>()
-                        .Where(query)
-                        .OrderByDescending(orderBy)
-                        .Skip(Math.Max(0, (listRequest.PageIndex - 1)) * listRequest.PageSize)
-                        .Take(listRequest.PageSize);
+                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DescOrderQueryAsync<TKey>]", $"Descending query returned {count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", typeof(TEntity).Name.ToKVP("recordType"), count.ToString().ToKVP("recordCount"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
-                var page = 1;
-                var requestCharge = 0.0;
-
-                using (var iterator = linqQuery.ToFeedIterator<TEntity>())
-                {
-                    while (iterator.HasMoreResults)
-                    {
-                        var response = await iterator.ReadNextAsync();
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__DescOrderQueryAsync<TKey>] Page {page++} Query Document {linqQuery} => {sw.Elapsed.TotalMilliseconds}ms, Request Charge: {response.RequestCharge}");
-                        requestCharge += response.RequestCharge;
-                        foreach (var item in response)
-                        {
-                            items.Add(item);
-                        }
-                    }
-                }
-
-                timer.Dispose();
-                DocumentRequestCharge.WithLabels(typeof(TEntity).Name).Set(requestCharge);
-
-                return ListResponse<TEntity>.Create(listRequest, items);
+                return listResponse;
             }
             catch (Exception ex)
             {
                 _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__DescOrderQueryAsync<TKey>]", ex, typeof(TEntity).Name.ToKVP("entityType"));
+
+                DocumentErrors.WithLabels(typeof(TEntity).Name).Inc();
 
                 var listResponse = ListResponse<TEntity>.Create(new List<TEntity>());
                 listResponse.Errors.Add(new ErrorMessage(ex.Message));

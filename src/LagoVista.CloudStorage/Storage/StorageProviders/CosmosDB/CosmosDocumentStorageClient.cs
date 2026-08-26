@@ -11,8 +11,11 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -62,6 +65,44 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
         }
 
+        public async Task<DocumentStorageWriteResult> UpsertRawDocumentAsync(string entityType, string id, string json, string expectedETag = null, CancellationToken cancellationToken = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+            if (String.IsNullOrWhiteSpace(json)) throw new ArgumentException("Document JSON is required.", nameof(json));
+
+            var options = new ItemRequestOptions();
+
+            if (!String.IsNullOrWhiteSpace(expectedETag))
+                options.IfMatchEtag = expectedETag;
+
+            var bytes = Encoding.UTF8.GetBytes(json);
+            using var stream = new MemoryStream(bytes);
+
+            using var response = await GetRawDocumentContainer().UpsertItemStreamAsync(stream, PartitionKey.None, options, cancellationToken).ConfigureAwait(false);
+
+            if (response.StatusCode == HttpStatusCode.PreconditionFailed || response.StatusCode == HttpStatusCode.Conflict)
+                throw new ContentModifiedException { EntityType = entityType, Id = id };
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = response.Content == null ? null : await new StreamReader(response.Content).ReadToEndAsync().ConfigureAwait(false);
+                throw new InvalidOperationException($"Raw document upsert failed ({(int)response.StatusCode} {response.StatusCode}). {body}");
+            }
+
+            return new DocumentStorageWriteResult
+            {
+                ETag = response.Headers?.ETag,
+                StatusCode = (int)response.StatusCode,
+                RequestCharge = response.Headers?.RequestCharge
+            };
+        }
+
+        private Container GetRawDocumentContainer()
+        {
+            return _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey).GetContainer(_settings.DatabaseName, $"{_settings.DatabaseName}_Collections");
+        }
+    
         public Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity =>
             GetDocumentAsync<TEntity>(id, null, throwOnNotFound);

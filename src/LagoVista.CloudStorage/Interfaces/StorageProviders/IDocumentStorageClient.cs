@@ -11,6 +11,13 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Interfaces
 {
+    public class DocumentStorageWriteResult
+    {
+        public string ETag { get; set; }
+        public int StatusCode { get; set; }
+        public double? RequestCharge { get; set; }
+    }
+
     public interface IDocumentStorageClient
     {
         string DatabaseName { get; }
@@ -79,6 +86,8 @@ namespace LagoVista.CloudStorage.Interfaces
 
         Task<IEnumerable<TResult>> QueryKnownAsync<TResult>(string entityType, DocumentQueryRequest request, CancellationToken cancellationToken = default)
             where TResult : class;
+
+        Task<DocumentStorageWriteResult> UpsertRawDocumentAsync(string entityType, string id, string json, string expectedETag = null, CancellationToken cancellationToken = default);
     }
 
     public interface ICosmosDocumentStorageClient : IDocumentStorageClient

@@ -15,8 +15,11 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (sort == null) throw new ArgumentNullException(nameof(sort));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
 
-            var sortDefinition = descending ? Builders<TEntity>.Sort.Descending(sort) : Builders<TEntity>.Sort.Ascending(sort);
+            var sortField = new ExpressionFieldDefinition<TEntity, TKey>(sort);
+            var sortDefinition = descending ? Builders<TEntity>.Sort.Descending(sortField) : Builders<TEntity>.Sort.Ascending(sortField);
+
             var items = await GetCollection<TEntity>().Find(query).Sort(sortDefinition).Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
+
             return ListResponse<TEntity>.Create(listRequest, items);
         }
     }
