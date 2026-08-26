@@ -25,7 +25,7 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
 
             Assert.AreEqual(1, projections.Count);
             Assert.AreEqual(entity.Id.Value, projections[0].Id);
-            Assert.AreEqual(entity.Key, projections[0].Key);
+            Assert.AreEqual<string>(entity.Key, projections[0].Key);
 
             var byKey = await client.GetDocumentProjectionByKeyAsync<JObject>(
                 nameof(ContractDocumentEntity),
@@ -34,7 +34,7 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
 
             Assert.IsNotNull(byKey);
             Assert.AreEqual(entity.Id.Value, byKey.Value<string>("id"));
-            Assert.AreEqual(entity.Key, byKey.Value<string>("Key"));
+            Assert.AreEqual<string>(entity.Key, byKey.Value<string>("Key"));
         }
 
         public static async Task OwnedLookupAsync(IDocumentStorageClient client)
