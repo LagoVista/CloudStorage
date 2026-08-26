@@ -48,6 +48,9 @@ namespace LagoVista.CloudStorage.StorageProviders
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
+
+            var priorETag = item.ETag;
+            item.ETag = CreateETag();
             try
             {
                 await GetCollection<TEntity>().InsertOneAsync(item).ConfigureAwait(false);
@@ -55,7 +58,13 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
             catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
             {
+                item.ETag = priorETag;
                 throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
+            }
+            catch
+            {
+                item.ETag = priorETag;
+                throw;
             }
         }
 
@@ -64,18 +73,35 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
 
-            var filter = Builders<TEntity>.Filter.Where(entity => entity.Id == item.Id);
+            var priorETag = item.ETag;
+            var filter = Builders<TEntity>.Filter.And(
+                Builders<TEntity>.Filter.Where(entity => entity.Id == item.Id),
+                Builders<TEntity>.Filter.Eq(entity => entity.EntityType, typeof(TEntity).Name));
+
             if (!String.IsNullOrWhiteSpace(eTag))
-                filter &= Builders<TEntity>.Filter.Eq("_etag", eTag);
+                filter &= Builders<TEntity>.Filter.Eq(entity => entity.ETag, eTag);
 
-            var result = await GetCollection<TEntity>()
-                .ReplaceOneAsync(filter, item, new ReplaceOptions { IsUpsert = String.IsNullOrWhiteSpace(eTag) })
-                .ConfigureAwait(false);
+            item.ETag = CreateETag();
+            try
+            {
+                var result = await GetCollection<TEntity>()
+                    .ReplaceOneAsync(filter, item, new ReplaceOptions { IsUpsert = String.IsNullOrWhiteSpace(eTag) })
+                    .ConfigureAwait(false);
 
-            if (!String.IsNullOrWhiteSpace(eTag) && result.MatchedCount == 0)
-                throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
+                if (!String.IsNullOrWhiteSpace(eTag) && result.MatchedCount == 0)
+                {
+                    item.ETag = priorETag;
+                    throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = item.Id };
+                }
 
-            return new OperationResponse<TEntity>(item);
+                return new OperationResponse<TEntity>(item);
+            }
+            catch
+            {
+                if (item.ETag != priorETag && !String.IsNullOrWhiteSpace(eTag))
+                    item.ETag = priorETag;
+                throw;
+            }
         }
 
         public async Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
@@ -126,9 +152,10 @@ namespace LagoVista.CloudStorage.StorageProviders
                 Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
 
             if (!String.IsNullOrWhiteSpace(request.ETag))
-                filter &= Builders<TEntity>.Filter.Eq("_etag", request.ETag);
+                filter &= Builders<TEntity>.Filter.Eq(item => item.ETag, request.ETag);
 
             var updates = request.Steps.Select(CreatePatchUpdate<TEntity>).ToList();
+            updates.Add(Builders<TEntity>.Update.Set(item => item.ETag, CreateETag()));
             var update = Builders<TEntity>.Update.Combine(updates);
             var entity = await collection.FindOneAndUpdateAsync(
                 filter,
@@ -264,6 +291,8 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (value == null || value.Type == JTokenType.Null) return BsonNull.Value;
             return BsonDocument.Parse($"{{\"value\":{value.ToString(Formatting.None)}}}")["value"];
         }
+
+        private static string CreateETag() => Guid.NewGuid().ToString("N");
 
         private static async Task<IEnumerable<TResult>> QueryEntityUtilsDocumentsAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
         {
