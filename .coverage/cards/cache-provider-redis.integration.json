@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cache-provider-redis-integration",
   "title": "CacheProvider Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "redis",
   "summary": "Verify CacheProvider value storage, expiry, atomic operations, counters, distributed locks, dependency invalidation, and hash collections against local Redis.",
@@ -24,8 +24,7 @@
       "port": 19079
     },
     "coverageLayers": {
-      "completed": [],
-      "next": [
+      "completed": [
         "add-get-remove",
         "ttl-expiration",
         "atomic-get-and-delete",
@@ -33,7 +32,8 @@
         "distributed-locks",
         "dependency-invalidation",
         "hash-collections"
-      ]
+      ],
+      "next": []
     }
   }
 }
