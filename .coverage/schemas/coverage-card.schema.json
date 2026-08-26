@@ -23,6 +23,12 @@
       "items": { "type": "string", "minLength": 1 },
       "uniqueItems": true
     },
+    "evidence": {
+      "type": "array",
+      "description": "Repo-relative paths to durable evidence supporting completion of this card.",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
     "data": {
       "type": "object",
       "description": "Effort-specific metadata intentionally left unconstrained."
