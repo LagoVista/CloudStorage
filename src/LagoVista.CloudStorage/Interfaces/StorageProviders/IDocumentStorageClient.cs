@@ -60,6 +60,9 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<ListResponse<TEntity>> QueryAllAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity;
 
+        Task<ListResponse<TEntityFactory>> QuerySummaryAsync<TEntityFactory>(string entityType, Expression<Func<TEntityFactory, bool>> query, Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest, bool descending)
+            where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity;
+
         Task<IEnumerable<TResult>> QueryKnownAsync<TResult>(string entityType, DocumentQueryRequest request, CancellationToken cancellationToken = default)
             where TResult : class;
     }
