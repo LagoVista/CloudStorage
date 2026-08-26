@@ -1,17 +1,17 @@
-using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
-using System;
 
 namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
     public interface IApplicationDataStorageSettings : IMongoDocumentStorageConnectionSettings
     {
- 
     }
 
     public sealed class ApplicationDataStorageSettings : MongoDocumentStorageConnectionSettings, IApplicationDataStorageSettings
     {
-        public ApplicationDataStorageSettings(IConfiguration configuration) : base(configuration)
+        public const string SectionName = "ApplicationDataStorage";
+
+        public ApplicationDataStorageSettings(IConfiguration configuration)
+            : base(configuration, SectionName)
         {
         }
     }
