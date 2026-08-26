@@ -203,7 +203,11 @@ namespace LagoVista.CloudStorage.StorageProviders
             return ListResponse<TEntity>.Create(listRequest, items);
         }
 
-        public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest)
+        public Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity =>
+            QueryAsync(query, sort, listRequest, false);
+
+        public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest, bool descending)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
@@ -211,8 +215,9 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
 
             var filter = CreatePagedQueryFilter(query, listRequest);
-            var items = await GetCollection<TEntity>().Find(filter)
-                .SortBy(sort)
+            var find = GetCollection<TEntity>().Find(filter);
+            var sorted = descending ? find.SortByDescending(sort) : find.SortBy(sort);
+            var items = await sorted
                 .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
                 .Limit(listRequest.PageSize)
                 .ToListAsync()
@@ -372,7 +377,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             var clauses = new BsonArray
             {
                 new BsonDocument("EntityType", request.GetRequired<string>("entityType")),
-                new BsonDocument("$or", new BsonArray { new BsonDocument("IsPublic", true), new BsonDocument("OwnerOrganization.Id", request.GetRequired<string>("orgId")) })
+                new BsonDocument("$or", new BsonArray { new BsonDocument("IsPublic", true), new BsonDocument("OwnerOrganization.Id", request.GetRequired<string>("orgId") })
             };
             if (!request.GetRequired<bool>("showDeleted")) clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDeleted", new BsonDocument("$exists", false)), new BsonDocument("IsDeleted", false) }));
             if (!request.GetRequired<bool>("showDrafts")) clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDraft", new BsonDocument("$exists", false)), new BsonDocument("IsDraft", false) }));
