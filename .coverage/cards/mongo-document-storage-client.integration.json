@@ -2,19 +2,42 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "mongo-document-storage-client-integration",
   "title": "MongoDocumentStorageClient Integration Tests",
-  "status": "backlog",
+  "status": "in-process",
   "category": "integration-test",
   "area": "document-storage",
-  "summary": "Exercise the Mongo implementation of IDocumentStorageClient against the local Mongo container. Prefer a shared provider contract-test suite rather than duplicating the Cosmos and Mongo test bodies.",
+  "summary": "Exercise the Mongo implementation of IDocumentStorageClient through a shared provider contract suite. Mongo supplies only provider setup/cleanup; reusable contract bodies are intended to be reused by Cosmos.",
   "source": [
     "src/LagoVista.CloudStorage/Interfaces/StorageProviders/IDocumentStorageClient.cs",
     "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.cs"
   ],
+  "evidence": [
+    ".coverage/evidence/document-storage-contract/latest.txt",
+    ".coverage/evidence/document-storage-contract/latest.trx"
+  ],
   "data": {
     "component": "MongoDocumentStorageClient",
+    "contract": "IDocumentStorageClient",
     "testStrategy": "shared-provider-contract-suite",
-    "coverage": ["create-read-update-delete", "query", "patch", "optimistic-concurrency", "error-behavior"],
-    "tests": [],
-    "environment": { "type": "docker", "provider": "mongodb" }
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "contractTests": "tests/LagoVista.StorageProvider.Tests/DocumentStorage/DocumentStorageClientContract.cs",
+    "providerFixture": "tests/LagoVista.StorageProvider.Tests/Mongo/MongoDocumentStorageClientContractTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-document-storage-contract-tests.ps1",
+    "environment": { "type": "docker", "provider": "mongodb" },
+    "coverageLayers": {
+      "foundation": [
+        "database-identity",
+        "create-get-upsert-delete",
+        "partition-key-overloads",
+        "etag-assignment-and-refresh",
+        "not-found-semantics"
+      ],
+      "next": [
+        "query-and-paging",
+        "patch-and-optimistic-concurrency",
+        "projections-and-owned-lookups",
+        "raw-json-and-document-pages",
+        "known-and-summary-queries"
+      ]
+    }
   }
 }
