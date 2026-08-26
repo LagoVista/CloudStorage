@@ -26,18 +26,23 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 
         public MongoDocumentStorageConnectionSettings()
         {
-            
         }
 
         public MongoDocumentStorageConnectionSettings(IConfiguration configuration)
+            : this(configuration, SectionName)
+        {
+        }
+
+        protected MongoDocumentStorageConnectionSettings(IConfiguration configuration, string sectionName)
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
+            if (String.IsNullOrWhiteSpace(sectionName)) throw new ArgumentNullException(nameof(sectionName));
 
-            var section = configuration.GetSection(SectionName);
+            var section = configuration.GetSection(sectionName);
             var hosts = section.Require("Hosts");
-            if(!String.IsNullOrEmpty(hosts)) Hosts = ReadHosts(hosts);
+            if (!String.IsNullOrEmpty(hosts)) Hosts = ReadHosts(hosts, sectionName);
             var port = section.Optional("Port");
-            Port = ReadPort(port, 27017);
+            Port = ReadPort(port, 27017, sectionName);
             UserName = section.Require("UserName");
             Password = section.Require("Password");
             var authenticationDatabase = section.Optional("AuthenticationDatabase");
@@ -46,17 +51,17 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
             var replicaSet = section.Optional("ReplicaSet");
             ReplicaSet = String.IsNullOrWhiteSpace(replicaSet) ? null : replicaSet.Trim();
             var useTls = section.Optional("UseTls");
-            UseTls = ReadBoolean(useTls, false, "UseTls");
+            UseTls = ReadBoolean(useTls, false, "UseTls", sectionName);
         }
 
-        public IReadOnlyList<string> Hosts { get; set;}
-        public int Port { get; set;} = 27018;
-        public string UserName { get; set;}
-        public string Password { get; set;}
-        public string DatabaseName { get; set;}
-        public string AuthenticationDatabase { get; set;}
-        public string ReplicaSet { get; set;}
-        public bool UseTls { get; set;}
+        public IReadOnlyList<string> Hosts { get; set; }
+        public int Port { get; set; } = 27018;
+        public string UserName { get; set; }
+        public string Password { get; set; }
+        public string DatabaseName { get; set; }
+        public string AuthenticationDatabase { get; set; }
+        public string ReplicaSet { get; set; }
+        public bool UseTls { get; set; }
 
         public string BuildConnectionString()
         {
@@ -82,10 +87,10 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 
         public override string ToString()
         {
-            return $"MongoDocumentStorageConnectionSettings(Hosts={String.Join(",", Hosts)}, Port={Port}, AuthenticationDatabase={AuthenticationDatabase}, ReplicaSet={ReplicaSet ?? "<none>"}, UseTls={UseTls}, UserName={UserName}, Password=<redacted>)";
+            return $"MongoDocumentStorageConnectionSettings(Hosts={String.Join(",", Hosts)}, Port={Port}, DatabaseName={DatabaseName}, AuthenticationDatabase={AuthenticationDatabase}, ReplicaSet={ReplicaSet ?? "<none>"}, UseTls={UseTls}, UserName={UserName}, Password=<redacted>)";
         }
 
-        private static IReadOnlyList<string> ReadHosts(string value)
+        private static IReadOnlyList<string> ReadHosts(string value, string sectionName)
         {
             var hosts = value
                 .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
@@ -94,21 +99,21 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (hosts.Count == 0) throw new InvalidOperationException("MongoDocumentStorage:Hosts must contain at least one host.");
+            if (hosts.Count == 0) throw new InvalidOperationException($"{sectionName}:Hosts must contain at least one host.");
             return hosts.AsReadOnly();
         }
 
-        private static int ReadPort(string value, int defaultPort)
+        private static int ReadPort(string value, int defaultPort, string sectionName)
         {
             if (String.IsNullOrWhiteSpace(value)) return defaultPort;
-            if (!Int32.TryParse(value, out var port) || port <= 0 || port > 65535) throw new InvalidOperationException("MongoDocumentStorage:Port must be a valid TCP port.");
+            if (!Int32.TryParse(value, out var port) || port <= 0 || port > 65535) throw new InvalidOperationException($"{sectionName}:Port must be a valid TCP port.");
             return port;
         }
 
-        private static bool ReadBoolean(string value, bool defaultValue, string fieldName)
+        private static bool ReadBoolean(string value, bool defaultValue, string fieldName, string sectionName)
         {
             if (String.IsNullOrWhiteSpace(value)) return defaultValue;
-            if (!Boolean.TryParse(value, out var result)) throw new InvalidOperationException($"MongoDocumentStorage:{fieldName} must be true or false.");
+            if (!Boolean.TryParse(value, out var result)) throw new InvalidOperationException($"{sectionName}:{fieldName} must be true or false.");
             return result;
         }
     }
