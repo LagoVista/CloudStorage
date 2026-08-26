@@ -2,6 +2,7 @@
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.Interfaces;
@@ -369,41 +370,32 @@ ORDER BY c.Name ASC";
         {
             if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
 
-            var requestedEntityTypes = (entityTypes ?? Enumerable.Empty<string>())
-                .Where(entityType => !String.IsNullOrWhiteSpace(entityType))
-                .Select(entityType => entityType.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var requestedEntityTypes = (entityTypes ?? Enumerable.Empty<string>()).Where(entityType => !String.IsNullOrWhiteSpace(entityType)).Select(entityType => entityType.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
             if (requestedEntityTypes.Count == 0)
-            {
                 return InvokeResult<List<JObject>>.Create(new List<JObject>());
-            }
-
-            const string sql =
-        @"SELECT
-    c.id,
-    c.EntityType,
-    c.ReadinessChecks
-FROM c
-WHERE c.OwnerOrganization.Id = @orgId
-AND ARRAY_CONTAINS(@entityTypes, c.EntityType)";
-
-            var query = new QueryDefinition(sql)
-                .WithParameter("@orgId", orgId.Trim())
-                .WithParameter("@entityTypes", requestedEntityTypes);
-
-            var results = new List<JObject>();
-            var requestOptions = new QueryRequestOptions { MaxItemCount = 100 };
 
             try
             {
-                using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
+                var results = new List<JObject>();
 
-                while (iterator.HasMoreResults)
+                foreach (var entityType in requestedEntityTypes)
                 {
-                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                    results.AddRange(page.Resource.Where(item => item != null));
+                    ct.ThrowIfCancellationRequested();
+
+                    var projections = await _storageClient.GetDocumentProjectionsAsync<ReadinessScorecardProjection>(entityType, item => item.OwnerOrganization != null && item.OwnerOrganization.Id == orgId, ct).ConfigureAwait(false);
+
+                    foreach (var projection in projections)
+                    {
+                        var result = new JObject
+                        {
+                            ["id"] = projection.Id,
+                            [nameof(EntityBase.EntityType)] = projection.EntityType,
+                            [nameof(EntityBase.ReadinessChecks)] = projection.ReadinessChecks
+                        };
+
+                        results.Add(result);
+                    }
                 }
 
                 _logger.Trace($"{this.Tag()} - Found {results.Count} readiness scorecard entities across {requestedEntityTypes.Count} entity types for organization '{orgId}'.");
@@ -422,34 +414,26 @@ AND ARRAY_CONTAINS(@entityTypes, c.EntityType)";
             if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
             if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
 
-            const string sql =
-        @"SELECT
-    c.id,
-    c.EntityType,
-    c.ChecklistStatus,
-    c.ReadinessChecks,
-    c.MasterStatus,
-    c._etag
-FROM c
-WHERE c.OwnerOrganization.Id = @orgId
-AND c.EntityType = @entityType";
-
-            var query = new QueryDefinition(sql)
-                .WithParameter("@orgId", orgId.Trim())
-                .WithParameter("@entityType", entityType.Trim());
-
-            var results = new List<JObject>();
-            var requestOptions = new QueryRequestOptions { MaxItemCount = 100 };
-
             try
             {
-                using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
+                var projections = await _storageClient.GetDocumentProjectionsAsync<ReadinessCandidateProjection>(entityType.Trim(), item => item.OwnerOrganization != null && item.OwnerOrganization.Id == orgId.Trim(), ct).ConfigureAwait(false);
 
-                while (iterator.HasMoreResults)
+                var results = projections.Select(projection =>
                 {
-                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                    results.AddRange(page.Resource.Where(item => item != null));
-                }
+                    var result = new JObject
+                    {
+                        ["id"] = projection.Id,
+                        [nameof(EntityBase.EntityType)] = projection.EntityType,
+                        [nameof(EntityBase.ChecklistStatus)] = projection.ChecklistStatus,
+                        [nameof(EntityBase.ReadinessChecks)] = projection.ReadinessChecks,
+                        [nameof(EntityBase.MasterStatus)] = projection.MasterStatus
+                    };
+
+                    if (!String.IsNullOrWhiteSpace(projection.StorageETag))
+                        result["_etag"] = projection.StorageETag;
+
+                    return result;
+                }).ToList();
 
                 _logger.Trace($"{this.Tag()} - Found {results.Count} readiness reconciliation candidates for entity type '{entityType}' in organization '{orgId}'.");
 

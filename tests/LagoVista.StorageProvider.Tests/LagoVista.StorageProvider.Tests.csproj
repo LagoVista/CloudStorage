@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>disable</Nullable>
+
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CassandraCSharpDriver" Version="3.22.0" />
+    <PackageReference Include="LagoVista.Core.TestBase" Version="3.0.3388.0629" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj" />
+  </ItemGroup>
+
+</Project>
