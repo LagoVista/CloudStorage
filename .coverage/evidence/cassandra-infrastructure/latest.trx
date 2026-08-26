@@ -1,41 +1,113 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TestRun id="976d3be2-779d-41c4-9b3c-9950b2cf9870" name="kevin@BEAST-LAPTOP 2026-08-26 18:22:44" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
-  <Times creation="2026-08-26T18:22:44.3045704-04:00" queuing="2026-08-26T18:22:44.3045706-04:00" start="2026-08-26T18:22:43.2767428-04:00" finish="2026-08-26T18:22:44.3089126-04:00" />
-  <TestSettings name="default" id="06412a5d-9702-4b4a-8e22-fab3828f8bf7">
-    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_18_22_44" />
+<TestRun id="8d468008-dd29-4a08-8fbd-cafa134a6721" name="kevin@BEAST-LAPTOP 2026-08-26 18:58:33" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T18:58:33.1392973-04:00" queuing="2026-08-26T18:58:33.1392976-04:00" start="2026-08-26T18:58:32.2076716-04:00" finish="2026-08-26T18:58:33.2209372-04:00" />
+  <TestSettings name="default" id="345a66d7-9baa-4b1d-86df-1c18444fb371">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_18_58_33" />
   </TestSettings>
   <Results>
-    <UnitTestResult executionId="f029804d-c046-4db1-bc01-04dc98d23930" testId="38e78e07-9308-acfc-314d-c366e1337e58" testName="GetSessionAsync_MissingKeyspaceFails" computerName="BEAST-LAPTOP" duration="00:00:00.1524038" startTime="2026-08-26T18:22:43.9975601-04:00" endTime="2026-08-26T18:22:44.1517089-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f029804d-c046-4db1-bc01-04dc98d23930" />
-    <UnitTestResult executionId="39a72c68-51de-464c-8ab9-0e299e2fbd44" testId="55fd46dc-b012-4596-ec96-5fa169de2b3d" testName="GetSessionAsync_ConnectsToConfiguredKeyspaceAndReusesSession" computerName="BEAST-LAPTOP" duration="00:00:00.2912186" startTime="2026-08-26T18:22:43.6894722-04:00" endTime="2026-08-26T18:22:43.9941266-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="39a72c68-51de-464c-8ab9-0e299e2fbd44" />
+    <UnitTestResult executionId="3838b68f-0c28-4a73-b279-43fef33871f5" testId="dce44e7a-3535-508f-141b-b404714cee26" testName="Constructor_RejectsInvalidPort (&quot;not-a-port&quot;)" computerName="BEAST-LAPTOP" duration="00:00:00.0000224" startTime="2026-08-26T18:58:33.0583454-04:00" endTime="2026-08-26T18:58:33.0584259-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3838b68f-0c28-4a73-b279-43fef33871f5" />
+    <UnitTestResult executionId="92e32594-b807-4033-859d-fad0cf4f17a0" testId="edd8ced8-08ff-b6f3-a043-8774237d7bbc" testName="Constructor_RejectsNullConfiguration" computerName="BEAST-LAPTOP" duration="00:00:00.0096089" startTime="2026-08-26T18:58:33.0587268-04:00" endTime="2026-08-26T18:58:33.0684106-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="92e32594-b807-4033-859d-fad0cf4f17a0" />
+    <UnitTestResult executionId="ae6a0229-564c-4cf6-999a-df811d42bf31" testId="424dbafe-b307-9559-cc9b-20ab6f43e7cb" testName="Constructor_RejectsEmptyContactPointList" computerName="BEAST-LAPTOP" duration="00:00:00.0002170" startTime="2026-08-26T18:58:33.0584423-04:00" endTime="2026-08-26T18:58:33.0586998-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ae6a0229-564c-4cf6-999a-df811d42bf31" />
+    <UnitTestResult executionId="36c404f6-a5c1-44c4-8409-e94de95d8d8c" testId="a4255b41-3757-ce00-171d-1dc5a373f8e1" testName="Constructor_RejectsInvalidPort (&quot;65536&quot;)" computerName="BEAST-LAPTOP" duration="00:00:00.0001169" startTime="2026-08-26T18:58:33.0581271-04:00" endTime="2026-08-26T18:58:33.0583241-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="36c404f6-a5c1-44c4-8409-e94de95d8d8c" />
+    <UnitTestResult executionId="fbf8714e-1e13-49d2-8aaa-c2ed95a013f6" testId="3bf1a2e4-497a-aee2-c0b2-0867997177cb" testName="Constructor_ParsesAndNormalizesConfiguredValues" computerName="BEAST-LAPTOP" duration="00:00:00.0071298" startTime="2026-08-26T18:58:33.0485048-04:00" endTime="2026-08-26T18:58:33.0558122-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fbf8714e-1e13-49d2-8aaa-c2ed95a013f6" />
+    <UnitTestResult executionId="704c7e38-9731-41c9-bbfb-c54b8a183211" testId="ef5d8bef-30c4-d214-69fa-982d4df4b02b" testName="Constructor_RejectsInvalidPort (&quot;0&quot;)" computerName="BEAST-LAPTOP" duration="00:00:00.0006680" startTime="2026-08-26T18:58:33.0563200-04:00" endTime="2026-08-26T18:58:33.0580899-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="704c7e38-9731-41c9-bbfb-c54b8a183211" />
+    <UnitTestResult executionId="79c5ef82-ae03-4e52-8670-99bacbc88163" testId="38e78e07-9308-acfc-314d-c366e1337e58" testName="GetSessionAsync_MissingKeyspaceFails" computerName="BEAST-LAPTOP" duration="00:00:00.1440191" startTime="2026-08-26T18:58:32.9032425-04:00" endTime="2026-08-26T18:58:33.0481716-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="79c5ef82-ae03-4e52-8670-99bacbc88163" />
+    <UnitTestResult executionId="a8119865-4d7e-4b95-aa51-43f9a951507c" testId="55fd46dc-b012-4596-ec96-5fa169de2b3d" testName="GetSessionAsync_ConnectsToConfiguredKeyspaceAndReusesSession" computerName="BEAST-LAPTOP" duration="00:00:00.2769856" startTime="2026-08-26T18:58:32.6098296-04:00" endTime="2026-08-26T18:58:32.9001542-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a8119865-4d7e-4b95-aa51-43f9a951507c" />
+    <UnitTestResult executionId="d31fc31b-40d1-42a2-ae2d-837115591ce2" testId="c0a82324-4190-c34d-3131-d47f65732810" testName="Constructor_UsesPortAndDataCenterDefaults" computerName="BEAST-LAPTOP" duration="00:00:00.0003147" startTime="2026-08-26T18:58:33.0558761-04:00" endTime="2026-08-26T18:58:33.0562828-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d31fc31b-40d1-42a2-ae2d-837115591ce2" />
+    <UnitTestResult executionId="5a5f83dd-e165-4176-aa0e-0c880634310d" testId="14cbf451-575d-b9ac-8605-b75dc2212a8b" testName="ToString_RedactsPasswordAndShowsConnectionIdentity" computerName="BEAST-LAPTOP" duration="00:00:00.0005472" startTime="2026-08-26T18:58:33.0897507-04:00" endTime="2026-08-26T18:58:33.0910081-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5a5f83dd-e165-4176-aa0e-0c880634310d" />
   </Results>
   <TestDefinitions>
+    <UnitTest name="Constructor_RejectsInvalidPort (&quot;65536&quot;)" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="a4255b41-3757-ce00-171d-1dc5a373f8e1">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraInfrastructure" />
+      </TestCategory>
+      <Execution id="36c404f6-a5c1-44c4-8409-e94de95d8d8c" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraStorageSettingsTests" name="Constructor_RejectsInvalidPort" />
+    </UnitTest>
     <UnitTest name="GetSessionAsync_ConnectsToConfiguredKeyspaceAndReusesSession" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="55fd46dc-b012-4596-ec96-5fa169de2b3d">
       <TestCategory>
         <TestCategoryItem TestCategory="Cassandra" />
         <TestCategoryItem TestCategory="CassandraInfrastructure" />
       </TestCategory>
-      <Execution id="39a72c68-51de-464c-8ab9-0e299e2fbd44" />
+      <Execution id="a8119865-4d7e-4b95-aa51-43f9a951507c" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraSessionFactoryIntegrationTests" name="GetSessionAsync_ConnectsToConfiguredKeyspaceAndReusesSession" />
+    </UnitTest>
+    <UnitTest name="ToString_RedactsPasswordAndShowsConnectionIdentity" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="14cbf451-575d-b9ac-8605-b75dc2212a8b">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraInfrastructure" />
+      </TestCategory>
+      <Execution id="5a5f83dd-e165-4176-aa0e-0c880634310d" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraStorageSettingsTests" name="ToString_RedactsPasswordAndShowsConnectionIdentity" />
+    </UnitTest>
+    <UnitTest name="Constructor_RejectsEmptyContactPointList" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="424dbafe-b307-9559-cc9b-20ab6f43e7cb">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraInfrastructure" />
+      </TestCategory>
+      <Execution id="ae6a0229-564c-4cf6-999a-df811d42bf31" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraStorageSettingsTests" name="Constructor_RejectsEmptyContactPointList" />
+    </UnitTest>
+    <UnitTest name="Constructor_RejectsInvalidPort (&quot;0&quot;)" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="ef5d8bef-30c4-d214-69fa-982d4df4b02b">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraInfrastructure" />
+      </TestCategory>
+      <Execution id="704c7e38-9731-41c9-bbfb-c54b8a183211" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraStorageSettingsTests" name="Constructor_RejectsInvalidPort" />
     </UnitTest>
     <UnitTest name="GetSessionAsync_MissingKeyspaceFails" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="38e78e07-9308-acfc-314d-c366e1337e58">
       <TestCategory>
         <TestCategoryItem TestCategory="Cassandra" />
         <TestCategoryItem TestCategory="CassandraInfrastructure" />
       </TestCategory>
-      <Execution id="f029804d-c046-4db1-bc01-04dc98d23930" />
+      <Execution id="79c5ef82-ae03-4e52-8670-99bacbc88163" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraSessionFactoryIntegrationTests" name="GetSessionAsync_MissingKeyspaceFails" />
+    </UnitTest>
+    <UnitTest name="Constructor_RejectsNullConfiguration" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="edd8ced8-08ff-b6f3-a043-8774237d7bbc">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraInfrastructure" />
+      </TestCategory>
+      <Execution id="92e32594-b807-4033-859d-fad0cf4f17a0" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraStorageSettingsTests" name="Constructor_RejectsNullConfiguration" />
+    </UnitTest>
+    <UnitTest name="Constructor_RejectsInvalidPort (&quot;not-a-port&quot;)" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="dce44e7a-3535-508f-141b-b404714cee26">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraInfrastructure" />
+      </TestCategory>
+      <Execution id="3838b68f-0c28-4a73-b279-43fef33871f5" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraStorageSettingsTests" name="Constructor_RejectsInvalidPort" />
+    </UnitTest>
+    <UnitTest name="Constructor_UsesPortAndDataCenterDefaults" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="c0a82324-4190-c34d-3131-d47f65732810">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraInfrastructure" />
+      </TestCategory>
+      <Execution id="d31fc31b-40d1-42a2-ae2d-837115591ce2" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraStorageSettingsTests" name="Constructor_UsesPortAndDataCenterDefaults" />
+    </UnitTest>
+    <UnitTest name="Constructor_ParsesAndNormalizesConfiguredValues" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="3bf1a2e4-497a-aee2-c0b2-0867997177cb">
+      <TestCategory>
+        <TestCategoryItem TestCategory="CassandraInfrastructure" />
+      </TestCategory>
+      <Execution id="fbf8714e-1e13-49d2-8aaa-c2ed95a013f6" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cassandra.CassandraStorageSettingsTests" name="Constructor_ParsesAndNormalizesConfiguredValues" />
     </UnitTest>
   </TestDefinitions>
   <TestEntries>
-    <TestEntry testId="38e78e07-9308-acfc-314d-c366e1337e58" executionId="f029804d-c046-4db1-bc01-04dc98d23930" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="55fd46dc-b012-4596-ec96-5fa169de2b3d" executionId="39a72c68-51de-464c-8ab9-0e299e2fbd44" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="dce44e7a-3535-508f-141b-b404714cee26" executionId="3838b68f-0c28-4a73-b279-43fef33871f5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="edd8ced8-08ff-b6f3-a043-8774237d7bbc" executionId="92e32594-b807-4033-859d-fad0cf4f17a0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="424dbafe-b307-9559-cc9b-20ab6f43e7cb" executionId="ae6a0229-564c-4cf6-999a-df811d42bf31" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a4255b41-3757-ce00-171d-1dc5a373f8e1" executionId="36c404f6-a5c1-44c4-8409-e94de95d8d8c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3bf1a2e4-497a-aee2-c0b2-0867997177cb" executionId="fbf8714e-1e13-49d2-8aaa-c2ed95a013f6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ef5d8bef-30c4-d214-69fa-982d4df4b02b" executionId="704c7e38-9731-41c9-bbfb-c54b8a183211" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="38e78e07-9308-acfc-314d-c366e1337e58" executionId="79c5ef82-ae03-4e52-8670-99bacbc88163" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="55fd46dc-b012-4596-ec96-5fa169de2b3d" executionId="a8119865-4d7e-4b95-aa51-43f9a951507c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c0a82324-4190-c34d-3131-d47f65732810" executionId="d31fc31b-40d1-42a2-ae2d-837115591ce2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="14cbf451-575d-b9ac-8605-b75dc2212a8b" executionId="5a5f83dd-e165-4176-aa0e-0c880634310d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
   </TestEntries>
   <TestLists>
     <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
     <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
   </TestLists>
   <ResultSummary outcome="Completed">
-    <Counters total="2" executed="2" passed="2" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Counters total="10" executed="10" passed="10" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
     <Output>
       <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
 Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
