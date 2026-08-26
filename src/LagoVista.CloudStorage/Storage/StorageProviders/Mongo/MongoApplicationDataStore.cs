@@ -1,3 +1,4 @@
+using LagoVista;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Models;
@@ -13,6 +14,7 @@ namespace LagoVista.CloudStorage.StorageProviders
     /// MongoDB implementation of deterministic mutable application-data storage.
     /// One record type maps to one collection through StorageRecordIdentity.
     /// </summary>
+    [CriticalCoverage]
     public sealed class MongoApplicationDataStore : IApplicationDataStore
     {
         private readonly MongoMutableRecordStore _store;
