@@ -75,7 +75,11 @@ internal sealed class EntityMigrationRunner
     public async Task MigrateAsync(int batchSize = 200, int maxPages = 0, CancellationToken ct = default)
     {
         var sourceCollections = GetSourceCollections().ToArray();
-        var progress = await _progressStore.LoadOrCreateAsync(sourceCollections, ct).ConfigureAwait(false);
+        var progress = await _progressStore.LoadOrCreateAsync(
+            _source.DatabaseName,
+            _target.DatabaseName,
+            sourceCollections,
+            ct).ConfigureAwait(false);
 
         PrintPlan("WRITE", batchSize, maxPages);
         PrintProgress(progress);
@@ -377,6 +381,8 @@ internal sealed class EntityMigrationRunner
         Console.WriteLine("Saved migration progress");
         Console.WriteLine($"Status:               {progress.Status}");
         Console.WriteLine($"Runs:                 {progress.RunCount}");
+        Console.WriteLine($"Source database:      {progress.SourceDatabaseName}");
+        Console.WriteLine($"Target database:      {progress.TargetDatabaseName}");
         Console.WriteLine($"Last updated:         {progress.LastUpdatedDate}");
         Console.WriteLine($"Application Data DB:  {_progressStore.DatabaseName}");
         Console.WriteLine();
