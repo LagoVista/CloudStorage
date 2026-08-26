@@ -1,5 +1,5 @@
 CloudStorage Document Storage Contract Test Evidence
-StartedUtc: 2026-08-26T21:30:35.3943897Z
+StartedUtc: 2026-08-26T21:36:56.1112258Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\PowerShell\..\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=DocumentStorageContract
 Provider: MongoDB localhost:27018
@@ -10,7 +10,7 @@ Provider: MongoDB localhost:27018
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
-  Failed SummaryQuery_SatisfiesSharedContract [37 ms]
+  Failed SummaryQuery_SatisfiesSharedContract [38 ms]
   Error Message:
    Assert.AreEqual failed. Expected:<2>. Actual:<0>. 
   Stack Trace:
@@ -18,7 +18,7 @@ A total of 1 test files matched the specified pattern.
 
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\document-storage-contract\latest.trx
 
-Failed!  - Failed:     1, Passed:    10, Skipped:     0, Total:    11, Duration: 766 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+Failed!  - Failed:     1, Passed:    10, Skipped:     0, Total:    11, Duration: 845 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-26T21:30:38.1089925Z
+CompletedUtc: 2026-08-26T21:36:59.1658276Z
 ExitCode: 1

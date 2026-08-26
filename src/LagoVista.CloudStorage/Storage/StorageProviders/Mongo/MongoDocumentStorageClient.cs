@@ -316,10 +316,10 @@ namespace LagoVista.CloudStorage.StorageProviders
             var collection = GetCollection<TEntityFactory>();
 
             var filters = new List<FilterDefinition<TEntityFactory>>
-    {
-        Builders<TEntityFactory>.Filter.Where(query),
-        Builders<TEntityFactory>.Filter.Eq(item => item.EntityType, entityType)
-    };
+            {
+                Builders<TEntityFactory>.Filter.Where(query),
+                Builders<TEntityFactory>.Filter.Eq(item => item.EntityType, entityType)
+            };
 
             if (!listRequest.ShowDeleted)
             {
@@ -336,7 +336,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
 
             if (!String.IsNullOrWhiteSpace(listRequest.CategoryKey))
-                filters.Add(Builders<TEntityFactory>.Filter.Eq("Category.Key", listRequest.CategoryKey));
+                filters.Add(Builders<TEntityFactory>.Filter.Eq(item => item.Category.Key, listRequest.CategoryKey));
 
             var filter = Builders<TEntityFactory>.Filter.And(filters);
             var find = collection.Find(filter);
