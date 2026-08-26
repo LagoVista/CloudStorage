@@ -50,6 +50,15 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         /// <summary>Counts entities where every requested checklist step has a LastRun.</summary>
         EntityUtilsCompletedChecklistCount,
+
+        /// <summary>Returns entities where all prerequisite steps have a LastRun and at least one target step does not.</summary>
+        EntityUtilsReadyChecklistCandidates,
+
+        /// <summary>Counts entities where all prerequisite steps have a LastRun and at least one target step does not.</summary>
+        EntityUtilsReadyChecklistCount,
+
+        /// <summary>Returns entities where at least one required prerequisite step does not have a LastRun.</summary>
+        EntityUtilsBlockedChecklistCandidates,
     }
 
     public sealed class DocumentCountResult

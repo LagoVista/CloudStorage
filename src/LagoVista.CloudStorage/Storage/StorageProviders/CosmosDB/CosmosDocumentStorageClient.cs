@@ -429,6 +429,15 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             switch (request.QueryType)
             {
+                case DocumentQueryType.EntityUtilsReadyChecklistCandidates:
+                    return CreateReadyChecklistQuery(request, false);
+
+                case DocumentQueryType.EntityUtilsReadyChecklistCount:
+                    return CreateReadyChecklistQuery(request, true);
+
+                case DocumentQueryType.EntityUtilsBlockedChecklistCandidates:
+                    return CreateBlockedChecklistQuery(request);
+
                 case DocumentQueryType.EntityUtilsDocumentsByStatusIds:
                     {
                         var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
@@ -526,6 +535,106 @@ AND (
                 default:
                     throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Cosmos provider.");
             }
+        }
+
+        private static string BuildCompletedChecklistPredicate(string parameterName)
+        {
+            return $@"EXISTS (
+    SELECT VALUE status
+    FROM status IN c.ChecklistStatus
+    WHERE status.StepKey = {parameterName}
+    AND IS_DEFINED(status.LastRun)
+    AND NOT IS_NULL(status.LastRun)
+)";
+        }
+
+        private static QueryDefinition CreateReadyChecklistQuery(DocumentQueryRequest request, bool count)
+        {
+            var requiredStepKeys = request.GetRequired<List<string>>("requiredStepKeys");
+            var targetStepKeys = request.GetRequired<List<string>>("targetStepKeys");
+
+            var predicates = new List<string>
+    {
+        "c.EntityType = @entityType",
+        "c.OwnerOrganization.Id = @orgId"
+    };
+
+            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+                predicates.Add(BuildCompletedChecklistPredicate($"@requiredStepKey{idx}"));
+
+            var incompletePredicates = new List<string>();
+
+            for (var idx = 0; idx < targetStepKeys.Count; idx++)
+                incompletePredicates.Add($"NOT {BuildCompletedChecklistPredicate($"@targetStepKey{idx}")}");
+
+            predicates.Add($"({String.Join(" OR ", incompletePredicates)})");
+
+            string sql;
+
+            if (count)
+            {
+                sql = $"SELECT COUNT(1) AS Count FROM c WHERE {String.Join(" AND ", predicates)}";
+            }
+            else
+            {
+                var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
+
+                sql = $@"SELECT TOP {maxItems}
+    c.id AS Id,
+    c.EntityType AS EntityType,
+    c.Name AS Name,
+    c.Key AS Key,
+    c.Description AS Description,
+    c.ChecklistStatus AS ChecklistStatus
+FROM c
+WHERE {String.Join(Environment.NewLine + "AND ", predicates)}
+ORDER BY c.Name";
+            }
+
+            var query = new QueryDefinition(sql)
+                .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                .WithParameter("@orgId", request.GetRequired<string>("orgId"));
+
+            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+                query = query.WithParameter($"@requiredStepKey{idx}", requiredStepKeys[idx]);
+
+            for (var idx = 0; idx < targetStepKeys.Count; idx++)
+                query = query.WithParameter($"@targetStepKey{idx}", targetStepKeys[idx]);
+
+            return query;
+        }
+
+        private static QueryDefinition CreateBlockedChecklistQuery(DocumentQueryRequest request)
+        {
+            var requiredStepKeys = request.GetRequired<List<string>>("requiredStepKeys");
+            var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
+
+            var incompletePredicates = new List<string>();
+
+            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+                incompletePredicates.Add($"NOT {BuildCompletedChecklistPredicate($"@requiredStepKey{idx}")}");
+
+            var sql = $@"SELECT TOP {maxItems}
+    c.id AS Id,
+    c.EntityType AS EntityType,
+    c.Name AS Name,
+    c.Key AS Key,
+    c.Description AS Description,
+    c.ChecklistStatus AS ChecklistStatus
+FROM c
+WHERE c.EntityType = @entityType
+AND c.OwnerOrganization.Id = @orgId
+AND ({String.Join(" OR ", incompletePredicates)})
+ORDER BY c.Name";
+
+            var query = new QueryDefinition(sql)
+                .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                .WithParameter("@orgId", request.GetRequired<string>("orgId"));
+
+            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
+                query = query.WithParameter($"@requiredStepKey{idx}", requiredStepKeys[idx]);
+
+            return query;
         }
 
         private static QueryDefinition CreateCompletedChecklistQuery(DocumentQueryRequest request, bool count)

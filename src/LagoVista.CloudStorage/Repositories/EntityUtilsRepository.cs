@@ -9,14 +9,11 @@ using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
-using Microsoft.Azure.Cosmos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 namespace LagoVista.CloudStorage.Storage
@@ -24,12 +21,8 @@ namespace LagoVista.CloudStorage.Storage
     public class EntityUtilsRepository : IEntityUtilsRepository
     {
         private readonly IEntityDetailResponseFactory _entityDetailResponseFactory;
-        private readonly CosmosClient _client;
-        private readonly Container _container;
         private readonly ILogger _logger;
-        private readonly ISyncConnectionSettings _options;
         private readonly ICacheProvider _cacheProvider;
-        private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IRagIndexingServices _ragIndexingServices;
         private readonly IDependencyManager _dependencyManager;
         private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
@@ -38,11 +31,8 @@ namespace LagoVista.CloudStorage.Storage
         private readonly string _dbName;
         private readonly IDocumentStorageClient _storageClient;
 
-
-        public EntityUtilsRepository(ISyncConnectionSettings options, ICosmosClientProvider cosmosClientProvider, IDocumentStorageClientProvider documentStorageClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
+        public EntityUtilsRepository(DocumentStorageClientProvider documentStorageClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
-            _options = options ?? throw new ArgumentNullException(nameof(options));
-            _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
             _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -52,8 +42,6 @@ namespace LagoVista.CloudStorage.Storage
             _storageClient = documentStorageClientProvider?.GetClient() ?? throw new ArgumentNullException(nameof(documentStorageClientProvider));
             _dbName = _storageClient.DatabaseName;
 
-            _client = _cosmosClientProvider.GetClient(_options.SyncConnectionSettings.Uri, _options.SyncConnectionSettings.AccessKey);
-            _container = _client.GetContainer(_options.SyncConnectionSettings.ResourceName, $"{_options.SyncConnectionSettings.ResourceName}_Collections");
         }
 
         private static string GetDocumentETag(JObject document)
@@ -1010,38 +998,17 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             var take = Math.Min(maxItems, 5000);
-            var predicates = new List<string> { "c.EntityType = @entityType", "c.OwnerOrganization.Id = @orgId" };
 
-            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
-            {
-                predicates.Add(BuildCompletedChecklistStepPredicate($"@requiredStepKey{idx}"));
-            }
+            var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsReadyChecklistCandidates)
+                .WithParameter("entityType", entityType.Trim())
+                .WithParameter("orgId", orgId.Trim())
+                .WithParameter("requiredStepKeys", requiredStepKeys)
+                .WithParameter("targetStepKeys", targetStepKeys)
+                .WithParameter("maxItems", take);
 
-            var incompleteTargetPredicates = new List<string>();
+            var documents = (await _storageClient.QueryKnownAsync<EntityChecklistCandidateDocument>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
 
-            for (var idx = 0; idx < targetStepKeys.Count; idx++)
-            {
-                incompleteTargetPredicates.Add(BuildIncompleteChecklistStepPredicate($"@targetStepKey{idx}"));
-            }
-
-            predicates.Add($"({String.Join(" OR ", incompleteTargetPredicates)})");
-
-            var sql = BuildCandidateSummarySql(predicates, take);
-            var qd = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@completedStatus", EntityChecklistStatus.Completed);
-
-            _logger.Trace($"{this.Tag()} - Finding completed check lists", sql.ToKVP("query"));
-
-            for (var idx = 0; idx < requiredStepKeys.Count; idx++)
-            {
-                qd = qd.WithParameter($"@requiredStepKey{idx}", requiredStepKeys[idx]);
-            }
-
-            for (var idx = 0; idx < targetStepKeys.Count; idx++)
-            {
-                qd = qd.WithParameter($"@targetStepKey{idx}", targetStepKeys[idx]);
-            }
-
-            return await ExecuteCandidateSummaryQueryAsync(qd, targetStepKeys, null, take, $"{this.Tag()} - Found ready checklist candidates for {entityType} with prerequisites [{String.Join(", ", requiredStepKeys)}] and targets [{String.Join(", ", targetStepKeys)}].", ct).ConfigureAwait(false);
+            return BuildChecklistCandidateSummaries(documents, targetStepKeys, null, $"{this.Tag()} - Found ready checklist candidates for {entityType} with prerequisites [{String.Join(", ", requiredStepKeys)}] and targets [{String.Join(", ", targetStepKeys)}].");
         }
 
         public async Task<InvokeResult<int>> CountEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct)
@@ -1198,38 +1165,15 @@ namespace LagoVista.CloudStorage.Storage
                     return InvokeResult<int>.FromInvokeResult(targetValidation);
                 }
 
-                var predicates = new List<string> { "c.EntityType = @entityType", "c.OwnerOrganization.Id = @orgId" };
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsReadyChecklistCount)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("requiredStepKeys", requiredStepKeys)
+                    .WithParameter("targetStepKeys", targetStepKeys);
 
-                for (var idx = 0; idx < requiredStepKeys.Count; idx++)
-                {
-                    predicates.Add(BuildCompletedChecklistStepPredicate($"@requiredStepKey{idx}"));
-                }
+                var result = (await _storageClient.QueryKnownAsync<DocumentCountResult>(entityType.Trim(), request, ct).ConfigureAwait(false)).FirstOrDefault();
 
-                var incompleteTargetPredicates = new List<string>();
-
-                for (var idx = 0; idx < targetStepKeys.Count; idx++)
-                {
-                    incompleteTargetPredicates.Add(BuildIncompleteChecklistStepPredicate($"@targetStepKey{idx}"));
-                }
-
-                predicates.Add($"({String.Join(" OR ", incompleteTargetPredicates)})");
-
-                var sql = $"SELECT VALUE COUNT(1) FROM c WHERE {String.Join(" AND ", predicates)}";
-                var qd = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@completedStatus", EntityChecklistStatus.Completed);
-
-                for (var idx = 0; idx < requiredStepKeys.Count; idx++)
-                {
-                    qd = qd.WithParameter($"@requiredStepKey{idx}", requiredStepKeys[idx]);
-                }
-
-                for (var idx = 0; idx < targetStepKeys.Count; idx++)
-                {
-                    qd = qd.WithParameter($"@targetStepKey{idx}", targetStepKeys[idx]);
-                }
-
-                var count = await ExecuteScalarIntAsync(qd, ct).ConfigureAwait(false);
-
-                return InvokeResult<int>.Create(count);
+                return InvokeResult<int>.Create(result?.Count ?? 0);
             }
             catch (Exception ex)
             {
@@ -1238,136 +1182,7 @@ namespace LagoVista.CloudStorage.Storage
             }
         }
 
-        private async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> ExecuteCandidateSummaryQueryAsync(QueryDefinition queryDefinition, IReadOnlyCollection<string> checklistStepKeys, string targetChecklistStepKey, int maxItems, string successMessage, CancellationToken ct)
-        {
-            if (queryDefinition == null)
-            {
-                throw new ArgumentNullException(nameof(queryDefinition));
-            }
 
-            var documents = new List<EntityChecklistCandidateDocument>();
-            var requestOptions = new QueryRequestOptions { MaxItemCount = Math.Min(maxItems, 100) };
-            var normalizedChecklistStepKeys = NormalizeChecklistStepKeys(checklistStepKeys ?? Enumerable.Empty<string>());
-            var checklistStepKeySet = normalizedChecklistStepKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            try
-            {
-                using var iterator = _container.GetItemQueryIterator<EntityChecklistCandidateDocument>(queryDefinition, requestOptions: requestOptions);
-
-                while (iterator.HasMoreResults && documents.Count < maxItems)
-                {
-                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-
-                    foreach (var document in page.Resource)
-                    {
-                        if (document == null)
-                        {
-                            continue;
-                        }
-
-                        documents.Add(document);
-
-                        if (documents.Count >= maxItems)
-                        {
-                            break;
-                        }
-                    }
-                }
-
-                var results = documents
-                    .Select(document =>
-                    {
-                        var checklistStatus = document.ChecklistStatus ?? new List<EntityChecklistStatus>();
-
-                        var completedTargetStepKeys = checklistStatus
-                            .Where(status =>
-                                status != null &&
-                                !String.IsNullOrWhiteSpace(status.StepKey) &&
-                                checklistStepKeySet.Contains(status.StepKey) &&
-                                status.Status != null &&
-                                String.Equals(status.Status.Key, EntityChecklistStatus.Completed, StringComparison.OrdinalIgnoreCase))
-                            .Select(status => status.StepKey)
-                            .Distinct(StringComparer.OrdinalIgnoreCase)
-                            .ToList();
-
-                        var targetChecklistStatus = String.IsNullOrWhiteSpace(targetChecklistStepKey)
-                            ? null
-                            : checklistStatus.FirstOrDefault(status =>
-                                status != null &&
-                                String.Equals(status.StepKey, targetChecklistStepKey, StringComparison.OrdinalIgnoreCase));
-
-                        return new EntityChecklistCandidateSummary
-                        {
-                            Id = document.Id,
-                            EntityType = document.EntityType,
-                            Name = document.Name,
-                            Key = document.Key,
-                            Description = document.Description,
-                            CompletedTargetStepKeys = completedTargetStepKeys,
-                            CompletedTargetStepCount = completedTargetStepKeys.Count,
-                            TargetStepCount = normalizedChecklistStepKeys.Count,
-                            TargetChecklistStatus = targetChecklistStatus
-                        };
-                    })
-                    .ToList();
-
-                _logger.Trace(successMessage);
-
-                return InvokeResult<List<EntityChecklistCandidateSummary>>.Create(results);
-            }
-            catch (Exception ex)
-            {
-                _logger.AddException(this.Tag(), ex);
-                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromException(this.Tag(), ex);
-            }
-        }
-
-        private async Task<int> ExecuteScalarIntAsync(QueryDefinition qd, CancellationToken ct)
-        {
-            using var iterator = _container.GetItemQueryIterator<int>(qd);
-
-            while (iterator.HasMoreResults)
-            {
-                var response = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-                return response.FirstOrDefault();
-            }
-
-            return 0;
-        }
-
-        private static string BuildCandidateSummarySql(IEnumerable<string> predicates, int maxItems)
-        {
-            var sql = new System.Text.StringBuilder();
-
-            sql.AppendLine($"SELECT TOP {maxItems}");
-            sql.AppendLine("    c.id AS Id,");
-            sql.AppendLine("    c.EntityType AS EntityType,");
-            sql.AppendLine("    c.Name AS Name,");
-            sql.AppendLine("    c.Key AS Key,");
-            sql.AppendLine("    c.Description AS Description,");
-            sql.AppendLine("    c.ChecklistStatus AS ChecklistStatus");
-            sql.AppendLine("FROM c");
-            sql.AppendLine($"WHERE {String.Join(Environment.NewLine + "AND ", predicates)}");
-            sql.AppendLine("ORDER BY c.Name");
-
-            return sql.ToString();
-        }
-
-        private static string BuildCompletedChecklistStepPredicate(string stepParameterName)
-        {
-            return $@"EXISTS (
-    SELECT VALUE status
-    FROM status IN c.ChecklistStatus
-    WHERE status.StepKey = {stepParameterName}
-    AND IS_DEFINED(status.LastRun)
-    AND NOT IS_NULL(status.LastRun)
-)";
-        }
-
-        private static string BuildIncompleteChecklistStepPredicate(string stepParameterName)
-        {
-            return $@"NOT {BuildCompletedChecklistStepPredicate(stepParameterName)}";
-        }
 
         private static InvokeResult ValidateChecklistStepKeys(IEnumerable<string> stepKeys)
         {
@@ -1457,56 +1272,14 @@ namespace LagoVista.CloudStorage.Storage
                 }
 
                 var take = Math.Min(maxItems, 5000);
-                var missingPrerequisitePredicates = new List<string>();
+                
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsBlockedChecklistCandidates)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("requiredStepKeys", requiredStepKeys)
+                    .WithParameter("maxItems", take);
 
-                for (var idx = 0; idx < requiredStepKeys.Count; idx++)
-                {
-                    missingPrerequisitePredicates.Add(
-                        BuildIncompleteChecklistStepPredicate($"@requiredStepKey{idx}"));
-                }
-
-                var sql = BuildBlockedCandidateSql(missingPrerequisitePredicates, take);
-
-                var qd = new QueryDefinition(sql)
-                    .WithParameter("@entityType", entityType.Trim())
-                    .WithParameter("@orgId", orgId.Trim())
-                    .WithParameter("@completedStatus", EntityChecklistStatus.Completed);
-
-                for (var idx = 0; idx < requiredStepKeys.Count; idx++)
-                {
-                    qd = qd.WithParameter($"@requiredStepKey{idx}", requiredStepKeys[idx]);
-                }
-
-                var documents = new List<EntityChecklistBlockedCandidateDocument>();
-                var requestOptions = new QueryRequestOptions
-                {
-                    MaxItemCount = Math.Min(take, 100)
-                };
-
-                using var iterator = _container.GetItemQueryIterator<EntityChecklistBlockedCandidateDocument>(
-                    qd,
-                    requestOptions: requestOptions);
-
-                while (iterator.HasMoreResults && documents.Count < take)
-                {
-                    var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-
-                    foreach (var item in page.Resource)
-                    {
-                        if (item == null)
-                        {
-                            continue;
-                        }
-
-                        documents.Add(item);
-
-                        if (documents.Count >= take)
-                        {
-                            break;
-                        }
-                    }
-                }
-
+                var documents = (await _storageClient.QueryKnownAsync<EntityChecklistBlockedCandidateDocument>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
 
                 _logger.Trace(
                     $"{this.Tag()} - Found {documents.Count} blocked checklist candidates from the query {entityType} " +
@@ -1595,39 +1368,6 @@ namespace LagoVista.CloudStorage.Storage
                 _logger.AddException(this.Tag(), ex);
                 return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
             }
-        }
-
-        private static string BuildBlockedCandidateSql(IEnumerable<string> missingPrerequisitePredicates, int maxItems)
-        {
-            var predicates = (missingPrerequisitePredicates ?? Enumerable.Empty<string>())
-                .Where(predicate => !String.IsNullOrWhiteSpace(predicate))
-                .ToList();
-
-            if (!predicates.Any())
-            {
-                throw new ArgumentException(
-                    "At least one missing prerequisite predicate is required.",
-                    nameof(missingPrerequisitePredicates));
-            }
-
-            var sql = new System.Text.StringBuilder();
-
-            sql.AppendLine($"SELECT TOP {maxItems}");
-            sql.AppendLine("    c.id AS Id,");
-            sql.AppendLine("    c.EntityType AS EntityType,");
-            sql.AppendLine("    c.Name AS Name,");
-            sql.AppendLine("    c.Key AS Key,");
-            sql.AppendLine("    c.Description AS Description,");
-            sql.AppendLine("    c.ChecklistStatus AS ChecklistStatus");
-            sql.AppendLine("FROM c");
-            sql.AppendLine("WHERE c.EntityType = @entityType");
-            sql.AppendLine("AND c.OwnerOrganization.Id = @orgId");
-            sql.AppendLine("AND (");
-            sql.AppendLine($"    {String.Join(Environment.NewLine + "    OR ", predicates)}");
-            sql.AppendLine(")");
-            sql.AppendLine("ORDER BY c.Name");
-
-            return sql.ToString();
         }
 
 
@@ -1860,14 +1600,9 @@ namespace LagoVista.CloudStorage.Storage
 
         private async Task<bool> IsSemanticIdentifierUniqueAsync(string entityType, string orgId, string fieldName, string value, string id, CancellationToken ct)
         {
-            if (String.IsNullOrWhiteSpace(entityType))
-                throw new ArgumentException("entityType is required.", nameof(entityType));
-
-            if (String.IsNullOrWhiteSpace(orgId))
-                throw new ArgumentException("orgId is required.", nameof(orgId));
-
-            if (String.IsNullOrWhiteSpace(fieldName))
-                throw new ArgumentException("fieldName is required.", nameof(fieldName));
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+            if (String.IsNullOrWhiteSpace(fieldName)) throw new ArgumentException("fieldName is required.", nameof(fieldName));
 
             if (String.IsNullOrWhiteSpace(value))
                 return true;
@@ -1875,38 +1610,20 @@ namespace LagoVista.CloudStorage.Storage
             if (!IsSafeDocumentPropertyName(fieldName))
                 throw new ArgumentException($"Field name '{fieldName}' is not safe for a document query.", nameof(fieldName));
 
-            var sql =
-        $@"SELECT c.id
-FROM c
-WHERE c.EntityType = @entityType
-AND c.OwnerOrganization.Id = @orgId
-AND c[""{fieldName}""] = @value";
+            var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByFieldValue)
+                .WithParameter("entityType", entityType.Trim())
+                .WithParameter("orgId", orgId.Trim())
+                .WithParameter("fieldName", fieldName.Trim())
+                .WithParameter("value", value.Trim());
 
-            var query = new QueryDefinition(sql).WithParameter("@entityType", entityType.Trim()).WithParameter("@orgId", orgId.Trim()).WithParameter("@value", value.Trim());
-            var requestOptions = new QueryRequestOptions { MaxItemCount = 25 };
-            var matchingIds = new List<string>();
-
-            using var iterator = _container.GetItemQueryIterator<JObject>(query, requestOptions: requestOptions);
-
-            while (iterator.HasMoreResults)
-            {
-                var page = await iterator.ReadNextAsync(ct).ConfigureAwait(false);
-
-                foreach (var doc in page.Resource)
-                {
-                    var matchingId = doc?["id"]?.Value<string>();
-
-                    if (!String.IsNullOrWhiteSpace(matchingId))
-                        matchingIds.Add(matchingId);
-                }
-            }
+            var matches = await _storageClient.QueryKnownAsync<DocumentIdProjection>(entityType.Trim(), request, ct).ConfigureAwait(false);
+            var matchingIds = matches.Where(match => !String.IsNullOrWhiteSpace(match.Id)).Select(match => match.Id).ToList();
 
             if (String.IsNullOrWhiteSpace(id))
                 return !matchingIds.Any();
 
             return !matchingIds.Any(matchId => !String.Equals(matchId, id.Trim(), StringComparison.OrdinalIgnoreCase));
         }
-
 
         private class EntityChecklistBlockedCandidateDocument
         {
