@@ -194,9 +194,27 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
 
-            var filter = Builders<TEntity>.Filter.And(
+            var filters = new List<FilterDefinition<TEntity>>
+            {
                 Builders<TEntity>.Filter.Where(query),
-                Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
+                Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name)
+            };
+
+            if (!listRequest.ShowDeleted)
+            {
+                filters.Add(Builders<TEntity>.Filter.Or(
+                    Builders<TEntity>.Filter.Exists(nameof(INoSQLEntity.IsDeleted), false),
+                    Builders<TEntity>.Filter.Eq(nameof(INoSQLEntity.IsDeleted), false)));
+            }
+
+            if (!listRequest.ShowDrafts)
+            {
+                filters.Add(Builders<TEntity>.Filter.Or(
+                    Builders<TEntity>.Filter.Exists(nameof(IAuditableEntity.IsDraft), false),
+                    Builders<TEntity>.Filter.Eq(nameof(IAuditableEntity.IsDraft), false)));
+            }
+
+            var filter = Builders<TEntity>.Filter.And(filters);
             var items = await GetCollection<TEntity>().Find(filter)
                 .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
                 .Limit(listRequest.PageSize)
