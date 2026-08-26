@@ -1,5 +1,5 @@
-using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.Core.Exceptions;
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -64,10 +64,10 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
             var missing = await client.GetDocumentAsync<ContractDocumentEntity>(id, throwOnNotFound: false);
             Assert.IsNull(missing);
 
-            await Assert.ThrowsExceptionAsync<RecordNotFoundException>(
+            await Assert.ThrowsExactlyAsync<RecordNotFoundException>(
                 () => client.GetDocumentAsync<ContractDocumentEntity>(id));
 
-            await Assert.ThrowsExceptionAsync<RecordNotFoundException>(
+            await Assert.ThrowsExactlyAsync<RecordNotFoundException>(
                 () => client.DeleteDocumentAsync<ContractDocumentEntity>(id, partitionKey));
         }
 
