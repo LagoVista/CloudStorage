@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 
 namespace LagoVista.CloudStorage.Storage
@@ -26,5 +27,11 @@ namespace LagoVista.CloudStorage.Storage
 
             return recordType.Name;
         }
+    }
+
+    public sealed class DocumentIdProjection
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; }
     }
 }

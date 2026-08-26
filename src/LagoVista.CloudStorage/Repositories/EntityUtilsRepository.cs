@@ -160,7 +160,7 @@ namespace LagoVista.CloudStorage.Storage
             foreach (var statusId in statusIds)
             {
                 if (!IsSafeStatusId(statusId))
-                    return InvokeResult<EntityHeaderStatusPatchResult>.FromError($"Status id '{statusId}' is not safe for a Cosmos query.");
+                    return InvokeResult<EntityHeaderStatusPatchResult>.FromError($"Status id '{statusId}' is not safe for a document query.");
             }
 
             if (!IsSafeStatusId(desiredStatus["Id"]?.Value<string>()))
@@ -1390,7 +1390,7 @@ namespace LagoVista.CloudStorage.Storage
             {
                 if (!IsSafeChecklistStepKey(stepKey))
                 {
-                    return InvokeResult.FromError($"Checklist step key '{stepKey}' is not safe for a Cosmos query.");
+                    return InvokeResult.FromError($"Checklist step key '{stepKey}' is not safe for a document query.");
                 }
             }
 
@@ -1888,7 +1888,7 @@ namespace LagoVista.CloudStorage.Storage
                 return true;
 
             if (!IsSafeDocumentPropertyName(fieldName))
-                throw new ArgumentException($"Field name '{fieldName}' is not safe for a Cosmos query.", nameof(fieldName));
+                throw new ArgumentException($"Field name '{fieldName}' is not safe for a document query.", nameof(fieldName));
 
             var sql =
         $@"SELECT c.id

@@ -429,6 +429,9 @@ namespace LagoVista.CloudStorage.StorageProviders
             var collection = GetBsonCollection(collectionName);
             switch (request.QueryType)
             {
+                case DocumentQueryType.EntityUtilsDocumentsByFieldValue:
+                    return await QueryEntityUtilsByFieldValueAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
+
                 case DocumentQueryType.EntityUtilsDocumentsByStatusIds:
                     return await QueryEntityUtilsByStatusIdsAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
 
@@ -468,6 +471,18 @@ namespace LagoVista.CloudStorage.StorageProviders
                 default:
                     throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Mongo provider.");
             }
+        }
+
+        private static async Task<IEnumerable<TResult>> QueryEntityUtilsByFieldValueAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            var filter = Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+                Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")),
+                Builders<BsonDocument>.Filter.Eq(request.GetRequired<string>("fieldName"), request.GetRequired<string>("value")));
+
+            var documents = await collection.Find(filter).Project(new BsonDocument { { "_id", 1 } }).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            return Deserialize<TResult>(documents);
         }
 
         private static async Task<IEnumerable<TResult>> QueryEntityUtilsByStatusIdsAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class

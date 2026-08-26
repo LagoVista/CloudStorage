@@ -41,6 +41,9 @@ namespace LagoVista.CloudStorage.DocumentDB
 
         /// <summary>Returns entities where a named field is missing, null, or an empty string.</summary>
         EntityUtilsDocumentsWithEmptyField,
+
+        /// <summary>Returns document ids where a named field equals the requested value.</summary>
+        EntityUtilsDocumentsByFieldValue,
     }
 
     public sealed class DocumentCountResult

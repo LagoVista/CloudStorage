@@ -451,6 +451,24 @@ ORDER BY c.Name ASC")
                             .WithParameter("@statusIds", request.GetRequired<List<string>>("statusIds"));
                     }
 
+                case DocumentQueryType.EntityUtilsDocumentsByFieldValue:
+                    {
+                        var fieldName = request.GetRequired<string>("fieldName");
+
+                        if (!IsSafeDocumentPropertyName(fieldName))
+                            throw new ArgumentException($"Field name '{fieldName}' is not safe for a document query.");
+
+                        return new QueryDefinition($@"
+SELECT c.id AS Id
+FROM c
+WHERE c.EntityType = @entityType
+AND c.OwnerOrganization.Id = @orgId
+AND c[""{fieldName}""] = @value")
+                            .WithParameter("@entityType", request.GetRequired<string>("entityType"))
+                            .WithParameter("@orgId", request.GetRequired<string>("orgId"))
+                            .WithParameter("@value", request.GetRequired<string>("value"));
+                    }
+
                 case DocumentQueryType.EntityUtilsDocumentsWithEmptyField:
                     {
                         var maxItems = Math.Min(request.GetRequired<int>("maxItems"), 5000);
