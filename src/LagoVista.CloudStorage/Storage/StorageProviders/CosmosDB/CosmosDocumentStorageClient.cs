@@ -201,6 +201,32 @@ namespace LagoVista.CloudStorage.StorageProviders
             return ListResponse<TEntity>.Create(listRequest, items);
         }
 
+        public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest)
+            where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (sort == null) throw new ArgumentNullException(nameof(sort));
+            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+
+            var items = new List<TEntity>();
+            var linqQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>()
+                .Where(query)
+                .Where(item => item.EntityType == typeof(TEntity).Name &&
+                               (listRequest.ShowDeleted || item.IsDeleted.IsNull() || !item.IsDeleted.HasValue || !item.IsDeleted.Value) &&
+                               (listRequest.ShowDrafts || !item.IsDraft.IsDefined() || item.IsDraft == false))
+                .OrderBy(sort)
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Take(listRequest.PageSize);
+
+            using (var iterator = linqQuery.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults)
+                    items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            }
+
+            return ListResponse<TEntity>.Create(listRequest, items);
+        }
+
         public async Task<IEnumerable<TResult>> QueryKnownAsync<TResult>(string entityType, DocumentQueryRequest request, CancellationToken cancellationToken = default)
             where TResult : class
         {
