@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="02c79def-716c-4924-8fd0-4b5dc17273b4" name="kevin@BEAST-LAPTOP 2026-08-27 13:31:44" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-27T13:31:44.0288985-04:00" queuing="2026-08-27T13:31:44.0288994-04:00" start="2026-08-27T13:31:42.0708345-04:00" finish="2026-08-27T13:31:44.0392742-04:00" />
+  <TestSettings name="default" id="e2783b73-949e-4492-8482-8648f43385a0">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-27_13_31_44" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="cf562c36-7417-4d02-a4c0-c543163fbb42" testId="abd7f1e7-826f-6677-20b1-0877214646ea" testName="BoundContainerOverloads_NormalizeLeadingSlashAndRoundTrip" computerName="BEAST-LAPTOP" duration="00:00:00.0415828" startTime="2026-08-27T13:31:43.6441145-04:00" endTime="2026-08-27T13:31:43.6859169-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="cf562c36-7417-4d02-a4c0-c543163fbb42" />
+    <UnitTestResult executionId="a52b4672-00d4-434c-a1b8-b20f69a96311" testId="16ae62c4-dab0-82f8-264a-2e03e9a507b2" testName="RejectUpdates_FailsSafelyAndPreservesExistingObject" computerName="BEAST-LAPTOP" duration="00:00:00.0329246" startTime="2026-08-27T13:31:43.6860332-04:00" endTime="2026-08-27T13:31:43.7191595-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a52b4672-00d4-434c-a1b8-b20f69a96311" />
+    <UnitTestResult executionId="1df91330-078b-4806-a03c-51b9cb5b5678" testId="d2cde188-5671-4dba-58bc-5d6166560ad8" testName="BinaryRoundTrip_AutoCreatesBucketAndDeletesObject" computerName="BEAST-LAPTOP" duration="00:00:00.4798242" startTime="2026-08-27T13:31:43.0392945-04:00" endTime="2026-08-27T13:31:43.5487306-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1df91330-078b-4806-a03c-51b9cb5b5678" />
+    <UnitTestResult executionId="8125e342-2a69-43e7-8cb3-1c296219de0b" testId="4ce5a48f-2a85-36d6-7969-75557e017e45" testName="StringAddAndUpdate_RoundTripLatestContent" computerName="BEAST-LAPTOP" duration="00:00:00.0885603" startTime="2026-08-27T13:31:43.5542971-04:00" endTime="2026-08-27T13:31:43.6435785-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8125e342-2a69-43e7-8cb3-1c296219de0b" />
+    <UnitTestResult executionId="fee59407-3522-4ce5-bcbf-52046746c18f" testId="d56263ce-c2ba-15ec-2a79-0b392656f1b7" testName="BoundContainerOverloads_RequireContainerName" computerName="BEAST-LAPTOP" duration="00:00:00.0020464" startTime="2026-08-27T13:31:43.7192623-04:00" endTime="2026-08-27T13:31:43.7232267-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fee59407-3522-4ce5-bcbf-52046746c18f" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="BoundContainerOverloads_RequireContainerName" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="d56263ce-c2ba-15ec-2a79-0b392656f1b7">
+      <TestCategory>
+        <TestCategoryItem TestCategory="S3CloudFileStorage" />
+      </TestCategory>
+      <Execution id="fee59407-3522-4ce5-bcbf-52046746c18f" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.S3.S3CloudFileStorageClientIntegrationTests" name="BoundContainerOverloads_RequireContainerName" />
+    </UnitTest>
+    <UnitTest name="BoundContainerOverloads_NormalizeLeadingSlashAndRoundTrip" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="abd7f1e7-826f-6677-20b1-0877214646ea">
+      <TestCategory>
+        <TestCategoryItem TestCategory="S3CloudFileStorage" />
+      </TestCategory>
+      <Execution id="cf562c36-7417-4d02-a4c0-c543163fbb42" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.S3.S3CloudFileStorageClientIntegrationTests" name="BoundContainerOverloads_NormalizeLeadingSlashAndRoundTrip" />
+    </UnitTest>
+    <UnitTest name="RejectUpdates_FailsSafelyAndPreservesExistingObject" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="16ae62c4-dab0-82f8-264a-2e03e9a507b2">
+      <TestCategory>
+        <TestCategoryItem TestCategory="S3CloudFileStorage" />
+      </TestCategory>
+      <Execution id="a52b4672-00d4-434c-a1b8-b20f69a96311" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.S3.S3CloudFileStorageClientIntegrationTests" name="RejectUpdates_FailsSafelyAndPreservesExistingObject" />
+    </UnitTest>
+    <UnitTest name="BinaryRoundTrip_AutoCreatesBucketAndDeletesObject" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="d2cde188-5671-4dba-58bc-5d6166560ad8">
+      <TestCategory>
+        <TestCategoryItem TestCategory="S3CloudFileStorage" />
+      </TestCategory>
+      <Execution id="1df91330-078b-4806-a03c-51b9cb5b5678" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.S3.S3CloudFileStorageClientIntegrationTests" name="BinaryRoundTrip_AutoCreatesBucketAndDeletesObject" />
+    </UnitTest>
+    <UnitTest name="StringAddAndUpdate_RoundTripLatestContent" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="4ce5a48f-2a85-36d6-7969-75557e017e45">
+      <TestCategory>
+        <TestCategoryItem TestCategory="S3CloudFileStorage" />
+      </TestCategory>
+      <Execution id="8125e342-2a69-43e7-8cb3-1c296219de0b" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.S3.S3CloudFileStorageClientIntegrationTests" name="StringAddAndUpdate_RoundTripLatestContent" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="abd7f1e7-826f-6677-20b1-0877214646ea" executionId="cf562c36-7417-4d02-a4c0-c543163fbb42" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="16ae62c4-dab0-82f8-264a-2e03e9a507b2" executionId="a52b4672-00d4-434c-a1b8-b20f69a96311" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d2cde188-5671-4dba-58bc-5d6166560ad8" executionId="1df91330-078b-4806-a03c-51b9cb5b5678" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4ce5a48f-2a85-36d6-7969-75557e017e45" executionId="8125e342-2a69-43e7-8cb3-1c296219de0b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d56263ce-c2ba-15ec-2a79-0b392656f1b7" executionId="fee59407-3522-4ce5-bcbf-52046746c18f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="5" executed="5" passed="5" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
+Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
+   NUnit3TestExecutor discovered 0 of 0 NUnit test cases using Current Discovery mode, Explicit run&#xD;
+NUnit Adapter 5.1.0.0: Test execution complete&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>
