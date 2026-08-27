@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cosmos-client-provider-integration",
   "title": "CosmosClientProvider Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "cosmos",
   "summary": "Verify Cosmos client creation, normalized endpoint reuse, connectivity, configuration validation, and failure behavior against the local Cosmos emulator.",
@@ -24,12 +24,12 @@
       "port": 18081
     },
     "coverageLayers": {
-      "completed": [],
-      "next": [
+      "completed": [
         "connectivity",
         "normalized-client-reuse",
         "connection-material-validation"
-      ]
+      ],
+      "next": []
     }
   }
 }
