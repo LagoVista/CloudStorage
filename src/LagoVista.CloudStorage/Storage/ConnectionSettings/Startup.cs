@@ -1,4 +1,5 @@
 ﻿using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
@@ -21,6 +22,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
             services.AddSingleton<IMetricsStorageSettings, MetricsStorageSettings>();
             services.AddSingleton<IAccountLedgerStorageSettings, AccountLedgerStorageSettings>();
             services.AddSingleton<IPostgresConnectionSettings, PostgresConnectionSettings>();
+            services.AddSingleton<IS3ObjectStorageConnectionSettings, S3ObjectStorageConnectionSettings>();
         }
     }
 }
