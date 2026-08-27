@@ -1,7 +1,7 @@
 // --- BEGIN CODE INDEX META (do not edit) ---
 // ContentHash: 01327be1d3e2ec3c6ab9198c9ab4886279b214c9f61cf064fa61d4fa0e0518ab
 // IndexVersion: 2
-// --- END CODE INDEX META ---
+// --- END CODE INDEX META (do not edit) ---
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
@@ -297,7 +297,10 @@ namespace LagoVista.CloudStorage.Utils
                 ["S3ObjectStorage:AccessKey"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:AccessKey"),
                 ["S3ObjectStorage:SecretKey"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:SecretKey"),
                 ["S3ObjectStorage:UseTls"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:UseTls"),
-                ["S3ObjectStorage:Region"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:Region")
+                ["S3ObjectStorage:Region"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:Region"),
+                ["S3ObjectStorage:PublicHost"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:PublicHost"),
+                ["S3ObjectStorage:PublicPort"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:PublicPort"),
+                ["S3ObjectStorage:PublicUseTls"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:PublicUseTls")
             };
 
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
