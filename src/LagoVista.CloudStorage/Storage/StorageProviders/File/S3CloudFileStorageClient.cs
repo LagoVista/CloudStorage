@@ -278,8 +278,14 @@ namespace LagoVista.CloudStorage.Storage
 
         private IMinioClient BuildClient(string host, int port, bool useTls)
         {
-            var builder = new MinioClient()
-                .WithEndpoint(host, port)
+            var builder = new MinioClient();
+            var isDefaultPort = (useTls && port == 443) || (!useTls && port == 80);
+
+            builder = isDefaultPort
+                ? builder.WithEndpoint(host)
+                : builder.WithEndpoint(host, port);
+
+            builder = builder
                 .WithCredentials(_settings.AccessKey, _settings.SecretKey)
                 .WithSSL(useTls);
 
