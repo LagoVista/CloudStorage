@@ -1,27 +1,14 @@
 $ErrorActionPreference = "Stop"
 
 $composeFile = Join-Path $PSScriptRoot "docker-compose.storage-lab.yml"
-$mongoContainer = "nuviot-cloudstorage-lab-mongo"
 $cosmosReadyUrl = "http://localhost:18080/ready"
 
-Write-Host "Starting local CloudStorage lab (Mongo + Cosmos emulator)..."
+Write-Host "Starting local Cosmos emulator lab..."
 docker info | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Docker is not available. Start Docker Desktop and try again." }
 
-docker compose -f $composeFile up -d
-if ($LASTEXITCODE -ne 0) { throw "Unable to start the CloudStorage lab containers." }
-
-for ($attempt = 1; $attempt -le 30; $attempt++) {
-    $mongoHealth = (docker inspect --format "{{.State.Health.Status}}" $mongoContainer 2>$null | Out-String).Trim()
-    if ($mongoHealth -eq "healthy") {
-        Write-Host "Mongo is healthy on localhost:27018."
-        break
-    }
-
-    if ($attempt -eq 30) { throw "Mongo did not become healthy. Run 'docker logs $mongoContainer' for details." }
-    Write-Host "  Mongo health=$mongoHealth attempt=$attempt/30"
-    Start-Sleep -Seconds 2
-}
+docker compose -f $composeFile up -d cosmos
+if ($LASTEXITCODE -ne 0) { throw "Unable to start the Cosmos emulator container." }
 
 for ($attempt = 1; $attempt -le 60; $attempt++) {
     try {
