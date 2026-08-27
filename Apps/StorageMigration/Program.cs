@@ -31,6 +31,9 @@ try
             RequireKey(args, command);
             await VerifyAsync(catalog, catalog.LoadByKey(args[1]));
             break;
+        case "object-probe":
+            await ObjectProbeAsync(GetPositiveIntOption(args, "--max-objects"));
+            break;
         default:
             PrintUsage();
             Environment.ExitCode = 2;
@@ -44,6 +47,46 @@ catch (Exception ex)
 }
 
 static ApplicationDataMigrationStateStore StateStore() => ApplicationDataMigrationStateStore.Create(MigrationConnections.EnvironmentName);
+
+static async Task ObjectProbeAsync(int? maxObjects)
+{
+    Console.WriteLine("Object storage migration probe");
+    Console.WriteLine($"Environment: {MigrationConnections.EnvironmentName}");
+    Console.WriteLine($"Scan limit : {(maxObjects.HasValue ? $"{maxObjects.Value:N0} objects" : "none")}");
+    Console.WriteLine();
+
+    Console.WriteLine("[1/2] Connecting to SeaweedFS S3 endpoint...");
+    var s3Probe = new S3ObjectStorageProbe(MigrationConnections.S3ObjectStorage);
+    var buckets = await s3Probe.ListBucketsAsync();
+    Console.WriteLine($"PASS: S3 endpoint is reachable; {buckets.Count:N0} bucket(s) currently visible.");
+    foreach (var bucket in buckets) Console.WriteLine($"  {bucket}");
+    Console.WriteLine();
+
+    Console.WriteLine("[2/2] Inventorying Azure Blob Storage metadata...");
+    var source = new AzureBlobObjectInventorySource(MigrationConnections.AzureBlobConnectionString());
+    var inventory = await source.InventoryAsync(maxObjects);
+
+    Console.WriteLine();
+    Console.WriteLine($"{"Container",-36} {"Objects",12} {"Bytes",16} {"Size",12} {"Oldest",22} {"Newest",22}");
+    Console.WriteLine(new String('-', 128));
+    foreach (var container in inventory.Containers.OrderByDescending(item => item.TotalBytes))
+    {
+        Console.WriteLine(
+            $"{container.Container,-36} " +
+            $"{container.ObjectCount,12:N0} " +
+            $"{container.TotalBytes,16:N0} " +
+            $"{FormatBytes(container.TotalBytes),12} " +
+            $"{FormatDate(container.OldestLastModified),22} " +
+            $"{FormatDate(container.NewestLastModified),22}");
+    }
+
+    Console.WriteLine(new String('-', 128));
+    Console.WriteLine($"TOTAL                                {inventory.ObjectCount,12:N0} {inventory.TotalBytes,16:N0} {FormatBytes(inventory.TotalBytes),12}");
+    if (inventory.WasLimited)
+        Console.WriteLine("NOTE: inventory was intentionally limited; totals are partial.");
+    Console.WriteLine();
+    Console.WriteLine("PASS: object storage probe completed. No blobs were copied or modified.");
+}
 
 static async Task ProbeAsync(MigrationDefinition definition)
 {
@@ -152,6 +195,21 @@ static void PrintDefinition(MigrationCatalog catalog, MigrationDefinition defini
     Console.WriteLine($"Retention seconds: {(definition.Target.RetentionSeconds?.ToString() ?? "forever")}");
 }
 
+static string FormatDate(DateTimeOffset? value) => value.HasValue ? value.Value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss") : "<none>";
+
+static string FormatBytes(long bytes)
+{
+    string[] suffixes = { "B", "KB", "MB", "GB", "TB", "PB" };
+    double value = bytes;
+    var suffix = 0;
+    while (value >= 1024 && suffix < suffixes.Length - 1)
+    {
+        value /= 1024;
+        suffix++;
+    }
+    return $"{value:0.##} {suffixes[suffix]}";
+}
+
 static void RequireKey(string[] args, string command) { if (args.Length < 2) throw new ArgumentException($"{command} requires a migration key."); }
 static bool HasOption(string[] args, string option) => args.Any(arg => String.Equals(arg, option, StringComparison.OrdinalIgnoreCase));
 static int? GetPositiveIntOption(string[] args, string option)
@@ -189,5 +247,6 @@ static void PrintUsage()
     Console.Error.WriteLine("  probe <migration-key>");
     Console.Error.WriteLine("  migrate <migration-key> [--max-records N] [--catch-up]");
     Console.Error.WriteLine("  verify <migration-key>");
+    Console.Error.WriteLine("  object-probe [--max-objects N]");
     Console.Error.WriteLine("Environment: set MIGRATION_ENVIRONMENT=dev|prod for environment-prefixed storage settings.");
 }
