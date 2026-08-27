@@ -22,6 +22,7 @@ public sealed class ObjectMigrationProgress
 public sealed class AzureBlobToS3Migration
 {
     public const string MigrationKey = "azure-blob-to-s3";
+    private const int ObjectCopyAttempts = 5;
     private static readonly string DefinitionSha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("azure-blob-to-s3-v1")));
 
     private readonly BlobServiceClient _source;
@@ -193,7 +194,7 @@ public sealed class AzureBlobToS3Migration
 
             var first = failed[0];
             throw new InvalidOperationException(
-                $"Object batch failed for '{containerName}/{first.Item.Name}'. The batch checkpoint was not advanced and will be replayed safely.",
+                $"Object batch failed for '{containerName}/{first.Item.Name}' after {ObjectCopyAttempts} attempts. The batch checkpoint was not advanced and will be replayed safely.",
                 first.Error);
         }
 
@@ -208,36 +209,52 @@ public sealed class AzureBlobToS3Migration
         ObjectCopyItem item,
         CancellationToken cancellationToken)
     {
-        try
+        Exception? lastError = null;
+
+        for (var attempt = 1; attempt <= ObjectCopyAttempts; attempt++)
         {
-            var sourceBlob = container.GetBlobClient(item.Name);
-            var download = await sourceBlob.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-            await using var stream = download.Value.Content;
-
-            var put = new PutObjectArgs()
-                .WithBucket(containerName)
-                .WithObject(item.Name)
-                .WithStreamData(stream)
-                .WithObjectSize(item.ContentLength)
-                .WithContentType(String.IsNullOrWhiteSpace(item.ContentType)
-                    ? "application/octet-stream"
-                    : item.ContentType);
-
-            if (!String.IsNullOrWhiteSpace(item.CacheControl))
+            try
             {
-                put = put.WithHeaders(new Dictionary<string, string>
-                {
-                    ["Cache-Control"] = item.CacheControl
-                });
-            }
+                var sourceBlob = container.GetBlobClient(item.Name);
+                var download = await sourceBlob.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                await using var stream = download.Value.Content;
 
-            await _target.PutObjectAsync(put, cancellationToken).ConfigureAwait(false);
-            return new ObjectCopyResult(item, null);
+                var put = new PutObjectArgs()
+                    .WithBucket(containerName)
+                    .WithObject(item.Name)
+                    .WithStreamData(stream)
+                    .WithObjectSize(item.ContentLength)
+                    .WithContentType(String.IsNullOrWhiteSpace(item.ContentType)
+                        ? "application/octet-stream"
+                        : item.ContentType);
+
+                if (!String.IsNullOrWhiteSpace(item.CacheControl))
+                {
+                    put = put.WithHeaders(new Dictionary<string, string>
+                    {
+                        ["Cache-Control"] = item.CacheControl
+                    });
+                }
+
+                await _target.PutObjectAsync(put, cancellationToken).ConfigureAwait(false);
+                return new ObjectCopyResult(item, null);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                if (attempt == ObjectCopyAttempts)
+                    break;
+
+                var delay = TimeSpan.FromMilliseconds(250 * Math.Pow(2, attempt - 1));
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
         }
-        catch (Exception ex)
-        {
-            return new ObjectCopyResult(item, ex);
-        }
+
+        return new ObjectCopyResult(item, lastError ?? new InvalidOperationException("Object copy failed without an exception."));
     }
 
     private static void CommitBatch(
