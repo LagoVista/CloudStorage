@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="8bca5345-0e4d-4f22-a30c-55d4f52114f2" name="kevin@BEAST-LAPTOP 2026-08-26 21:34:03" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T21:34:03.9877106-04:00" queuing="2026-08-26T21:34:03.9877113-04:00" start="2026-08-26T21:34:01.9202587-04:00" finish="2026-08-26T21:34:04.6171258-04:00" />
+  <TestSettings name="default" id="2102535a-8feb-43be-a1ce-f40a6b802b71">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_21_34_03" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="f9c3c94b-8fc8-407b-9cff-87fd77935d27" testId="706d31ad-db87-9a9c-ed59-a2ecd8061541" testName="PagedQuery_ExercisesVisibilityFiltersAndPagingOverload" computerName="BEAST-LAPTOP" duration="00:00:00.2820942" startTime="2026-08-26T21:34:03.5805841-04:00" endTime="2026-08-26T21:34:03.8633040-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f9c3c94b-8fc8-407b-9cff-87fd77935d27" />
+    <UnitTestResult executionId="d93e20ba-9d0a-4b76-9d75-f183cfd6c0bb" testId="397cb342-f278-6994-85f9-2852372a2aa4" testName="KnownPreparationAndEntityListQueries_AllCosmosPipelinesExecuteWithValidSyntax" computerName="BEAST-LAPTOP" duration="00:00:00.1920890" startTime="2026-08-26T21:34:04.2795851-04:00" endTime="2026-08-26T21:34:04.4733995-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d93e20ba-9d0a-4b76-9d75-f183cfd6c0bb" />
+    <UnitTestResult executionId="d1ab75ea-939b-4410-85ad-57f8f12341b8" testId="4f228bc2-fd83-b208-581b-874563c4d85a" testName="KnownEntityUtilityQueries_AllCosmosBranchesExecuteWithValidSyntax" computerName="BEAST-LAPTOP" duration="00:00:00.2280530" startTime="2026-08-26T21:34:04.0512133-04:00" endTime="2026-08-26T21:34:04.2794658-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d1ab75ea-939b-4410-85ad-57f8f12341b8" />
+    <UnitTestResult executionId="6a0f97d8-3c55-4446-a833-62ced743d193" testId="1ab286f5-7e59-5017-ff24-3953010d7476" testName="RuntimePatch_ExercisesSetAddRemoveConcurrencyAndMissingPaths" computerName="BEAST-LAPTOP" duration="00:00:00.9269935" startTime="2026-08-26T21:34:02.6340440-04:00" endTime="2026-08-26T21:34:03.5770554-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6a0f97d8-3c55-4446-a833-62ced743d193" />
+    <UnitTestResult executionId="641d996f-064c-4c76-b04a-2ead00b218c0" testId="99bbf3ed-d623-f607-db38-c893941d016d" testName="GenericSort_ExercisesNonStringAscendingAndDescendingSorts" computerName="BEAST-LAPTOP" duration="00:00:00.1868141" startTime="2026-08-26T21:34:03.8639237-04:00" endTime="2026-08-26T21:34:04.0511091-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="641d996f-064c-4c76-b04a-2ead00b218c0" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="KnownEntityUtilityQueries_AllCosmosBranchesExecuteWithValidSyntax" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="4f228bc2-fd83-b208-581b-874563c4d85a">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Cosmos" />
+        <TestCategoryItem TestCategory="CosmosDocumentStorageDepth" />
+      </TestCategory>
+      <Execution id="d1ab75ea-939b-4410-85ad-57f8f12341b8" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientDepthIntegrationTests" name="KnownEntityUtilityQueries_AllCosmosBranchesExecuteWithValidSyntax" />
+    </UnitTest>
+    <UnitTest name="GenericSort_ExercisesNonStringAscendingAndDescendingSorts" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="99bbf3ed-d623-f607-db38-c893941d016d">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Cosmos" />
+        <TestCategoryItem TestCategory="CosmosDocumentStorageDepth" />
+      </TestCategory>
+      <Execution id="641d996f-064c-4c76-b04a-2ead00b218c0" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientDepthIntegrationTests" name="GenericSort_ExercisesNonStringAscendingAndDescendingSorts" />
+    </UnitTest>
+    <UnitTest name="PagedQuery_ExercisesVisibilityFiltersAndPagingOverload" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="706d31ad-db87-9a9c-ed59-a2ecd8061541">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Cosmos" />
+        <TestCategoryItem TestCategory="CosmosDocumentStorageDepth" />
+      </TestCategory>
+      <Execution id="f9c3c94b-8fc8-407b-9cff-87fd77935d27" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientDepthIntegrationTests" name="PagedQuery_ExercisesVisibilityFiltersAndPagingOverload" />
+    </UnitTest>
+    <UnitTest name="KnownPreparationAndEntityListQueries_AllCosmosPipelinesExecuteWithValidSyntax" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="397cb342-f278-6994-85f9-2852372a2aa4">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Cosmos" />
+        <TestCategoryItem TestCategory="CosmosDocumentStorageDepth" />
+      </TestCategory>
+      <Execution id="d93e20ba-9d0a-4b76-9d75-f183cfd6c0bb" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientDepthIntegrationTests" name="KnownPreparationAndEntityListQueries_AllCosmosPipelinesExecuteWithValidSyntax" />
+    </UnitTest>
+    <UnitTest name="RuntimePatch_ExercisesSetAddRemoveConcurrencyAndMissingPaths" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="1ab286f5-7e59-5017-ff24-3953010d7476">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Cosmos" />
+        <TestCategoryItem TestCategory="CosmosDocumentStorageDepth" />
+      </TestCategory>
+      <Execution id="6a0f97d8-3c55-4446-a833-62ced743d193" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientDepthIntegrationTests" name="RuntimePatch_ExercisesSetAddRemoveConcurrencyAndMissingPaths" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="706d31ad-db87-9a9c-ed59-a2ecd8061541" executionId="f9c3c94b-8fc8-407b-9cff-87fd77935d27" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="397cb342-f278-6994-85f9-2852372a2aa4" executionId="d93e20ba-9d0a-4b76-9d75-f183cfd6c0bb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4f228bc2-fd83-b208-581b-874563c4d85a" executionId="d1ab75ea-939b-4410-85ad-57f8f12341b8" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1ab286f5-7e59-5017-ff24-3953010d7476" executionId="6a0f97d8-3c55-4446-a833-62ced743d193" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="99bbf3ed-d623-f607-db38-c893941d016d" executionId="641d996f-064c-4c76-b04a-2ead00b218c0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="5" executed="5" passed="5" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
+Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
+   NUnit3TestExecutor discovered 0 of 0 NUnit test cases using Current Discovery mode, Explicit run&#xD;
+NUnit Adapter 5.1.0.0: Test execution complete&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

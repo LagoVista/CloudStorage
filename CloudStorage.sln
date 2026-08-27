@@ -1,4 +1,3 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.2.11415.280
@@ -30,8 +29,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityMigration202608", "Apps\EntityMigration202608\EntityMigration202608.csproj", "{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageMigration", "Apps\StorageMigration\StorageMigration.csproj", "{2F4B05A8-7472-4F79-9B5B-2B89A715264F}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.StorageProvider.Tests", "tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj", "{F38FC923-9105-3C5A-CF02-E1D980D56DA7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.CloudStorage.IntegrationTests", "tests\LagoVista.CloudStorage.Tests\LagoVista.CloudStorage.IntegrationTests.csproj", "{897318A8-DDF9-AB8C-687D-14C62CB9E0E8}"
 EndProject
@@ -73,10 +70,6 @@ Global
 		{2F4B05A8-7472-4F79-9B5B-2B89A715264F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2F4B05A8-7472-4F79-9B5B-2B89A715264F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2F4B05A8-7472-4F79-9B5B-2B89A715264F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{897318A8-DDF9-AB8C-687D-14C62CB9E0E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{897318A8-DDF9-AB8C-687D-14C62CB9E0E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{897318A8-DDF9-AB8C-687D-14C62CB9E0E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -92,7 +85,6 @@ Global
 		{70EBCB3A-8E12-D29E-FE94-039A3A2FE378} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 		{5E560BF7-DDB9-43C3-A184-376ED402AA43} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 		{611832C7-3E25-EF1E-7A3B-29E133F3B90E} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
-		{F38FC923-9105-3C5A-CF02-E1D980D56DA7} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 		{897318A8-DDF9-AB8C-687D-14C62CB9E0E8} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
