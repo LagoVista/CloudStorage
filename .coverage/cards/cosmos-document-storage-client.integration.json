@@ -2,17 +2,44 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cosmos-document-storage-client-integration",
   "title": "CosmosDocumentStorageClient Integration Tests",
-  "status": "backlog",
+  "status": "in-process",
   "category": "integration-test",
   "area": "document-storage",
-  "summary": "Exercise the Cosmos implementation of IDocumentStorageClient against the local Cosmos emulator.",
+  "summary": "Exercise the Cosmos implementation of IDocumentStorageClient against the local Cosmos emulator using the same shared behavioral contract as Mongo.",
   "source": [
     "src/LagoVista.CloudStorage/Storage/StorageProviders/CosmosDB/CosmosDocumentStorageClient.cs"
   ],
+  "evidence": [
+    ".coverage/evidence/cosmos-document-storage-client/latest.txt",
+    ".coverage/evidence/cosmos-document-storage-client/latest.trx"
+  ],
   "data": {
     "component": "CosmosDocumentStorageClient",
-    "coverage": ["create-read-update-delete", "query", "patch", "optimistic-concurrency", "error-behavior"],
-    "tests": [],
-    "environment": { "type": "docker", "provider": "cosmos-emulator" }
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Cosmos/CosmosDocumentStorageClientContractTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cosmos-document-storage-tests.ps1",
+    "environment": {
+      "type": "docker",
+      "provider": "cosmos-emulator",
+      "port": 18081,
+      "partitionKeyPath": "/EntityType"
+    },
+    "coverageLayers": {
+      "completed": [],
+      "next": [
+        "database-identity",
+        "crud-lifecycle",
+        "not-found-semantics",
+        "query-and-paging",
+        "optimistic-concurrency",
+        "patch",
+        "projection-and-key-lookup",
+        "owned-lookup",
+        "raw-document-and-page",
+        "known-entity-queries",
+        "summary-query",
+        "query-all-semantics"
+      ]
+    }
   }
 }
