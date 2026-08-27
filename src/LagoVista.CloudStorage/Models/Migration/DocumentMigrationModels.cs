@@ -1,7 +1,7 @@
 using LagoVista.CloudStorage.DocumentDB;
 using System.Collections.Generic;
 
-namespace LagoVista.CloudStorage.Interfaces
+namespace LagoVista.CloudStorage.Models.Migration
 {
     public sealed class CosmosToMongoMigrationRequest
     {
