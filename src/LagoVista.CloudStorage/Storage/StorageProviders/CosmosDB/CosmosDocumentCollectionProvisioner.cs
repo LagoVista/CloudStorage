@@ -1,4 +1,4 @@
-using LagoVista.CloudStorage.DocumentDB;
+using LagoVista.CloudStorage.Storage.StorageProviders;
 using Microsoft.Azure.Cosmos;
 using System;
 using System.Threading;
