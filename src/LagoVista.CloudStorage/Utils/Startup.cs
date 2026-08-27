@@ -1,5 +1,5 @@
-using LagoVista.CloudStorage.Interfaces;
-using LagoVista.CloudStorage.Utils.TableSizer;
+using LagoVista.CloudStorage.Storage;
+using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LagoVista.CloudStorage.Utils
@@ -9,7 +9,6 @@ namespace LagoVista.CloudStorage.Utils
         public static void ConfigureServices(IServiceCollection services)
         {
             services.AddScoped<IStorageUtils, StorageUtils>();
-            services.AddScoped<ITableSizer, TableSizer>();
         }
     }
 }

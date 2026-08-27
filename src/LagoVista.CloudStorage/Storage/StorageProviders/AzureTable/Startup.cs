@@ -1,3 +1,4 @@
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
 using Microsoft.Extensions.DependencyInjection;
 

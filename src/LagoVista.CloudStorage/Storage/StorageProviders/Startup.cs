@@ -1,3 +1,4 @@
+using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.StorageProviders;
 using Microsoft.Extensions.DependencyInjection;
