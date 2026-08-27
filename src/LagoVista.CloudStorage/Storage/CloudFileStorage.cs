@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Storage
 {
-    public class CloudFileStorage
+    public class CloudFileStorage : ICloudFileStorageClient
     {
         private readonly IAdminLogger _logger;
 
