@@ -105,6 +105,14 @@ namespace LagoVista.StorageProvider.Tests.Mongo
                 EntityType = entityType,
                 Steps = new[] { new PatchStep { Op = PatchOp.Set, LogicalPath = "Detail", Value = JToken.FromObject("missing") } }
             }));
+
+            await Assert.ThrowsExactlyAsync<RecordNotFoundException>(() => _client.PatchDocumentAsync(entityType, new PatchRequest
+            {
+                Id = NewId(),
+                EntityType = entityType,
+                ETag = write.ETag,
+                Steps = new[] { new PatchStep { Op = PatchOp.Set, LogicalPath = "Detail", Value = JToken.FromObject("missing-with-etag") } }
+            }));
         }
 
         [TestMethod]
@@ -140,6 +148,71 @@ namespace LagoVista.StorageProvider.Tests.Mongo
 
             var descending = await _client.QueryAsync<MongoDepthDocumentEntity, int>(item => item.Detail == "sort", item => item.SortOrder, new ListRequest { PageIndex = 1, PageSize = 10 }, true);
             CollectionAssert.AreEqual(new[] { 30, 20, 10 }, descending.Model.Select(item => item.SortOrder).ToArray());
+        }
+
+        [TestMethod]
+        public async Task TypedProjectionLookups_ExerciseIdKeyOwnedAndNotFoundPaths()
+        {
+            var entity = CreateEntity("typed-projection", "Typed Projection", 42);
+            await _client.CreateDocumentAsync(entity);
+
+            var byId = await _client.GetDocumentProjectionAsync<MongoDepthProjection>(entity.Id.Value);
+            Assert.IsNotNull(byId);
+            Assert.AreEqual(entity.Id.Value, byId.Id);
+            Assert.AreEqual(entity.Key, byId.Key);
+            Assert.AreEqual("typed-projection", byId.Detail);
+
+            var byEntityId = await _client.GetDocumentProjectionAsync<MongoDepthProjection>(nameof(MongoDepthDocumentEntity), entity.Id.Value);
+            Assert.IsNotNull(byEntityId);
+            Assert.AreEqual(entity.Id.Value, byEntityId.Id);
+
+            var byKey = await _client.GetDocumentProjectionByKeyAsync<MongoDepthProjection>(nameof(MongoDepthDocumentEntity), entity.Key, "ORG1");
+            Assert.IsNotNull(byKey);
+            Assert.AreEqual(entity.Id.Value, byKey.Id);
+
+            var owned = await _client.GetOwnedDocumentProjectionAsync<MongoDepthProjection>(entity.Id.Value, "ORG1", throwOnNotFound: false);
+            Assert.IsNotNull(owned);
+            Assert.AreEqual(entity.Id.Value, owned.Id);
+
+            Assert.IsNull(await _client.GetDocumentProjectionAsync<MongoDepthProjection>(nameof(MongoDepthDocumentEntity), NewId(), throwOnNotFound: false));
+            Assert.IsNull(await _client.GetDocumentProjectionByKeyAsync<MongoDepthProjection>(nameof(MongoDepthDocumentEntity), "missing-key", "ORG1", throwOnNotFound: false));
+            Assert.IsNull(await _client.GetOwnedDocumentProjectionAsync<MongoDepthProjection>(entity.Id.Value, "OTHERORG", throwOnNotFound: false));
+            await Assert.ThrowsExactlyAsync<RecordNotFoundException>(() => _client.GetDocumentProjectionAsync<MongoDepthProjection>(NewId()));
+        }
+
+        [TestMethod]
+        public async Task JObjectSyncUpsert_ExercisesInsertUpdateAndStaleConcurrency()
+        {
+            var id = NewId();
+            var entityType = nameof(MongoDepthDocumentEntity);
+            var document = new JObject
+            {
+                ["id"] = id,
+                ["EntityType"] = entityType,
+                ["Key"] = $"sync-{id.ToLowerInvariant()}",
+                ["Name"] = "Sync Upsert",
+                ["OwnerOrganization"] = new JObject { ["Id"] = "ORG1", ["Text"] = "Organization One" },
+                ["Detail"] = "Initial"
+            };
+
+            var inserted = await _client.UpsertDocumentAsync(document);
+            Assert.AreEqual(id, inserted.Id);
+            Assert.AreEqual(201, inserted.StatusCode);
+            Assert.IsFalse(String.IsNullOrWhiteSpace(inserted.ETag));
+
+            document["Detail"] = "Updated";
+            document["_etag"] = "legacy-system-etag";
+            var updated = await _client.UpsertDocumentAsync(document, inserted.ETag);
+            Assert.AreEqual(id, updated.Id);
+            Assert.AreEqual(200, updated.StatusCode);
+            Assert.AreNotEqual(inserted.ETag, updated.ETag);
+
+            var loaded = await _client.GetDocumentProjectionAsync<JObject>(entityType, id);
+            Assert.AreEqual("Updated", loaded.Value<string>("Detail"));
+            Assert.AreEqual(updated.ETag, loaded.Value<string>("ETag"));
+            Assert.IsNull(loaded["_etag"]);
+
+            await Assert.ThrowsExactlyAsync<ContentModifiedException>(() => _client.UpsertDocumentAsync(document, inserted.ETag));
         }
 
         [TestMethod]
@@ -230,5 +303,14 @@ namespace LagoVista.StorageProvider.Tests.Mongo
     {
         public string Detail { get; set; }
         public int SortOrder { get; set; }
+    }
+
+    internal sealed class MongoDepthProjection
+    {
+        public string Id { get; set; }
+        public string EntityType { get; set; }
+        public string Key { get; set; }
+        public EntityHeader OwnerOrganization { get; set; }
+        public string Detail { get; set; }
     }
 }
