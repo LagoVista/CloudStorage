@@ -1,9 +1,6 @@
-﻿using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LagoVista.CloudStorage.Storage.StorageProviders.Cache
 {
@@ -11,8 +8,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cache
     {
         public static void ConfigureServices(IServiceCollection services)
         {
-            services.AddTransient<ICacheProvider, CacheProvider>();
-            services.AddTransient<IEntityListItemCache, EntityListItemCache>();
+            services.AddSingleton<ICacheProvider, CacheProvider>();
+
+            services.AddScoped<EntityListItemCache>();
+            services.AddScoped<IEntityListItemCache>(provider => provider.GetRequiredService<EntityListItemCache>());
+            services.AddScoped<IEntityListCacheInvalidator>(provider => provider.GetRequiredService<EntityListItemCache>());
         }
     }
 }
