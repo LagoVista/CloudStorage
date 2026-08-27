@@ -1,18 +1,7 @@
-// --- BEGIN CODE INDEX META (do not edit) ---
-// ContentHash: fb6351dbc21fb32befd31cbcdb2f36abeb3a9628a825d24fd89d091ede688782
-// IndexVersion: 2
-// --- END CODE INDEX META ---
-using LagoVista.CloudStorage.Diagnostics;
-using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Managers;
-using LagoVista.CloudStorage.Repositories;
 using LagoVista.CloudStorage.Storage;
-using LagoVista.CloudStorage.Storage.ConnectionSettings;
-using LagoVista.CloudStorage.StorageProviders;
-using LagoVista.CloudStorage.Utils.TableSizer;
 using LagoVista.Core.Interfaces;
-using LagoVista.Core.PlatformSupport;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,41 +12,16 @@ namespace LagoVista.CloudStorage
         public static void ConfigureServices(IServiceCollection services)
         {
             Storage.ConnectionSettings.Startup.ConfigureServices(services);
+            Storage.StorageProviders.Startup.ConfigureServices(services);
+            Repositories.Startup.ConfigureServices(services);
+            Utils.Startup.ConfigureServices(services);
+            Diagnostics.Startup.ConfigureServices(services);
 
-            services.AddScoped<IStorageUtils, StorageUtils>();
-            services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
-            services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
-            services.AddScoped<IDocumentCollectionNameResolver, DocumentCollectionNameResolver>();
-            services.AddScoped<ICosmosDocumentStorageClient, CosmosDocumentStorageClient>();
-            services.AddScoped<IMongoDocumentStorageClient, MongoDocumentStorageClient>();
-            services.AddScoped<IDocumentStorageClientProvider, DocumentStorageClientProvider>();
             services.AddScoped<IDocumentMigrationService, DocumentMigrationService>();
+
             services.AddScoped<ICategoryManager, CategoryManager>();
-            services.AddScoped<ITableSizer, TableSizer>();
-            services.AddScoped<INodeLocatorTableWriterBatched, NodeLocatorTableWriterBatched>();
-            services.AddScoped<ISyncRepository, SyncRepository>();
-            services.AddScoped<INodeLocatorTableReader, NodeLocatorTableReader>();
-            services.AddScoped<IFkIndexTableWriterBatched, FkIndexTableWriterBatched>();
-            services.AddScoped<IEntityDetailResponseFactory, EntityDetailResponseFactory>();
-            services.AddScoped<IEntityUtilsRepository, EntityUtilsRepository>();
-            services.AddScoped<IEntityPreparationCandidateRepository, EntityPreparationCandidateRepository>();
-            services.AddScoped<IEntityListItemRepoFactory, EntityListItemRepoFactory>();
             services.AddScoped<IEntityListResponseMetadataProvider, EntityListResponseMetadataProvider>();
             services.AddScoped<IEntityListItemManager, EntityListItemManager>();
-            services.AddScoped<EntityListItemCache>();
-            services.AddScoped<IEntityListItemCache>(provider => provider.GetRequiredService<EntityListItemCache>());
-            services.AddScoped<IEntityListCacheInvalidator>(provider => provider.GetRequiredService<EntityListItemCache>());
-
-            services.AddSingleton<ICacheProvider, CacheProvider>();
-            services.AddSingleton<ISyncConnectionSettings, SyncConnections>();
-            services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
-            services.AddSingleton<IDocumentStorageProviderSettings, DocumentStorageProviderSettings>();
-            services.AddSingleton<ICosmosConnectionSettings, CosmosConnectionSettings>();
-            services.AddSingleton<ICosmosClientProvider>(CosmosClientProvider.Shared);
-            
-            services.AddTransient<IPlatformSmokeTest, MongoDocumentStorageSmokeTest>();
-            services.AddTransient<IPlatformSmokeTest, CosmosDocumentStorageSmokeTest>();
-            services.AddTransient<IPlatformSmokeTest, RedisPlatformSmokeTest>();
 
             LagoVista.Core.AutoMapper.Startup.ConfigureServices(services);
         }
