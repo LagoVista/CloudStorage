@@ -26,16 +26,13 @@ namespace LagoVista.CloudStorage.StorageProviders
             var cacheKey = $"cosmos|{endpoint}|{databaseName}|{collectionName}|{partitionKeyPath}";
             return _cache.EnsureAsync(cacheKey, async () =>
             {
-                var database = client.GetDatabase(databaseName);
-                var response = await database.CreateContainerIfNotExistsAsync(
-                    new ContainerProperties(collectionName, partitionKeyPath),
-                    cancellationToken: cancellationToken).ConfigureAwait(false);
+                var databaseResponse = await client.CreateDatabaseIfNotExistsAsync(databaseName, cancellationToken: cancellationToken).ConfigureAwait(false);
+                var response = await databaseResponse.Database.CreateContainerIfNotExistsAsync(new ContainerProperties(collectionName, partitionKeyPath), cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 var actualPartitionKeyPath = response.Resource?.PartitionKeyPath;
                 if (!String.Equals(actualPartitionKeyPath, partitionKeyPath, StringComparison.Ordinal))
                 {
-                    throw new InvalidOperationException(
-                        $"Cosmos container '{databaseName}/{collectionName}' uses partition key '{actualPartitionKeyPath}', expected '{partitionKeyPath}'.");
+                    throw new InvalidOperationException($"Cosmos container '{databaseName}/{collectionName}' uses partition key '{actualPartitionKeyPath}', expected '{partitionKeyPath}'.");
                 }
             });
         }
