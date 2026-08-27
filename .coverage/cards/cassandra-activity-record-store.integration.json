@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cassandra-activity-record-store-integration",
   "title": "CassandraActivityRecordStore Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "cassandra",
   "summary": "Exercise historical activity-record writes, reads, ordering, TTL behavior, partition access, and all supported Cassandra activity bucket periods against local Cassandra.",
@@ -34,14 +34,13 @@
         "newest-first-ordering",
         "continuation-paging",
         "monthly-bucketed-querying",
+        "quarterly-bucketed-querying",
+        "yearly-bucketed-querying",
+        "all-period-querying",
         "indexed-filtering",
         "retention-ttl"
       ],
-      "next": [
-        "quarterly-bucketed-querying",
-        "yearly-bucketed-querying",
-        "all-period-querying"
-      ]
+      "next": []
     }
   }
 }
