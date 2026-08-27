@@ -37,7 +37,7 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
             var settings = new TestCassandraStorageSettings($"missing_{Guid.NewGuid():N}");
 
             using var factory = new CassandraSessionFactory(settings);
-            await Assert.ThrowsExceptionAsync<global::Cassandra.InvalidQueryException>(() => factory.GetSessionAsync());
+            await Assert.ThrowsExactlyAsync<global::Cassandra.InvalidQueryException>(() => factory.GetSessionAsync());
         }
 
         private sealed class TestCassandraStorageSettings : ICassandraStorageSettings
@@ -50,7 +50,7 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
             public IReadOnlyList<string> ContactPoints { get; } = new[] { "127.0.0.1" };
             public string UserName => "cassandra";
             public string Password => "cassandra";
-            public string Keyspace { get; }
+            public string Keyspace { get; } = String.Empty;
             public int Port => 19042;
             public string LocalDataCenter => "datacenter1";
         }

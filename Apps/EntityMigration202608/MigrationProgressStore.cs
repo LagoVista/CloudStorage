@@ -12,7 +12,7 @@ namespace EntityMigration202608;
 internal sealed class EntityMigration202608Progress : IApplicationDataRecord
 {
     public NormalizedId32 Id { get; set; }
-    public EntityHeader Organization { get; set; }
+    public EntityHeader? Organization { get; set; } = null;
     public UtcTimestamp CreationDate { get; set; }
     public UtcTimestamp LastUpdatedDate { get; set; }
 
@@ -20,7 +20,7 @@ internal sealed class EntityMigration202608Progress : IApplicationDataRecord
     public string Environment { get; set; } = String.Empty;
     public string SourceDatabaseName { get; set; } = String.Empty;
     public string TargetDatabaseName { get; set; } = String.Empty;
-    public string Status { get; set; }
+    public string Status { get; set; } = String.Empty;
     public int RunCount { get; set; }
     public DateTime? CompletedUtc { get; set; }
     public List<EntityMigrationSourceProgress> Sources { get; set; } = new();
@@ -119,7 +119,7 @@ internal sealed class MigrationProgressStore
     {
         var existing = await FindAsync(ct).ConfigureAwait(false);
         if (existing == null) return;
-        await _store.DeleteAsync<EntityMigration202608Progress>(new StorageKey(existing.Id.Value, existing.Organization.Id), ct).ConfigureAwait(false);
+        await _store.DeleteAsync<EntityMigration202608Progress>(new StorageKey(existing.Id.Value, existing.Organization!.Id), ct).ConfigureAwait(false);
     }
 
     public Task<EntityMigration202608Progress?> GetAsync(CancellationToken ct) => FindAsync(ct);
@@ -127,7 +127,7 @@ internal sealed class MigrationProgressStore
     private async Task<EntityMigration202608Progress?> FindAsync(CancellationToken ct)
     {
         var page = await _store.QueryAsync(new StorageQuery<EntityMigration202608Progress>()
-            .Where(x => x.Organization.Id, StorageFilterOperator.Equal, MigrationOrganization.Id)
+            .Where(x => x.Organization!.Id, StorageFilterOperator.Equal, MigrationOrganization.Id)
             .Where(x => x.Environment, StorageFilterOperator.Equal, _environment)
             .WithPage(new StoragePageRequest(1)), ct).ConfigureAwait(false);
 
@@ -174,7 +174,7 @@ internal sealed class MigrationProgressStore
     private sealed class EmptyServiceProvider : IServiceProvider
     {
         public static EmptyServiceProvider Instance { get; } = new();
-        public object GetService(Type serviceType) => null;
+        public object? GetService(Type serviceType) => null;
     }
 
     /// <summary>

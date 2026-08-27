@@ -77,7 +77,7 @@ public sealed class ApplicationDataMigrationStateStore : IMigrationStateStore
     private async Task<StorageMigrationStateRecord?> FindAsync(string migrationKey, CancellationToken ct)
     {
         var page = await _store.QueryAsync(new StorageQuery<StorageMigrationStateRecord>()
-            .Where(x => x.Organization.Id, StorageFilterOperator.Equal, MigrationOrganization.Id)
+            .Where(x => x.Organization!.Id, StorageFilterOperator.Equal, MigrationOrganization.Id)
             .Where(x => x.MigrationKey, StorageFilterOperator.Equal, migrationKey)
             .WithPage(new StoragePageRequest(1)), ct).ConfigureAwait(false);
         return page.Items.FirstOrDefault();

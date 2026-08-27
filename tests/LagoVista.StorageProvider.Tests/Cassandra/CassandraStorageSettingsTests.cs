@@ -50,7 +50,7 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
             Assert.IsNull(settings.LocalDataCenter);
         }
 
-        [DataTestMethod]
+        [TestMethod]
         [DataRow("0")]
         [DataRow("65536")]
         [DataRow("not-a-port")]
