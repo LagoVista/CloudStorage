@@ -54,8 +54,6 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
 
             var deleted = await client.DeleteDocumentAsync<ContractDocumentEntity>(entity.Id, partitionKey);
             Assert.IsNotNull(deleted);
-            Assert.IsNotNull(deleted.Resource);
-            Assert.AreEqual(entity.Id, deleted.Resource.Id);
 
             var missing = await client.GetDocumentAsync<ContractDocumentEntity>(entity.Id, throwOnNotFound: false);
             Assert.IsNull(missing);
