@@ -25,6 +25,9 @@ namespace LagoVista.CloudStorage.Utils
         public static CassandraStorageSettings ProductionCassandraStorage => CreateCassandraStorageSettings("PROD");
         public static CassandraStorageSettings DevCassandraStorage => CreateCassandraStorageSettings("DEV");
 
+        public static S3ObjectStorageConnectionSettings ProductionS3ObjectStorage => CreateS3ObjectStorageSettings("PROD");
+        public static S3ObjectStorageConnectionSettings DevS3ObjectStorage => CreateS3ObjectStorageSettings("DEV");
+
         public static ConnectionSettings ProductionDocDB
         {
             get
@@ -283,6 +286,22 @@ namespace LagoVista.CloudStorage.Utils
 
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
             return new CassandraStorageSettings(configuration);
+        }
+
+        private static S3ObjectStorageConnectionSettings CreateS3ObjectStorageSettings(string prefix)
+        {
+            var values = new Dictionary<string, string>
+            {
+                ["S3ObjectStorage:Host"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:Host"),
+                ["S3ObjectStorage:Port"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:Port"),
+                ["S3ObjectStorage:AccessKey"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:AccessKey"),
+                ["S3ObjectStorage:SecretKey"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:SecretKey"),
+                ["S3ObjectStorage:UseTls"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:UseTls"),
+                ["S3ObjectStorage:Region"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:Region")
+            };
+
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+            return new S3ObjectStorageConnectionSettings(configuration);
         }
 
         private static MongoDocumentStorageConnectionSettings CreateLocalTestMongoDocumentStorageSettings()
