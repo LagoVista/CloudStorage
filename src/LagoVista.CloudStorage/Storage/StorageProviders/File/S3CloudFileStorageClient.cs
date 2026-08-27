@@ -25,6 +25,24 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
     {
         private const int NumberRetries = 5;
         private const int MaxPresignedUrlLifetimeSeconds = 7 * 24 * 60 * 60;
+        private const int RetryBaseDelayMilliseconds = 250;
+        private const int RetryJitterMilliseconds = 125;
+
+        private static readonly object RetryRandomSync = new object();
+        private static readonly Random RetryRandom = new Random();
+        private static readonly HashSet<string> NonRetryableExceptionTypes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "AccessDeniedException",
+            "AuthorizationException",
+            "CredentialsProviderException",
+            "EntityTooLargeException",
+            "ForbiddenException",
+            "InvalidBucketNameException",
+            "InvalidEndpointException",
+            "InvalidAccessKeyException",
+            "InvalidSecretKeyException",
+            "InvalidObjectNameException"
+        };
 
         private readonly IAdminLogger _logger;
         private readonly IS3ObjectStorageConnectionSettings _settings;
@@ -106,7 +124,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                 }
                 catch (Exception ex)
                 {
-                    if (retryCount == NumberRetries)
+                    if (!ShouldRetry(ex) || retryCount == NumberRetries)
                     {
                         _logger.AddException(this.Tag(), ex,
                             containerName.ToKVP("containerName"),
@@ -115,8 +133,9 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                         return InvokeResult<Uri>.FromInvokeResult(exceptionResult);
                     }
 
-                    LogRetry("retry S3 upload", ex, containerName, fileName, retryCount);
-                    await Task.Delay(retryCount * 250);
+                    var delayMs = GetRetryDelayMilliseconds(retryCount);
+                    LogRetry("retry S3 upload", ex, containerName, fileName, retryCount, delayMs);
+                    await Task.Delay(delayMs);
                 }
             }
 
@@ -172,7 +191,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                 }
                 catch (Exception ex)
                 {
-                    if (retryCount == NumberRetries)
+                    if (!ShouldRetry(ex) || retryCount == NumberRetries)
                     {
                         _logger.AddException(this.Tag(), ex,
                             containerName.ToKVP("containerName"),
@@ -180,8 +199,9 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                         return InvokeResult<byte[]>.FromException("S3CloudFileStorageClient_GetFileAsync", ex);
                     }
 
-                    LogRetry("retry S3 get", ex, containerName, fileName, retryCount);
-                    await Task.Delay(retryCount * 250);
+                    var delayMs = GetRetryDelayMilliseconds(retryCount);
+                    LogRetry("retry S3 get", ex, containerName, fileName, retryCount, delayMs);
+                    await Task.Delay(delayMs);
                 }
             }
 
@@ -260,7 +280,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                 }
                 catch (Exception ex)
                 {
-                    if (retryCount == NumberRetries)
+                    if (!ShouldRetry(ex) || retryCount == NumberRetries)
                     {
                         _logger.AddException(this.Tag(), ex,
                             containerName.ToKVP("containerName"),
@@ -268,8 +288,9 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                         return InvokeResult.FromException("[S3CloudFileStorageClient__DeleteFileAsync]", ex);
                     }
 
-                    LogRetry("retry S3 delete", ex, containerName, fileName, retryCount);
-                    await Task.Delay(retryCount * 250);
+                    var delayMs = GetRetryDelayMilliseconds(retryCount);
+                    LogRetry("retry S3 delete", ex, containerName, fileName, retryCount, delayMs);
+                    await Task.Delay(delayMs);
                 }
             }
 
@@ -323,7 +344,28 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
             return new Uri($"{scheme}://{_settings.Host}{port}/{Uri.EscapeDataString(bucketName)}/{escapedPath}");
         }
 
-        private void LogRetry(string message, Exception ex, string containerName, string fileName, int retryCount)
+        private static bool ShouldRetry(Exception ex)
+        {
+            // Fail fast only for errors that are clearly configuration/auth/request problems.
+            // Unknown MinIO/S3 failures continue to retry so provider-specific transient failures
+            // do not accidentally become less resilient as the S3 implementation evolves.
+            return !NonRetryableExceptionTypes.Contains(ex.GetType().Name);
+        }
+
+        private static int GetRetryDelayMilliseconds(int retryCount)
+        {
+            var exponent = Math.Min(Math.Max(retryCount - 1, 0), 3);
+            var delay = RetryBaseDelayMilliseconds * (1 << exponent);
+            int jitter;
+            lock (RetryRandomSync)
+            {
+                jitter = RetryRandom.Next(0, RetryJitterMilliseconds + 1);
+            }
+
+            return delay + jitter;
+        }
+
+        private void LogRetry(string message, Exception ex, string containerName, string fileName, int retryCount, int delayMs)
         {
             _logger.AddCustomEvent(
                 LagoVista.Core.PlatformSupport.LogLevel.Warning,
@@ -333,7 +375,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                 containerName.ToKVP("containerName"),
                 ex.Message.ToKVP("exceptionMessage"),
                 ex.GetType().Name.ToKVP("exceptionType"),
-                retryCount.ToString().ToKVP("retryCount"));
+                retryCount.ToString().ToKVP("retryCount"),
+                delayMs.ToString().ToKVP("retryDelayMs"));
         }
 
         private static void ValidateFileArguments(string containerName, string fileName)
