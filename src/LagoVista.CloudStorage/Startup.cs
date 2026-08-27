@@ -1,3 +1,4 @@
+using LagoVista.Core.PlatformSupport;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
