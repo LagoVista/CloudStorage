@@ -23,6 +23,8 @@ internal sealed class StorageMigrationStateRecord : IApplicationDataRecord
     public long RecordsRead { get; set; }
     public long RecordsWritten { get; set; }
     public long RecordsFailed { get; set; }
+    public long BytesRead { get; set; }
+    public long BytesWritten { get; set; }
     public long PriorPassRecordsRead { get; set; }
     public long PriorPassRecordsWritten { get; set; }
     public long PriorPassRecordsFailed { get; set; }
@@ -94,6 +96,8 @@ public sealed class ApplicationDataMigrationStateStore : IMigrationStateStore
         record.RecordsRead = state.RecordsRead;
         record.RecordsWritten = state.RecordsWritten;
         record.RecordsFailed = state.RecordsFailed;
+        record.BytesRead = state.BytesRead;
+        record.BytesWritten = state.BytesWritten;
         record.PriorPassRecordsRead = state.PriorPassRecordsRead;
         record.PriorPassRecordsWritten = state.PriorPassRecordsWritten;
         record.PriorPassRecordsFailed = state.PriorPassRecordsFailed;
@@ -113,6 +117,8 @@ public sealed class ApplicationDataMigrationStateStore : IMigrationStateStore
         RecordsRead = record.RecordsRead,
         RecordsWritten = record.RecordsWritten,
         RecordsFailed = record.RecordsFailed,
+        BytesRead = record.BytesRead,
+        BytesWritten = record.BytesWritten,
         PriorPassRecordsRead = record.PriorPassRecordsRead,
         PriorPassRecordsWritten = record.PriorPassRecordsWritten,
         PriorPassRecordsFailed = record.PriorPassRecordsFailed,
