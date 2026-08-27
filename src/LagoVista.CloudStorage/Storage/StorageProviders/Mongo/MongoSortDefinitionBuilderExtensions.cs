@@ -2,7 +2,7 @@ using MongoDB.Driver;
 using System;
 using System.Linq.Expressions;
 
-namespace LagoVista.CloudStorage.StorageProviders
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 {
     internal static class MongoSortDefinitionBuilderExtensions
     {

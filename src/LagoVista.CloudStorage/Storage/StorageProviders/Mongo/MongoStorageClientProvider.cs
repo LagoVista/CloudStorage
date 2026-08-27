@@ -1,9 +1,8 @@
-using LagoVista;
 using MongoDB.Driver;
 using System;
 using System.Collections.Concurrent;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 {
     public interface IMongoStorageClientFactory
     {

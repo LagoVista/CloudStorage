@@ -9,7 +9,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 
     public sealed class ApplicationDataStorageSettings : MongoDocumentStorageConnectionSettings, IApplicationDataStorageSettings
     {
-        public const string SectionName = "ApplicationDataStorage";
+        public new const string SectionName = "ApplicationDataStorage";
 
         public ApplicationDataStorageSettings(IConfiguration configuration)
             : base(configuration)

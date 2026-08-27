@@ -6,7 +6,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.StorageProviders
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 {
     [CriticalCoverage]
     public sealed class MongoDocumentCollectionProvisioner

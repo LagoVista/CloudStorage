@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using LagoVista.Core;
 
-namespace LagoVista.CloudStorage.StorageProviders
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 {
     /// <summary>
     /// MongoDB implementation of deterministic mutable application-data storage.

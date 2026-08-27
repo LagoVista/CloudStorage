@@ -314,7 +314,7 @@ internal sealed class EntityMigrationRunner
         yield return "Devices";
     }
 
-    private CosmosToMongoMigrationRequest CreateRequest(string sourceCollectionName, bool dryRun, int batchSize, int maxPages, string continuationToken)
+    private CosmosToMongoMigrationRequest CreateRequest(string sourceCollectionName, bool dryRun, int batchSize, int maxPages, string? continuationToken)
     {
         return new CosmosToMongoMigrationRequest
         {

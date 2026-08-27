@@ -3,7 +3,6 @@ using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Models.Storage;
-using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -16,14 +15,13 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.StorageProviders
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 {
     /// <summary>
     /// Mongo-specific document persistence. Common repository concerns such as validation,
@@ -35,6 +33,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         private readonly IMongoDocumentStorageConnectionSettings _settings;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
         private readonly IMongoStorageClientFactory _clientFactory;
+        public string DatabaseName => _settings.DatabaseName;
 
         public MongoDocumentStorageClient(
             IMongoDocumentStorageConnectionSettings settings,
@@ -606,5 +605,204 @@ namespace LagoVista.CloudStorage.StorageProviders
         }
 
         private static IEnumerable<TResult> Deserialize<TResult>(IEnumerable<BsonDocument> documents) where TResult : class => documents.Select(document => BsonSerializer.Deserialize<TResult>(document)).ToList();
+
+        public async Task<TProjection> GetDocumentProjectionByKeyAsync<TProjection>(string entityType, string key, string ownerOrganizationId, bool throwOnNotFound = true, CancellationToken cancellationToken = default) where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(key)) throw new ArgumentException("Document key is required.", nameof(key));
+            if (String.IsNullOrWhiteSpace(ownerOrganizationId)) throw new ArgumentException("Owner organization id is required.", nameof(ownerOrganizationId));
+            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName)) throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+            if (typeof(TProjection) == typeof(JObject))
+            {
+                var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("EntityType", entityType), Builders<BsonDocument>.Filter.Eq("Key", key.Trim()), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", ownerOrganizationId));
+                var document = await GetBsonCollection(collectionName).Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                if (document != null) return (TProjection)(object)ToJObject(document);
+            }
+            else
+            {
+                var filter = Builders<TProjection>.Filter.And(Builders<TProjection>.Filter.Eq("EntityType", entityType), Builders<TProjection>.Filter.Eq("Key", key.Trim()), Builders<TProjection>.Filter.Eq("OwnerOrganization.Id", ownerOrganizationId));
+                var projection = await GetProjectionCollection<TProjection>(entityType).Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                if (projection != null) return projection;
+            }
+
+            if (throwOnNotFound) throw new RecordNotFoundException(entityType, key);
+            return null;
+        }
+
+        public async Task<SyncUpsertResult> UpsertDocumentAsync(JObject document, string expectedETag = null, CancellationToken cancellationToken = default)
+        {
+            if (document == null) throw new ArgumentNullException(nameof(document));
+            var id = document.Value<string>("id");
+            var entityType = document.Value<string>("EntityType");
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(document));
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Document EntityType is required.", nameof(document));
+            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName)) throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+            var bson = BsonDocument.Parse(document.ToString(Formatting.None));
+            bson.Remove("id");
+            bson["_id"] = id;
+            bson.Remove("_etag");
+            var newETag = CreateETag();
+            bson["ETag"] = newETag;
+
+            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", id), Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+            if (!String.IsNullOrWhiteSpace(expectedETag)) filter &= Builders<BsonDocument>.Filter.Eq("ETag", expectedETag);
+
+            var result = await GetBsonCollection(collectionName).ReplaceOneAsync(filter, bson, new ReplaceOptions { IsUpsert = String.IsNullOrWhiteSpace(expectedETag) }, cancellationToken).ConfigureAwait(false);
+            if (!String.IsNullOrWhiteSpace(expectedETag) && result.MatchedCount == 0) throw new ContentModifiedException { EntityType = entityType, Id = id };
+
+            return new SyncUpsertResult { Id = id, ETag = newETag, StatusCode = result.UpsertedId != null ? 201 : 200 };
+        }
+
+        public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
+          where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            if (typeof(TProjection) == typeof(JObject))
+            {
+                var collectionName = _collectionNameResolver.GetFallback(_settings.DatabaseName);
+                var document = await GetBsonCollection(collectionName)
+                    .Find(Builders<BsonDocument>.Filter.Eq("_id", id))
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (document == null)
+                {
+                    if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
+                    return null;
+                }
+
+                return (TProjection)(object)ToJObject(document);
+            }
+
+            var projection = await GetProjectionCollection<TProjection>()
+                .Find(Builders<TProjection>.Filter.Eq("_id", id))
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (projection == null && throwOnNotFound)
+                throw new RecordNotFoundException(typeof(TProjection).Name, id);
+
+            return projection;
+        }
+
+        public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string entityType, string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
+            where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            if (typeof(TProjection) == typeof(JObject))
+            {
+                if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
+                    throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+                var filter = Builders<BsonDocument>.Filter.And(
+                    Builders<BsonDocument>.Filter.Eq("_id", id),
+                    Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+
+                var document = await GetBsonCollection(collectionName)
+                    .Find(filter)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (document == null)
+                {
+                    if (throwOnNotFound) throw new RecordNotFoundException(entityType, id);
+                    return null;
+                }
+
+                return (TProjection)(object)ToJObject(document);
+            }
+
+            var typedFilter = Builders<TProjection>.Filter.And(
+                Builders<TProjection>.Filter.Eq("_id", id),
+                Builders<TProjection>.Filter.Eq("EntityType", entityType));
+
+            var projection = await GetProjectionCollection<TProjection>(entityType)
+                .Find(typedFilter)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (projection == null && throwOnNotFound)
+                throw new RecordNotFoundException(entityType, id);
+
+            return projection;
+        }
+
+        public async Task<IEnumerable<TProjection>> GetDocumentProjectionsAsync<TProjection>(string entityType, Expression<Func<TProjection, bool>> query, CancellationToken cancellationToken = default)
+            where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (query == null) throw new ArgumentNullException(nameof(query));
+
+            var filter = Builders<TProjection>.Filter.And(
+                Builders<TProjection>.Filter.Eq("EntityType", entityType),
+                Builders<TProjection>.Filter.Where(query));
+
+            return await GetProjectionCollection<TProjection>(entityType)
+                .Find(filter)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private IMongoCollection<TProjection> GetProjectionCollection<TProjection>()
+            where TProjection : class
+        {
+            EnsureProjectionClassMap<TProjection>();
+            var collectionName = _collectionNameResolver.GetFallback(_settings.DatabaseName);
+            return _clientFactory
+                .GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName)
+                .GetCollection<TProjection>(collectionName);
+        }
+
+        private IMongoCollection<TProjection> GetProjectionCollection<TProjection>(string entityType)
+            where TProjection : class
+        {
+            EnsureProjectionClassMap<TProjection>();
+            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
+                throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+            return _clientFactory
+                .GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName)
+                .GetCollection<TProjection>(collectionName);
+        }
+
+        private static void EnsureProjectionClassMap<TProjection>()
+            where TProjection : class
+        {
+            if (BsonClassMap.IsClassMapRegistered(typeof(TProjection))) return;
+
+            BsonClassMap.RegisterClassMap<TProjection>(classMap =>
+            {
+                classMap.AutoMap();
+                classMap.SetIgnoreExtraElements(true);
+            });
+        }
+
+        public async Task<TProjection> GetOwnedDocumentProjectionAsync<TProjection>(string id, string ownerOrganizationId, bool throwOnNotFound = true, CancellationToken cancellationToken = default) where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+            if (String.IsNullOrWhiteSpace(ownerOrganizationId)) throw new ArgumentException("Owner organization id is required.", nameof(ownerOrganizationId));
+
+            var collectionName = _collectionNameResolver.GetFallback(_settings.DatabaseName);
+            if (typeof(TProjection) == typeof(JObject))
+            {
+                var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", id.Trim()), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", ownerOrganizationId));
+                var document = await GetBsonCollection(collectionName).Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                if (document != null) return (TProjection)(object)ToJObject(document);
+            }
+            else
+            {
+                var filter = Builders<TProjection>.Filter.And(Builders<TProjection>.Filter.Eq("_id", id.Trim()), Builders<TProjection>.Filter.Eq("OwnerOrganization.Id", ownerOrganizationId));
+                var projection = await GetProjectionCollection<TProjection>().Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                if (projection != null) return projection;
+            }
+
+            if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
+            return null;
+        }
     }
 }

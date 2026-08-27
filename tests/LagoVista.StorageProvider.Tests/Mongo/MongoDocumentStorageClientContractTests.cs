@@ -1,8 +1,6 @@
-using LagoVista.CloudStorage.DocumentDB;
-using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.CloudStorage.Storage.StorageProviders;
-using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using LagoVista.StorageProvider.Tests.DocumentStorage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MongoDB.Driver;

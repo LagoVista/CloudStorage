@@ -1,8 +1,6 @@
-using LagoVista;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
-using LagoVista.CloudStorage.StorageProviders;
-using LagoVista.CloudStorage.Utils;
+using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using LagoVista.Core;
 using LagoVista.Core.Models;
 
@@ -11,7 +9,7 @@ namespace LagoVista.StorageMigration;
 internal sealed class StorageMigrationStateRecord : IApplicationDataRecord
 {
     public NormalizedId32 Id { get; set; }
-    public EntityHeader Organization { get; set; }
+    public EntityHeader? Organization { get; set; } = null;
     public UtcTimestamp CreationDate { get; set; }
     public UtcTimestamp LastUpdatedDate { get; set; }
 

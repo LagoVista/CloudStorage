@@ -1,6 +1,7 @@
 using LagoVista;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
+using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.CloudStorage.Utils;
 using LagoVista.Core;
@@ -15,10 +16,10 @@ internal sealed class EntityMigration202608Progress : IApplicationDataRecord
     public UtcTimestamp CreationDate { get; set; }
     public UtcTimestamp LastUpdatedDate { get; set; }
 
-    public string MigrationName { get; set; }
-    public string Environment { get; set; }
-    public string SourceDatabaseName { get; set; }
-    public string TargetDatabaseName { get; set; }
+    public string MigrationName { get; set; } = String.Empty;
+    public string Environment { get; set; } = String.Empty;
+    public string SourceDatabaseName { get; set; } = String.Empty;
+    public string TargetDatabaseName { get; set; } = String.Empty;
     public string Status { get; set; }
     public int RunCount { get; set; }
     public DateTime? CompletedUtc { get; set; }
@@ -28,8 +29,8 @@ internal sealed class EntityMigration202608Progress : IApplicationDataRecord
 
 internal sealed class EntityMigrationSourceProgress
 {
-    public string SourceCollectionName { get; set; }
-    public string ContinuationToken { get; set; }
+    public string SourceCollectionName { get; set; } = String.Empty;
+    public string ContinuationToken { get; set; } = String.Empty;
     public bool Completed { get; set; }
     public long PagesRead { get; set; }
     public long DocumentsRead { get; set; }
@@ -41,18 +42,18 @@ internal sealed class EntityMigrationSourceProgress
 
 internal sealed class EntityMigrationRunSummary
 {
-    public string RunId { get; set; }
-    public string Operation { get; set; }
+    public string RunId { get; set; } = String.Empty;
+    public string Operation { get; set; } = String.Empty;
     public DateTime StartedUtc { get; set; }
     public DateTime? FinishedUtc { get; set; }
-    public string Status { get; set; }
+    public string Status { get; set; } = String.Empty;
     public int BatchSize { get; set; }
     public int MaxPagesPerSource { get; set; }
     public long PagesRead { get; set; }
     public long DocumentsRead { get; set; }
     public long DocumentsWritten { get; set; }
     public long DocumentsFailed { get; set; }
-    public string Error { get; set; }
+    public string Error { get; set; } = String.Empty;
 }
 
 internal sealed class MigrationProgressStore
@@ -121,9 +122,9 @@ internal sealed class MigrationProgressStore
         await _store.DeleteAsync<EntityMigration202608Progress>(new StorageKey(existing.Id.Value, existing.Organization.Id), ct).ConfigureAwait(false);
     }
 
-    public Task<EntityMigration202608Progress> GetAsync(CancellationToken ct) => FindAsync(ct);
+    public Task<EntityMigration202608Progress?> GetAsync(CancellationToken ct) => FindAsync(ct);
 
-    private async Task<EntityMigration202608Progress> FindAsync(CancellationToken ct)
+    private async Task<EntityMigration202608Progress?> FindAsync(CancellationToken ct)
     {
         var page = await _store.QueryAsync(new StorageQuery<EntityMigration202608Progress>()
             .Where(x => x.Organization.Id, StorageFilterOperator.Equal, MigrationOrganization.Id)

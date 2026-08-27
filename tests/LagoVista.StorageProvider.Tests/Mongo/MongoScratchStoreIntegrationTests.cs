@@ -1,6 +1,6 @@
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
-using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using LagoVista.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;

@@ -1,5 +1,3 @@
-using LagoVista.CloudStorage.Storage;
-using LagoVista.Core.Models;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -13,7 +11,7 @@ using LagoVista.Core;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.StorageProviders
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 {
     [CriticalCoverage]
     internal sealed class MongoMutableRecordStore

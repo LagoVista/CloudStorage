@@ -1,12 +1,10 @@
-using LagoVista;
-using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Models;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.StorageProviders
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 {
     /// <summary>
     /// MongoDB implementation of deterministic durable scratch storage.

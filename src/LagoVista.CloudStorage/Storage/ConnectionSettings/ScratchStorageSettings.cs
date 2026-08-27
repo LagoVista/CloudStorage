@@ -10,7 +10,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 
     public sealed class ScratchStorageSettings : MongoDocumentStorageConnectionSettings, IScratchStorageSettings
     {
-       public const string SectionName = "ScratchDataStorage";
+       public new const string SectionName = "ScratchDataStorage";
 
         public ScratchStorageSettings(IConfiguration configuration) : base(configuration)
         {
