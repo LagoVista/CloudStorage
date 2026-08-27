@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace LagoVista.CloudStorage.DocumentDB
+namespace LagoVista.CloudStorage.Storage.StorageProviders
 {
     public sealed class DocumentCollectionNameResolver : IDocumentCollectionNameResolver
     {

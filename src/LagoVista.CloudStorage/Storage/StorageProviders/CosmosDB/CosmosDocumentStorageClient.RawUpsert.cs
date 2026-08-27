@@ -1,6 +1,7 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.Storage.StorageProviders;
 using Microsoft.Azure.Cosmos;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

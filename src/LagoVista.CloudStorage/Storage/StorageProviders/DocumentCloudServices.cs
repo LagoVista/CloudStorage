@@ -4,7 +4,7 @@ using LagoVista.Core.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
 using System;
 
-namespace LagoVista.CloudStorage.StorageProviders
+namespace LagoVista.CloudStorage.Storage.StorageProviders
 {
     public class DocumentCloudServices : IDocumentCloudServices
     {

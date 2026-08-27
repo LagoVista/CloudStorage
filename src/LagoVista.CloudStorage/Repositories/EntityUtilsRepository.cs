@@ -4,6 +4,7 @@ using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.CloudStorage.Repositories;
+using LagoVista.CloudStorage.Storage.StorageProviders;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.Interfaces;
@@ -32,7 +33,7 @@ namespace LagoVista.CloudStorage.Storage
         private readonly string _dbName;
         private readonly IDocumentStorageClient _storageClient;
 
-        public EntityUtilsRepository(DocumentStorageClientProvider documentStorageClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
+        public EntityUtilsRepository(IDocumentStorageClientProvider documentStorageClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));

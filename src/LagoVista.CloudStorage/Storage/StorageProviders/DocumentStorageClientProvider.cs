@@ -1,9 +1,7 @@
 using LagoVista.CloudStorage.Interfaces;
-using LagoVista.CloudStorage.Storage;
-using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using System;
 
-namespace LagoVista.CloudStorage.StorageProviders
+namespace LagoVista.CloudStorage.Storage.StorageProviders
 {
     public sealed class DocumentStorageClientProvider : IDocumentStorageClientProvider
     {
