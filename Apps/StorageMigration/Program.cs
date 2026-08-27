@@ -34,6 +34,12 @@ try
         case "object-probe":
             await ObjectProbeAsync(GetPositiveIntOption(args, "--max-objects"));
             break;
+        case "object-status":
+            await ObjectStatusAsync();
+            break;
+        case "object-migrate":
+            await ObjectMigrateAsync(GetPositiveIntOption(args, "--max-objects"));
+            break;
         default:
             PrintUsage();
             Environment.ExitCode = 2;
@@ -86,6 +92,35 @@ static async Task ObjectProbeAsync(int? maxObjects)
         Console.WriteLine("NOTE: inventory was intentionally limited; totals are partial.");
     Console.WriteLine();
     Console.WriteLine("PASS: object storage probe completed. No blobs were copied or modified.");
+}
+
+static async Task ObjectMigrateAsync(int? maxObjects)
+{
+    Console.WriteLine("Azure Blob -> S3 object migration");
+    Console.WriteLine($"Environment: {MigrationConnections.EnvironmentName}");
+    Console.WriteLine($"Run limit : {(maxObjects.HasValue ? $"{maxObjects.Value:N0} objects" : "none")}");
+    Console.WriteLine("Mode      : resume from Application Data checkpoint");
+    Console.WriteLine();
+
+    var engine = new AzureBlobToS3Migration(
+        MigrationConnections.AzureBlobConnectionString(),
+        MigrationConnections.S3ObjectStorage,
+        StateStore());
+
+    var state = await engine.ExecuteAsync(maxObjects);
+    PrintObjectState(state);
+}
+
+static async Task ObjectStatusAsync()
+{
+    var state = await StateStore().GetAsync(AzureBlobToS3Migration.MigrationKey);
+    if (state == null)
+    {
+        Console.WriteLine($"{AzureBlobToS3Migration.MigrationKey}: Not Started");
+        return;
+    }
+
+    PrintObjectState(state);
 }
 
 static async Task ProbeAsync(MigrationDefinition definition)
@@ -163,6 +198,19 @@ static async Task PrintStatusAsync(MigrationDefinition definition)
     var state = await StateStore().GetAsync(definition.Key);
     if (state == null) { Console.WriteLine($"{definition.Key}: Not Started"); return; }
     PrintState(state);
+}
+
+static void PrintObjectState(MigrationRunState state)
+{
+    Console.WriteLine($"State          : {state.State}");
+    Console.WriteLine($"Container      : {state.CurrentTable ?? "<none>"}");
+    Console.WriteLine($"Object         : {state.HeadRowKey ?? "<none>"}");
+    Console.WriteLine($"Objects read   : {state.RecordsRead:N0}");
+    Console.WriteLine($"Objects written: {state.RecordsWritten:N0}");
+    Console.WriteLine($"Objects failed : {state.RecordsFailed:N0}");
+    Console.WriteLine($"Bytes read     : {state.BytesRead:N0} ({FormatBytes(state.BytesRead)})");
+    Console.WriteLine($"Bytes written  : {state.BytesWritten:N0} ({FormatBytes(state.BytesWritten)})");
+    if (state.CompletedDate.HasValue) Console.WriteLine($"Completed      : {state.CompletedDate.Value:u}");
 }
 
 static void PrintState(MigrationRunState state)
@@ -248,5 +296,7 @@ static void PrintUsage()
     Console.Error.WriteLine("  migrate <migration-key> [--max-records N] [--catch-up]");
     Console.Error.WriteLine("  verify <migration-key>");
     Console.Error.WriteLine("  object-probe [--max-objects N]");
+    Console.Error.WriteLine("  object-status");
+    Console.Error.WriteLine("  object-migrate [--max-objects N]");
     Console.Error.WriteLine("Environment: set MIGRATION_ENVIRONMENT=dev|prod for environment-prefixed storage settings.");
 }
