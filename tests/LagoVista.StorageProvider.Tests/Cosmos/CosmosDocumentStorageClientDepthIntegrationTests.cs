@@ -1,6 +1,7 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Models;
