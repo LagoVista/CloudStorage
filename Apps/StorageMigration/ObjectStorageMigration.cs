@@ -67,9 +67,12 @@ public sealed class AzureBlobToS3Migration
             await EnsureBucketAsync(containerName, cancellationToken).ConfigureAwait(false);
             var container = _source.GetBlobContainerClient(containerName);
             var resumingCurrentContainer = String.Equals(containerName, state.CurrentTable, StringComparison.Ordinal);
+            var sawBlob = false;
 
             await foreach (var blob in container.GetBlobsAsync(cancellationToken: cancellationToken))
             {
+                sawBlob = true;
+
                 if (resumingCurrentContainer && !String.IsNullOrEmpty(state.HeadRowKey) &&
                     StringComparer.Ordinal.Compare(blob.Name, state.HeadRowKey) <= 0)
                     continue;
@@ -130,12 +133,13 @@ public sealed class AzureBlobToS3Migration
                 }
             }
 
-            // The container is complete. Keep its name as the high-water mark but clear the blob
-            // key so the next run can advance cleanly to the following container.
-            state.CurrentTable = containerName;
-            state.HeadPartitionKey = containerName;
-            state.HeadRowKey = null;
-            await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
+            if (!sawBlob)
+            {
+                state.CurrentTable = containerName;
+                state.HeadPartitionKey = containerName;
+                state.HeadRowKey = null;
+                await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         state.State = "Completed";
