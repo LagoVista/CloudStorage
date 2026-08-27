@@ -45,6 +45,8 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             if (item == null) throw new ArgumentNullException(nameof(item));
             var response = await GetContainer<TEntity>().CreateItemAsync(item).ConfigureAwait(false);
+            item.ETag = response.ETag;
+            if (response.Resource != null) response.Resource.ETag = response.ETag;
             return new OperationResponse<TEntity>(response);
         }
 
@@ -60,6 +62,8 @@ namespace LagoVista.CloudStorage.StorageProviders
             try
             {
                 var response = await GetContainer<TEntity>().UpsertItemAsync(item, requestOptions: options).ConfigureAwait(false);
+                item.ETag = response.ETag;
+                if (response.Resource != null) response.Resource.ETag = response.ETag;
                 return new OperationResponse<TEntity>(response);
             }
             catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed || ex.StatusCode == System.Net.HttpStatusCode.Conflict)
@@ -75,7 +79,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             try
             {
-                await GetRawDocumentContainer().DeleteItemAsync<JObject>(id, String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey), cancellationToken: cancellationToken).ConfigureAwait(false);
+                await GetRawDocumentContainer().DeleteItemAsync<JObject>(id, new PartitionKey(String.IsNullOrWhiteSpace(partitionKey) ? entityType : partitionKey), cancellationToken: cancellationToken).ConfigureAwait(false);
             }
             catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
@@ -98,7 +102,7 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             try
             {
-                await GetRawDocumentContainer().PatchItemAsync<JObject>(request.Id, String.IsNullOrWhiteSpace(request.PartitionKey) ? PartitionKey.None : new PartitionKey(request.PartitionKey), operations, options, cancellationToken).ConfigureAwait(false);
+                await GetRawDocumentContainer().PatchItemAsync<JObject>(request.Id, new PartitionKey(String.IsNullOrWhiteSpace(request.PartitionKey) ? entityType : request.PartitionKey), operations, options, cancellationToken).ConfigureAwait(false);
 
                 return InvokeResult.Success;
             }
@@ -126,7 +130,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             var bytes = Encoding.UTF8.GetBytes(json);
             using var stream = new MemoryStream(bytes);
 
-            using var response = await GetRawDocumentContainer().UpsertItemStreamAsync(stream, PartitionKey.None, options, cancellationToken).ConfigureAwait(false);
+            using var response = await GetRawDocumentContainer().UpsertItemStreamAsync(stream, new PartitionKey(entityType), options, cancellationToken).ConfigureAwait(false);
 
             if (response.StatusCode == HttpStatusCode.PreconditionFailed || response.StatusCode == HttpStatusCode.Conflict)
                 throw new ContentModifiedException { EntityType = entityType, Id = id };
@@ -145,18 +149,15 @@ namespace LagoVista.CloudStorage.StorageProviders
             };
         }
 
-
         public async Task<DocumentPage<TProjection>> GetDocumentPageAsync<TProjection>(string entityType = null, string continuationToken = null, int pageSize = 100, CancellationToken cancellationToken = default) where TProjection : class
         {
             if (pageSize <= 0) throw new ArgumentOutOfRangeException(nameof(pageSize));
 
-            var sql = "SELECT * FROM c";
-
             QueryDefinition query;
             if (String.IsNullOrWhiteSpace(entityType))
-                query = new QueryDefinition(sql);
+                query = new QueryDefinition("SELECT * FROM c ORDER BY c.id ASC");
             else
-                query = new QueryDefinition(sql + " WHERE c.EntityType = @entityType").WithParameter("@entityType", entityType);
+                query = new QueryDefinition("SELECT * FROM c WHERE c.EntityType = @entityType ORDER BY c.id ASC").WithParameter("@entityType", entityType);
 
             var options = new QueryRequestOptions { MaxItemCount = pageSize };
             using var iterator = GetRawCollection().GetItemQueryIterator<TProjection>(query, continuationToken: continuationToken, requestOptions: options);
@@ -244,9 +245,7 @@ namespace LagoVista.CloudStorage.StorageProviders
         {
             try
             {
-                var response = await GetContainer<TEntity>().DeleteItemAsync<TEntity>(
-                    id,
-                    String.IsNullOrWhiteSpace(partitionKey) ? PartitionKey.None : new PartitionKey(partitionKey)).ConfigureAwait(false);
+                var response = await GetContainer<TEntity>().DeleteItemAsync<TEntity>(id, new PartitionKey(String.IsNullOrWhiteSpace(partitionKey) ? typeof(TEntity).Name : partitionKey)).ConfigureAwait(false);
                 return new OperationResponse<TEntity>(response);
             }
             catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -268,18 +267,15 @@ namespace LagoVista.CloudStorage.StorageProviders
 
             try
             {
-                var response = await GetContainer<TEntity>().PatchItemAsync<TEntity>(
-                    request.Id,
-                    String.IsNullOrWhiteSpace(request.PartitionKey) ? PartitionKey.None : new PartitionKey(request.PartitionKey),
-                    operations,
-                    options).ConfigureAwait(false);
+                var response = await GetContainer<TEntity>().PatchItemAsync<TEntity>(request.Id, new PartitionKey(String.IsNullOrWhiteSpace(request.PartitionKey) ? typeof(TEntity).Name : request.PartitionKey), operations, options).ConfigureAwait(false);
+                if (response.Resource != null) response.Resource.ETag = response.ETag;
                 return new OperationResponse<TEntity>(response.Resource);
             }
             catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 throw new RecordNotFoundException(typeof(TEntity).Name, request.Id);
             }
-            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed || ex.StatusCode == System.Net.HttpStatusCode.Conflict)
             {
                 throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = request.Id };
             }
@@ -424,7 +420,6 @@ namespace LagoVista.CloudStorage.StorageProviders
             return true;
         }
 
-
         private static QueryDefinition CreateKnownQuery(DocumentQueryRequest request)
         {
             switch (request.QueryType)
@@ -554,10 +549,10 @@ AND (
             var targetStepKeys = request.GetRequired<List<string>>("targetStepKeys");
 
             var predicates = new List<string>
-    {
-        "c.EntityType = @entityType",
-        "c.OwnerOrganization.Id = @orgId"
-    };
+            {
+                "c.EntityType = @entityType",
+                "c.OwnerOrganization.Id = @orgId"
+            };
 
             for (var idx = 0; idx < requiredStepKeys.Count; idx++)
                 predicates.Add(BuildCompletedChecklistPredicate($"@requiredStepKey{idx}"));
@@ -642,10 +637,10 @@ ORDER BY c.Name";
             var stepKeys = request.GetRequired<List<string>>("stepKeys");
 
             var predicates = new List<string>
-    {
-        "c.EntityType = @entityType",
-        "c.OwnerOrganization.Id = @orgId"
-    };
+            {
+                "c.EntityType = @entityType",
+                "c.OwnerOrganization.Id = @orgId"
+            };
 
             for (var idx = 0; idx < stepKeys.Count; idx++)
             {
