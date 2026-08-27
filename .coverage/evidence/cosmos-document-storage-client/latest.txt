@@ -1,5 +1,5 @@
 CloudStorage Cosmos Document Storage Contract Test Evidence
-StartedUtc: 2026-08-27T00:39:54.0931242Z
+StartedUtc: 2026-08-27T00:52:25.1191859Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=CosmosDocumentStorageContract
 Provider: Cosmos emulator https://localhost:18081
@@ -10,62 +10,26 @@ D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\ConnectionSettings\
 D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\ConnectionSettings\ScratchStorageSettings.cs(13,28): warning CS0108: 'ScratchStorageSettings.SectionName' hides inherited member 'MongoDocumentStorageConnectionSettings.SectionName'. Use the new keyword if hiding was intended. [D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\LagoVista.CloudStorage.csproj]
   LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
   LagoVista.Relational -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.Relational\bin\Debug\net9.0\LagoVista.Relational.dll
-D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\Cassandra\CassandraSessionFactoryIntegrationTests.cs(40,19): warning MSTEST0039: Use 'Assert.ThrowsExactly' instead of 'Assert.ThrowsException' (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0039) [D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj]
 D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\Cassandra\CassandraStorageSettingsTests.cs(53,10): warning MSTEST0044: 'DataTestMethod' is obsolete. Use 'TestMethod' instead. (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0044) [D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj]
+D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\Cassandra\CassandraSessionFactoryIntegrationTests.cs(40,19): warning MSTEST0039: Use 'Assert.ThrowsExactly' instead of 'Assert.ThrowsException' (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0039) [D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj]
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
-  Failed CrudLifecycle_SatisfiesSharedContract [209 ms]
+  Failed CrudLifecycle_SatisfiesSharedContract [382 ms]
   Error Message:
-   Assert.IsFalse failed. 
+   Assert.IsNotNull failed. 
   Stack Trace:
-     at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.CrudLifecycleAsync(IDocumentStorageClient client, String partitionKey) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 31
+     at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.CrudLifecycleAsync(IDocumentStorageClient client, String partitionKey) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 57
 
-  Failed OptimisticConcurrency_SatisfiesSharedContract [135 ms]
+  Failed RawDocumentAndPage_SatisfySharedContract [146 ms]
   Error Message:
-   Assert.AreNotEqual failed. Expected any value except:<(null)>. Actual:<(null)>. 
+   Assert.AreEqual failed. Expected:<1>. Actual:<2>. 
   Stack Trace:
-     at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.OptimisticConcurrencyAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 118
-
-  Failed Patch_SatisfiesSharedContract [123 ms]
-  Error Message:
-   Test method LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests.Patch_SatisfiesSharedContract threw exception: 
-LagoVista.Core.Exceptions.RecordNotFoundException: Record Of Type: ContractDocumentEntity With Id: 84A6CE809A5340D49171ACE53EC1E00E Not Found
-  Stack Trace:
-     at LagoVista.CloudStorage.StorageProviders.CosmosDocumentStorageClient.PatchDocumentAsync[TEntity](PatchRequest request) in D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\StorageProviders\CosmosDB\CosmosDocumentStorageClient.cs:line 280
-   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.PatchAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 151
-
-  Failed ProjectionAndKeyLookup_SatisfySharedContract [260 ms]
-  Error Message:
-   Test method LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests.ProjectionAndKeyLookup_SatisfySharedContract threw exception: 
-Microsoft.Azure.Cosmos.CosmosException: Response status code does not indicate success: NotFound (404); Substatus: 0; ActivityId: 7611aaa9-1425-236b-cc74-3e6dfb820e01; Reason: (Collection 'Entities' not found in database 'cosmos_contract_8fa41a4514c640a686ab5923bcac05d4'
-ActivityId: 7611aaa9-1425-236b-cc74-3e6dfb820e01, Microsoft.Azure.Cosmos.Tracing.TraceData.ClientSideRequestStatisticsTraceDatum, Windows/10.0.26200 cosmos-netstandard-sdk/3.41.0);
-  Stack Trace:
-     at Microsoft.Azure.Cosmos.Common.AsyncCache`2.GetAsync(TKey key, TValue obsoleteValue, Func`1 singleValueInitFunc, CancellationToken cancellationToken, Boolean forceRefresh)
-   at Microsoft.Azure.Cosmos.Common.CollectionCache.ResolveByNameAsync(String apiVersion, String resourceAddress, Boolean forceRefesh, ITrace trace, IClientSideRequestStatistics clientSideRequestStatistics, CancellationToken cancellationToken)
-   at Microsoft.Azure.Cosmos.ClientContextCore.GetCachedContainerPropertiesAsync(String containerUri, ITrace trace, CancellationToken cancellationToken)
-
-  Failed OwnedLookup_SatisfiesSharedContract [149 ms]
-  Error Message:
-   Test method LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests.OwnedLookup_SatisfiesSharedContract threw exception: 
-Microsoft.Azure.Cosmos.CosmosException: Response status code does not indicate success: NotFound (404); Substatus: 0; ActivityId: 7dcef4af-8266-0fc4-8c6e-affe8bd2c5e2; Reason: (Collection 'Entities' not found in database 'cosmos_contract_c0f838358f9a46e39cb95cfa8b229c76'
-ActivityId: 7dcef4af-8266-0fc4-8c6e-affe8bd2c5e2, Microsoft.Azure.Cosmos.Tracing.TraceData.ClientSideRequestStatisticsTraceDatum, Windows/10.0.26200 cosmos-netstandard-sdk/3.41.0);
-  Stack Trace:
-     at Microsoft.Azure.Cosmos.Common.AsyncCache`2.GetAsync(TKey key, TValue obsoleteValue, Func`1 singleValueInitFunc, CancellationToken cancellationToken, Boolean forceRefresh)
-   at Microsoft.Azure.Cosmos.Common.CollectionCache.ResolveByNameAsync(String apiVersion, String resourceAddress, Boolean forceRefesh, ITrace trace, IClientSideRequestStatistics clientSideRequestStatistics, CancellationToken cancellationToken)
-   at Microsoft.Azure.Cosmos.ClientContextCore.GetCachedContainerPropertiesAsync(String containerUri, ITrace trace, CancellationToken cancellationToken)
-
-  Failed RawDocumentAndPage_SatisfySharedContract [125 ms]
-  Error Message:
-   Test method LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests.RawDocumentAndPage_SatisfySharedContract threw exception: 
-System.InvalidOperationException: Raw document upsert failed (400 BadRequest). 
-  Stack Trace:
-     at LagoVista.CloudStorage.StorageProviders.CosmosDocumentStorageClient.UpsertRawDocumentAsync(String entityType, String id, String json, String expectedETag, CancellationToken cancellationToken) in D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\StorageProviders\CosmosDB\CosmosDocumentStorageClient.cs:line 137
-   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.RawDocumentAndPageAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.AdvancedReads.cs:line 79
+     at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.RawDocumentAndPageAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.AdvancedReads.cs:line 86
 
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\cosmos-document-storage-client\latest.trx
 
-Failed!  - Failed:     6, Passed:     6, Skipped:     0, Total:    12, Duration: 2 s - LagoVista.StorageProvider.Tests.dll (net9.0)
+Failed!  - Failed:     2, Passed:    10, Skipped:     0, Total:    12, Duration: 2 s - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-27T00:40:01.2043208Z
+CompletedUtc: 2026-08-27T00:52:36.9125755Z
 ExitCode: 1

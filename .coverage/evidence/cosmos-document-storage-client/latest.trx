@@ -1,201 +1,157 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TestRun id="0debd12b-ff52-416b-a976-8ab4d6c54d6b" name="kevin@BEAST-LAPTOP 2026-08-26 20:39:59" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
-  <Times creation="2026-08-26T20:39:59.9270175-04:00" queuing="2026-08-26T20:39:59.9270180-04:00" start="2026-08-26T20:39:57.9293532-04:00" finish="2026-08-26T20:40:01.0856475-04:00" />
-  <TestSettings name="default" id="cee8cb85-3bff-42d1-81e2-f494fb6457e7">
-    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_20_39_59" />
+<TestRun id="69f77cd7-bcb2-403c-918b-dd75e69e9259" name="kevin@BEAST-LAPTOP 2026-08-26 20:52:35" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T20:52:35.4014439-04:00" queuing="2026-08-26T20:52:35.4014444-04:00" start="2026-08-26T20:52:33.4290269-04:00" finish="2026-08-26T20:52:36.7603667-04:00" />
+  <TestSettings name="default" id="8f287f89-8aaf-41c7-bd46-ef664dba2248">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_20_52_35" />
   </TestSettings>
   <Results>
-    <UnitTestResult executionId="8eb6eaa2-e8aa-44a7-a2ab-bd59c0a1f25c" testId="44cbb03f-f174-37d7-503d-edac1785c50e" testName="NotFoundSemantics_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.2357775" startTime="2026-08-26T20:39:59.1920456-04:00" endTime="2026-08-26T20:39:59.4279845-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8eb6eaa2-e8aa-44a7-a2ab-bd59c0a1f25c" />
-    <UnitTestResult executionId="29bce9bf-7bfe-4a8e-b508-a45a27f8d487" testId="7fab10f2-a257-c6cc-dcfb-0924f27e7b58" testName="OptimisticConcurrency_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1352780" startTime="2026-08-26T20:39:59.6224598-04:00" endTime="2026-08-26T20:39:59.7579654-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="29bce9bf-7bfe-4a8e-b508-a45a27f8d487">
+    <UnitTestResult executionId="d9c15714-3fe7-4963-bd2f-0c4e51dc976b" testId="314891c9-0e64-4f8b-7ad4-ff8b2e4b1495" testName="DatabaseIdentity_MatchesConfiguredDatabase" computerName="BEAST-LAPTOP" duration="00:00:00.4513341" startTime="2026-08-26T20:52:33.9836578-04:00" endTime="2026-08-26T20:52:34.4483941-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d9c15714-3fe7-4963-bd2f-0c4e51dc976b" />
+    <UnitTestResult executionId="1a0014ca-2459-44ff-901f-d4a16aee0e07" testId="7b1be78d-10f3-d34b-80e1-93e5498d5103" testName="CrudLifecycle_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.3822724" startTime="2026-08-26T20:52:34.4518783-04:00" endTime="2026-08-26T20:52:34.8357244-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1a0014ca-2459-44ff-901f-d4a16aee0e07">
       <Output>
         <ErrorInfo>
-          <Message>Assert.AreNotEqual failed. Expected any value except:&lt;(null)&gt;. Actual:&lt;(null)&gt;. </Message>
-          <StackTrace>   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.OptimisticConcurrencyAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 118&#xD;
+          <Message>Assert.IsNotNull failed. </Message>
+          <StackTrace>   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.CrudLifecycleAsync(IDocumentStorageClient client, String partitionKey) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 57&#xD;
 </StackTrace>
         </ErrorInfo>
       </Output>
     </UnitTestResult>
-    <UnitTestResult executionId="96cd9243-db82-4372-a5f7-817574db128a" testId="af00e701-c730-d8b0-7cbb-033293b3e89d" testName="SummaryQuery_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1990906" startTime="2026-08-26T20:40:00.5790424-04:00" endTime="2026-08-26T20:40:00.7783993-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="96cd9243-db82-4372-a5f7-817574db128a" />
-    <UnitTestResult executionId="8fb3d0b2-c8ad-4f59-aeca-0d7e8f033d24" testId="88e2db60-7cac-7775-158a-5d119af5802e" testName="KnownEntityQueries_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1564382" startTime="2026-08-26T20:40:00.4221487-04:00" endTime="2026-08-26T20:40:00.5788693-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8fb3d0b2-c8ad-4f59-aeca-0d7e8f033d24" />
-    <UnitTestResult executionId="e3e79727-6f7a-4d51-8a53-a87a8adccad4" testId="0a650a74-c722-7420-25ae-cccf0cb99f2b" testName="QueryAndPaging_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1938315" startTime="2026-08-26T20:39:59.4283884-04:00" endTime="2026-08-26T20:39:59.6223531-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e3e79727-6f7a-4d51-8a53-a87a8adccad4" />
-    <UnitTestResult executionId="309e506f-b8fa-4a81-abc1-305f67caee9e" testId="15373ee2-5d84-56d1-e7c0-0da99a75ce47" testName="RawDocumentAndPage_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1253967" startTime="2026-08-26T20:40:00.2963985-04:00" endTime="2026-08-26T20:40:00.4219961-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="309e506f-b8fa-4a81-abc1-305f67caee9e">
+    <UnitTestResult executionId="be766707-7470-4f1e-b75d-0371451a399c" testId="0a650a74-c722-7420-25ae-cccf0cb99f2b" testName="QueryAndPaging_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.2332566" startTime="2026-08-26T20:52:34.9694953-04:00" endTime="2026-08-26T20:52:35.2029017-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="be766707-7470-4f1e-b75d-0371451a399c" />
+    <UnitTestResult executionId="4d2562b7-26b3-4c42-bfc8-b5bb40c24e22" testId="4267ca47-dd94-af51-60d9-11419299b467" testName="OwnedLookup_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1772051" startTime="2026-08-26T20:52:35.7586015-04:00" endTime="2026-08-26T20:52:35.9361099-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4d2562b7-26b3-4c42-bfc8-b5bb40c24e22" />
+    <UnitTestResult executionId="0cc05a53-04a5-4125-899c-a0967487bde6" testId="88e2db60-7cac-7775-158a-5d119af5802e" testName="KnownEntityQueries_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1527580" startTime="2026-08-26T20:52:36.0833261-04:00" endTime="2026-08-26T20:52:36.2362863-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0cc05a53-04a5-4125-899c-a0967487bde6" />
+    <UnitTestResult executionId="7fc41448-b387-47b0-b0b3-b57e0179643c" testId="44cbb03f-f174-37d7-503d-edac1785c50e" testName="NotFoundSemantics_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1330788" startTime="2026-08-26T20:52:34.8358619-04:00" endTime="2026-08-26T20:52:34.9691115-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7fc41448-b387-47b0-b0b3-b57e0179643c" />
+    <UnitTestResult executionId="eb1125c2-0a77-4dcb-99ae-fedf167b2d02" testId="d16035e1-5c9a-9107-a8be-43821ace8451" testName="Patch_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1938332" startTime="2026-08-26T20:52:35.3681194-04:00" endTime="2026-08-26T20:52:35.5621303-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="eb1125c2-0a77-4dcb-99ae-fedf167b2d02" />
+    <UnitTestResult executionId="31c0ce40-78af-4d22-8e17-b0531f199831" testId="7fab10f2-a257-c6cc-dcfb-0924f27e7b58" testName="OptimisticConcurrency_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1648598" startTime="2026-08-26T20:52:35.2029875-04:00" endTime="2026-08-26T20:52:35.3680060-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="31c0ce40-78af-4d22-8e17-b0531f199831" />
+    <UnitTestResult executionId="63deede1-6449-4fd2-bfdd-ef3114426347" testId="af00e701-c730-d8b0-7cbb-033293b3e89d" testName="SummaryQuery_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.2031748" startTime="2026-08-26T20:52:36.2363762-04:00" endTime="2026-08-26T20:52:36.4397655-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="63deede1-6449-4fd2-bfdd-ef3114426347" />
+    <UnitTestResult executionId="ffce0438-5790-47fd-8f07-b2a9154f1e94" testId="15373ee2-5d84-56d1-e7c0-0da99a75ce47" testName="RawDocumentAndPage_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1467393" startTime="2026-08-26T20:52:35.9362490-04:00" endTime="2026-08-26T20:52:36.0831930-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ffce0438-5790-47fd-8f07-b2a9154f1e94">
       <Output>
         <ErrorInfo>
-          <Message>Test method LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests.RawDocumentAndPage_SatisfySharedContract threw exception: &#xD;
-System.InvalidOperationException: Raw document upsert failed (400 BadRequest). </Message>
-          <StackTrace>   at LagoVista.CloudStorage.StorageProviders.CosmosDocumentStorageClient.UpsertRawDocumentAsync(String entityType, String id, String json, String expectedETag, CancellationToken cancellationToken) in D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\StorageProviders\CosmosDB\CosmosDocumentStorageClient.cs:line 137&#xD;
-   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.RawDocumentAndPageAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.AdvancedReads.cs:line 79&#xD;
+          <Message>Assert.AreEqual failed. Expected:&lt;1&gt;. Actual:&lt;2&gt;. </Message>
+          <StackTrace>   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.RawDocumentAndPageAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.AdvancedReads.cs:line 86&#xD;
 </StackTrace>
         </ErrorInfo>
       </Output>
     </UnitTestResult>
-    <UnitTestResult executionId="fe3fde5e-63ca-4ec5-a8a4-ddfcf58c1851" testId="d16035e1-5c9a-9107-a8be-43821ace8451" testName="Patch_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1236917" startTime="2026-08-26T20:39:59.7581547-04:00" endTime="2026-08-26T20:39:59.8820702-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fe3fde5e-63ca-4ec5-a8a4-ddfcf58c1851">
-      <Output>
-        <ErrorInfo>
-          <Message>Test method LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests.Patch_SatisfiesSharedContract threw exception: &#xD;
-LagoVista.Core.Exceptions.RecordNotFoundException: Record Of Type: ContractDocumentEntity With Id: 84A6CE809A5340D49171ACE53EC1E00E Not Found</Message>
-          <StackTrace>   at LagoVista.CloudStorage.StorageProviders.CosmosDocumentStorageClient.PatchDocumentAsync[TEntity](PatchRequest request) in D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\Storage\StorageProviders\CosmosDB\CosmosDocumentStorageClient.cs:line 280&#xD;
-   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.PatchAsync(IDocumentStorageClient client) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 151&#xD;
-</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="f8b11f4a-df6b-4446-8e05-136489278433" testId="7b1be78d-10f3-d34b-80e1-93e5498d5103" testName="CrudLifecycle_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.2099899" startTime="2026-08-26T20:39:58.9801797-04:00" endTime="2026-08-26T20:39:59.1918269-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f8b11f4a-df6b-4446-8e05-136489278433">
-      <Output>
-        <ErrorInfo>
-          <Message>Assert.IsFalse failed. </Message>
-          <StackTrace>   at LagoVista.StorageProvider.Tests.DocumentStorage.DocumentStorageClientContract.CrudLifecycleAsync(IDocumentStorageClient client, String partitionKey) in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\DocumentStorage\DocumentStorageClientContract.cs:line 31&#xD;
-</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="a4ecb752-acbe-4d65-8eb9-6ec0ebd7d47c" testId="4267ca47-dd94-af51-60d9-11419299b467" testName="OwnedLookup_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1499230" startTime="2026-08-26T20:40:00.1461886-04:00" endTime="2026-08-26T20:40:00.2962954-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a4ecb752-acbe-4d65-8eb9-6ec0ebd7d47c">
-      <Output>
-        <ErrorInfo>
-          <Message>Test method LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests.OwnedLookup_SatisfiesSharedContract threw exception: &#xD;
-Microsoft.Azure.Cosmos.CosmosException: Response status code does not indicate success: NotFound (404); Substatus: 0; ActivityId: 7dcef4af-8266-0fc4-8c6e-affe8bd2c5e2; Reason: (Collection 'Entities' not found in database 'cosmos_contract_c0f838358f9a46e39cb95cfa8b229c76'&#xD;
-ActivityId: 7dcef4af-8266-0fc4-8c6e-affe8bd2c5e2, Microsoft.Azure.Cosmos.Tracing.TraceData.ClientSideRequestStatisticsTraceDatum, Windows/10.0.26200 cosmos-netstandard-sdk/3.41.0);</Message>
-          <StackTrace>   at Microsoft.Azure.Cosmos.Common.AsyncCache`2.GetAsync(TKey key, TValue obsoleteValue, Func`1 singleValueInitFunc, CancellationToken cancellationToken, Boolean forceRefresh)&#xD;
-   at Microsoft.Azure.Cosmos.Common.CollectionCache.ResolveByNameAsync(String apiVersion, String resourceAddress, Boolean forceRefesh, ITrace trace, IClientSideRequestStatistics clientSideRequestStatistics, CancellationToken cancellationToken)&#xD;
-   at Microsoft.Azure.Cosmos.ClientContextCore.GetCachedContainerPropertiesAsync(String containerUri, ITrace trace, CancellationToken cancellationToken)&#xD;
-</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="8cb55e7a-acd9-4fc4-a882-63849b6c1137" testId="48357063-55ae-f2c2-e3ed-1db4f5adb3a9" testName="QueryAll_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1723302" startTime="2026-08-26T20:40:00.7785124-04:00" endTime="2026-08-26T20:40:00.9525261-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8cb55e7a-acd9-4fc4-a882-63849b6c1137" />
-    <UnitTestResult executionId="fcb86f81-5a4c-45b6-ab3e-d77be56e5516" testId="3b5b9e89-79f4-0f40-6ed2-d2862815b84f" testName="ProjectionAndKeyLookup_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.2600620" startTime="2026-08-26T20:39:59.8859004-04:00" endTime="2026-08-26T20:40:00.1460857-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fcb86f81-5a4c-45b6-ab3e-d77be56e5516">
-      <Output>
-        <ErrorInfo>
-          <Message>Test method LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests.ProjectionAndKeyLookup_SatisfySharedContract threw exception: &#xD;
-Microsoft.Azure.Cosmos.CosmosException: Response status code does not indicate success: NotFound (404); Substatus: 0; ActivityId: 7611aaa9-1425-236b-cc74-3e6dfb820e01; Reason: (Collection 'Entities' not found in database 'cosmos_contract_8fa41a4514c640a686ab5923bcac05d4'&#xD;
-ActivityId: 7611aaa9-1425-236b-cc74-3e6dfb820e01, Microsoft.Azure.Cosmos.Tracing.TraceData.ClientSideRequestStatisticsTraceDatum, Windows/10.0.26200 cosmos-netstandard-sdk/3.41.0);</Message>
-          <StackTrace>   at Microsoft.Azure.Cosmos.Common.AsyncCache`2.GetAsync(TKey key, TValue obsoleteValue, Func`1 singleValueInitFunc, CancellationToken cancellationToken, Boolean forceRefresh)&#xD;
-   at Microsoft.Azure.Cosmos.Common.CollectionCache.ResolveByNameAsync(String apiVersion, String resourceAddress, Boolean forceRefesh, ITrace trace, IClientSideRequestStatistics clientSideRequestStatistics, CancellationToken cancellationToken)&#xD;
-   at Microsoft.Azure.Cosmos.ClientContextCore.GetCachedContainerPropertiesAsync(String containerUri, ITrace trace, CancellationToken cancellationToken)&#xD;
-</StackTrace>
-        </ErrorInfo>
-      </Output>
-    </UnitTestResult>
-    <UnitTestResult executionId="a893b02a-c523-45bf-9611-bbe7df693edd" testId="314891c9-0e64-4f8b-7ad4-ff8b2e4b1495" testName="DatabaseIdentity_MatchesConfiguredDatabase" computerName="BEAST-LAPTOP" duration="00:00:00.4079624" startTime="2026-08-26T20:39:58.5497023-04:00" endTime="2026-08-26T20:39:58.9770228-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a893b02a-c523-45bf-9611-bbe7df693edd" />
+    <UnitTestResult executionId="c69021af-24f9-4fc3-acc6-37eef7fcd450" testId="48357063-55ae-f2c2-e3ed-1db4f5adb3a9" testName="QueryAll_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1956582" startTime="2026-08-26T20:52:36.4398805-04:00" endTime="2026-08-26T20:52:36.6369143-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c69021af-24f9-4fc3-acc6-37eef7fcd450" />
+    <UnitTestResult executionId="e28fec4d-10d8-471c-b0a3-26e7e2ef393f" testId="3b5b9e89-79f4-0f40-6ed2-d2862815b84f" testName="ProjectionAndKeyLookup_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1957891" startTime="2026-08-26T20:52:35.5622449-04:00" endTime="2026-08-26T20:52:35.7582956-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e28fec4d-10d8-471c-b0a3-26e7e2ef393f" />
   </Results>
   <TestDefinitions>
     <UnitTest name="Patch_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="d16035e1-5c9a-9107-a8be-43821ace8451">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="fe3fde5e-63ca-4ec5-a8a4-ddfcf58c1851" />
+      <Execution id="eb1125c2-0a77-4dcb-99ae-fedf167b2d02" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="Patch_SatisfiesSharedContract" />
     </UnitTest>
     <UnitTest name="RawDocumentAndPage_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="15373ee2-5d84-56d1-e7c0-0da99a75ce47">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="309e506f-b8fa-4a81-abc1-305f67caee9e" />
+      <Execution id="ffce0438-5790-47fd-8f07-b2a9154f1e94" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="RawDocumentAndPage_SatisfySharedContract" />
     </UnitTest>
     <UnitTest name="KnownEntityQueries_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="88e2db60-7cac-7775-158a-5d119af5802e">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="8fb3d0b2-c8ad-4f59-aeca-0d7e8f033d24" />
+      <Execution id="0cc05a53-04a5-4125-899c-a0967487bde6" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="KnownEntityQueries_SatisfySharedContract" />
     </UnitTest>
     <UnitTest name="SummaryQuery_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="af00e701-c730-d8b0-7cbb-033293b3e89d">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="96cd9243-db82-4372-a5f7-817574db128a" />
+      <Execution id="63deede1-6449-4fd2-bfdd-ef3114426347" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="SummaryQuery_SatisfiesSharedContract" />
     </UnitTest>
     <UnitTest name="NotFoundSemantics_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="44cbb03f-f174-37d7-503d-edac1785c50e">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="8eb6eaa2-e8aa-44a7-a2ab-bd59c0a1f25c" />
+      <Execution id="7fc41448-b387-47b0-b0b3-b57e0179643c" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="NotFoundSemantics_SatisfySharedContract" />
     </UnitTest>
     <UnitTest name="DatabaseIdentity_MatchesConfiguredDatabase" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="314891c9-0e64-4f8b-7ad4-ff8b2e4b1495">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="a893b02a-c523-45bf-9611-bbe7df693edd" />
+      <Execution id="d9c15714-3fe7-4963-bd2f-0c4e51dc976b" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="DatabaseIdentity_MatchesConfiguredDatabase" />
     </UnitTest>
     <UnitTest name="OwnedLookup_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="4267ca47-dd94-af51-60d9-11419299b467">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="a4ecb752-acbe-4d65-8eb9-6ec0ebd7d47c" />
+      <Execution id="4d2562b7-26b3-4c42-bfc8-b5bb40c24e22" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="OwnedLookup_SatisfiesSharedContract" />
     </UnitTest>
     <UnitTest name="QueryAll_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="48357063-55ae-f2c2-e3ed-1db4f5adb3a9">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="8cb55e7a-acd9-4fc4-a882-63849b6c1137" />
+      <Execution id="c69021af-24f9-4fc3-acc6-37eef7fcd450" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="QueryAll_SatisfiesSharedContract" />
     </UnitTest>
     <UnitTest name="OptimisticConcurrency_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="7fab10f2-a257-c6cc-dcfb-0924f27e7b58">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="29bce9bf-7bfe-4a8e-b508-a45a27f8d487" />
+      <Execution id="31c0ce40-78af-4d22-8e17-b0531f199831" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="OptimisticConcurrency_SatisfiesSharedContract" />
     </UnitTest>
     <UnitTest name="QueryAndPaging_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="0a650a74-c722-7420-25ae-cccf0cb99f2b">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="e3e79727-6f7a-4d51-8a53-a87a8adccad4" />
+      <Execution id="be766707-7470-4f1e-b75d-0371451a399c" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="QueryAndPaging_SatisfySharedContract" />
     </UnitTest>
     <UnitTest name="ProjectionAndKeyLookup_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="3b5b9e89-79f4-0f40-6ed2-d2862815b84f">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="fcb86f81-5a4c-45b6-ab3e-d77be56e5516" />
+      <Execution id="e28fec4d-10d8-471c-b0a3-26e7e2ef393f" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="ProjectionAndKeyLookup_SatisfySharedContract" />
     </UnitTest>
     <UnitTest name="CrudLifecycle_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="7b1be78d-10f3-d34b-80e1-93e5498d5103">
       <TestCategory>
-        <TestCategoryItem TestCategory="Cosmos" />
         <TestCategoryItem TestCategory="CosmosDocumentStorageContract" />
+        <TestCategoryItem TestCategory="Cosmos" />
       </TestCategory>
-      <Execution id="f8b11f4a-df6b-4446-8e05-136489278433" />
+      <Execution id="1a0014ca-2459-44ff-901f-d4a16aee0e07" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Cosmos.CosmosDocumentStorageClientContractTests" name="CrudLifecycle_SatisfiesSharedContract" />
     </UnitTest>
   </TestDefinitions>
   <TestEntries>
-    <TestEntry testId="44cbb03f-f174-37d7-503d-edac1785c50e" executionId="8eb6eaa2-e8aa-44a7-a2ab-bd59c0a1f25c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="7fab10f2-a257-c6cc-dcfb-0924f27e7b58" executionId="29bce9bf-7bfe-4a8e-b508-a45a27f8d487" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="af00e701-c730-d8b0-7cbb-033293b3e89d" executionId="96cd9243-db82-4372-a5f7-817574db128a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="88e2db60-7cac-7775-158a-5d119af5802e" executionId="8fb3d0b2-c8ad-4f59-aeca-0d7e8f033d24" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="0a650a74-c722-7420-25ae-cccf0cb99f2b" executionId="e3e79727-6f7a-4d51-8a53-a87a8adccad4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="15373ee2-5d84-56d1-e7c0-0da99a75ce47" executionId="309e506f-b8fa-4a81-abc1-305f67caee9e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="d16035e1-5c9a-9107-a8be-43821ace8451" executionId="fe3fde5e-63ca-4ec5-a8a4-ddfcf58c1851" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="7b1be78d-10f3-d34b-80e1-93e5498d5103" executionId="f8b11f4a-df6b-4446-8e05-136489278433" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="4267ca47-dd94-af51-60d9-11419299b467" executionId="a4ecb752-acbe-4d65-8eb9-6ec0ebd7d47c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="48357063-55ae-f2c2-e3ed-1db4f5adb3a9" executionId="8cb55e7a-acd9-4fc4-a882-63849b6c1137" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="3b5b9e89-79f4-0f40-6ed2-d2862815b84f" executionId="fcb86f81-5a4c-45b6-ab3e-d77be56e5516" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="314891c9-0e64-4f8b-7ad4-ff8b2e4b1495" executionId="a893b02a-c523-45bf-9611-bbe7df693edd" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="314891c9-0e64-4f8b-7ad4-ff8b2e4b1495" executionId="d9c15714-3fe7-4963-bd2f-0c4e51dc976b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7b1be78d-10f3-d34b-80e1-93e5498d5103" executionId="1a0014ca-2459-44ff-901f-d4a16aee0e07" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0a650a74-c722-7420-25ae-cccf0cb99f2b" executionId="be766707-7470-4f1e-b75d-0371451a399c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4267ca47-dd94-af51-60d9-11419299b467" executionId="4d2562b7-26b3-4c42-bfc8-b5bb40c24e22" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="88e2db60-7cac-7775-158a-5d119af5802e" executionId="0cc05a53-04a5-4125-899c-a0967487bde6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="44cbb03f-f174-37d7-503d-edac1785c50e" executionId="7fc41448-b387-47b0-b0b3-b57e0179643c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d16035e1-5c9a-9107-a8be-43821ace8451" executionId="eb1125c2-0a77-4dcb-99ae-fedf167b2d02" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7fab10f2-a257-c6cc-dcfb-0924f27e7b58" executionId="31c0ce40-78af-4d22-8e17-b0531f199831" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="af00e701-c730-d8b0-7cbb-033293b3e89d" executionId="63deede1-6449-4fd2-bfdd-ef3114426347" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="15373ee2-5d84-56d1-e7c0-0da99a75ce47" executionId="ffce0438-5790-47fd-8f07-b2a9154f1e94" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="48357063-55ae-f2c2-e3ed-1db4f5adb3a9" executionId="c69021af-24f9-4fc3-acc6-37eef7fcd450" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3b5b9e89-79f4-0f40-6ed2-d2862815b84f" executionId="e28fec4d-10d8-471c-b0a3-26e7e2ef393f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
   </TestEntries>
   <TestLists>
     <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
     <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
   </TestLists>
   <ResultSummary outcome="Failed">
-    <Counters total="12" executed="12" passed="6" failed="6" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Counters total="12" executed="12" passed="10" failed="2" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
     <Output>
       <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
 Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
