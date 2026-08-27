@@ -1,9 +1,5 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
-using LagoVista.CloudStorage.Managers;
-using LagoVista.CloudStorage.Storage;
-using LagoVista.Core.Interfaces;
-using LagoVista.Core.PlatformSupport;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,14 +12,11 @@ namespace LagoVista.CloudStorage
             Storage.ConnectionSettings.Startup.ConfigureServices(services);
             Storage.StorageProviders.Startup.ConfigureServices(services);
             Repositories.Startup.ConfigureServices(services);
+            Managers.Startup.ConfigureServices(services);
             Utils.Startup.ConfigureServices(services);
             Diagnostics.Startup.ConfigureServices(services);
 
             services.AddScoped<IDocumentMigrationService, DocumentMigrationService>();
-
-            services.AddScoped<ICategoryManager, CategoryManager>();
-            services.AddScoped<IEntityListResponseMetadataProvider, EntityListResponseMetadataProvider>();
-            services.AddScoped<IEntityListItemManager, EntityListItemManager>();
 
             LagoVista.Core.AutoMapper.Startup.ConfigureServices(services);
         }
