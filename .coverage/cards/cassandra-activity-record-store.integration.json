@@ -2,12 +2,13 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cassandra-activity-record-store-integration",
   "title": "CassandraActivityRecordStore Integration Tests",
-  "status": "completed",
+  "status": "in-process",
   "category": "integration-test",
   "area": "cassandra",
-  "summary": "Exercise historical activity-record writes, reads, ordering, TTL behavior, and partition access against local Cassandra.",
+  "summary": "Exercise historical activity-record writes, reads, ordering, TTL behavior, partition access, and all supported Cassandra activity bucket periods against local Cassandra.",
   "source": [
-    "src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraActivityRecordStore.cs"
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraActivityRecordStore.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraRecordMap.cs"
   ],
   "evidence": [
     ".coverage/evidence/cassandra-activity-record-store/latest.txt",
@@ -17,6 +18,7 @@
     "component": "CassandraActivityRecordStore",
     "testProject": "tests/LagoVista.StorageProvider.Tests",
     "testFile": "tests/LagoVista.StorageProvider.Tests/Cassandra/CassandraActivityRecordStoreIntegrationTests.cs",
+    "advancedTestFile": "tests/LagoVista.StorageProvider.Tests/Cassandra/CassandraActivityRecordStoreAdvancedIntegrationTests.cs",
     "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cassandra-activity-record-tests.ps1",
     "environment": {
       "type": "docker",
@@ -31,11 +33,15 @@
         "partition-and-time-range-query",
         "newest-first-ordering",
         "continuation-paging",
-        "bucketed-querying",
+        "monthly-bucketed-querying",
         "indexed-filtering",
         "retention-ttl"
       ],
-      "next": []
+      "next": [
+        "quarterly-bucketed-querying",
+        "yearly-bucketed-querying",
+        "all-period-querying"
+      ]
     }
   }
 }
