@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "s3-cloud-file-storage-integration",
   "title": "S3CloudFileStorageClient Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "file-storage",
   "summary": "Exercise the provider-neutral cloud file storage contract against a real S3-compatible MinIO endpoint, including automatic bucket provisioning, round-trip writes, updates, deletes, bound-container overloads, object-key normalization, safe rejection of unsupported create-only writes, and short-lived signed read URLs.",
@@ -31,13 +31,12 @@
         "object-key-normalization-and-uri",
         "delete-semantics",
         "reject-updates-preserves-existing-content",
-        "missing-bound-container-validation"
-      ],
-      "next": [
+        "missing-bound-container-validation",
         "signed-read-url-download",
         "signed-read-url-lifetime-validation",
         "signed-read-url-missing-object"
-      ]
+      ],
+      "next": []
     }
   }
 }
