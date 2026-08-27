@@ -1,0 +1,11 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: nuviot-cloudstorage-s3-tests
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: nuviot-test
+      MINIO_ROOT_PASSWORD: nuviot-test-password
+    ports:
+      - "19090:9000"
+      - "19091:9001"
