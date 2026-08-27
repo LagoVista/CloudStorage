@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cosmos-document-storage-client-integration",
   "title": "CosmosDocumentStorageClient Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "document-storage",
   "summary": "Exercise the Cosmos implementation of IDocumentStorageClient against the local Cosmos emulator using the same shared behavioral contract as Mongo.",
@@ -25,8 +25,7 @@
       "partitionKeyPath": "/EntityType"
     },
     "coverageLayers": {
-      "completed": [],
-      "next": [
+      "completed": [
         "database-identity",
         "crud-lifecycle",
         "not-found-semantics",
@@ -39,7 +38,8 @@
         "known-entity-queries",
         "summary-query",
         "query-all-semantics"
-      ]
+      ],
+      "next": []
     }
   }
 }
