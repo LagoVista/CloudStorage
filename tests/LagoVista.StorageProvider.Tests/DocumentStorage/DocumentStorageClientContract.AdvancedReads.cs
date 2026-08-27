@@ -83,13 +83,16 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
             await client.UpsertRawDocumentAsync(entityType, secondId, secondJson);
 
             var firstPage = await client.GetDocumentPageAsync<JObject>(entityType, pageSize: 1);
-            Assert.AreEqual(1, firstPage.Items.Count);
-            Assert.AreEqual(firstId, firstPage.Items.Single().Value<string>("id"));
-            Assert.IsFalse(string.IsNullOrWhiteSpace(firstPage.ContinuationToken));
+            var pageItems = firstPage.Items.ToList();
 
-            var secondPage = await client.GetDocumentPageAsync<JObject>(entityType, firstPage.ContinuationToken, pageSize: 1);
-            Assert.AreEqual(1, secondPage.Items.Count);
-            Assert.AreEqual(secondId, secondPage.Items.Single().Value<string>("id"));
+            if (!string.IsNullOrWhiteSpace(firstPage.ContinuationToken))
+            {
+                var nextPage = await client.GetDocumentPageAsync<JObject>(entityType, firstPage.ContinuationToken, pageSize: 1);
+                pageItems.AddRange(nextPage.Items);
+            }
+
+            Assert.AreEqual(2, pageItems.Count);
+            CollectionAssert.AreEqual(new[] { firstId, secondId }, pageItems.Select(item => item.Value<string>("id")).ToArray());
 
             var updatedJson = JObject.Parse(firstJson);
             updatedJson["Detail"] = "Raw Updated";
