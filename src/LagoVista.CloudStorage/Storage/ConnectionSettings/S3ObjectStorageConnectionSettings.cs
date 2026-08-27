@@ -1,4 +1,3 @@
-
 using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -26,13 +25,19 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
                 : Int32.Parse(port);
 
             var useTls = section.Optional("UseTls");
-            UseTls = !String.IsNullOrWhiteSpace(useTls) &&
-                     Boolean.Parse(useTls);
+            UseTls = !String.IsNullOrWhiteSpace(useTls) && Boolean.Parse(useTls);
 
             var region = section.Optional("Region");
-            Region = String.IsNullOrWhiteSpace(region)
-                ? null
-                : region.Trim();
+            Region = String.IsNullOrWhiteSpace(region) ? null : region.Trim();
+
+            var publicHost = section.Optional("PublicHost");
+            PublicHost = String.IsNullOrWhiteSpace(publicHost) ? Host : publicHost.Trim();
+
+            var publicPort = section.Optional("PublicPort");
+            PublicPort = String.IsNullOrWhiteSpace(publicPort) ? Port : Int32.Parse(publicPort);
+
+            var publicUseTls = section.Optional("PublicUseTls");
+            PublicUseTls = String.IsNullOrWhiteSpace(publicUseTls) ? UseTls : Boolean.Parse(publicUseTls);
         }
 
         public string Host { get; }
@@ -41,11 +46,15 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         public string SecretKey { get; }
         public bool UseTls { get; }
         public string Region { get; }
+        public string PublicHost { get; }
+        public int PublicPort { get; }
+        public bool PublicUseTls { get; }
 
         public override string ToString()
         {
             return $"S3ObjectStorageConnectionSettings(" +
                    $"Host={Host}, Port={Port}, UseTls={UseTls}, " +
+                   $"PublicHost={PublicHost}, PublicPort={PublicPort}, PublicUseTls={PublicUseTls}, " +
                    $"Region={Region ?? "<default>"}, " +
                    $"AccessKey={AccessKey}, SecretKey=<redacted>)";
         }
