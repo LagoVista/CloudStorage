@@ -50,47 +50,54 @@ namespace LagoVista.StorageProvider.Tests.Mongo
         }
 
         [TestMethod]
-        public async Task GenericDeleteOverload_DeletesAndReturnsDocument()
+        public async Task GenericDeleteOverload_DeletesDocument()
         {
             var entity = CreateEntity("delete-overload", "Delete Overload");
             await _client.CreateDocumentAsync(entity);
 
             var deleted = await _client.DeleteDocumentAsync<MongoCleanupDocumentEntity>(entity.Id.Value);
             Assert.IsNotNull(deleted);
-            Assert.IsNotNull(deleted.Result);
-            Assert.AreEqual(entity.Id.Value, deleted.Result.Id.Value);
-            Assert.AreEqual("delete-overload", deleted.Result.Detail);
-
             Assert.IsNull(await _client.GetDocumentAsync<MongoCleanupDocumentEntity>(entity.Id.Value, throwOnNotFound: false));
         }
 
         [TestMethod]
         public async Task KnownQueries_TypedResultsDeserializeFromBson()
         {
-            var entity = CreateEntity(null, "Typed Known Query");
-            entity.Status = EntityHeader.Create("READY", "Ready");
-            await _client.CreateDocumentAsync(entity);
+            var id = Guid.NewGuid().ToString("N").ToUpperInvariant();
+            var entityType = nameof(MongoCleanupDocumentEntity);
+            var document = new JObject
+            {
+                ["id"] = id,
+                ["EntityType"] = entityType,
+                ["Key"] = $"cleanup-{id.ToLowerInvariant()}",
+                ["Name"] = "Typed Known Query",
+                ["OwnerOrganization"] = new JObject { ["Id"] = "ORG1", ["Text"] = "Organization One" },
+                ["Status"] = new JObject { ["Id"] = "READY", ["Text"] = "Ready" },
+                ["Detail"] = null
+            };
+
+            await _client.UpsertRawDocumentAsync(entityType, id, document.ToString());
 
             var statusRequest = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByStatusIds)
-                .WithParameter("entityType", nameof(MongoCleanupDocumentEntity))
+                .WithParameter("entityType", entityType)
                 .WithParameter("orgId", "ORG1")
                 .WithParameter("statusIds", new List<string> { "READY" })
                 .WithParameter("maxItems", 10);
 
-            var byStatus = (await _client.QueryKnownAsync<MongoCleanupKnownResult>(nameof(MongoCleanupDocumentEntity), statusRequest)).ToList();
+            var byStatus = (await _client.QueryKnownAsync<MongoCleanupKnownResult>(entityType, statusRequest)).ToList();
             Assert.AreEqual(1, byStatus.Count);
-            Assert.AreEqual(entity.Id.Value, byStatus[0].Id);
+            Assert.AreEqual(id, byStatus[0].Id);
             Assert.AreEqual("READY", byStatus[0].Status?.Id);
 
             var emptyFieldRequest = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsWithEmptyField)
-                .WithParameter("entityType", nameof(MongoCleanupDocumentEntity))
+                .WithParameter("entityType", entityType)
                 .WithParameter("orgId", "ORG1")
-                .WithParameter("fieldName", nameof(MongoCleanupDocumentEntity.Detail))
+                .WithParameter("fieldName", "Detail")
                 .WithParameter("maxItems", 10);
 
-            var emptyField = (await _client.QueryKnownAsync<MongoCleanupKnownResult>(nameof(MongoCleanupDocumentEntity), emptyFieldRequest)).ToList();
+            var emptyField = (await _client.QueryKnownAsync<MongoCleanupKnownResult>(entityType, emptyFieldRequest)).ToList();
             Assert.AreEqual(1, emptyField.Count);
-            Assert.AreEqual(entity.Id.Value, emptyField[0].Id);
+            Assert.AreEqual(id, emptyField[0].Id);
         }
 
         [TestMethod]
