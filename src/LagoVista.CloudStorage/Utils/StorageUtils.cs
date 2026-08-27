@@ -20,7 +20,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Utils
 {
 
     public class StorageUtils : IStorageUtils

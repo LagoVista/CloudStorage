@@ -2,6 +2,7 @@
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Repositories;
+using LagoVista.CloudStorage.Storage;
 using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -20,7 +21,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Repositories
 {
     /// <summary>
     /// A small, independent repository focused on sync operations:

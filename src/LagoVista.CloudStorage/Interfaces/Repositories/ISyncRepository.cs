@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static LagoVista.CloudStorage.Storage.SyncRepository;
+using static LagoVista.CloudStorage.Repositories.SyncRepository;
 
 namespace LagoVista.CloudStorage.Interfaces
 {
