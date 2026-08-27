@@ -159,7 +159,7 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             var byId = await _client.GetDocumentProjectionAsync<MongoDepthProjection>(entity.Id.Value);
             Assert.IsNotNull(byId);
             Assert.AreEqual(entity.Id.Value, byId.Id);
-            Assert.AreEqual(entity.Key, byId.Key);
+            Assert.AreEqual(entity.Key.Value, byId.Key);
             Assert.AreEqual("typed-projection", byId.Detail);
 
             var byEntityId = await _client.GetDocumentProjectionAsync<MongoDepthProjection>(nameof(MongoDepthDocumentEntity), entity.Id.Value);

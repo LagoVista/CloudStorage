@@ -6,10 +6,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
 {
     public static class Startup
     {
-        public static void ConfigureServices(IServiceCollection services)
+         public static void ConfigureServices(IServiceCollection services)
         {
             Mongo.Startup.ConfigureServices(services);
             CosmosDB.Startup.ConfigureServices(services);
+            Cache.Startup.ConfigureServices(services);
+
             
             services.AddTransient<IDocumentStorageClientProvider, DocumentStorageClientProvider>();
         }

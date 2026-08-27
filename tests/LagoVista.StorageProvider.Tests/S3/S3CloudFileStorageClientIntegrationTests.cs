@@ -118,6 +118,9 @@ namespace LagoVista.StorageProvider.Tests.S3
             public string SecretKey => "nuviot-test-password";
             public bool UseTls => false;
             public string Region => null;
+            public string PublicHost => "public.localhost";
+            public int PublicPort => 443;
+            public bool PublicUseTls => true;
         }
     }
 }
