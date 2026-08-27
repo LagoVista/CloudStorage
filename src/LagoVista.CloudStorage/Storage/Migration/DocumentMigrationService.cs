@@ -9,7 +9,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.DocumentDB
+namespace LagoVista.CloudStorage.Storage.Migration
 {
     public sealed class DocumentMigrationService : IDocumentMigrationService
     {

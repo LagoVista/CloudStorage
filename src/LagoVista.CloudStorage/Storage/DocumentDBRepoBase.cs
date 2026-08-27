@@ -4,6 +4,7 @@
 // --- END CODE INDEX META ---
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Storage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.AI.Interfaces;
 using LagoVista.Core.Attributes;

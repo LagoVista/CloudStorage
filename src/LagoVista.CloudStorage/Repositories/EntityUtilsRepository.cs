@@ -4,6 +4,7 @@ using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.CloudStorage.Repositories;
+using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.StorageProviders;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
@@ -18,7 +19,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-namespace LagoVista.CloudStorage.Storage
+
+
+namespace LagoVista.CloudStorage.Repositories
 {
     public class EntityUtilsRepository : IEntityUtilsRepository
     {

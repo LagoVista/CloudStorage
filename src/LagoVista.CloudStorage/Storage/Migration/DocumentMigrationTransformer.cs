@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Linq;
 
-namespace LagoVista.CloudStorage.DocumentDB
+namespace LagoVista.CloudStorage.Storage.Migration
 {
     public static class DocumentMigrationTransformer
     {

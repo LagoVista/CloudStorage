@@ -4,7 +4,7 @@ using LagoVista.Core.Models;
 using System;
 using System.Reflection;
 
-namespace LagoVista.CloudStorage.DocumentDB
+namespace LagoVista.CloudStorage.Storage.StorageProviders
 {
     public static class EntityDocumentStoragePolicy
     {
