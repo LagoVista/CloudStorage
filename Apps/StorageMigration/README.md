@@ -8,10 +8,10 @@ Current migration paths and tooling:
 
 ```text
 Azure Table Storage -> Cassandra Activity Records
-Azure Blob Storage  -> SeaweedFS/S3 (inventory/probe implemented; copy path next)
+Azure Blob Storage  -> SeaweedFS/S3
 ```
 
-The structured migration engine is resumable and persists checkpoints through CloudStorage Application Data. A migration run stores the SHA-256 of its JSON definition and refuses to resume if the definition changes mid-run. Destination IDs are deterministic so replay/catch-up remains idempotent.
+Both migration paths are resumable and persist checkpoints through CloudStorage Application Data. S3 object PUTs use the original Azure container and blob names so retry/resume is idempotent.
 
 ## Commands
 
@@ -34,15 +34,12 @@ dotnet run -- migrate useradmin-access-log --catch-up
 
 `--catch-up` is accepted only after the current pass has completed.
 
+## Azure Blob -> S3
+
 For a non-destructive Azure Blob -> SeaweedFS/S3 connectivity and inventory probe:
 
 ```powershell
 dotnet run -- object-probe
-```
-
-For a deliberately bounded metadata scan while validating configuration:
-
-```powershell
 dotnet run -- object-probe --max-objects 100
 ```
 
@@ -53,6 +50,36 @@ The object probe:
 - reports object count and total bytes per container;
 - reports oldest/newest last-modified timestamps per container;
 - never uploads, modifies, or deletes an object.
+
+To copy a deliberately bounded batch:
+
+```powershell
+dotnet run -- object-migrate --max-objects 10
+dotnet run -- object-status
+```
+
+To continue from the persisted checkpoint:
+
+```powershell
+dotnet run -- object-migrate --max-objects 100
+```
+
+To let the migration run through all remaining containers and blobs:
+
+```powershell
+dotnet run -- object-migrate
+```
+
+Object migration behavior:
+
+- every Azure container is created as the corresponding S3 bucket when needed;
+- every Azure blob is copied using the same object name/path;
+- content type and cache-control are preserved when present;
+- successful S3 PUTs are overwrite-safe, so retry/resume is idempotent;
+- the Application Data checkpoint records current container, last completed object, object counts, failures, and bytes read/written;
+- `--max-objects` limits the number copied in the current invocation, not the cumulative migration total;
+- if one object fails, the run stops without advancing the checkpoint beyond that object;
+- no Azure source object is deleted by this utility.
 
 ## Azure source connections
 
@@ -74,7 +101,7 @@ PROD_TS_STORAGE_ACCOUNT_ID
 PROD_TS_STORAGE_ACCOUNT_ACCESS_KEY
 ```
 
-The same Azure Storage account credentials are currently used by the object probe for Blob service access. If historical blobs are found in additional Azure Storage accounts, add those as explicit migration source connections rather than embedding credentials in migration definitions.
+The same Azure Storage account credentials are currently used by the object migration path for Blob service access. If historical blobs are found in additional Azure Storage accounts, add those as explicit migration source connections rather than embedding credentials in migration definitions.
 
 The migration utility does not maintain a separate `MIGRATION_AZURE_*` credential namespace.
 
@@ -91,6 +118,9 @@ DEV_S3ObjectStorage:AccessKey
 DEV_S3ObjectStorage:SecretKey
 DEV_S3ObjectStorage:UseTls
 DEV_S3ObjectStorage:Region
+DEV_S3ObjectStorage:PublicHost
+DEV_S3ObjectStorage:PublicPort
+DEV_S3ObjectStorage:PublicUseTls
 ```
 
 For production use the same names with the `PROD_` prefix.
@@ -141,7 +171,7 @@ Because this operator app normally runs outside Kubernetes while only one Mongo 
 
 ## Definitions
 
-The first migrated definitions are:
+The first migrated structured definitions are:
 
 ```text
 useradmin-access-log
