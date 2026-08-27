@@ -1,9 +1,6 @@
-﻿using LagoVista.CloudStorage.Interfaces;
-using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Storage;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LagoVista.CloudStorage.Storage.StorageProviders.CosmosDB
 {
@@ -11,8 +8,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.CosmosDB
     {
         public static void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<ICosmosClientProvider, CosmosClientProvider>();
-            services.AddTransient<ICosmosDocumentStorageClient, CosmosDocumentStorageClient>();
+            services.AddSingleton<ICosmosClientProvider>(CosmosClientProvider.Shared);
+            services.AddScoped<ICosmosDocumentStorageClient, CosmosDocumentStorageClient>();
         }
     }
 }
