@@ -1,6 +1,7 @@
 using LagoVista.Core.Exceptions;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,15 +21,13 @@ namespace LagoVista.CloudStorage.StorageProviders
             var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id")
                 .WithParameter("@id", id);
 
-            using var iterator = GetContainer<TProjection>().GetItemQueryIterator<TProjection>(
-                query,
-                requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+            using var iterator = GetContainer<TProjection>().GetItemQueryIterator<TProjection>(query, requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
 
             if (iterator.HasMoreResults)
             {
                 var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
                 var projection = response.Resource.FirstOrDefault();
-                if (projection != null) return projection;
+                if (projection != null) return NormalizeProjectionETag(projection);
             }
 
             if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
@@ -45,15 +44,13 @@ namespace LagoVista.CloudStorage.StorageProviders
                 .WithParameter("@id", id)
                 .WithParameter("@entityType", entityType);
 
-            using var iterator = GetContainer<TProjection>().GetItemQueryIterator<TProjection>(
-                query,
-                requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+            using var iterator = GetContainer<TProjection>().GetItemQueryIterator<TProjection>(query, requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
 
             if (iterator.HasMoreResults)
             {
                 var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
                 var projection = response.Resource.FirstOrDefault();
-                if (projection != null) return projection;
+                if (projection != null) return NormalizeProjectionETag(projection);
             }
 
             if (throwOnNotFound) throw new RecordNotFoundException(entityType, id);
@@ -71,21 +68,24 @@ namespace LagoVista.CloudStorage.StorageProviders
                 throw new InvalidOperationException($"Projection type '{typeof(TProjection).Name}' must expose a string EntityType property for Cosmos projection queries.");
 
             var parameter = Expression.Parameter(typeof(TProjection), "item");
-            var entityTypeFilter = Expression.Lambda<Func<TProjection, bool>>(
-                Expression.Equal(Expression.Property(parameter, entityTypeProperty), Expression.Constant(entityType)),
-                parameter);
+            var entityTypeFilter = Expression.Lambda<Func<TProjection, bool>>(Expression.Equal(Expression.Property(parameter, entityTypeProperty), Expression.Constant(entityType)), parameter);
 
             var items = new List<TProjection>();
-            var linqQuery = GetContainer<TProjection>()
-                .GetItemLinqQueryable<TProjection>()
-                .Where(entityTypeFilter)
-                .Where(query);
+            var linqQuery = GetContainer<TProjection>().GetItemLinqQueryable<TProjection>().Where(entityTypeFilter).Where(query);
 
             using var iterator = linqQuery.ToFeedIterator();
             while (iterator.HasMoreResults)
                 items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
 
             return items;
+        }
+
+        private static TProjection NormalizeProjectionETag<TProjection>(TProjection projection) where TProjection : class
+        {
+            if (projection is JObject document && document["ETag"] == null && document["_etag"] != null)
+                document["ETag"] = document["_etag"];
+
+            return projection;
         }
     }
 }
