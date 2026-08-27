@@ -1,0 +1,37 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "mongo-document-storage-depth-integration",
+  "title": "MongoDocumentStorageClient Implementation Depth",
+  "status": "in-process",
+  "category": "integration-test",
+  "area": "document-storage",
+  "summary": "Exercise Mongo-native document storage paths beyond the shared provider contract, with emphasis on runtime patching, paged query overloads, generic non-string sorting, and every implemented QueryKnown dispatch branch.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/mongo-document-storage-depth/latest.txt",
+    ".coverage/evidence/mongo-document-storage-depth/latest.trx"
+  ],
+  "data": {
+    "component": "MongoDocumentStorageClient",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Mongo/MongoDocumentStorageClientDepthIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-mongo-document-storage-depth-tests.ps1",
+    "environment": { "type": "docker", "provider": "mongodb", "port": 27018 },
+    "coverageLayers": {
+      "completed": [],
+      "next": [
+        "runtime-patch-set-add-remove",
+        "runtime-patch-concurrency-and-not-found",
+        "paged-query-visibility-filters",
+        "generic-non-string-sort",
+        "known-query-entity-utils-dispatch",
+        "known-query-checklist-dispatch",
+        "known-query-preparation-dispatch",
+        "known-query-entity-list-pipelines",
+        "known-query-aggregation-syntax"
+      ]
+    }
+  }
+}
