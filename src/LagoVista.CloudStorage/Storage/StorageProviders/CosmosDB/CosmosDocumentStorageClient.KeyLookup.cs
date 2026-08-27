@@ -1,4 +1,3 @@
-using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.Core.Exceptions;
 using Microsoft.Azure.Cosmos;
 using System;
@@ -15,12 +14,8 @@ namespace LagoVista.CloudStorage.StorageProviders
             if (String.IsNullOrWhiteSpace(key)) throw new ArgumentException("Document key is required.", nameof(key));
             if (String.IsNullOrWhiteSpace(ownerOrganizationId)) throw new ArgumentException("Owner organization id is required.", nameof(ownerOrganizationId));
 
-            var collectionResolver = new DocumentCollectionNameResolver();
-            if (!collectionResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName)) throw new InvalidOperationException($"Could not resolve Cosmos collection for entity type '{entityType}'.");
-
-            var container = _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey).GetContainer(_settings.DatabaseName, collectionName);
             var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.EntityType = @entityType AND c.Key = @key AND c.OwnerOrganization.Id = @ownerOrganizationId").WithParameter("@entityType", entityType).WithParameter("@key", key.Trim()).WithParameter("@ownerOrganizationId", ownerOrganizationId);
-            using var iterator = container.GetItemQueryIterator<TProjection>(query);
+            using var iterator = GetRawDocumentContainer().GetItemQueryIterator<TProjection>(query);
             if (iterator.HasMoreResults)
             {
                 var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
