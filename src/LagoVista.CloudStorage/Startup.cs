@@ -22,10 +22,7 @@ namespace LagoVista.CloudStorage
     {
         public static void ConfigureServices(IServiceCollection services)
         {
-            services.AddCassandraStorageConnection();
-            services.AddMongoDocumentStorageConnection();
-            services.AddScratchStorageConnection();
-            services.AddApplicationDataStorageConnection();
+            Storage.ConnectionSettings.Startup.ConfigureServices(services);
 
             services.AddScoped<IStorageUtils, StorageUtils>();
             services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
@@ -57,8 +54,7 @@ namespace LagoVista.CloudStorage
             services.AddSingleton<IDocumentStorageProviderSettings, DocumentStorageProviderSettings>();
             services.AddSingleton<ICosmosConnectionSettings, CosmosConnectionSettings>();
             services.AddSingleton<ICosmosClientProvider>(CosmosClientProvider.Shared);
-            services.AddMongoDocumentStorageConnection();
-
+            
             services.AddTransient<IPlatformSmokeTest, MongoDocumentStorageSmokeTest>();
             services.AddTransient<IPlatformSmokeTest, CosmosDocumentStorageSmokeTest>();
             services.AddTransient<IPlatformSmokeTest, RedisPlatformSmokeTest>();
