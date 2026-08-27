@@ -99,6 +99,57 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
             Assert.IsNull(await store.GetAsync(organizationId, record.Id));
         }
 
+        [TestMethod]
+        public async Task ScalarTypesAsync_RoundTripEverySupportedCassandraPropertyType()
+        {
+            var settings = new TestCassandraStorageSettings();
+            using var factory = new CassandraSessionFactory(settings);
+            using var services = CreateServices<ScalarOperationalRecord>(factory);
+            var store = services.GetRequiredService<IOperationalDataStore<ScalarOperationalRecord>>();
+            var organizationId = Guid.NewGuid().ToString("N").ToUpperInvariant();
+            var guidValue = Guid.NewGuid();
+            var dateTimeValue = new DateTime(2026, 8, 27, 15, 16, 17, 123, DateTimeKind.Utc);
+            var dateTimeOffsetValue = new DateTimeOffset(2026, 8, 27, 11, 12, 13, 456, TimeSpan.Zero);
+            var bytes = new byte[] { 0, 1, 2, 127, 128, 254, 255 };
+            var record = new ScalarOperationalRecord
+            {
+                Id = "SCALAR",
+                OrganizationId = organizationId,
+                CreationDate = new DateTime(2026, 8, 27, 10, 0, 0, DateTimeKind.Utc),
+                Value = "text-value",
+                DateTimeValue = dateTimeValue,
+                DateTimeOffsetValue = dateTimeOffsetValue,
+                GuidValue = guidValue,
+                BoolValue = true,
+                IntValue = 123456,
+                LongValue = 9876543210L,
+                ShortValue = 12345,
+                FloatValue = 12.5f,
+                DoubleValue = 98.125d,
+                DecimalValue = 123456.789m,
+                BytesValue = bytes,
+                NullableIntValue = null
+            };
+
+            await store.UpsertAsync(record);
+            var loaded = await store.GetAsync(organizationId, record.Id);
+
+            Assert.IsNotNull(loaded);
+            Assert.AreEqual(record.Value, loaded.Value);
+            Assert.AreEqual(dateTimeValue, loaded.DateTimeValue);
+            Assert.AreEqual(dateTimeOffsetValue, loaded.DateTimeOffsetValue);
+            Assert.AreEqual(guidValue, loaded.GuidValue);
+            Assert.AreEqual(true, loaded.BoolValue);
+            Assert.AreEqual(123456, loaded.IntValue);
+            Assert.AreEqual(9876543210L, loaded.LongValue);
+            Assert.AreEqual((short)12345, loaded.ShortValue);
+            Assert.AreEqual(12.5f, loaded.FloatValue);
+            Assert.AreEqual(98.125d, loaded.DoubleValue);
+            Assert.AreEqual(123456.789m, loaded.DecimalValue);
+            CollectionAssert.AreEqual(bytes, loaded.BytesValue);
+            Assert.IsNull(loaded.NullableIntValue);
+        }
+
         private static ServiceProvider CreateServices<TRecord>(ICassandraSessionFactory factory, Action<StorageDefinition<TRecord>> configure = null) where TRecord : class, IOperationalDataRecord, new()
         {
             var services = new ServiceCollection();
@@ -142,6 +193,22 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
         public sealed class IndexedOperationalRecord : TestOperationalRecordBase
         {
             public string Status { get; set; }
+        }
+
+        public sealed class ScalarOperationalRecord : TestOperationalRecordBase
+        {
+            public DateTime DateTimeValue { get; set; }
+            public DateTimeOffset DateTimeOffsetValue { get; set; }
+            public Guid GuidValue { get; set; }
+            public bool BoolValue { get; set; }
+            public int IntValue { get; set; }
+            public long LongValue { get; set; }
+            public short ShortValue { get; set; }
+            public float FloatValue { get; set; }
+            public double DoubleValue { get; set; }
+            public decimal DecimalValue { get; set; }
+            public byte[] BytesValue { get; set; }
+            public int? NullableIntValue { get; set; }
         }
     }
 }
