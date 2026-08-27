@@ -1,10 +1,6 @@
-﻿using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
