@@ -32,7 +32,7 @@ namespace LagoVista.CloudStorage.StorageProviders
             try
             {
                 using var stream = new MemoryStream(Encoding.UTF8.GetBytes(document.ToString(Formatting.None)));
-                using var response = await container.UpsertItemStreamAsync(stream, PartitionKey.None, options, cancellationToken).ConfigureAwait(false);
+                using var response = await container.UpsertItemStreamAsync(stream, new PartitionKey(entityType), options, cancellationToken).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Document upsert failed with status code {(int)response.StatusCode}.");
                 return new SyncUpsertResult { Id = id, ETag = response.Headers.ETag, StatusCode = (int)response.StatusCode, RequestCharge = response.Headers.RequestCharge };
             }
