@@ -18,6 +18,8 @@ namespace LagoVista.CloudStorage.Interfaces
 
         Task<InvokeResult<byte[]>> GetFileAsync(string containerName, string fileName);
 
+        Task<InvokeResult<Uri>> CreateReadUrlAsync(string containerName, string fileName, TimeSpan validFor);
+
         Task<InvokeResult> DeleteFileAsync(string fileName);
 
         Task<InvokeResult> DeleteFileAsync(string containerName, string fileName);
