@@ -1,9 +1,5 @@
-﻿using LagoVista.CloudStorage.Interfaces;
-using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LagoVista.CloudStorage.Repositories
 {
@@ -11,10 +7,11 @@ namespace LagoVista.CloudStorage.Repositories
     {
         public static void ConfigureServices(IServiceCollection services)
         {
-            services.AddTransient<ISyncRepository, SyncRepository>();
-            services.AddTransient<IEntityDetailResponseFactory, EntityDetailResponseFactory>();
-            services.AddTransient<IEntityPreparationCandidateRepository, EntityPreparationCandidateRepository>();
-            services.AddTransient<IEntityUtilsRepository, EntityUtilsRepository>();
+            services.AddScoped<ISyncRepository, SyncRepository>();
+            services.AddScoped<IEntityDetailResponseFactory, EntityDetailResponseFactory>();
+            services.AddScoped<IEntityPreparationCandidateRepository, EntityPreparationCandidateRepository>();
+            services.AddScoped<IEntityUtilsRepository, EntityUtilsRepository>();
+            services.AddScoped<IEntityListItemRepoFactory, EntityListItemRepoFactory>();
         }
     }
 }
