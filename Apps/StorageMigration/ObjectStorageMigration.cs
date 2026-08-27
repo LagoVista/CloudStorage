@@ -52,8 +52,13 @@ public sealed class AzureBlobToS3Migration
     public async Task<MigrationRunState> ExecuteAsync(
         int? maxObjects = null,
         Action<ObjectMigrationProgress>? progress = null,
+        int batchSize = 10,
+        int parallelism = 8,
         CancellationToken cancellationToken = default)
     {
+        if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize));
+        if (parallelism <= 0) throw new ArgumentOutOfRangeException(nameof(parallelism));
+
         var state = await _stateStore.GetAsync(MigrationKey, cancellationToken).ConfigureAwait(false)
             ?? NewState();
 
@@ -85,6 +90,7 @@ public sealed class AzureBlobToS3Migration
             var container = _source.GetBlobContainerClient(containerName);
             var resumingCurrentContainer = String.Equals(containerName, state.CurrentTable, StringComparison.Ordinal);
             var sawBlob = false;
+            var batch = new List<ObjectCopyItem>(batchSize);
 
             await foreach (var blob in container.GetBlobsAsync(cancellationToken: cancellationToken))
             {
@@ -94,65 +100,46 @@ public sealed class AzureBlobToS3Migration
                     StringComparer.Ordinal.Compare(blob.Name, state.HeadRowKey) <= 0)
                     continue;
 
+                if (maxObjects.HasValue && copiedThisRun + batch.Count >= maxObjects.Value)
+                    break;
+
+                batch.Add(new ObjectCopyItem(
+                    blob.Name,
+                    blob.Properties.ContentLength ?? 0,
+                    blob.Properties.ContentType,
+                    blob.Properties.CacheControl));
+
+                if (batch.Count < batchSize)
+                    continue;
+
+                var result = await CopyBatchAsync(container, containerName, batch, parallelism, cancellationToken).ConfigureAwait(false);
+                CommitBatch(state, containerName, result, ref copiedThisRun, ref bytesCopiedThisRun);
+                await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
+                ReportProgress(progress, copiedThisRun, bytesCopiedThisRun, state, stopwatch.Elapsed);
+                batch.Clear();
+
                 if (maxObjects.HasValue && copiedThisRun >= maxObjects.Value)
                 {
                     state.State = "Paused";
                     await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
-                    ReportProgress(progress, copiedThisRun, bytesCopiedThisRun, state, stopwatch.Elapsed);
                     return state;
                 }
+            }
 
-                var contentLength = blob.Properties.ContentLength ?? 0;
-                state.RecordsRead++;
-                state.BytesRead += contentLength;
+            if (batch.Count > 0)
+            {
+                var result = await CopyBatchAsync(container, containerName, batch, parallelism, cancellationToken).ConfigureAwait(false);
+                CommitBatch(state, containerName, result, ref copiedThisRun, ref bytesCopiedThisRun);
+                await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
+                ReportProgress(progress, copiedThisRun, bytesCopiedThisRun, state, stopwatch.Elapsed);
+                batch.Clear();
+            }
 
-                try
-                {
-                    var sourceBlob = container.GetBlobClient(blob.Name);
-                    var download = await sourceBlob.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                    await using var stream = download.Value.Content;
-
-                    var put = new PutObjectArgs()
-                        .WithBucket(containerName)
-                        .WithObject(blob.Name)
-                        .WithStreamData(stream)
-                        .WithObjectSize(contentLength)
-                        .WithContentType(String.IsNullOrWhiteSpace(blob.Properties.ContentType)
-                            ? "application/octet-stream"
-                            : blob.Properties.ContentType);
-
-                    if (!String.IsNullOrWhiteSpace(blob.Properties.CacheControl))
-                    {
-                        put = put.WithHeaders(new Dictionary<string, string>
-                        {
-                            ["Cache-Control"] = blob.Properties.CacheControl
-                        });
-                    }
-
-                    await _target.PutObjectAsync(put, cancellationToken).ConfigureAwait(false);
-
-                    state.RecordsWritten++;
-                    state.BytesWritten += contentLength;
-                    state.CurrentTable = containerName;
-                    state.HeadPartitionKey = containerName;
-                    state.HeadRowKey = blob.Name;
-                    state.LastUpdatedDate = DateTime.UtcNow;
-                    copiedThisRun++;
-                    bytesCopiedThisRun += contentLength;
-
-                    await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
-
-                    if (copiedThisRun % 10 == 0)
-                        ReportProgress(progress, copiedThisRun, bytesCopiedThisRun, state, stopwatch.Elapsed);
-                }
-                catch
-                {
-                    state.RecordsFailed++;
-                    state.State = "Failed";
-                    state.LastUpdatedDate = DateTime.UtcNow;
-                    await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
-                    throw;
-                }
+            if (maxObjects.HasValue && copiedThisRun >= maxObjects.Value)
+            {
+                state.State = "Paused";
+                await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
+                return state;
             }
 
             if (!sawBlob)
@@ -170,6 +157,110 @@ public sealed class AzureBlobToS3Migration
         await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
         ReportProgress(progress, copiedThisRun, bytesCopiedThisRun, state, stopwatch.Elapsed);
         return state;
+    }
+
+    private async Task<ObjectCopyBatchResult> CopyBatchAsync(
+        BlobContainerClient container,
+        string containerName,
+        IReadOnlyList<ObjectCopyItem> batch,
+        int parallelism,
+        CancellationToken cancellationToken)
+    {
+        using var gate = new SemaphoreSlim(parallelism, parallelism);
+
+        var tasks = batch.Select(async item =>
+        {
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await CopyObjectAsync(container, containerName, item, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }).ToArray();
+
+        var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+        var failed = results.Where(result => result.Error != null).ToArray();
+        if (failed.Length > 0)
+        {
+            var state = await _stateStore.GetAsync(MigrationKey, cancellationToken).ConfigureAwait(false) ?? NewState();
+            state.RecordsFailed += failed.Length;
+            state.State = "Failed";
+            state.LastUpdatedDate = DateTime.UtcNow;
+            await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
+
+            var first = failed[0];
+            throw new InvalidOperationException(
+                $"Object batch failed for '{containerName}/{first.Item.Name}'. The batch checkpoint was not advanced and will be replayed safely.",
+                first.Error);
+        }
+
+        return new ObjectCopyBatchResult(
+            results.Select(result => result.Item).ToArray(),
+            results.Sum(result => result.Item.ContentLength));
+    }
+
+    private async Task<ObjectCopyResult> CopyObjectAsync(
+        BlobContainerClient container,
+        string containerName,
+        ObjectCopyItem item,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var sourceBlob = container.GetBlobClient(item.Name);
+            var download = await sourceBlob.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            await using var stream = download.Value.Content;
+
+            var put = new PutObjectArgs()
+                .WithBucket(containerName)
+                .WithObject(item.Name)
+                .WithStreamData(stream)
+                .WithObjectSize(item.ContentLength)
+                .WithContentType(String.IsNullOrWhiteSpace(item.ContentType)
+                    ? "application/octet-stream"
+                    : item.ContentType);
+
+            if (!String.IsNullOrWhiteSpace(item.CacheControl))
+            {
+                put = put.WithHeaders(new Dictionary<string, string>
+                {
+                    ["Cache-Control"] = item.CacheControl
+                });
+            }
+
+            await _target.PutObjectAsync(put, cancellationToken).ConfigureAwait(false);
+            return new ObjectCopyResult(item, null);
+        }
+        catch (Exception ex)
+        {
+            return new ObjectCopyResult(item, ex);
+        }
+    }
+
+    private static void CommitBatch(
+        MigrationRunState state,
+        string containerName,
+        ObjectCopyBatchResult result,
+        ref int copiedThisRun,
+        ref long bytesCopiedThisRun)
+    {
+        var count = result.Items.Count;
+        var last = result.Items[^1];
+
+        state.RecordsRead += count;
+        state.RecordsWritten += count;
+        state.BytesRead += result.Bytes;
+        state.BytesWritten += result.Bytes;
+        state.CurrentTable = containerName;
+        state.HeadPartitionKey = containerName;
+        state.HeadRowKey = last.Name;
+        state.LastUpdatedDate = DateTime.UtcNow;
+
+        copiedThisRun += count;
+        bytesCopiedThisRun += result.Bytes;
     }
 
     private static void ReportProgress(
@@ -227,4 +318,8 @@ public sealed class AzureBlobToS3Migration
         CreationDate = DateTime.UtcNow,
         LastUpdatedDate = DateTime.UtcNow
     };
+
+    private sealed record ObjectCopyItem(string Name, long ContentLength, string? ContentType, string? CacheControl);
+    private sealed record ObjectCopyResult(ObjectCopyItem Item, Exception? Error);
+    private sealed record ObjectCopyBatchResult(IReadOnlyList<ObjectCopyItem> Items, long Bytes);
 }
