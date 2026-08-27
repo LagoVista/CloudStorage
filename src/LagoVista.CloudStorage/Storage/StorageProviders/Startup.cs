@@ -1,4 +1,4 @@
-﻿using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.StorageProviders;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -6,14 +6,18 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
 {
     public static class Startup
     {
-         public static void ConfigureServices(IServiceCollection services)
+        public static void ConfigureServices(IServiceCollection services)
         {
+            AzureTable.Startup.ConfigureServices(services);
+            Cassandra.Startup.ConfigureServices(services);
             Mongo.Startup.ConfigureServices(services);
             CosmosDB.Startup.ConfigureServices(services);
             Cache.Startup.ConfigureServices(services);
 
-            
-            services.AddTransient<IDocumentStorageClientProvider, DocumentStorageClientProvider>();
+            services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
+            services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
+            services.AddScoped<IDocumentCollectionNameResolver, DocumentCollectionNameResolver>();
+            services.AddScoped<IDocumentStorageClientProvider, DocumentStorageClientProvider>();
         }
     }
 }
