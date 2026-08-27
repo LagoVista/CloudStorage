@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "s3-cloud-file-storage-integration",
   "title": "S3CloudFileStorageClient Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "file-storage",
   "summary": "Exercise the provider-neutral cloud file storage contract against a real S3-compatible MinIO endpoint, including automatic bucket provisioning, round-trip writes, updates, deletes, bound-container overloads, object-key normalization, and safe rejection of unsupported create-only writes.",
@@ -22,8 +22,7 @@
     "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-s3-cloud-file-storage-tests.ps1",
     "environment": { "type": "docker", "provider": "minio" },
     "coverageLayers": {
-      "completed": [],
-      "next": [
+      "completed": [
         "bucket-auto-provisioning",
         "binary-round-trip",
         "string-update-round-trip",
@@ -32,7 +31,8 @@
         "delete-semantics",
         "reject-updates-preserves-existing-content",
         "missing-bound-container-validation"
-      ]
+      ],
+      "next": []
     }
   }
 }
