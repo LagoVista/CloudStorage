@@ -1,91 +1,121 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TestRun id="7e7234ce-7cf1-4edd-870e-cbb591ccb1d0" name="kevin@BEAST-LAPTOP 2026-08-27 14:25:51" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
-  <Times creation="2026-08-27T14:25:51.9283891-04:00" queuing="2026-08-27T14:25:51.9283898-04:00" start="2026-08-27T14:25:50.3063151-04:00" finish="2026-08-27T14:25:51.9331395-04:00" />
-  <TestSettings name="default" id="2b91e6c2-21e3-47a6-b2c6-c507990fd93b">
-    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-27_14_25_51" />
+<TestRun id="9827c203-3135-47eb-a046-b00995f54c9b" name="kevin@BEAST-LAPTOP 2026-08-27 15:26:58" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-27T15:26:58.7583502-04:00" queuing="2026-08-27T15:26:58.7583508-04:00" start="2026-08-27T15:26:56.5957125-04:00" finish="2026-08-27T15:26:59.8852165-04:00" />
+  <TestSettings name="default" id="bede6c22-1373-4185-af95-5d50c136aeb7">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-27_15_26_58" />
   </TestSettings>
   <Results>
-    <UnitTestResult executionId="9f633fb4-62f4-407d-9725-67a40a3cb349" testId="70fd3ec0-dc75-0493-c353-90ba3eeb7d6a" testName="KnownEntityUtilityQueries_AllMongoBranchesExecuteWithValidSyntax" computerName="BEAST-LAPTOP" duration="00:00:00.0743061" startTime="2026-08-27T14:25:51.6449311-04:00" endTime="2026-08-27T14:25:51.7193504-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9f633fb4-62f4-407d-9725-67a40a3cb349" />
-    <UnitTestResult executionId="3c79baa9-d7e4-4802-b67b-a7b8cf773efc" testId="3f0446a1-7c8a-514d-636a-e1d248d988e5" testName="GenericSort_ExercisesNonStringAscendingAndDescendingSorts" computerName="BEAST-LAPTOP" duration="00:00:00.0310220" startTime="2026-08-27T14:25:51.5398833-04:00" endTime="2026-08-27T14:25:51.5710541-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3c79baa9-d7e4-4802-b67b-a7b8cf773efc" />
-    <UnitTestResult executionId="d028cafb-564d-4c4a-a52f-00846fcdacd1" testId="eb431e20-df67-e83e-7466-c06974bba438" testName="PagedQuery_ExercisesVisibilityFiltersAndPagingOverload" computerName="BEAST-LAPTOP" duration="00:00:00.1247198" startTime="2026-08-27T14:25:51.4143542-04:00" endTime="2026-08-27T14:25:51.5394604-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d028cafb-564d-4c4a-a52f-00846fcdacd1" />
-    <UnitTestResult executionId="99e0e0cf-39cc-4a6c-ad91-218a11bde79b" testId="ff2ea01c-5609-a699-1446-69b0562861f1" testName="RuntimePatch_ExercisesSetAddRemoveConcurrencyAndMissingPaths" computerName="BEAST-LAPTOP" duration="00:00:00.4852674" startTime="2026-08-27T14:25:50.9058797-04:00" endTime="2026-08-27T14:25:51.4110678-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="99e0e0cf-39cc-4a6c-ad91-218a11bde79b" />
-    <UnitTestResult executionId="fe77186b-bbaf-4df5-b05f-5efbfa79d27d" testId="56d3115b-baa9-4bc8-7147-cf32c9969c08" testName="KnownPreparationAndEntityListQueries_AllMongoPipelinesExecuteWithValidSyntax" computerName="BEAST-LAPTOP" duration="00:00:00.0204693" startTime="2026-08-27T14:25:51.7194209-04:00" endTime="2026-08-27T14:25:51.7418983-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fe77186b-bbaf-4df5-b05f-5efbfa79d27d" />
-    <UnitTestResult executionId="e9a60323-9aac-45c8-ad20-0e6f22bdde2a" testId="20c4fb5f-ebdd-9f7d-53b3-78331727aa0e" testName="TypedProjectionLookups_ExerciseIdKeyOwnedAndNotFoundPaths" computerName="BEAST-LAPTOP" duration="00:00:00.0437926" startTime="2026-08-27T14:25:51.5711415-04:00" endTime="2026-08-27T14:25:51.6150487-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e9a60323-9aac-45c8-ad20-0e6f22bdde2a" />
-    <UnitTestResult executionId="3e6bf5a7-61d3-4eb8-95af-c182c4f59d4e" testId="dcff0eba-d991-3101-1d94-c76273b180d3" testName="JObjectSyncUpsert_ExercisesInsertUpdateAndStaleConcurrency" computerName="BEAST-LAPTOP" duration="00:00:00.0296292" startTime="2026-08-27T14:25:51.6151207-04:00" endTime="2026-08-27T14:25:51.6448690-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3e6bf5a7-61d3-4eb8-95af-c182c4f59d4e" />
+    <UnitTestResult executionId="577f5346-b327-4e15-9e13-952f296ac053" testId="3f0446a1-7c8a-514d-636a-e1d248d988e5" testName="GenericSort_ExercisesNonStringAscendingAndDescendingSorts" computerName="BEAST-LAPTOP" duration="00:00:00.0648694" startTime="2026-08-27T15:26:59.2988382-04:00" endTime="2026-08-27T15:26:59.3639903-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="577f5346-b327-4e15-9e13-952f296ac053" />
+    <UnitTestResult executionId="4c076f8d-be2e-4c72-8ab5-70a3cbe24d96" testId="880be004-b1af-aae8-3290-379f7c2b4101" testName="FallbackJObjectProjection_ReadsTypedDocumentWithoutEntityType" computerName="BEAST-LAPTOP" duration="00:00:00.0895566" startTime="2026-08-27T15:26:58.9305666-04:00" endTime="2026-08-27T15:26:59.0217970-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4c076f8d-be2e-4c72-8ab5-70a3cbe24d96" />
+    <UnitTestResult executionId="e5480916-e01e-48a3-9359-76a82a87085a" testId="56d3115b-baa9-4bc8-7147-cf32c9969c08" testName="KnownPreparationAndEntityListQueries_AllMongoPipelinesExecuteWithValidSyntax" computerName="BEAST-LAPTOP" duration="00:00:00.0335075" startTime="2026-08-27T15:26:59.6638576-04:00" endTime="2026-08-27T15:26:59.6985247-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e5480916-e01e-48a3-9359-76a82a87085a" />
+    <UnitTestResult executionId="055c8cd3-e45e-4370-8d2e-1f63977522fa" testId="dcff0eba-d991-3101-1d94-c76273b180d3" testName="JObjectSyncUpsert_ExercisesInsertUpdateAndStaleConcurrency" computerName="BEAST-LAPTOP" duration="00:00:00.0619148" startTime="2026-08-27T15:26:59.4933680-04:00" endTime="2026-08-27T15:26:59.5556343-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="055c8cd3-e45e-4370-8d2e-1f63977522fa" />
+    <UnitTestResult executionId="e6772210-1ad8-4250-874f-14385178300d" testId="ff2ea01c-5609-a699-1446-69b0562861f1" testName="RuntimePatch_ExercisesSetAddRemoveConcurrencyAndMissingPaths" computerName="BEAST-LAPTOP" duration="00:00:00.1783806" startTime="2026-08-27T15:26:59.0220698-04:00" endTime="2026-08-27T15:26:59.2014346-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e6772210-1ad8-4250-874f-14385178300d" />
+    <UnitTestResult executionId="b32de8c4-d433-4bd9-a237-5b897a55097c" testId="70fd3ec0-dc75-0493-c353-90ba3eeb7d6a" testName="KnownEntityUtilityQueries_AllMongoBranchesExecuteWithValidSyntax" computerName="BEAST-LAPTOP" duration="00:00:00.1075485" startTime="2026-08-27T15:26:59.5559294-04:00" endTime="2026-08-27T15:26:59.6637755-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b32de8c4-d433-4bd9-a237-5b897a55097c" />
+    <UnitTestResult executionId="ebed81f3-a7ac-4d42-b077-b0584dc66ec5" testId="9a9fbd89-07fb-5700-46ab-6caea2f7e54f" testName="KnownQueries_TypedResultsDeserializeFromBson" computerName="BEAST-LAPTOP" duration="00:00:00.3664327" startTime="2026-08-27T15:26:58.5618841-04:00" endTime="2026-08-27T15:26:58.9295954-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ebed81f3-a7ac-4d42-b077-b0584dc66ec5" />
+    <UnitTestResult executionId="a3a3b320-ee2a-4984-9e50-9c313dc8af56" testId="6af9977b-de7c-02ba-49ea-ea7967107551" testName="GenericDeleteOverload_DeletesDocument" computerName="BEAST-LAPTOP" duration="00:00:01.1907672" startTime="2026-08-27T15:26:57.3373810-04:00" endTime="2026-08-27T15:26:58.5548183-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a3a3b320-ee2a-4984-9e50-9c313dc8af56" />
+    <UnitTestResult executionId="61c20d38-3475-4e2d-ad53-3e87cf3fbfca" testId="20c4fb5f-ebdd-9f7d-53b3-78331727aa0e" testName="TypedProjectionLookups_ExerciseIdKeyOwnedAndNotFoundPaths" computerName="BEAST-LAPTOP" duration="00:00:00.1287663" startTime="2026-08-27T15:26:59.3641243-04:00" endTime="2026-08-27T15:26:59.4931825-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="61c20d38-3475-4e2d-ad53-3e87cf3fbfca" />
+    <UnitTestResult executionId="b7ed3a85-90cf-4c93-9169-ea86b707d5bd" testId="eb431e20-df67-e83e-7466-c06974bba438" testName="PagedQuery_ExercisesVisibilityFiltersAndPagingOverload" computerName="BEAST-LAPTOP" duration="00:00:00.0967804" startTime="2026-08-27T15:26:59.2016213-04:00" endTime="2026-08-27T15:26:59.2986858-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b7ed3a85-90cf-4c93-9169-ea86b707d5bd" />
   </Results>
   <TestDefinitions>
     <UnitTest name="JObjectSyncUpsert_ExercisesInsertUpdateAndStaleConcurrency" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="dcff0eba-d991-3101-1d94-c76273b180d3">
       <TestCategory>
-        <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
       </TestCategory>
-      <Execution id="3e6bf5a7-61d3-4eb8-95af-c182c4f59d4e" />
+      <Execution id="055c8cd3-e45e-4370-8d2e-1f63977522fa" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientDepthIntegrationTests" name="JObjectSyncUpsert_ExercisesInsertUpdateAndStaleConcurrency" />
     </UnitTest>
     <UnitTest name="KnownPreparationAndEntityListQueries_AllMongoPipelinesExecuteWithValidSyntax" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="56d3115b-baa9-4bc8-7147-cf32c9969c08">
       <TestCategory>
-        <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
       </TestCategory>
-      <Execution id="fe77186b-bbaf-4df5-b05f-5efbfa79d27d" />
+      <Execution id="e5480916-e01e-48a3-9359-76a82a87085a" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientDepthIntegrationTests" name="KnownPreparationAndEntityListQueries_AllMongoPipelinesExecuteWithValidSyntax" />
+    </UnitTest>
+    <UnitTest name="FallbackJObjectProjection_ReadsTypedDocumentWithoutEntityType" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="880be004-b1af-aae8-3290-379f7c2b4101">
+      <TestCategory>
+        <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="4c076f8d-be2e-4c72-8ab5-70a3cbe24d96" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientCoverageCleanupIntegrationTests" name="FallbackJObjectProjection_ReadsTypedDocumentWithoutEntityType" />
+    </UnitTest>
+    <UnitTest name="GenericDeleteOverload_DeletesDocument" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="6af9977b-de7c-02ba-49ea-ea7967107551">
+      <TestCategory>
+        <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="a3a3b320-ee2a-4984-9e50-9c313dc8af56" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientCoverageCleanupIntegrationTests" name="GenericDeleteOverload_DeletesDocument" />
+    </UnitTest>
+    <UnitTest name="KnownQueries_TypedResultsDeserializeFromBson" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="9a9fbd89-07fb-5700-46ab-6caea2f7e54f">
+      <TestCategory>
+        <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="ebed81f3-a7ac-4d42-b077-b0584dc66ec5" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientCoverageCleanupIntegrationTests" name="KnownQueries_TypedResultsDeserializeFromBson" />
     </UnitTest>
     <UnitTest name="GenericSort_ExercisesNonStringAscendingAndDescendingSorts" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="3f0446a1-7c8a-514d-636a-e1d248d988e5">
       <TestCategory>
-        <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
       </TestCategory>
-      <Execution id="3c79baa9-d7e4-4802-b67b-a7b8cf773efc" />
+      <Execution id="577f5346-b327-4e15-9e13-952f296ac053" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientDepthIntegrationTests" name="GenericSort_ExercisesNonStringAscendingAndDescendingSorts" />
     </UnitTest>
     <UnitTest name="TypedProjectionLookups_ExerciseIdKeyOwnedAndNotFoundPaths" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="20c4fb5f-ebdd-9f7d-53b3-78331727aa0e">
       <TestCategory>
-        <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
       </TestCategory>
-      <Execution id="e9a60323-9aac-45c8-ad20-0e6f22bdde2a" />
+      <Execution id="61c20d38-3475-4e2d-ad53-3e87cf3fbfca" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientDepthIntegrationTests" name="TypedProjectionLookups_ExerciseIdKeyOwnedAndNotFoundPaths" />
     </UnitTest>
     <UnitTest name="KnownEntityUtilityQueries_AllMongoBranchesExecuteWithValidSyntax" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="70fd3ec0-dc75-0493-c353-90ba3eeb7d6a">
       <TestCategory>
-        <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
       </TestCategory>
-      <Execution id="9f633fb4-62f4-407d-9725-67a40a3cb349" />
+      <Execution id="b32de8c4-d433-4bd9-a237-5b897a55097c" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientDepthIntegrationTests" name="KnownEntityUtilityQueries_AllMongoBranchesExecuteWithValidSyntax" />
     </UnitTest>
     <UnitTest name="PagedQuery_ExercisesVisibilityFiltersAndPagingOverload" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="eb431e20-df67-e83e-7466-c06974bba438">
       <TestCategory>
-        <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
       </TestCategory>
-      <Execution id="d028cafb-564d-4c4a-a52f-00846fcdacd1" />
+      <Execution id="b7ed3a85-90cf-4c93-9169-ea86b707d5bd" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientDepthIntegrationTests" name="PagedQuery_ExercisesVisibilityFiltersAndPagingOverload" />
     </UnitTest>
     <UnitTest name="RuntimePatch_ExercisesSetAddRemoveConcurrencyAndMissingPaths" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="ff2ea01c-5609-a699-1446-69b0562861f1">
       <TestCategory>
-        <TestCategoryItem TestCategory="Mongo" />
         <TestCategoryItem TestCategory="MongoDocumentStorageDepth" />
+        <TestCategoryItem TestCategory="Mongo" />
       </TestCategory>
-      <Execution id="99e0e0cf-39cc-4a6c-ad91-218a11bde79b" />
+      <Execution id="e6772210-1ad8-4250-874f-14385178300d" />
       <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientDepthIntegrationTests" name="RuntimePatch_ExercisesSetAddRemoveConcurrencyAndMissingPaths" />
     </UnitTest>
   </TestDefinitions>
   <TestEntries>
-    <TestEntry testId="70fd3ec0-dc75-0493-c353-90ba3eeb7d6a" executionId="9f633fb4-62f4-407d-9725-67a40a3cb349" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="3f0446a1-7c8a-514d-636a-e1d248d988e5" executionId="3c79baa9-d7e4-4802-b67b-a7b8cf773efc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="eb431e20-df67-e83e-7466-c06974bba438" executionId="d028cafb-564d-4c4a-a52f-00846fcdacd1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="ff2ea01c-5609-a699-1446-69b0562861f1" executionId="99e0e0cf-39cc-4a6c-ad91-218a11bde79b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="56d3115b-baa9-4bc8-7147-cf32c9969c08" executionId="fe77186b-bbaf-4df5-b05f-5efbfa79d27d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="20c4fb5f-ebdd-9f7d-53b3-78331727aa0e" executionId="e9a60323-9aac-45c8-ad20-0e6f22bdde2a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
-    <TestEntry testId="dcff0eba-d991-3101-1d94-c76273b180d3" executionId="3e6bf5a7-61d3-4eb8-95af-c182c4f59d4e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3f0446a1-7c8a-514d-636a-e1d248d988e5" executionId="577f5346-b327-4e15-9e13-952f296ac053" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="880be004-b1af-aae8-3290-379f7c2b4101" executionId="4c076f8d-be2e-4c72-8ab5-70a3cbe24d96" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="56d3115b-baa9-4bc8-7147-cf32c9969c08" executionId="e5480916-e01e-48a3-9359-76a82a87085a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="dcff0eba-d991-3101-1d94-c76273b180d3" executionId="055c8cd3-e45e-4370-8d2e-1f63977522fa" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ff2ea01c-5609-a699-1446-69b0562861f1" executionId="e6772210-1ad8-4250-874f-14385178300d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="70fd3ec0-dc75-0493-c353-90ba3eeb7d6a" executionId="b32de8c4-d433-4bd9-a237-5b897a55097c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9a9fbd89-07fb-5700-46ab-6caea2f7e54f" executionId="ebed81f3-a7ac-4d42-b077-b0584dc66ec5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6af9977b-de7c-02ba-49ea-ea7967107551" executionId="a3a3b320-ee2a-4984-9e50-9c313dc8af56" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="20c4fb5f-ebdd-9f7d-53b3-78331727aa0e" executionId="61c20d38-3475-4e2d-ad53-3e87cf3fbfca" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="eb431e20-df67-e83e-7466-c06974bba438" executionId="b7ed3a85-90cf-4c93-9169-ea86b707d5bd" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
   </TestEntries>
   <TestLists>
     <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
     <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
   </TestLists>
   <ResultSummary outcome="Completed">
-    <Counters total="7" executed="7" passed="7" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Counters total="10" executed="10" passed="10" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
     <Output>
       <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
 Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
