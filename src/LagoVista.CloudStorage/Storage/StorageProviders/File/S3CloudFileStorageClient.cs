@@ -24,10 +24,12 @@ namespace LagoVista.CloudStorage.Storage
     public class S3CloudFileStorageClient : ICloudFileStorageClient
     {
         private const int NumberRetries = 5;
+        private const int MaxPresignedUrlLifetimeSeconds = 7 * 24 * 60 * 60;
 
         private readonly IAdminLogger _logger;
         private readonly IS3ObjectStorageConnectionSettings _settings;
         private readonly IMinioClient _client;
+        private readonly IMinioClient _readUrlClient;
         private readonly string _containerName;
 
         public S3CloudFileStorageClient(IS3ObjectStorageConnectionSettings settings, IAdminLogger adminLogger)
@@ -41,15 +43,8 @@ namespace LagoVista.CloudStorage.Storage
             _logger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
             _containerName = String.IsNullOrWhiteSpace(containerName) ? null : containerName.Trim();
 
-            var builder = new MinioClient()
-                .WithEndpoint(_settings.Host, _settings.Port)
-                .WithCredentials(_settings.AccessKey, _settings.SecretKey)
-                .WithSSL(_settings.UseTls);
-
-            if (!String.IsNullOrWhiteSpace(_settings.Region))
-                builder = builder.WithRegion(_settings.Region);
-
-            _client = builder.Build();
+            _client = BuildClient(_settings.Host, _settings.Port, _settings.UseTls);
+            _readUrlClient = BuildClient(_settings.PublicHost, _settings.PublicPort, _settings.PublicUseTls);
         }
 
         public Task<InvokeResult<Uri>> AddFileAsync(string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null)
@@ -193,6 +188,43 @@ namespace LagoVista.CloudStorage.Storage
             return InvokeResult<byte[]>.FromError("Could not retrieve file");
         }
 
+        public async Task<InvokeResult<Uri>> CreateReadUrlAsync(string containerName, string fileName, TimeSpan validFor)
+        {
+            ValidateFileArguments(containerName, fileName);
+            fileName = NormalizeObjectName(fileName);
+
+            if (validFor <= TimeSpan.Zero)
+                return InvokeResult<Uri>.FromError("Signed read URL lifetime must be greater than zero.");
+
+            var expirySeconds = (long)Math.Ceiling(validFor.TotalSeconds);
+            if (expirySeconds > MaxPresignedUrlLifetimeSeconds)
+                return InvokeResult<Uri>.FromError("S3 signed read URLs cannot be valid for more than seven days.");
+
+            try
+            {
+                await _client.StatObjectAsync(new StatObjectArgs()
+                    .WithBucket(containerName)
+                    .WithObject(fileName));
+
+                var signedUrl = await _readUrlClient.PresignedGetObjectAsync(new PresignedGetObjectArgs()
+                    .WithBucket(containerName)
+                    .WithObject(fileName)
+                    .WithExpiry((int)expirySeconds));
+
+                if (!Uri.TryCreate(signedUrl, UriKind.Absolute, out var uri))
+                    return InvokeResult<Uri>.FromError("S3 client returned an invalid signed read URL.");
+
+                return InvokeResult<Uri>.Create(uri);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex,
+                    containerName.ToKVP("containerName"),
+                    fileName.ToKVP("fileName"));
+                return InvokeResult<Uri>.FromException("[S3CloudFileStorageClient__CreateReadUrlAsync]", ex);
+            }
+        }
+
         public Task<InvokeResult> DeleteFileAsync(string fileName)
         {
             if (String.IsNullOrEmpty(_containerName))
@@ -242,6 +274,19 @@ namespace LagoVista.CloudStorage.Storage
             }
 
             return InvokeResult.FromError("Could not delete file");
+        }
+
+        private IMinioClient BuildClient(string host, int port, bool useTls)
+        {
+            var builder = new MinioClient()
+                .WithEndpoint(host, port)
+                .WithCredentials(_settings.AccessKey, _settings.SecretKey)
+                .WithSSL(useTls);
+
+            if (!String.IsNullOrWhiteSpace(_settings.Region))
+                builder = builder.WithRegion(_settings.Region);
+
+            return builder.Build();
         }
 
         private async Task EnsureBucketExistsAsync(string bucketName)
