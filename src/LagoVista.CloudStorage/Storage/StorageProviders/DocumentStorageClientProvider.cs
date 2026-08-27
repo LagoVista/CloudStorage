@@ -9,10 +9,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
         private readonly ICosmosDocumentStorageClient _cosmosClient;
         private readonly IMongoDocumentStorageClient _mongoClient;
 
-        public DocumentStorageClientProvider(
-            IDocumentStorageProviderSettings settings,
-            ICosmosDocumentStorageClient cosmosClient,
-            IMongoDocumentStorageClient mongoClient)
+        public DocumentStorageClientProvider(IDocumentStorageProviderSettings settings, ICosmosDocumentStorageClient cosmosClient, IMongoDocumentStorageClient mongoClient)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _cosmosClient = cosmosClient ?? throw new ArgumentNullException(nameof(cosmosClient));
