@@ -53,6 +53,8 @@ public sealed class MigrationRunState
     public long RecordsRead { get; set; }
     public long RecordsWritten { get; set; }
     public long RecordsFailed { get; set; }
+    public long BytesRead { get; set; }
+    public long BytesWritten { get; set; }
     public long PriorPassRecordsRead { get; set; }
     public long PriorPassRecordsWritten { get; set; }
     public long PriorPassRecordsFailed { get; set; }
