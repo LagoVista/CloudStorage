@@ -220,29 +220,41 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
             if (expirySeconds > MaxPresignedUrlLifetimeSeconds)
                 return InvokeResult<Uri>.FromError("S3 signed read URLs cannot be valid for more than seven days.");
 
-            try
+            for (var retryCount = 1; retryCount <= NumberRetries; retryCount++)
             {
-                await _client.StatObjectAsync(new StatObjectArgs()
-                    .WithBucket(containerName)
-                    .WithObject(fileName));
+                try
+                {
+                    await _client.StatObjectAsync(new StatObjectArgs()
+                        .WithBucket(containerName)
+                        .WithObject(fileName));
 
-                var signedUrl = await _readUrlClient.PresignedGetObjectAsync(new PresignedGetObjectArgs()
-                    .WithBucket(containerName)
-                    .WithObject(fileName)
-                    .WithExpiry((int)expirySeconds));
+                    var signedUrl = await _readUrlClient.PresignedGetObjectAsync(new PresignedGetObjectArgs()
+                        .WithBucket(containerName)
+                        .WithObject(fileName)
+                        .WithExpiry((int)expirySeconds));
 
-                if (!Uri.TryCreate(signedUrl, UriKind.Absolute, out var uri))
-                    return InvokeResult<Uri>.FromError("S3 client returned an invalid signed read URL.");
+                    if (!Uri.TryCreate(signedUrl, UriKind.Absolute, out var uri))
+                        return InvokeResult<Uri>.FromError("S3 client returned an invalid signed read URL.");
 
-                return InvokeResult<Uri>.Create(uri);
+                    return InvokeResult<Uri>.Create(uri);
+                }
+                catch (Exception ex)
+                {
+                    if (!ShouldRetry(ex) || retryCount == NumberRetries)
+                    {
+                        _logger.AddException(this.Tag(), ex,
+                            containerName.ToKVP("containerName"),
+                            fileName.ToKVP("fileName"));
+                        return InvokeResult<Uri>.FromException("[S3CloudFileStorageClient__CreateReadUrlAsync]", ex);
+                    }
+
+                    var delayMs = GetRetryDelayMilliseconds(retryCount);
+                    LogRetry("retry S3 read URL", ex, containerName, fileName, retryCount, delayMs);
+                    await Task.Delay(delayMs);
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.AddException(this.Tag(), ex,
-                    containerName.ToKVP("containerName"),
-                    fileName.ToKVP("fileName"));
-                return InvokeResult<Uri>.FromException("[S3CloudFileStorageClient__CreateReadUrlAsync]", ex);
-            }
+
+            return InvokeResult<Uri>.FromError("Could not create S3 read URL");
         }
 
         public Task<InvokeResult> DeleteFileAsync(string fileName)
