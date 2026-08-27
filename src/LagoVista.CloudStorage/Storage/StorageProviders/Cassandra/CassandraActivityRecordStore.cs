@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 {
     /// <summary>
     /// Cassandra implementation for immutable activity records. Supports additive table

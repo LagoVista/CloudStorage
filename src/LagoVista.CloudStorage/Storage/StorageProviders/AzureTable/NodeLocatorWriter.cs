@@ -12,7 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.AzureTable
 {
     public interface INodeLocatorTableWriterBatched
     {

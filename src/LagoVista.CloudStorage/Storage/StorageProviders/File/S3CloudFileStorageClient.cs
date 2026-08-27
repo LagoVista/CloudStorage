@@ -13,7 +13,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.File
 {
     /// <summary>
     /// S3-compatible implementation of the provider-neutral cloud file storage contract.

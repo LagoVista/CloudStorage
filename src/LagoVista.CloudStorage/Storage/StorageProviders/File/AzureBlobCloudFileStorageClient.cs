@@ -6,7 +6,7 @@ using LagoVista.IoT.Logging.Loggers;
 using System;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.File
 {
     /// <summary>
     /// Azure Blob Storage implementation of the provider-neutral cloud file storage contract.

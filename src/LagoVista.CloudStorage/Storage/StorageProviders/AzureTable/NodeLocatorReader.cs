@@ -9,7 +9,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.AzureTable
 {
     /// <summary>
     /// Reader for the Node Locator table. Uses the same key derivation as the writer by

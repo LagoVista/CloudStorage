@@ -1,5 +1,6 @@
 using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.StorageProviders.File;
 using LagoVista.IoT.Logging.Loggers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;

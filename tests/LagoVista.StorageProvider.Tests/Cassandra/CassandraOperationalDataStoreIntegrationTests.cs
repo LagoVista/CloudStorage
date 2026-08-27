@@ -1,5 +1,6 @@
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
+using LagoVista.CloudStorage.Storage.StorageProviders.Cassandra;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;

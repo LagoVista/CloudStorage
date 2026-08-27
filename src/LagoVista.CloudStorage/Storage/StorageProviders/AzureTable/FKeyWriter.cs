@@ -13,7 +13,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.AzureTable
 {
 
     public sealed class FkIndexTableWriterBatched : IFkIndexTableWriterBatched

@@ -4,7 +4,7 @@ using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using System;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 {
     public interface ICassandraSessionFactory
     {

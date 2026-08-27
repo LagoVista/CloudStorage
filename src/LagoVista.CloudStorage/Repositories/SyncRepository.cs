@@ -3,6 +3,7 @@ using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Repositories;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.StorageProviders.AzureTable;
 using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;

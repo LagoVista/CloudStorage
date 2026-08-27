@@ -12,7 +12,7 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.File
 {
     public class CloudFileStorage
     {

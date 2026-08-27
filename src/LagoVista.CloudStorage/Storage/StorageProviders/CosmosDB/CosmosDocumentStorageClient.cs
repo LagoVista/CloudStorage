@@ -4,6 +4,7 @@ using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -11,6 +12,7 @@ using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.Validation;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -33,7 +35,7 @@ namespace LagoVista.CloudStorage.StorageProviders
     {
         private readonly ICosmosConnectionSettings _settings;
         private readonly ICosmosClientProvider _cosmosClientProvider;
-
+        public string DatabaseName => _settings.DatabaseName;
         public CosmosDocumentStorageClient(ICosmosConnectionSettings settings, ICosmosClientProvider cosmosClientProvider)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -739,6 +741,221 @@ ORDER BY c.Name";
                 if (!String.IsNullOrWhiteSpace(searchText)) query.WithParameter("@searchText", searchText);
             }
             return query;
+        }
+
+        public async Task<ListResponse<TEntity>> QueryAsync<TEntity, TKey>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, TKey>> sort, ListRequest listRequest, bool descending) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (sort == null) throw new ArgumentNullException(nameof(sort));
+            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+
+            var baseQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>().Where(query).Where(item => item.EntityType == typeof(TEntity).Name && (listRequest.ShowDeleted || item.IsDeleted.IsNull() || !item.IsDeleted.HasValue || !item.IsDeleted.Value) && (listRequest.ShowDrafts || !item.IsDraft.IsDefined() || item.IsDraft == false));
+            var orderedQuery = descending ? baseQuery.OrderByDescending(sort) : baseQuery.OrderBy(sort);
+            var linqQuery = orderedQuery.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Take(listRequest.PageSize);
+
+            var items = new List<TEntity>();
+            using (var iterator = linqQuery.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            }
+
+            return ListResponse<TEntity>.Create(listRequest, items);
+        }
+
+        public async Task<TProjection> GetDocumentProjectionByKeyAsync<TProjection>(string entityType, string key, string ownerOrganizationId, bool throwOnNotFound = true, CancellationToken cancellationToken = default) where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(key)) throw new ArgumentException("Document key is required.", nameof(key));
+            if (String.IsNullOrWhiteSpace(ownerOrganizationId)) throw new ArgumentException("Owner organization id is required.", nameof(ownerOrganizationId));
+
+            var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.EntityType = @entityType AND c.Key = @key AND c.OwnerOrganization.Id = @ownerOrganizationId").WithParameter("@entityType", entityType).WithParameter("@key", key.Trim()).WithParameter("@ownerOrganizationId", ownerOrganizationId);
+            using var iterator = GetRawDocumentContainer().GetItemQueryIterator<TProjection>(query);
+            if (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+                foreach (var item in response) return item;
+            }
+
+            if (throwOnNotFound) throw new RecordNotFoundException(entityType, key);
+            return null;
+        }
+
+        public async Task<TProjection> GetOwnedDocumentProjectionAsync<TProjection>(string id, string ownerOrganizationId, bool throwOnNotFound = true, CancellationToken cancellationToken = default) where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+            if (String.IsNullOrWhiteSpace(ownerOrganizationId)) throw new ArgumentException("Owner organization id is required.", nameof(ownerOrganizationId));
+
+            var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id AND c.OwnerOrganization.Id = @ownerOrganizationId").WithParameter("@id", id.Trim()).WithParameter("@ownerOrganizationId", ownerOrganizationId);
+            using var iterator = GetRawDocumentContainer().GetItemQueryIterator<TProjection>(query);
+            if (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+                foreach (var item in response) return item;
+            }
+
+            if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
+            return null;
+        }
+
+        public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
+    where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id")
+                .WithParameter("@id", id);
+
+            using var iterator = GetContainer<TProjection>().GetItemQueryIterator<TProjection>(query, requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+
+            if (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+                var projection = response.Resource.FirstOrDefault();
+                if (projection != null) return NormalizeProjectionETag(projection);
+            }
+
+            if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
+            return null;
+        }
+
+        public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string entityType, string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
+            where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id AND c.EntityType = @entityType")
+                .WithParameter("@id", id)
+                .WithParameter("@entityType", entityType);
+
+            using var iterator = GetContainer<TProjection>().GetItemQueryIterator<TProjection>(query, requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+
+            if (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+                var projection = response.Resource.FirstOrDefault();
+                if (projection != null) return NormalizeProjectionETag(projection);
+            }
+
+            if (throwOnNotFound) throw new RecordNotFoundException(entityType, id);
+            return null;
+        }
+
+        public async Task<IEnumerable<TProjection>> GetDocumentProjectionsAsync<TProjection>(string entityType, Expression<Func<TProjection, bool>> query, CancellationToken cancellationToken = default)
+            where TProjection : class
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (query == null) throw new ArgumentNullException(nameof(query));
+
+            var entityTypeProperty = typeof(TProjection).GetProperty("EntityType");
+            if (entityTypeProperty == null || entityTypeProperty.PropertyType != typeof(string))
+                throw new InvalidOperationException($"Projection type '{typeof(TProjection).Name}' must expose a string EntityType property for Cosmos projection queries.");
+
+            var parameter = Expression.Parameter(typeof(TProjection), "item");
+            var entityTypeFilter = Expression.Lambda<Func<TProjection, bool>>(Expression.Equal(Expression.Property(parameter, entityTypeProperty), Expression.Constant(entityType)), parameter);
+
+            var items = new List<TProjection>();
+            var linqQuery = GetContainer<TProjection>().GetItemLinqQueryable<TProjection>().Where(entityTypeFilter).Where(query);
+
+            using var iterator = linqQuery.ToFeedIterator();
+            while (iterator.HasMoreResults)
+                items.AddRange(await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false));
+
+            return items;
+        }
+        public async Task<ListResponse<TEntityFactory>> QuerySummaryAsync<TEntityFactory>(string entityType, Expression<Func<TEntityFactory, bool>> query, Expression<Func<TEntityFactory, string>> sort, ListRequest listRequest, bool descending) where TEntityFactory : class, ISummaryFactory, INoSQLEntity, ICategorized, IAuditableEntity
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+
+            var linqQuery = GetContainer<TEntityFactory>().GetItemLinqQueryable<TEntityFactory>().Where(query).Where(item => item.EntityType == entityType && (listRequest.ShowDeleted || item.IsDeleted.IsNull() || !item.IsDeleted.HasValue || !item.IsDeleted.Value) && (listRequest.ShowDrafts || !item.IsDraft.IsDefined() || item.IsDraft == false));
+            if (!String.IsNullOrWhiteSpace(listRequest.CategoryKey)) linqQuery = linqQuery.Where(item => item.Category.Key == listRequest.CategoryKey);
+            if (sort != null) linqQuery = descending ? linqQuery.OrderByDescending(sort) : linqQuery.OrderBy(sort);
+
+            linqQuery = linqQuery.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Take(listRequest.PageSize);
+            var items = new List<TEntityFactory>();
+            using (var iterator = linqQuery.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            }
+
+            return ListResponse<TEntityFactory>.Create(listRequest, items);
+        }
+
+        public async Task<ListResponse<TEntity>> QueryAllAsync<TEntity, TKey>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, TKey>> sort, ListRequest listRequest, bool descending) where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (sort == null) throw new ArgumentNullException(nameof(sort));
+            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+
+            var baseQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>().Where(query);
+            var orderedQuery = descending ? baseQuery.OrderByDescending(sort) : baseQuery.OrderBy(sort);
+            var linqQuery = orderedQuery.Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Take(listRequest.PageSize);
+            var items = new List<TEntity>();
+
+            using (var iterator = linqQuery.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults) items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            }
+
+            return ListResponse<TEntity>.Create(listRequest, items);
+        }
+
+        public async Task<SyncUpsertResult> UpsertDocumentAsync(JObject document, string expectedETag = null, CancellationToken cancellationToken = default)
+        {
+            if (document == null) throw new ArgumentNullException(nameof(document));
+            var id = document.Value<string>("id");
+            var entityType = document.Value<string>("EntityType");
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(document));
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Document EntityType is required.", nameof(document));
+
+            var resolver = new DocumentCollectionNameResolver();
+            if (!resolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName)) throw new InvalidOperationException($"Could not resolve Cosmos collection for entity type '{entityType}'.");
+            var container = _cosmosClientProvider.GetClient(_settings.Endpoint, _settings.AccessKey).GetContainer(_settings.DatabaseName, collectionName);
+            var options = new ItemRequestOptions();
+            if (!String.IsNullOrWhiteSpace(expectedETag)) options.IfMatchEtag = expectedETag;
+
+            try
+            {
+                using var stream = new MemoryStream(Encoding.UTF8.GetBytes(document.ToString(Formatting.None)));
+                using var response = await container.UpsertItemStreamAsync(stream, new PartitionKey(entityType), options, cancellationToken).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Document upsert failed with status code {(int)response.StatusCode}.");
+                return new SyncUpsertResult { Id = id, ETag = response.Headers.ETag, StatusCode = (int)response.StatusCode, RequestCharge = response.Headers.RequestCharge };
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed || ex.StatusCode == HttpStatusCode.Conflict)
+            {
+                throw new ContentModifiedException { EntityType = entityType, Id = id };
+            }
+        }
+
+        public async Task<ListResponse<TEntity>> QueryAllAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest)
+           where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
+
+            var linqQuery = GetContainer<TEntity>().GetItemLinqQueryable<TEntity>()
+                .Where(query)
+                .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
+                .Take(listRequest.PageSize);
+
+            var items = new List<TEntity>();
+            using (var iterator = linqQuery.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults)
+                    items.AddRange(await iterator.ReadNextAsync().ConfigureAwait(false));
+            }
+
+            return ListResponse<TEntity>.Create(listRequest, items);
+        }
+
+        private static TProjection NormalizeProjectionETag<TProjection>(TProjection projection) where TProjection : class
+        {
+            if (projection is JObject document && document["ETag"] == null && document["_etag"] != null)
+                document["ETag"] = document["_etag"];
+
+            return projection;
         }
 
         private const string EntityPreparationProjection = "c.id AS Id, c.EntityType AS EntityType, c.Name AS Name, c.Key AS Key, c.Description AS Description, c.Icon AS Icon, c.Category AS Category, c.IsDraft AS IsDraft, c.IsDeprecated AS IsDeprecated, c.MasterStatus AS MasterStatus, c.ReadinessStatus AS ReadinessStatus, c.CreationDate AS CreationDate, c.LastUpdatedDate AS LastUpdatedDate, c.Revision AS Revision, c.ChecklistStatus AS ChecklistStatus, c.ReadinessChecks AS ReadinessChecks";

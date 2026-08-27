@@ -6,7 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace LagoVista.CloudStorage.Storage
+namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 {
     [CriticalCoverage]
     internal sealed class CassandraOperationalRecordMap<TRecord>
