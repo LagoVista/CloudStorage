@@ -100,6 +100,7 @@ static async Task ObjectMigrateAsync(int? maxObjects)
     Console.WriteLine($"Environment: {MigrationConnections.EnvironmentName}");
     Console.WriteLine($"Run limit : {(maxObjects.HasValue ? $"{maxObjects.Value:N0} objects" : "none")}");
     Console.WriteLine("Mode      : resume from Application Data checkpoint");
+    Console.WriteLine("Progress  : updates every 10 objects");
     Console.WriteLine();
 
     var engine = new AzureBlobToS3Migration(
@@ -107,7 +108,32 @@ static async Task ObjectMigrateAsync(int? maxObjects)
         MigrationConnections.S3ObjectStorage,
         StateStore());
 
-    var state = await engine.ExecuteAsync(maxObjects);
+    var lastProgressWidth = 0;
+    void ShowProgress(ObjectMigrationProgress progress)
+    {
+        var elapsedSeconds = Math.Max(progress.Elapsed.TotalSeconds, 0.001);
+        var objectsPerSecond = progress.RunObjectsWritten / elapsedSeconds;
+        var bytesPerSecond = (long)(progress.RunBytesWritten / elapsedSeconds);
+        var location = $"{Truncate(progress.Container, 32)}/{Truncate(progress.ObjectKey, 48)}";
+        var line = $"run {progress.RunObjectsWritten,8:N0} | total {progress.TotalObjectsWritten,10:N0} | " +
+                   $"{FormatBytes(progress.TotalBytesWritten),10} | {objectsPerSecond,6:0.0} obj/s | " +
+                   $"{FormatBytes(bytesPerSecond),10}/s | {location}";
+
+        if (Console.IsOutputRedirected)
+        {
+            Console.WriteLine(line);
+            return;
+        }
+
+        var padded = line.PadRight(Math.Max(lastProgressWidth, line.Length));
+        Console.Write('\r');
+        Console.Write(padded);
+        lastProgressWidth = padded.Length;
+    }
+
+    var state = await engine.ExecuteAsync(maxObjects, ShowProgress);
+    if (!Console.IsOutputRedirected && lastProgressWidth > 0)
+        Console.WriteLine();
     PrintObjectState(state);
 }
 
@@ -244,6 +270,7 @@ static void PrintDefinition(MigrationCatalog catalog, MigrationDefinition defini
 }
 
 static string FormatDate(DateTimeOffset? value) => value.HasValue ? value.Value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss") : "<none>";
+static string Truncate(string value, int maxLength) => value.Length <= maxLength ? value : value[..Math.Max(0, maxLength - 3)] + "...";
 
 static string FormatBytes(long bytes)
 {
