@@ -27,7 +27,16 @@ namespace LagoVista.CloudStorage.StorageProviders
             return _cache.EnsureAsync(cacheKey, async () =>
             {
                 var databaseResponse = await client.CreateDatabaseIfNotExistsAsync(databaseName, cancellationToken: cancellationToken).ConfigureAwait(false);
-                var response = await databaseResponse.Database.CreateContainerIfNotExistsAsync(new ContainerProperties(collectionName, partitionKeyPath), cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                ContainerResponse response;
+                try
+                {
+                    response = await databaseResponse.Database.CreateContainerIfNotExistsAsync(new ContainerProperties(collectionName, partitionKeyPath), cancellationToken: cancellationToken).ConfigureAwait(false);
+                }
+                catch (ArgumentException ex)
+                {
+                    throw new InvalidOperationException($"Cosmos container '{databaseName}/{collectionName}' could not be provisioned with partition key '{partitionKeyPath}'. The existing container may use a different partition key.", ex);
+                }
 
                 var actualPartitionKeyPath = response.Resource?.PartitionKeyPath;
                 if (!String.Equals(actualPartitionKeyPath, partitionKeyPath, StringComparison.Ordinal))
