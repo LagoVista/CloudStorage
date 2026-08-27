@@ -38,7 +38,10 @@ try
             await ObjectStatusAsync();
             break;
         case "object-migrate":
-            await ObjectMigrateAsync(GetPositiveIntOption(args, "--max-objects"));
+            await ObjectMigrateAsync(
+                GetPositiveIntOption(args, "--max-objects"),
+                GetPositiveIntOption(args, "--batch-size") ?? 10,
+                GetPositiveIntOption(args, "--parallelism") ?? 8);
             break;
         default:
             PrintUsage();
@@ -94,13 +97,15 @@ static async Task ObjectProbeAsync(int? maxObjects)
     Console.WriteLine("PASS: object storage probe completed. No blobs were copied or modified.");
 }
 
-static async Task ObjectMigrateAsync(int? maxObjects)
+static async Task ObjectMigrateAsync(int? maxObjects, int batchSize, int parallelism)
 {
     Console.WriteLine("Azure Blob -> S3 object migration");
     Console.WriteLine($"Environment: {MigrationConnections.EnvironmentName}");
     Console.WriteLine($"Run limit : {(maxObjects.HasValue ? $"{maxObjects.Value:N0} objects" : "none")}");
     Console.WriteLine("Mode      : resume from Application Data checkpoint");
-    Console.WriteLine("Progress  : updates every 10 objects");
+    Console.WriteLine($"Batch size: {batchSize:N0}");
+    Console.WriteLine($"Parallel  : {parallelism:N0} concurrent copies");
+    Console.WriteLine("Progress  : after each committed batch");
     Console.WriteLine();
 
     var engine = new AzureBlobToS3Migration(
@@ -131,7 +136,7 @@ static async Task ObjectMigrateAsync(int? maxObjects)
         lastProgressWidth = padded.Length;
     }
 
-    var state = await engine.ExecuteAsync(maxObjects, ShowProgress);
+    var state = await engine.ExecuteAsync(maxObjects, ShowProgress, batchSize, parallelism);
     if (!Console.IsOutputRedirected && lastProgressWidth > 0)
         Console.WriteLine();
     PrintObjectState(state);
@@ -324,6 +329,6 @@ static void PrintUsage()
     Console.Error.WriteLine("  verify <migration-key>");
     Console.Error.WriteLine("  object-probe [--max-objects N]");
     Console.Error.WriteLine("  object-status");
-    Console.Error.WriteLine("  object-migrate [--max-objects N]");
+    Console.Error.WriteLine("  object-migrate [--max-objects N] [--batch-size N] [--parallelism N]");
     Console.Error.WriteLine("Environment: set MIGRATION_ENVIRONMENT=dev|prod for environment-prefixed storage settings.");
 }
