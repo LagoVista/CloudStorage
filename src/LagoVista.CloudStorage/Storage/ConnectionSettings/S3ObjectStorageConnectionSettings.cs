@@ -18,6 +18,9 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
             Host = section.Require("Host");
             AccessKey = section.Require("AccessKey");
             SecretKey = section.Require("SecretKey");
+            PublicHost = section.Require("PublicHost");
+            PublicPort = Convert.ToInt32(section.Require("PublicPort")); 
+            PublicUseTls = Convert.ToBoolean(section.Require("PublicUseTls"));
 
             var port = section.Optional("Port");
             Port = String.IsNullOrWhiteSpace(port)
@@ -29,15 +32,6 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 
             var region = section.Optional("Region");
             Region = String.IsNullOrWhiteSpace(region) ? null : region.Trim();
-
-            var publicHost = section.Optional("PublicHost");
-            PublicHost = String.IsNullOrWhiteSpace(publicHost) ? Host : publicHost.Trim();
-
-            var publicPort = section.Optional("PublicPort");
-            PublicPort = String.IsNullOrWhiteSpace(publicPort) ? Port : Int32.Parse(publicPort);
-
-            var publicUseTls = section.Optional("PublicUseTls");
-            PublicUseTls = String.IsNullOrWhiteSpace(publicUseTls) ? UseTls : Boolean.Parse(publicUseTls);
         }
 
         public string Host { get; }

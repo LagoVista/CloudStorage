@@ -3,23 +3,23 @@
   "ProjectName": "LagoVista.StorageProvider.Tests",
   "ProjectPath": "Tests\\LagoVista.StorageProvider.Tests\\LagoVista.StorageProvider.Tests.csproj",
   "AssemblyPath": "Tests\\LagoVista.StorageProvider.Tests\\bin\\Debug\\net9.0\\LagoVista.StorageProvider.Tests.dll",
-  "RunId": "648c26f7-4cc9-4df4-be59-1cb8b1f16cff",
-  "StartedUtc": "2026-08-27T18:31:11.7815414Z",
-  "CompletedUtc": "2026-08-27T18:31:41.2124346Z",
+  "RunId": "bcbc79b0-9a60-441e-a66f-4df80cb94bc5",
+  "StartedUtc": "2026-08-27T19:34:48.9423952Z",
+  "CompletedUtc": "2026-08-27T19:35:21.9240519Z",
   "ExitCode": 0,
   "Outcome": "Passed",
   "Summary": {
-    "Total": 84,
-    "Passed": 84,
+    "Total": 93,
+    "Passed": 93,
     "Failed": 0,
     "Skipped": 0,
-    "DurationMilliseconds": 29430
+    "DurationMilliseconds": 32981
   },
   "Tests": [],
   "Issues": [],
   "StandardOutput": [
     "  Determining projects to restore...",
-    "  Restored D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\LagoVista.StorageProvider.Tests.csproj (in 519 ms).",
+    "  Restored D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\LagoVista.StorageProvider.Tests.csproj (in 1.25 sec).",
     "  2 of 3 projects are up-to-date for restore.",
     "D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\Storage\\ConnectionSettings\\ScratchStorageSettings.cs(13,28): warning CS0108: \u0027ScratchStorageSettings.SectionName\u0027 hides inherited member \u0027MongoDocumentStorageConnectionSettings.SectionName\u0027. Use the new keyword if hiding was intended. [D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\LagoVista.CloudStorage.csproj]",
     "D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\Storage\\ConnectionSettings\\ApplicationDataStorageSettings.cs(12,29): warning CS0108: \u0027ApplicationDataStorageSettings.SectionName\u0027 hides inherited member \u0027MongoDocumentStorageConnectionSettings.SectionName\u0027. Use the new keyword if hiding was intended. [D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\LagoVista.CloudStorage.csproj]",
@@ -31,10 +31,10 @@
     "Test run for D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\bin\\Debug\\net9.0\\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)",
     "A total of 1 test files matched the specified pattern.",
     "",
-    "Passed!  - Failed:     0, Passed:    84, Skipped:     0, Total:    84, Duration: 19 s - LagoVista.StorageProvider.Tests.dll (net9.0)",
+    "Passed!  - Failed:     0, Passed:    93, Skipped:     0, Total:    93, Duration: 20 s - LagoVista.StorageProvider.Tests.dll (net9.0)",
     "",
     "Attachments:",
-    "  D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\TestResults\\e3364081-27b1-4f4a-890e-f8db4f78c428\\coverage.cobertura.xml"
+    "  D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\TestResults\\46e1fde8-9f0a-457d-af95-684b6a92b88e\\coverage.cobertura.xml"
   ],
   "StandardError": []
 }
