@@ -2,7 +2,7 @@
   "$schema": "../schemas/coverage-card.schema.json",
   "id": "cosmos-document-collection-provisioner-integration",
   "title": "CosmosDocumentCollectionProvisioner Integration Tests",
-  "status": "in-process",
+  "status": "completed",
   "category": "integration-test",
   "area": "cosmos",
   "summary": "Verify fresh database/container recovery provisioning, repeat-safe behavior, and partition-key validation against the local Cosmos emulator.",
@@ -24,13 +24,13 @@
       "port": 18081
     },
     "coverageLayers": {
-      "completed": [],
-      "next": [
+      "completed": [
         "fresh-database-provisioning",
         "container-provisioning",
         "repeat-safe-provisioning",
         "partition-key-validation"
-      ]
+      ],
+      "next": []
     }
   }
 }
