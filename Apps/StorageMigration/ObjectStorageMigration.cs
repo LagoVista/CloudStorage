@@ -2,10 +2,22 @@ using Azure.Storage.Blobs;
 using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
 using Minio;
 using Minio.DataModel.Args;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace LagoVista.StorageMigration;
+
+public sealed class ObjectMigrationProgress
+{
+    public int RunObjectsWritten { get; init; }
+    public long RunBytesWritten { get; init; }
+    public long TotalObjectsWritten { get; init; }
+    public long TotalBytesWritten { get; init; }
+    public string Container { get; init; } = String.Empty;
+    public string ObjectKey { get; init; } = String.Empty;
+    public TimeSpan Elapsed { get; init; }
+}
 
 public sealed class AzureBlobToS3Migration
 {
@@ -37,7 +49,10 @@ public sealed class AzureBlobToS3Migration
         _target = builder.Build();
     }
 
-    public async Task<MigrationRunState> ExecuteAsync(int? maxObjects = null, CancellationToken cancellationToken = default)
+    public async Task<MigrationRunState> ExecuteAsync(
+        int? maxObjects = null,
+        Action<ObjectMigrationProgress>? progress = null,
+        CancellationToken cancellationToken = default)
     {
         var state = await _stateStore.GetAsync(MigrationKey, cancellationToken).ConfigureAwait(false)
             ?? NewState();
@@ -58,6 +73,8 @@ public sealed class AzureBlobToS3Migration
         containers.Sort(StringComparer.Ordinal);
 
         var copiedThisRun = 0;
+        var bytesCopiedThisRun = 0L;
+        var stopwatch = Stopwatch.StartNew();
 
         foreach (var containerName in containers)
         {
@@ -81,6 +98,7 @@ public sealed class AzureBlobToS3Migration
                 {
                     state.State = "Paused";
                     await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
+                    ReportProgress(progress, copiedThisRun, bytesCopiedThisRun, state, stopwatch.Elapsed);
                     return state;
                 }
 
@@ -120,8 +138,12 @@ public sealed class AzureBlobToS3Migration
                     state.HeadRowKey = blob.Name;
                     state.LastUpdatedDate = DateTime.UtcNow;
                     copiedThisRun++;
+                    bytesCopiedThisRun += contentLength;
 
                     await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
+
+                    if (copiedThisRun % 10 == 0)
+                        ReportProgress(progress, copiedThisRun, bytesCopiedThisRun, state, stopwatch.Elapsed);
                 }
                 catch
                 {
@@ -146,7 +168,27 @@ public sealed class AzureBlobToS3Migration
         state.CompletedDate = DateTime.UtcNow;
         state.LastUpdatedDate = DateTime.UtcNow;
         await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
+        ReportProgress(progress, copiedThisRun, bytesCopiedThisRun, state, stopwatch.Elapsed);
         return state;
+    }
+
+    private static void ReportProgress(
+        Action<ObjectMigrationProgress>? progress,
+        int copiedThisRun,
+        long bytesCopiedThisRun,
+        MigrationRunState state,
+        TimeSpan elapsed)
+    {
+        progress?.Invoke(new ObjectMigrationProgress
+        {
+            RunObjectsWritten = copiedThisRun,
+            RunBytesWritten = bytesCopiedThisRun,
+            TotalObjectsWritten = state.RecordsWritten,
+            TotalBytesWritten = state.BytesWritten,
+            Container = state.CurrentTable ?? String.Empty,
+            ObjectKey = state.HeadRowKey ?? String.Empty,
+            Elapsed = elapsed
+        });
     }
 
     private async Task EnsureBucketAsync(string bucketName, CancellationToken cancellationToken)
