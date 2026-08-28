@@ -33,14 +33,13 @@ namespace LagoVista.StorageProvider.Tests.S3
             var expected = Encoding.UTF8.GetBytes("retry-write");
 
             var operation = client.AddFileAsync(ContainerName, fileName, expected, "text/plain");
-            await Task.Delay(400);
+            await WaitForClientRetryAsync(logger);
 
             await using var proxy = new TcpForwardingProxy(proxyPort, "127.0.0.1", TargetPort);
             proxy.Start();
 
             var result = await operation;
             Assert.IsTrue(result.Successful);
-            Assert.IsTrue(logger.Invocations.Any(invocation => invocation.Method.Name == nameof(IAdminLogger.AddCustomEvent)), "The client succeeded, but its retry warning path was never entered.");
 
             var verificationClient = new S3CloudFileStorageClient(new TestS3Settings(TargetPort), Mock.Of<IAdminLogger>());
             var read = await verificationClient.GetFileAsync(ContainerName, fileName);
@@ -61,7 +60,7 @@ namespace LagoVista.StorageProvider.Tests.S3
             var proxyPort = GetAvailablePort();
             var client = new S3CloudFileStorageClient(new TestS3Settings(proxyPort), logger.Object);
             var operation = client.GetFileAsync(ContainerName, fileName);
-            await Task.Delay(400);
+            await WaitForClientRetryAsync(logger);
 
             await using var proxy = new TcpForwardingProxy(proxyPort, "127.0.0.1", TargetPort);
             proxy.Start();
@@ -69,7 +68,18 @@ namespace LagoVista.StorageProvider.Tests.S3
             var result = await operation;
             Assert.IsTrue(result.Successful);
             CollectionAssert.AreEqual(expected, result.Result);
-            Assert.IsTrue(logger.Invocations.Any(invocation => invocation.Method.Name == nameof(IAdminLogger.AddCustomEvent)), "The client succeeded, but its retry warning path was never entered.");
+        }
+
+        private static async Task WaitForClientRetryAsync(Mock<IAdminLogger> logger)
+        {
+            var expiresUtc = DateTime.UtcNow.AddSeconds(20);
+            while (DateTime.UtcNow < expiresUtc)
+            {
+                if (logger.Invocations.Any(invocation => invocation.Method.Name == nameof(IAdminLogger.AddCustomEvent))) return;
+                await Task.Delay(25);
+            }
+
+            Assert.Fail("The transient failure never reached S3CloudFileStorageClient's retry path within 20 seconds.");
         }
 
         private static int GetAvailablePort()
