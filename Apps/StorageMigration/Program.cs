@@ -37,6 +37,9 @@ try
         case "object-status":
             await ObjectStatusAsync();
             break;
+        case "object-reset":
+            await ObjectResetAsync();
+            break;
         case "object-migrate":
             await ObjectMigrateAsync(
                 GetPositiveIntOption(args, "--max-objects"),
@@ -154,6 +157,20 @@ static async Task ObjectStatusAsync()
     PrintObjectState(state);
 }
 
+static async Task ObjectResetAsync()
+{
+    Console.WriteLine("Reset Azure Blob -> S3 migration checkpoint");
+    Console.WriteLine($"Environment: {MigrationConnections.EnvironmentName}");
+    Console.WriteLine($"Key        : {AzureBlobToS3Migration.MigrationKey}");
+    Console.WriteLine("Scope      : Application Data checkpoint only; source and target objects are unchanged");
+    Console.WriteLine();
+
+    var deleted = await StateStore().DeleteAsync(AzureBlobToS3Migration.MigrationKey);
+    Console.WriteLine(deleted
+        ? "PASS: object migration checkpoint deleted; the next migration run starts from the beginning."
+        : "PASS: no object migration checkpoint existed; migration is already at Not Started.");
+}
+
 static async Task ProbeAsync(MigrationDefinition definition)
 {
     Console.WriteLine($"Probing migration: {definition.DisplayName}");
@@ -202,7 +219,7 @@ static async Task MigrateAsync(MigrationCatalog catalog, MigrationDefinition def
 static async Task VerifyAsync(MigrationCatalog catalog, MigrationDefinition definition)
 {
     var sha = catalog.DefinitionSha256(definition);
-    var source = new AzureTableMigrationSource(MigrationConnections.AzureTableConnectionString(definition.Source.Connection));
+    var source = new AzureTableMigrationSource(MigrationConnections.AzureTableConnectionString());
     var state = await StateStore().GetAsync(definition.Key);
     if (state == null) throw new InvalidOperationException($"No migration state exists for {definition.Key}.");
     if (!String.Equals(state.DefinitionSha256, sha, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("The completed migration state does not match the current definition SHA.");
@@ -329,6 +346,7 @@ static void PrintUsage()
     Console.Error.WriteLine("  verify <migration-key>");
     Console.Error.WriteLine("  object-probe [--max-objects N]");
     Console.Error.WriteLine("  object-status");
+    Console.Error.WriteLine("  object-reset");
     Console.Error.WriteLine("  object-migrate [--max-objects N] [--batch-size N] [--parallelism N]");
     Console.Error.WriteLine("Environment: set MIGRATION_ENVIRONMENT=dev|prod for environment-prefixed storage settings.");
 }
