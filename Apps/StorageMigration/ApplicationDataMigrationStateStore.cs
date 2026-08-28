@@ -76,6 +76,18 @@ public sealed class ApplicationDataMigrationStateStore : IMigrationStateStore
         }
     }
 
+    public async Task<bool> DeleteAsync(string migrationKey, CancellationToken cancellationToken = default)
+    {
+        var existing = await FindAsync(migrationKey, cancellationToken).ConfigureAwait(false);
+        if (existing == null)
+            return false;
+
+        await _store.DeleteAsync<StorageMigrationStateRecord>(
+            new StorageKey(existing.Id.Value, MigrationOrganization.Id),
+            cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
     private async Task<StorageMigrationStateRecord?> FindAsync(string migrationKey, CancellationToken ct)
     {
         var page = await _store.QueryAsync(new StorageQuery<StorageMigrationStateRecord>()
