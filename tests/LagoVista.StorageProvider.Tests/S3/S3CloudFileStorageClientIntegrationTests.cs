@@ -65,20 +65,20 @@ namespace LagoVista.StorageProvider.Tests.S3
         [TestMethod]
         public async Task BoundContainerOverloads_NormalizeLeadingSlashAndRoundTrip()
         {
-            var client = new S3CloudFileStorageClient(_settings, ContainerName, _logger);
+            var client = new S3CloudFileStorageClient(_settings,  _logger);
             var fileName = $"/folder with spaces/{Guid.NewGuid():N}.txt";
             var expected = Encoding.UTF8.GetBytes("bound-container");
 
-            var add = await client.AddFileAsync(fileName, expected, "text/plain");
+            var add = await client.AddFileAsync(ContainerName,fileName, expected, "text/plain");
             Assert.IsTrue(add.Successful);
             Assert.IsNotNull(add.Result);
             StringAssert.Contains(add.Result.AbsoluteUri, "folder%20with%20spaces");
 
-            var get = await client.GetFileAsync(fileName);
+            var get = await client.GetFileAsync(ContainerName,fileName);
             Assert.IsTrue(get.Successful);
             CollectionAssert.AreEqual(expected, get.Result);
 
-            var delete = await client.DeleteFileAsync(fileName);
+            var delete = await client.DeleteFileAsync(ContainerName, fileName);
             Assert.IsTrue(delete.Successful);
         }
 
@@ -101,15 +101,6 @@ namespace LagoVista.StorageProvider.Tests.S3
             CollectionAssert.AreEqual(original, get.Result);
         }
 
-        [TestMethod]
-        public void BoundContainerOverloads_RequireContainerName()
-        {
-            var client = new S3CloudFileStorageClient(_settings, _logger);
-
-            Assert.ThrowsExactly<InvalidOperationException>(() => client.AddFileAsync("file.txt", new byte[] { 1 }));
-            Assert.ThrowsExactly<InvalidOperationException>(() => client.GetFileAsync("file.txt"));
-            Assert.ThrowsExactly<InvalidOperationException>(() => client.DeleteFileAsync("file.txt"));
-        }
 
         private sealed class TestS3Settings : IS3ObjectStorageConnectionSettings
         {

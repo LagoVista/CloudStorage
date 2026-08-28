@@ -48,29 +48,13 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
         private readonly IS3ObjectStorageConnectionSettings _settings;
         private readonly IMinioClient _client;
         private readonly IMinioClient _readUrlClient;
-        private readonly string _containerName;
 
         public S3CloudFileStorageClient(IS3ObjectStorageConnectionSettings settings, IAdminLogger adminLogger)
-            : this(settings, null, adminLogger)
-        {
-        }
-
-        public S3CloudFileStorageClient(IS3ObjectStorageConnectionSettings settings, string containerName, IAdminLogger adminLogger)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _logger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
-            _containerName = String.IsNullOrWhiteSpace(containerName) ? null : containerName.Trim();
-
             _client = BuildClient(_settings.Host, _settings.Port, _settings.UseTls);
             _readUrlClient = BuildClient(_settings.PublicHost, _settings.PublicPort, _settings.PublicUseTls);
-        }
-
-        public Task<InvokeResult<Uri>> AddFileAsync(string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null)
-        {
-            if (String.IsNullOrEmpty(_containerName))
-                throw new InvalidOperationException("Container name not specified for this instance of S3CloudFileStorageClient. Use the overload that takes a container name.");
-
-            return AddFileAsync(_containerName, fileName, data, contentType, cacheControl);
         }
 
         public async Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null, bool rejectUpdates = false)
@@ -151,14 +135,6 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
             return AddFileAsync(containerName, fileName, Encoding.UTF8.GetBytes(data), contentType, cacheControl);
-        }
-
-        public Task<InvokeResult<byte[]>> GetFileAsync(string fileName)
-        {
-            if (String.IsNullOrEmpty(_containerName))
-                throw new InvalidOperationException("Container name not specified for this instance of S3CloudFileStorageClient. Use the overload that takes a container name.");
-
-            return GetFileAsync(_containerName, fileName);
         }
 
         public async Task<InvokeResult<byte[]>> GetFileAsync(string containerName, string fileName)
@@ -257,13 +233,6 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
             return InvokeResult<Uri>.FromError("Could not create S3 read URL");
         }
 
-        public Task<InvokeResult> DeleteFileAsync(string fileName)
-        {
-            if (String.IsNullOrEmpty(_containerName))
-                throw new InvalidOperationException("Container name not specified for this instance of S3CloudFileStorageClient. Use the overload that takes a container name.");
-
-            return DeleteFileAsync(_containerName, fileName);
-        }
 
         public async Task<InvokeResult> DeleteFileAsync(string containerName, string fileName)
         {
