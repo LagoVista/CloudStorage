@@ -87,10 +87,10 @@ public sealed class AzureBlobToS3Migration
             if (!ShouldProcessContainer(containerName, state.CurrentTable))
                 continue;
 
-            await EnsureBucketAsync(containerName, cancellationToken).ConfigureAwait(false);
             var container = _source.GetBlobContainerClient(containerName);
             var resumingCurrentContainer = String.Equals(containerName, state.CurrentTable, StringComparison.Ordinal);
             var sawBlob = false;
+            var bucketEnsured = false;
             var batch = new List<ObjectCopyItem>(batchSize);
 
             await foreach (var blob in container.GetBlobsAsync(cancellationToken: cancellationToken))
@@ -100,6 +100,12 @@ public sealed class AzureBlobToS3Migration
                 if (resumingCurrentContainer && !String.IsNullOrEmpty(state.HeadRowKey) &&
                     StringComparer.Ordinal.Compare(blob.Name, state.HeadRowKey) <= 0)
                     continue;
+
+                if (!bucketEnsured)
+                {
+                    await EnsureBucketAsync(containerName, cancellationToken).ConfigureAwait(false);
+                    bucketEnsured = true;
+                }
 
                 if (maxObjects.HasValue && copiedThisRun + batch.Count >= maxObjects.Value)
                     break;
