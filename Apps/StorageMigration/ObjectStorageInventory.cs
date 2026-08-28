@@ -13,7 +13,7 @@ public sealed class ObjectStorageContainerInventory
     public DateTimeOffset? NewestLastModified { get; set; }
 }
 
-public sealed class ObjectStorageInventoryResult
+public sealed class ObjectStorageInventory
 {
     public List<ObjectStorageContainerInventory> Containers { get; } = new();
     public long ObjectCount => Containers.Sum(item => item.ObjectCount);
@@ -30,9 +30,9 @@ public sealed class AzureBlobObjectInventorySource
         _client = new BlobServiceClient(connectionString);
     }
 
-    public async Task<ObjectStorageInventoryResult> InventoryAsync(int? maxObjects = null, CancellationToken cancellationToken = default)
+    public async Task<ObjectStorageInventory> InventoryAsync(int? maxObjects = null, CancellationToken cancellationToken = default)
     {
-        var result = new ObjectStorageInventoryResult();
+        var result = new ObjectStorageInventory();
         var objectsSeen = 0L;
 
         await foreach (var container in _client.GetBlobContainersAsync(cancellationToken: cancellationToken))
