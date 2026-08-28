@@ -1,0 +1,114 @@
+{
+  "startedUtc": "2026-08-28T01:38:10.1534848Z",
+  "completedUtc": "2026-08-28T01:39:08.9270761Z",
+  "durationSeconds": 58.77,
+  "repository": "D:\\NuvIoT\\cs.CloudStorage",
+  "branch": "refactor/cloudstorage-project-layout",
+  "commit": "430cdf932211f6fa79bda240a22d07709bce915b",
+  "configuration": "Debug",
+  "overall": "PASS",
+  "failure": null,
+  "startup": [
+    {
+      "name": "MongoDB",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 1.13
+    },
+    {
+      "name": "Cosmos emulator",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 1.14
+    },
+    {
+      "name": "Cassandra",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 2.6
+    },
+    {
+      "name": "Redis",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 1.42
+    },
+    {
+      "name": "PostgreSQL + TimescaleDB",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 5.24
+    },
+    {
+      "name": "PostgreSQL account ledger",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 3.74
+    },
+    {
+      "name": "S3 / MinIO",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 1.04
+    }
+  ],
+  "build": {
+    "status": "PASS",
+    "exitCode": 0,
+    "durationSeconds": 3.8
+  },
+  "tests": {
+    "execution": {
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 26.14
+    },
+    "counters": {
+      "total": 95,
+      "executed": 95,
+      "passed": 95,
+      "failed": 0,
+      "error": 0,
+      "timeout": 0,
+      "aborted": 0,
+      "inconclusive": 0,
+      "notExecuted": 0
+    },
+    "trx": "D:\\NuvIoT\\cs.CloudStorage\\.coverage\\evidence\\storage-confidence-suite\\latest.trx"
+  },
+  "teardown": [
+    {
+      "name": "Stop Cassandra",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 5.57
+    },
+    {
+      "name": "Stop MongoDB",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 1.65
+    },
+    {
+      "name": "Stop Cosmos emulator",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 2.26
+    },
+    {
+      "name": "Stop S3 / MinIO",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 0.93,
+      "error": null
+    },
+    {
+      "name": "Remove standalone test containers",
+      "status": "PASS",
+      "exitCode": 0,
+      "durationSeconds": 1.48,
+      "error": null
+    }
+  ],
+  "containersKept": false
+}
