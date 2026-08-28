@@ -219,7 +219,7 @@ static async Task MigrateAsync(MigrationCatalog catalog, MigrationDefinition def
 static async Task VerifyAsync(MigrationCatalog catalog, MigrationDefinition definition)
 {
     var sha = catalog.DefinitionSha256(definition);
-    var source = new AzureTableMigrationSource(MigrationConnections.AzureTableConnectionString());
+    var source = new AzureTableMigrationSource(MigrationConnections.AzureTableConnectionString(definition.Source.Connection));
     var state = await StateStore().GetAsync(definition.Key);
     if (state == null) throw new InvalidOperationException($"No migration state exists for {definition.Key}.");
     if (!String.Equals(state.DefinitionSha256, sha, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("The completed migration state does not match the current definition SHA.");
