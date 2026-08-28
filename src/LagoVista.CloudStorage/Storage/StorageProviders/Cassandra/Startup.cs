@@ -1,4 +1,3 @@
-using LagoVista.CloudStorage.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
