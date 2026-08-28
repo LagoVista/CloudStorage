@@ -34,6 +34,9 @@ try
         case "object-probe":
             await ObjectProbeAsync(GetPositiveIntOption(args, "--max-objects"));
             break;
+        case "object-inventory":
+            await ObjectInventoryAsync(GetPositiveIntOption(args, "--max-objects"));
+            break;
         case "object-status":
             await ObjectStatusAsync();
             break;
@@ -75,9 +78,34 @@ static async Task ObjectProbeAsync(int? maxObjects)
     Console.WriteLine();
 
     Console.WriteLine("[2/2] Inventorying Azure Blob Storage metadata...");
-    var source = new AzureBlobObjectInventorySource(MigrationConnections.AzureBlobConnectionString());
-    var inventory = await source.InventoryAsync(maxObjects);
+    var inventory = await LoadObjectInventoryAsync(maxObjects);
+    PrintObjectInventory(inventory);
+    Console.WriteLine();
+    Console.WriteLine("PASS: object storage probe completed. No blobs were copied or modified.");
+}
 
+static async Task ObjectInventoryAsync(int? maxObjects)
+{
+    Console.WriteLine("Azure Blob object inventory");
+    Console.WriteLine($"Environment: {MigrationConnections.EnvironmentName}");
+    Console.WriteLine($"Scan limit : {(maxObjects.HasValue ? $"{maxObjects.Value:N0} objects" : "none")}");
+    Console.WriteLine("Mode       : source only; no S3/SeaweedFS connection required");
+    Console.WriteLine();
+
+    var inventory = await LoadObjectInventoryAsync(maxObjects);
+    PrintObjectInventory(inventory);
+    Console.WriteLine();
+    Console.WriteLine("PASS: Azure Blob inventory completed. No blobs were copied or modified.");
+}
+
+static async Task<ObjectStorageInventory> LoadObjectInventoryAsync(int? maxObjects)
+{
+    var source = new AzureBlobObjectInventorySource(MigrationConnections.AzureBlobConnectionString());
+    return await source.InventoryAsync(maxObjects);
+}
+
+static void PrintObjectInventory(ObjectStorageInventory inventory)
+{
     Console.WriteLine();
     Console.WriteLine($"{"Container",-36} {"Objects",12} {"Bytes",16} {"Size",12} {"Oldest",22} {"Newest",22}");
     Console.WriteLine(new String('-', 128));
@@ -96,8 +124,6 @@ static async Task ObjectProbeAsync(int? maxObjects)
     Console.WriteLine($"TOTAL                                {inventory.ObjectCount,12:N0} {inventory.TotalBytes,16:N0} {FormatBytes(inventory.TotalBytes),12}");
     if (inventory.WasLimited)
         Console.WriteLine("NOTE: inventory was intentionally limited; totals are partial.");
-    Console.WriteLine();
-    Console.WriteLine("PASS: object storage probe completed. No blobs were copied or modified.");
 }
 
 static async Task ObjectMigrateAsync(int? maxObjects, int batchSize, int parallelism)
@@ -335,6 +361,7 @@ static int? GetPositiveIntOption(string[] args, string option)
 
     return null;
 }
+
 static void PrintUsage()
 {
     Console.Error.WriteLine("Commands:");
@@ -345,6 +372,7 @@ static void PrintUsage()
     Console.Error.WriteLine("  migrate <migration-key> [--max-records N] [--catch-up]");
     Console.Error.WriteLine("  verify <migration-key>");
     Console.Error.WriteLine("  object-probe [--max-objects N]");
+    Console.Error.WriteLine("  object-inventory [--max-objects N]");
     Console.Error.WriteLine("  object-status");
     Console.Error.WriteLine("  object-reset");
     Console.Error.WriteLine("  object-migrate [--max-objects N] [--batch-size N] [--parallelism N]");
