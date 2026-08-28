@@ -26,7 +26,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
-            if (entity.OwnerOrganization == null || String.IsNullOrWhiteSpace(entity.OwnerOrganization.Id))
+
+            if (typeof(TEntity).Name != "AppUser" && (entity.OwnerOrganization == null || String.IsNullOrWhiteSpace(entity.OwnerOrganization.Id)))  
                 throw new InvalidOperationException($"{typeof(TEntity).Name} requires OwnerOrganization.Id for document storage.");
 
             if (!IsShareable(typeof(TEntity)) && entity.IsPublic)

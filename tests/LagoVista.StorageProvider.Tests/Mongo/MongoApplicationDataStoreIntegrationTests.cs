@@ -173,6 +173,8 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             public string ReplicaSet => null;
             public bool UseTls => false;
 
+            public bool DirectConnect => true;
+
             public string BuildConnectionString()
             {
                 return $"mongodb://{Uri.EscapeDataString(UserName)}:{Uri.EscapeDataString(Password)}@localhost:{Port}/?authSource=admin";

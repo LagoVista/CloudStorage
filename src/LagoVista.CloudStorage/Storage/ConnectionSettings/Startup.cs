@@ -10,6 +10,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         {
             services.AddSingleton<IDefaultConnectionSettings, DefaultConnectionSettings>();
             services.AddSingleton<ICassandraStorageSettings, CassandraStorageSettings>();
+            services.AddSingleton<IDocumentStorageProviderSettings, DocumentStorageProviderSettings>();
             services.AddSingleton<IMongoDocumentStorageConnectionSettings, MongoDocumentStorageConnectionSettings>();
             services.AddSingleton<IScratchStorageSettings, ScratchStorageSettings>();
             services.AddSingleton<IApplicationDataStorageSettings, ApplicationDataStorageSettings>();

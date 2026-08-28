@@ -1,4 +1,6 @@
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
+using LagoVista.CloudStorage.Storage.StorageProviders.File;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LagoVista.CloudStorage.Storage.StorageProviders
@@ -13,6 +15,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
             CosmosDB.Startup.ConfigureServices(services);
             Cache.Startup.ConfigureServices(services);
 
+
+            services.AddScoped<ICloudFileStorageClient, S3CloudFileStorageClient>();
             services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
             services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
             services.AddScoped<IDocumentCollectionNameResolver, DocumentCollectionNameResolver>();

@@ -158,6 +158,8 @@ public sealed class ApplicationDataMigrationStateStore : IMigrationStateStore
         public string ReplicaSet => _mongo.ReplicaSet;
         public bool UseTls => _mongo.UseTls;
 
+        public bool DirectConnect => _mongo.DirectConnect;
+
         public static MigrationApplicationDataSettings FromEnvironment(string environment)
         {
             var prefix = String.Equals(environment, "prod", StringComparison.OrdinalIgnoreCase) ? "PROD" : "DEV";

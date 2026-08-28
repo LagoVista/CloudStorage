@@ -200,6 +200,8 @@ internal sealed class MigrationProgressStore
         public string AuthenticationDatabase => _mongo.AuthenticationDatabase;
         public string DatabaseName { get; }
         public string ReplicaSet => _mongo.ReplicaSet;
+
+        public bool DirectConnect => _mongo.DirectConnect;
         public bool UseTls => _mongo.UseTls;
 
         public static MigrationApplicationDataSettings FromEnvironment(string environment)

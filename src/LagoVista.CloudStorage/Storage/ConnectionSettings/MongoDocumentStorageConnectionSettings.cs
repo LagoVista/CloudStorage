@@ -17,6 +17,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         string DatabaseName { get; }
         string ReplicaSet { get; }
         bool UseTls { get; }
+        public bool DirectConnect { get; }
         string BuildConnectionString();
     }
 
@@ -46,6 +47,8 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
             ReplicaSet = String.IsNullOrWhiteSpace(replicaSet) ? null : replicaSet.Trim();
             var useTls = section.Optional("UseTls");
             UseTls = ReadBoolean(useTls, false, "UseTls");
+            var directConnection = section.Optional("DirectConnect");
+            DirectConnect = Convert.ToBoolean(directConnection);
         }
 
         public IReadOnlyList<string> Hosts { get; set; }
@@ -56,6 +59,7 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
         public string AuthenticationDatabase { get; set; }
         public string ReplicaSet { get; set; }
         public bool UseTls { get; set; }
+        public bool DirectConnect { get; set; }
 
         public string BuildConnectionString()
         {
@@ -76,12 +80,13 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
             }
 
             if (UseTls) builder.Append("&tls=true");
+            if (DirectConnect) builder.Append("&directConnection=true");
             return builder.ToString();
         }
 
         public override string ToString()
         {
-            return $"MongoDocumentStorageConnectionSettings(Hosts={String.Join(",", Hosts)}, Port={Port}, AuthenticationDatabase={AuthenticationDatabase}, ReplicaSet={ReplicaSet ?? "<none>"}, UseTls={UseTls}, UserName={UserName}, Password=<redacted>)";
+                     return $"MongoDocumentStorageConnectionSettings(Hosts={String.Join(",", Hosts)}, Port={Port}, AuthenticationDatabase={AuthenticationDatabase}, ReplicaSet={ReplicaSet ?? "<none>"}, UseTls={UseTls}, DirectConnect={DirectConnect}, UserName={UserName}, Password=<redacted>)";
         }
 
         private static IReadOnlyList<string> ReadHosts(string value)
