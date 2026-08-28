@@ -1,5 +1,5 @@
 CloudStorage S3 Cloud File Storage Test Evidence
-StartedUtc: 2026-08-28T01:45:48.0739210Z
+StartedUtc: 2026-08-28T01:52:26.7760464Z
 Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
 Filter: TestCategory=S3CloudFileStorage
 Provider: MinIO S3-compatible endpoint http://localhost:19090
@@ -11,23 +11,9 @@ Provider: MinIO S3-compatible endpoint http://localhost:19090
   LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
 Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
 A total of 1 test files matched the specified pattern.
-  Failed AddFileAsync_RecoversAfterTransientConnectionFailure [2 s]
-  Error Message:
-   Assert.IsTrue failed. The client succeeded, but its retry warning path was never entered.
-  Stack Trace:
-     at LagoVista.StorageProvider.Tests.S3.S3CloudFileStorageRetryIntegrationTests.AddFileAsync_RecoversAfterTransientConnectionFailure() in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\S3\S3CloudFileStorageRetryIntegrationTests.cs:line 43
-   at LagoVista.StorageProvider.Tests.S3.S3CloudFileStorageRetryIntegrationTests.AddFileAsync_RecoversAfterTransientConnectionFailure() in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\S3\S3CloudFileStorageRetryIntegrationTests.cs:line 48
-
-  Failed GetFileAsync_RecoversAfterTransientConnectionFailure [2 s]
-  Error Message:
-   Assert.IsTrue failed. The client succeeded, but its retry warning path was never entered.
-  Stack Trace:
-     at LagoVista.StorageProvider.Tests.S3.S3CloudFileStorageRetryIntegrationTests.GetFileAsync_RecoversAfterTransientConnectionFailure() in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\S3\S3CloudFileStorageRetryIntegrationTests.cs:line 72
-   at LagoVista.StorageProvider.Tests.S3.S3CloudFileStorageRetryIntegrationTests.GetFileAsync_RecoversAfterTransientConnectionFailure() in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\S3\S3CloudFileStorageRetryIntegrationTests.cs:line 72
-
 Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\s3-cloud-file-storage\latest.trx
 
-Failed!  - Failed:     2, Passed:     8, Skipped:     0, Total:    10, Duration: 8 s - LagoVista.StorageProvider.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    10, Skipped:     0, Total:    10, Duration: 17 s - LagoVista.StorageProvider.Tests.dll (net9.0)
 
-CompletedUtc: 2026-08-28T01:46:00.2493392Z
-ExitCode: 1
+CompletedUtc: 2026-08-28T01:52:51.4509465Z
+ExitCode: 0
