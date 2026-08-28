@@ -43,10 +43,27 @@ $testResult = $null
 $failureMessage = $null
 
 function Write-ReportLine {
-    param([string]$Message = "")
+    param(
+        [string]$Message = "",
+        [ConsoleColor]$ForegroundColor
+    )
 
-    Write-Host $Message
+    if ($PSBoundParameters.ContainsKey("ForegroundColor")) {
+        Write-Host $Message -ForegroundColor $ForegroundColor
+    }
+    else {
+        Write-Host $Message
+    }
+
     Add-Content -Path $txtPath -Value $Message
+}
+
+function Write-NativeOutput {
+    param([object]$Value)
+
+    $text = if ($Value -is [System.Management.Automation.ErrorRecord]) { $Value.ToString() } else { [string]$Value }
+    Write-Host $text
+    Add-Content -Path $txtPath -Value $text
 }
 
 function Invoke-ChildPowerShellScript {
@@ -60,7 +77,7 @@ function Invoke-ChildPowerShellScript {
     $stopwatch = [Diagnostics.Stopwatch]::StartNew()
     Write-ReportLine "[$Name]"
 
-    & $powerShellExe -NoProfile -ExecutionPolicy Bypass -File $Path 2>&1 | Tee-Object -FilePath $txtPath -Append
+    & $powerShellExe -NoProfile -ExecutionPolicy Bypass -File $Path 2>&1 | ForEach-Object { Write-NativeOutput $_ }
     $exitCode = $LASTEXITCODE
     $stopwatch.Stop()
 
@@ -72,7 +89,8 @@ function Invoke-ChildPowerShellScript {
         durationSeconds = [Math]::Round($stopwatch.Elapsed.TotalSeconds, 2)
     })
 
-    Write-ReportLine "  $status exit=$exitCode duration=$([Math]::Round($stopwatch.Elapsed.TotalSeconds, 2))s"
+    $statusColor = if ($exitCode -eq 0) { [ConsoleColor]::Green } else { [ConsoleColor]::Red }
+    Write-ReportLine "  $status exit=$exitCode duration=$([Math]::Round($stopwatch.Elapsed.TotalSeconds, 2))s" -ForegroundColor $statusColor
     Write-ReportLine
 
     if ($exitCode -ne 0 -and -not $DoNotThrow) {
@@ -92,13 +110,13 @@ function Invoke-DockerCleanup {
     $errorText = $null
 
     try {
-        & $Action 2>&1 | Tee-Object -FilePath $txtPath -Append
+        & $Action 2>&1 | ForEach-Object { Write-NativeOutput $_ }
         if ($LASTEXITCODE -is [int]) { $exitCode = $LASTEXITCODE }
     }
     catch {
         $exitCode = 1
         $errorText = $_.Exception.Message
-        Write-ReportLine "  $errorText"
+        Write-ReportLine "  $errorText" -ForegroundColor Red
     }
 
     $stopwatch.Stop()
@@ -111,7 +129,8 @@ function Invoke-DockerCleanup {
         error = $errorText
     })
 
-    Write-ReportLine "  $status exit=$exitCode duration=$([Math]::Round($stopwatch.Elapsed.TotalSeconds, 2))s"
+    $statusColor = if ($exitCode -eq 0) { [ConsoleColor]::Green } else { [ConsoleColor]::Red }
+    Write-ReportLine "  $status exit=$exitCode duration=$([Math]::Round($stopwatch.Elapsed.TotalSeconds, 2))s" -ForegroundColor $statusColor
     Write-ReportLine
 }
 
@@ -136,7 +155,7 @@ function Get-TrxCounters {
         }
     }
     catch {
-        Write-ReportLine "WARNING: Could not parse TRX counters: $($_.Exception.Message)"
+        Write-ReportLine "WARNING: Could not parse TRX counters: $($_.Exception.Message)" -ForegroundColor Yellow
         return $null
     }
 }
@@ -174,7 +193,7 @@ try {
     Write-ReportLine
 
     $buildStopwatch = [Diagnostics.Stopwatch]::StartNew()
-    dotnet build $solution --configuration $Configuration 2>&1 | Tee-Object -FilePath $txtPath -Append
+    dotnet build $solution --configuration $Configuration 2>&1 | ForEach-Object { Write-NativeOutput $_ }
     $buildExitCode = $LASTEXITCODE
     $buildStopwatch.Stop()
     $buildResult = [pscustomobject]@{
@@ -182,7 +201,8 @@ try {
         exitCode = $buildExitCode
         durationSeconds = [Math]::Round($buildStopwatch.Elapsed.TotalSeconds, 2)
     }
-    Write-ReportLine "Build: $($buildResult.status) exit=$buildExitCode duration=$($buildResult.durationSeconds)s"
+    $buildColor = if ($buildExitCode -eq 0) { [ConsoleColor]::Green } else { [ConsoleColor]::Red }
+    Write-ReportLine "Build: $($buildResult.status) exit=$buildExitCode duration=$($buildResult.durationSeconds)s" -ForegroundColor $buildColor
     Write-ReportLine
     if ($buildExitCode -ne 0) { throw "CloudStorage solution build failed with exit code $buildExitCode." }
 
@@ -191,7 +211,7 @@ try {
     Write-ReportLine
 
     $testStopwatch = [Diagnostics.Stopwatch]::StartNew()
-    dotnet test $project --configuration $Configuration --no-build --logger "trx;LogFileName=$trxPath" 2>&1 | Tee-Object -FilePath $txtPath -Append
+    dotnet test $project --configuration $Configuration --no-build --logger "trx;LogFileName=$trxPath" 2>&1 | ForEach-Object { Write-NativeOutput $_ }
     $testExitCode = $LASTEXITCODE
     $testStopwatch.Stop()
     $testResult = [pscustomobject]@{
@@ -199,20 +219,21 @@ try {
         exitCode = $testExitCode
         durationSeconds = [Math]::Round($testStopwatch.Elapsed.TotalSeconds, 2)
     }
-    Write-ReportLine "Tests: $($testResult.status) exit=$testExitCode duration=$($testResult.durationSeconds)s"
+    $testColor = if ($testExitCode -eq 0) { [ConsoleColor]::Green } else { [ConsoleColor]::Red }
+    Write-ReportLine "Tests: $($testResult.status) exit=$testExitCode duration=$($testResult.durationSeconds)s" -ForegroundColor $testColor
     Write-ReportLine
 
     if ($testExitCode -ne 0) { throw "Storage provider tests failed with exit code $testExitCode." }
 }
 catch {
     $failureMessage = $_.Exception.Message
-    Write-ReportLine "SUITE FAILURE: $failureMessage"
+    Write-ReportLine "SUITE FAILURE: $failureMessage" -ForegroundColor Red
     Write-ReportLine
 }
 finally {
     if ($KeepContainers) {
-        Write-ReportLine "=== KEEP CONTAINERS REQUESTED ==="
-        Write-ReportLine "Storage test containers were left running for diagnosis."
+        Write-ReportLine "=== KEEP CONTAINERS REQUESTED ===" -ForegroundColor Yellow
+        Write-ReportLine "Storage test containers were left running for diagnosis." -ForegroundColor Yellow
         Write-ReportLine
     }
     else {
@@ -250,14 +271,16 @@ finally {
     $overallPassed = [String]::IsNullOrWhiteSpace($failureMessage) -and (-not $teardownFailed)
 
     Write-ReportLine "=== SUMMARY ==="
-    Write-ReportLine "Overall: $(if ($overallPassed) { 'PASS' } else { 'FAIL' })"
+    $overallText = if ($overallPassed) { "PASS" } else { "FAIL" }
+    $overallColor = if ($overallPassed) { [ConsoleColor]::Green } else { [ConsoleColor]::Red }
+    Write-ReportLine "Overall: $overallText" -ForegroundColor $overallColor
     Write-ReportLine "StartedUtc: $($startedUtc.ToString('o'))"
     Write-ReportLine "CompletedUtc: $($completedUtc.ToString('o'))"
     Write-ReportLine "DurationSeconds: $([Math]::Round(($completedUtc - $startedUtc).TotalSeconds, 2))"
     if ($trxCounters) {
         Write-ReportLine "Tests: total=$($trxCounters.total) executed=$($trxCounters.executed) passed=$($trxCounters.passed) failed=$($trxCounters.failed) notExecuted=$($trxCounters.notExecuted)"
     }
-    if ($failureMessage) { Write-ReportLine "Failure: $failureMessage" }
+    if ($failureMessage) { Write-ReportLine "Failure: $failureMessage" -ForegroundColor Red }
     Write-ReportLine "Evidence: $evidenceDir"
 
     $report = [pscustomobject]@{
