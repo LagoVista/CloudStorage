@@ -9,7 +9,7 @@ namespace LagoVista.CloudStorage.Tests
 {
     public class StorageConnectionTests
     {
-        private static IConfiguration CreateConfiguration()
+        private static IConfiguration CreateConfiguration(bool directConnect = false)
         {
             var values = new Dictionary<string, string>
             {
@@ -29,6 +29,8 @@ namespace LagoVista.CloudStorage.Tests
                 ["ApplicationDataStorage:ConnectionString"] = "mongodb://localhost:27017",
                 ["ApplicationDataStorage:DatabaseName"] = "nuviot-application"
             };
+
+            if (directConnect) values["MongoDocumentStorage:DirectConnect"] = "true";
 
             return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
         }
@@ -52,6 +54,7 @@ namespace LagoVista.CloudStorage.Tests
             Assert.That(settings.AuthenticationDatabase, Is.EqualTo("admin"));
             Assert.That(settings.ReplicaSet, Is.EqualTo("rs0"));
             Assert.That(settings.UseTls, Is.True);
+            Assert.That(settings.DirectConnect, Is.False);
         }
 
         [Test]
@@ -59,6 +62,14 @@ namespace LagoVista.CloudStorage.Tests
         {
             var settings = new MongoDocumentStorageConnectionSettings(CreateConfiguration());
             Assert.That(settings.BuildConnectionString(), Is.EqualTo("mongodb://mongo-app:test%3Ap%40ssword@mongo-0.mongo.svc:27017,mongo-1.mongo.svc:27017/?authSource=admin&replicaSet=rs0&tls=true"));
+        }
+
+        [Test]
+        public void MongoDocumentSettings_AddDirectConnectionWhenConfigured()
+        {
+            var settings = new MongoDocumentStorageConnectionSettings(CreateConfiguration(directConnect: true));
+            Assert.That(settings.DirectConnect, Is.True);
+            Assert.That(settings.BuildConnectionString(), Is.EqualTo("mongodb://mongo-app:test%3Ap%40ssword@mongo-0.mongo.svc:27017,mongo-1.mongo.svc:27017/?authSource=admin&replicaSet=rs0&tls=true&directConnection=true"));
         }
 
         [Test]
@@ -114,7 +125,7 @@ namespace LagoVista.CloudStorage.Tests
             var application = new ApplicationDataStorageSettings(configuration);
             var factory = new MongoStorageClientFactory();
 
-            Assert.That(factory.GetClient(scratch.ConnectionString), Is.SameAs(factory.GetClient(application.ConnectionString)));
+            Assert.That(factory.GetClient(scratch.ConnectionString), Is.SameAs(factory.GetClient(application.ConnectionString));
         }
     }
 }
