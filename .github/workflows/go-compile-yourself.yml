@@ -1,0 +1,129 @@
+name: Go Compile Yourself
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version to build
+        required: true
+        type: string
+        default: 5.0.0
+      publish:
+        description: Publish repository packages to the shared GitHub Packages feed
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-package:
+    runs-on: windows-latest
+    timeout-minutes: 40
+
+    env:
+      PACKAGE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || format('5.0.0-feature.{0}', github.run_number) }}
+      NUGET_GITHUB_TOKEN: ${{ secrets.NUGET_GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Configure shared package credentials
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_GITHUB_TOKEN)) {
+            throw 'NUGET_GITHUB_TOKEN is required to restore NuvIoT packages.'
+          }
+
+          dotnet nuget update source nuviot `
+            --username "${{ github.actor }}" `
+            --password "$env:NUGET_GITHUB_TOKEN" `
+            --store-password-in-clear-text `
+            --configfile NuGet.config
+
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to configure credentials for the shared NuvIoT package source.'
+          }
+
+      - name: Build and pack repository packages
+        shell: pwsh
+        run: ./Build-GitHubPackages.ps1 -Version $env:PACKAGE_VERSION
+
+      - name: Upload package build
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudStorage-package-set-${{ env.PACKAGE_VERSION }}
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/package-catalog.json
+          if-no-files-found: error
+
+      - name: Publish packages
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+        shell: pwsh
+        run: |
+          $packages = @(Get-ChildItem artifacts/packages -Filter '*.nupkg' -File | Where-Object { $_.Name -notlike '*.symbols.nupkg' } | Sort-Object Name)
+          if ($packages.Count -eq 0) {
+            throw 'No packages were produced for publishing.'
+          }
+
+          foreach ($package in $packages) {
+            Write-Host "Publishing $($package.Name)"
+            dotnet nuget push $package.FullName `
+              --source nuviot `
+              --api-key "$env:NUGET_GITHUB_TOKEN" `
+              --skip-duplicate
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to publish '$($package.Name)'."
+            }
+          }
+
+      - name: Verify published package restores
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+        shell: pwsh
+        run: |
+          dotnet nuget locals all --clear
+
+          $catalog = Get-Content artifacts/package-catalog.json -Raw | ConvertFrom-Json
+          $smokeRoot = Join-Path $env:GITHUB_WORKSPACE 'artifacts/restore-smoke'
+          if (Test-Path $smokeRoot) {
+            Remove-Item -Recurse -Force $smokeRoot
+          }
+          New-Item -ItemType Directory -Force -Path $smokeRoot | Out-Null
+
+          foreach ($package in $catalog.packages) {
+            $safeName = ($package.id -replace '[^A-Za-z0-9_.-]', '_')
+            $smoke = Join-Path $smokeRoot $safeName
+
+            dotnet new classlib --name SmokeConsumer --framework net9.0 --output $smoke --force | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to create restore project for $($package.id)."
+            }
+
+            $project = Get-ChildItem $smoke -Filter '*.csproj' -File | Select-Object -First 1
+            dotnet add $project.FullName package $package.id --version $package.version
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to restore $($package.id) $($package.version) from configured package sources."
+            }
+
+            Write-Host "Verified $($package.id) $($package.version)"
+          }
