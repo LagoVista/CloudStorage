@@ -10,6 +10,8 @@ namespace LagoVista.CloudStorage.Diagnostics
         {
             services.AddTransient<IPlatformSmokeTest, CassandraPlatformSmokeTest>();
             services.AddTransient<IPlatformSmokeTest, MongoDocumentStorageSmokeTest>();
+            services.AddTransient<IPlatformSmokeTest, ScratchStorageSmokeTest>();
+            services.AddTransient<IPlatformSmokeTest, ApplicationStorageSmokeTest>();
             services.AddTransient<IPlatformSmokeTest, CosmosDocumentStorageSmokeTest>();
             services.AddTransient<IPlatformSmokeTest, RedisPlatformSmokeTest>();
         }

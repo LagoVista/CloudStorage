@@ -10,19 +10,19 @@ using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Diagnostics
 {
-    public class MongoDocumentStorageSmokeTest : IPlatformSmokeTest
+    public class ScratchStorageSmokeTest : IPlatformSmokeTest
     {
-        private readonly IDocumentStorageProviderSettings _providerSettings;
+        private readonly IScratchStorageSettings _providerSettings;
         private readonly IMongoDocumentStorageConnectionSettings _settings;
 
-        public MongoDocumentStorageSmokeTest(IDocumentStorageProviderSettings providerSettings, IMongoDocumentStorageConnectionSettings settings)
+        public ScratchStorageSmokeTest(IScratchStorageSettings providerSettings, IMongoDocumentStorageConnectionSettings settings)
         {
             _providerSettings = providerSettings ?? throw new ArgumentNullException(nameof(providerSettings));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
-        public string Key => "storage.mongo.documents";
-        public string Name => "Mongo Document Storage";
+        public string Key => "storage.mongo.scratch";
+        public string Name => "Scratch Data Storage (Mongo)";
         public string Category => "Data Storage";
 
         public async Task<PlatformSmokeTestResult> ExecuteAsync(CancellationToken cancellationToken)
@@ -37,7 +37,7 @@ namespace LagoVista.CloudStorage.Diagnostics
             {
                 Status = PlatformSmokeTestStatus.Passed,
                 Target = GetSanitizedTarget(conectionString, _settings.DatabaseName),
-                Message = "Mongo ping succeeded."
+                Message = "Scratch Data (Mongo) ping succeeded."
             };
         }
 
