@@ -3,13 +3,12 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>disable</Nullable>
-
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CassandraCSharpDriver" Version="3.22.0" />
-    <PackageReference Include="LagoVista.Core.TestBase" Version="3.0.3388.2132" />
+    <PackageReference Include="CassandraCSharpDriver" />
+    <PackageReference Include="LagoVista.Core.TestBase" />
   </ItemGroup>
 
   <ItemGroup>
