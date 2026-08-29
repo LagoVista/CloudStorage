@@ -1,0 +1,34 @@
+{
+  "key": "useradmin-access-log",
+  "displayName": "UserAdmin Access Log",
+  "description": "Migrates monthly UserAdmin AccessLog Azure Tables to Cassandra activity storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "access-log",
+    "tablePattern": "^m[0-9]{6}AccessLog$"
+  },
+  "target": {
+    "type": "cassandra-activity",
+    "table": "access_log",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "Month",
+    "partitionFields": ["organization_id"],
+    "indexes": ["resource_id", "user_id", "action", "authorized"],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "sources": ["$table", "PartitionKey", "RowKey"], "transform": "stable-id", "required": true },
+    { "name": "organization_id", "type": "text", "source": "OrgId", "transform": "anonymous-org-id", "required": true },
+    { "name": "organization", "type": "text", "source": "OrgName", "transform": "anonymous-org-name" },
+    { "name": "creation_date", "type": "timestamp", "sources": ["DateStamp", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "resource", "type": "text", "source": "Resource" },
+    { "name": "resource_id", "type": "text", "source": "ResourceId" },
+    { "name": "user_id", "type": "text", "source": "UserId" },
+    { "name": "user_name", "type": "text", "source": "UserName" },
+    { "name": "action", "type": "text", "source": "Action" },
+    { "name": "details", "type": "text", "source": "Details" },
+    { "name": "authorized", "type": "boolean", "source": "Authorized" },
+    { "name": "not_authorized_reason", "type": "text", "source": "NotAuthorizedReason" }
+  ]
+}

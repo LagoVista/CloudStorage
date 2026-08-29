@@ -1,0 +1,119 @@
+using LagoVista.Core.Interfaces;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace LagoVista.CloudStorage.Storage.ConnectionSettings
+{
+    public interface IMongoDocumentStorageConnectionSettings
+    {
+        IReadOnlyList<string> Hosts { get; }
+        int Port { get; }
+        string UserName { get; }
+        string Password { get; }
+        string AuthenticationDatabase { get; }
+        string DatabaseName { get; }
+        string ReplicaSet { get; }
+        bool UseTls { get; }
+        public bool DirectConnect { get; }
+        string BuildConnectionString();
+    }
+
+    public class MongoDocumentStorageConnectionSettings : IMongoDocumentStorageConnectionSettings
+    {
+        public const string SectionName = "MongoDocumentStorage";
+
+        public MongoDocumentStorageConnectionSettings()
+        {
+        }
+
+        public MongoDocumentStorageConnectionSettings(IConfiguration configuration)
+        {
+            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
+
+            var section = configuration.GetSection(SectionName);
+            var hosts = section.Require("Hosts");
+            if (!String.IsNullOrEmpty(hosts)) Hosts = ReadHosts(hosts);
+            var port = section.Optional("Port");
+            Port = ReadPort(port, 27017);
+            UserName = section.Require("UserName");
+            Password = section.Require("Password");
+            var authenticationDatabase = section.Optional("AuthenticationDatabase");
+            AuthenticationDatabase = String.IsNullOrWhiteSpace(authenticationDatabase) ? "admin" : authenticationDatabase.Trim();
+            DatabaseName = section.Require("DatabaseName");
+            var replicaSet = section.Optional("ReplicaSet");
+            ReplicaSet = String.IsNullOrWhiteSpace(replicaSet) ? null : replicaSet.Trim();
+            var useTls = section.Optional("UseTls");
+            UseTls = ReadBoolean(useTls, false, "UseTls");
+            var directConnection = section.Optional("DirectConnect");
+            DirectConnect = Convert.ToBoolean(directConnection);
+        }
+
+        public IReadOnlyList<string> Hosts { get; set; }
+        public int Port { get; set; } = 27018;
+        public string UserName { get; set; }
+        public string Password { get; set; }
+        public string DatabaseName { get; set; }
+        public string AuthenticationDatabase { get; set; }
+        public string ReplicaSet { get; set; }
+        public bool UseTls { get; set; }
+        public bool DirectConnect { get; set; }
+
+        public string BuildConnectionString()
+        {
+            var builder = new StringBuilder();
+            builder.Append("mongodb://");
+            builder.Append(Uri.EscapeDataString(UserName));
+            builder.Append(':');
+            builder.Append(Uri.EscapeDataString(Password));
+            builder.Append('@');
+            builder.Append(String.Join(",", Hosts.Select(host => $"{host}:{Port}")));
+            builder.Append("/?authSource=");
+            builder.Append(Uri.EscapeDataString(AuthenticationDatabase));
+
+            if (!String.IsNullOrWhiteSpace(ReplicaSet))
+            {
+                builder.Append("&replicaSet=");
+                builder.Append(Uri.EscapeDataString(ReplicaSet));
+            }
+
+            if (UseTls) builder.Append("&tls=true");
+            if (DirectConnect) builder.Append("&directConnection=true");
+            return builder.ToString();
+        }
+
+        public override string ToString()
+        {
+                     return $"MongoDocumentStorageConnectionSettings(Hosts={String.Join(",", Hosts)}, Port={Port}, AuthenticationDatabase={AuthenticationDatabase}, ReplicaSet={ReplicaSet ?? "<none>"}, UseTls={UseTls}, DirectConnect={DirectConnect}, UserName={UserName}, Password=<redacted>)";
+        }
+
+        private static IReadOnlyList<string> ReadHosts(string value)
+        {
+            var hosts = value
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(item => item.Trim())
+                .Where(item => item.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (hosts.Count == 0) throw new InvalidOperationException("MongoDocumentStorage:Hosts must contain at least one host.");
+            return hosts.AsReadOnly();
+        }
+
+        private static int ReadPort(string value, int defaultPort)
+        {
+            if (String.IsNullOrWhiteSpace(value)) return defaultPort;
+            if (!Int32.TryParse(value, out var port) || port <= 0 || port > 65535) throw new InvalidOperationException("MongoDocumentStorage:Port must be a valid TCP port.");
+            return port;
+        }
+
+        private static bool ReadBoolean(string value, bool defaultValue, string fieldName)
+        {
+            if (String.IsNullOrWhiteSpace(value)) return defaultValue;
+            if (!Boolean.TryParse(value, out var result)) throw new InvalidOperationException($"MongoDocumentStorage:{fieldName} must be true or false.");
+            return result;
+        }
+    }
+}

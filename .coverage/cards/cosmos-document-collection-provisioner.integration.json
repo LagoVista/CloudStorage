@@ -1,0 +1,36 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cosmos-document-collection-provisioner-integration",
+  "title": "CosmosDocumentCollectionProvisioner Integration Tests",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "cosmos",
+  "summary": "Verify fresh database/container recovery provisioning, repeat-safe behavior, and partition-key validation against the local Cosmos emulator.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/CosmosDB/CosmosDocumentCollectionProvisioner.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/cosmos-infrastructure/latest.txt",
+    ".coverage/evidence/cosmos-infrastructure/latest.trx"
+  ],
+  "data": {
+    "component": "CosmosDocumentCollectionProvisioner",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Cosmos/CosmosInfrastructureIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cosmos-infrastructure-tests.ps1",
+    "environment": {
+      "type": "docker",
+      "provider": "cosmos-emulator",
+      "port": 18081
+    },
+    "coverageLayers": {
+      "completed": [
+        "fresh-database-provisioning",
+        "container-provisioning",
+        "repeat-safe-provisioning",
+        "partition-key-validation"
+      ],
+      "next": []
+    }
+  }
+}

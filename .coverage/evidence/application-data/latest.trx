@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="e02517b9-ad7d-407b-993a-100739979430" name="kevin@BEAST-LAPTOP 2026-08-26 15:35:12" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T15:35:12.8991365-04:00" queuing="2026-08-26T15:35:12.8991367-04:00" start="2026-08-26T15:35:11.7630263-04:00" finish="2026-08-26T15:35:12.9042800-04:00" />
+  <TestSettings name="default" id="f239b697-a369-4f6a-9e4b-27298e77bc8f">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_15_35_12" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="dbf5acc9-d5b8-4b73-bbdf-2424f0ad8e3b" testId="3a5f503f-3629-0b2f-dac3-0d6797234fd3" testName="CrudQueryPagingAndDeterministicCollections_WorkEndToEnd" computerName="BEAST-LAPTOP" duration="00:00:00.4229931" startTime="2026-08-26T15:35:12.2468111-04:00" endTime="2026-08-26T15:35:12.6848852-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="dbf5acc9-d5b8-4b73-bbdf-2424f0ad8e3b" />
+    <UnitTestResult executionId="7bfd58c8-cf6d-4dbd-8870-8a21ed95aba2" testId="674e4f9a-310c-c424-542c-02e5478bb876" testName="Insert_PreservesAuthoritativeSourceTimestamps" computerName="BEAST-LAPTOP" duration="00:00:00.0414421" startTime="2026-08-26T15:35:12.6880751-04:00" endTime="2026-08-26T15:35:12.7311140-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7bfd58c8-cf6d-4dbd-8870-8a21ed95aba2" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Insert_PreservesAuthoritativeSourceTimestamps" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="674e4f9a-310c-c424-542c-02e5478bb876">
+      <TestCategory>
+        <TestCategoryItem TestCategory="ApplicationData" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="7bfd58c8-cf6d-4dbd-8870-8a21ed95aba2" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoApplicationDataStoreIntegrationTests" name="Insert_PreservesAuthoritativeSourceTimestamps" />
+    </UnitTest>
+    <UnitTest name="CrudQueryPagingAndDeterministicCollections_WorkEndToEnd" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="3a5f503f-3629-0b2f-dac3-0d6797234fd3">
+      <TestCategory>
+        <TestCategoryItem TestCategory="ApplicationData" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="dbf5acc9-d5b8-4b73-bbdf-2424f0ad8e3b" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoApplicationDataStoreIntegrationTests" name="CrudQueryPagingAndDeterministicCollections_WorkEndToEnd" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="3a5f503f-3629-0b2f-dac3-0d6797234fd3" executionId="dbf5acc9-d5b8-4b73-bbdf-2424f0ad8e3b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="674e4f9a-310c-c424-542c-02e5478bb876" executionId="7bfd58c8-cf6d-4dbd-8870-8a21ed95aba2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="2" executed="2" passed="2" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
+Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
+   NUnit3TestExecutor discovered 0 of 0 NUnit test cases using Current Discovery mode, Explicit run&#xD;
+NUnit Adapter 5.1.0.0: Test execution complete&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

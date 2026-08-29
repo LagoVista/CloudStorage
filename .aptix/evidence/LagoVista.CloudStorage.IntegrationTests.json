@@ -1,0 +1,35 @@
+{
+  "SchemaVersion": "1.1",
+  "ProjectName": "LagoVista.CloudStorage.IntegrationTests",
+  "ProjectPath": "Tests\\LagoVista.CloudStorage.Tests\\LagoVista.CloudStorage.IntegrationTests.csproj",
+  "AssemblyPath": "Tests\\LagoVista.CloudStorage.Tests\\bin\\Debug\\net9.0\\LagoVista.CloudStorage.IntegrationTests.dll",
+  "RunId": "cc45bd02-f4ec-44be-b854-af5e049218a6",
+  "StartedUtc": "2026-08-26T19:56:31.846882Z",
+  "CompletedUtc": "2026-08-26T19:56:36.9185886Z",
+  "ExitCode": 0,
+  "Outcome": "NoTests",
+  "Summary": {
+    "Total": 0,
+    "Passed": 0,
+    "Failed": 0,
+    "Skipped": 0,
+    "DurationMilliseconds": 5071
+  },
+  "Tests": [],
+  "Issues": [],
+  "StandardOutput": [
+    "  Determining projects to restore...",
+    "  Restored D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.CloudStorage.Tests\\LagoVista.CloudStorage.IntegrationTests.csproj (in 413 ms).",
+    "  1 of 2 projects are up-to-date for restore.",
+    "  LagoVista.CloudStorage -\u003E D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\bin\\Debug\\netstandard2.1\\LagoVista.CloudStorage.dll",
+    "  LagoVista.CloudStorage.IntegrationTests -\u003E D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.CloudStorage.Tests\\bin\\Debug\\net9.0\\LagoVista.CloudStorage.IntegrationTests.dll",
+    "Test run for D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.CloudStorage.Tests\\bin\\Debug\\net9.0\\LagoVista.CloudStorage.IntegrationTests.dll (.NETCoreApp,Version=v9.0)",
+    "A total of 1 test files matched the specified pattern.",
+    "No test is available in D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.CloudStorage.Tests\\bin\\Debug\\net9.0\\LagoVista.CloudStorage.IntegrationTests.dll. Make sure that test discoverer \u0026 executors are registered and platform \u0026 framework version settings are appropriate and try again.",
+    "",
+    "",
+    "Attachments:",
+    "  D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.CloudStorage.Tests\\TestResults\\d6bcfeb9-5b9f-4e94-b66e-0d46b64e19b8\\coverage.cobertura.xml"
+  ],
+  "StandardError": []
+}

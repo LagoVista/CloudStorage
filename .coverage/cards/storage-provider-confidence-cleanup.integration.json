@@ -1,0 +1,39 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "storage-provider-confidence-cleanup-integration",
+  "title": "Storage Provider Confidence Cleanup",
+  "status": "in-process",
+  "category": "integration-test",
+  "area": "storage-providers",
+  "summary": "Close the remaining meaningful Mongo document-storage and Cassandra operational-record coverage gaps without chasing defensive null-check branches. Exercise typed Mongo projection paths, JObject sync upsert concurrency, the remaining runtime patch not-found branch, and an end-to-end Cassandra scalar type matrix.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.Projections.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.KeyLookup.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.OwnedLookup.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentStorageClient.RawUpsert.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraOperationalRecordMap.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/mongo-document-storage-depth/latest.txt",
+    ".coverage/evidence/mongo-document-storage-depth/latest.trx",
+    ".coverage/evidence/cassandra-operational-data-store/latest.txt",
+    ".coverage/evidence/cassandra-operational-data-store/latest.trx"
+  ],
+  "data": {
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "coverageLayers": {
+      "completed": [],
+      "next": [
+        "mongo-runtime-patch-missing-with-etag",
+        "mongo-typed-projection-by-id",
+        "mongo-typed-projection-by-key",
+        "mongo-typed-owned-projection",
+        "mongo-projection-not-found-semantics",
+        "mongo-jobject-sync-upsert",
+        "mongo-jobject-sync-upsert-concurrency",
+        "cassandra-supported-scalar-type-round-trip",
+        "cassandra-nullable-null-round-trip"
+      ]
+    }
+  }
+}

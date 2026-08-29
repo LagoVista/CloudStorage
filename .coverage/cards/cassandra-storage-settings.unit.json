@@ -1,0 +1,33 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cassandra-storage-settings-unit",
+  "title": "CassandraStorageSettings Unit Tests",
+  "status": "completed",
+  "category": "unit-test",
+  "area": "cassandra",
+  "summary": "Exercise Cassandra connection configuration parsing, normalization, defaults, validation, and safe string rendering.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/ConnectionSettings/CassandraStorageSettings.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/cassandra-infrastructure/latest.txt",
+    ".coverage/evidence/cassandra-infrastructure/latest.trx"
+  ],
+  "data": {
+    "component": "CassandraStorageSettings",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Cassandra/CassandraStorageSettingsTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cassandra-tests.ps1",
+    "coverageLayers": {
+      "completed": [
+        "required-settings",
+        "contact-point-normalization",
+        "port-default-and-validation",
+        "data-center-default",
+        "password-redaction",
+        "null-configuration"
+      ],
+      "next": []
+    }
+  }
+}

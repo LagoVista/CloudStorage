@@ -1,0 +1,36 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cosmos-document-storage-depth-integration",
+  "title": "CosmosDocumentStorageClient Implementation Depth Tests",
+  "status": "in-process",
+  "category": "integration-test",
+  "area": "document-storage",
+  "summary": "Exercise provider-specific Cosmos document storage implementation paths beyond the shared IDocumentStorageClient contract suite, including runtime patching, paged queries, generic sorting, and all registered known-query branches.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/CosmosDB",
+    "tests/LagoVista.StorageProvider.Tests/Cosmos/CosmosDocumentStorageClientDepthIntegrationTests.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/cosmos-document-storage-depth/latest.txt",
+    ".coverage/evidence/cosmos-document-storage-depth/latest.trx"
+  ],
+  "data": {
+    "component": "CosmosDocumentStorageClient",
+    "contract": "IDocumentStorageClient",
+    "testStrategy": "provider-implementation-depth",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "providerFixture": "tests/LagoVista.StorageProvider.Tests/Cosmos/CosmosDocumentStorageClientDepthIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cosmos-document-storage-depth-tests.ps1",
+    "environment": { "type": "docker", "provider": "cosmos-emulator" },
+    "coverageLayers": {
+      "completed": [],
+      "next": [
+        "runtime-patch-set-add-remove",
+        "runtime-patch-concurrency-and-not-found",
+        "paged-query-visibility-filters",
+        "generic-non-string-sort",
+        "all-known-query-branches"
+      ]
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "mongo-mutable-record-store-integration",
+  "title": "MongoMutableRecordStore Integration Coverage",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "mongo",
+  "summary": "Shared internal Mongo mutable-record engine covered transitively through the Application Data and Scratch Data integration suites rather than by a duplicate direct test suite.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoMutableRecordStore.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoApplicationDataStore.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoScratchStore.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/application-data/latest.txt",
+    ".coverage/evidence/application-data/latest.trx",
+    ".coverage/evidence/scratch-data/latest.txt",
+    ".coverage/evidence/scratch-data/latest.trx"
+  ],
+  "data": {
+    "component": "MongoMutableRecordStore",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "coverageStrategy": "transitive-through-public-storage-contracts",
+    "criticalCoverage": true,
+    "coverage": [
+      "insert",
+      "get",
+      "replace",
+      "scratch-upsert",
+      "delete",
+      "filtering",
+      "ordering",
+      "continuation-token-paging",
+      "common-and-configured-indexes",
+      "scratch-retention-and-ttl-index"
+    ]
+  }
+}

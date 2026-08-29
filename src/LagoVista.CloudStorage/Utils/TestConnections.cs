@@ -1,8 +1,8 @@
 // --- BEGIN CODE INDEX META (do not edit) ---
 // ContentHash: 01327be1d3e2ec3c6ab9198c9ab4886279b214c9f61cf064fa61d4fa0e0518ab
 // IndexVersion: 2
-// --- END CODE INDEX META ---
-using LagoVista.CloudStorage.Storage;
+// --- END CODE INDEX META (do not edit) ---
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using Microsoft.Extensions.Configuration;
@@ -19,8 +19,14 @@ namespace LagoVista.CloudStorage.Utils
         public const string DevSLOrgId = "C8AD4589F26842E7A1AEFBAEFC979C9B";
 
         public static MongoDocumentStorageConnectionSettings ProductionMongoDocumentStorage => CreateMongoDocumentStorageSettings("PROD");
-        public static MongoDocumentStorageConnectionSettings DevMongoDocumentStorage => CreateMongoDocumentStorageSettings("Dev");
+        public static MongoDocumentStorageConnectionSettings DevMongoDocumentStorage => CreateMongoDocumentStorageSettings("DEV");
         public static MongoDocumentStorageConnectionSettings TestMongoDocumentStorage => CreateLocalTestMongoDocumentStorageSettings();
+
+        public static CassandraStorageSettings ProductionCassandraStorage => CreateCassandraStorageSettings("PROD");
+        public static CassandraStorageSettings DevCassandraStorage => CreateCassandraStorageSettings("DEV");
+
+        public static S3ObjectStorageConnectionSettings ProductionS3ObjectStorage => CreateS3ObjectStorageSettings("PROD");
+        public static S3ObjectStorageConnectionSettings DevS3ObjectStorage => CreateS3ObjectStorageSettings("DEV");
 
         public static ConnectionSettings ProductionDocDB
         {
@@ -224,8 +230,6 @@ namespace LagoVista.CloudStorage.Utils
             }
         }
 
-
-
         public static ConnectionSettings DevSQLServer
         {
             get
@@ -242,7 +246,6 @@ namespace LagoVista.CloudStorage.Utils
                 if (String.IsNullOrEmpty(cs.UserName)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_USER as environment variable");
                 if (String.IsNullOrEmpty(cs.ResourceName)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_DB as environment variable");
                 if (String.IsNullOrEmpty(cs.Password)) Console.WriteLine("[ERROR] - Missing DEV_SQLSRVR_PASSWORD as environment variable");
-
 
                 return cs;
             }
@@ -267,6 +270,41 @@ namespace LagoVista.CloudStorage.Utils
             if (String.IsNullOrEmpty(cs.AuthenticationDatabase)) Console.WriteLine($"[ERROR] - Missing {prefix}_MongoDocumentStorage:AuthenticationDatabase as environment variable");
          
             return cs;
+        }
+
+        private static CassandraStorageSettings CreateCassandraStorageSettings(string prefix)
+        {
+            var values = new Dictionary<string, string>
+            {
+                ["CassandraStorage:ContactPoints"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:ContactPoints"),
+                ["CassandraStorage:UserName"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:UserName"),
+                ["CassandraStorage:Password"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:Password"),
+                ["CassandraStorage:Keyspace"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:Keyspace"),
+                ["CassandraStorage:Port"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:Port"),
+                ["CassandraStorage:LocalDataCenter"] = Environment.GetEnvironmentVariable($"{prefix}_CassandraStorage:LocalDataCenter")
+            };
+
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+            return new CassandraStorageSettings(configuration);
+        }
+
+        private static S3ObjectStorageConnectionSettings CreateS3ObjectStorageSettings(string prefix)
+        {
+            var values = new Dictionary<string, string>
+            {
+                ["S3ObjectStorage:Host"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:Host"),
+                ["S3ObjectStorage:Port"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:Port"),
+                ["S3ObjectStorage:AccessKey"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:AccessKey"),
+                ["S3ObjectStorage:SecretKey"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:SecretKey"),
+                ["S3ObjectStorage:UseTls"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:UseTls"),
+                ["S3ObjectStorage:Region"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:Region"),
+                ["S3ObjectStorage:PublicHost"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:PublicHost"),
+                ["S3ObjectStorage:PublicPort"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:PublicPort"),
+                ["S3ObjectStorage:PublicUseTls"] = Environment.GetEnvironmentVariable($"{prefix}_S3ObjectStorage:PublicUseTls")
+            };
+
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+            return new S3ObjectStorageConnectionSettings(configuration);
         }
 
         private static MongoDocumentStorageConnectionSettings CreateLocalTestMongoDocumentStorageSettings()

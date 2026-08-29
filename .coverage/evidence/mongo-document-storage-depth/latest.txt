@@ -1,0 +1,19 @@
+CloudStorage Mongo Document Storage Implementation Depth Test Evidence
+StartedUtc: 2026-08-27T19:26:52.3631189Z
+Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\PowerShell\..\LagoVista.StorageProvider.Tests.csproj
+Filter: TestCategory=MongoDocumentStorageDepth
+Provider: MongoDB localhost:27018
+
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
+  LagoVista.Relational -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.Relational\bin\Debug\net9.0\LagoVista.Relational.dll
+  LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
+Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\mongo-document-storage-depth\latest.trx
+
+Passed!  - Failed:     0, Passed:    10, Skipped:     0, Total:    10, Duration: 2 s - LagoVista.StorageProvider.Tests.dll (net9.0)
+
+CompletedUtc: 2026-08-27T19:27:00.0719226Z
+ExitCode: 0

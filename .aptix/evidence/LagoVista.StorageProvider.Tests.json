@@ -1,0 +1,40 @@
+{
+  "SchemaVersion": "1.1",
+  "ProjectName": "LagoVista.StorageProvider.Tests",
+  "ProjectPath": "Tests\\LagoVista.StorageProvider.Tests\\LagoVista.StorageProvider.Tests.csproj",
+  "AssemblyPath": "Tests\\LagoVista.StorageProvider.Tests\\bin\\Debug\\net9.0\\LagoVista.StorageProvider.Tests.dll",
+  "RunId": "bcbc79b0-9a60-441e-a66f-4df80cb94bc5",
+  "StartedUtc": "2026-08-27T19:34:48.9423952Z",
+  "CompletedUtc": "2026-08-27T19:35:21.9240519Z",
+  "ExitCode": 0,
+  "Outcome": "Passed",
+  "Summary": {
+    "Total": 93,
+    "Passed": 93,
+    "Failed": 0,
+    "Skipped": 0,
+    "DurationMilliseconds": 32981
+  },
+  "Tests": [],
+  "Issues": [],
+  "StandardOutput": [
+    "  Determining projects to restore...",
+    "  Restored D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\LagoVista.StorageProvider.Tests.csproj (in 1.25 sec).",
+    "  2 of 3 projects are up-to-date for restore.",
+    "D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\Storage\\ConnectionSettings\\ScratchStorageSettings.cs(13,28): warning CS0108: \u0027ScratchStorageSettings.SectionName\u0027 hides inherited member \u0027MongoDocumentStorageConnectionSettings.SectionName\u0027. Use the new keyword if hiding was intended. [D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\LagoVista.CloudStorage.csproj]",
+    "D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\Storage\\ConnectionSettings\\ApplicationDataStorageSettings.cs(12,29): warning CS0108: \u0027ApplicationDataStorageSettings.SectionName\u0027 hides inherited member \u0027MongoDocumentStorageConnectionSettings.SectionName\u0027. Use the new keyword if hiding was intended. [D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\LagoVista.CloudStorage.csproj]",
+    "  LagoVista.CloudStorage -\u003E D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.CloudStorage\\bin\\Debug\\netstandard2.1\\LagoVista.CloudStorage.dll",
+    "  LagoVista.Relational -\u003E D:\\NuvIoT\\cs.CloudStorage\\src\\LagoVista.Relational\\bin\\Debug\\net9.0\\LagoVista.Relational.dll",
+    "D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\Cassandra\\CassandraStorageSettingsTests.cs(53,10): warning MSTEST0044: \u0027DataTestMethod\u0027 is obsolete. Use \u0027TestMethod\u0027 instead. (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0044) [D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\LagoVista.StorageProvider.Tests.csproj]",
+    "D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\Cassandra\\CassandraSessionFactoryIntegrationTests.cs(40,19): warning MSTEST0039: Use \u0027Assert.ThrowsExactly\u0027 instead of \u0027Assert.ThrowsException\u0027 (https://learn.microsoft.com/dotnet/core/testing/mstest-analyzers/mstest0039) [D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\LagoVista.StorageProvider.Tests.csproj]",
+    "  LagoVista.StorageProvider.Tests -\u003E D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\bin\\Debug\\net9.0\\LagoVista.StorageProvider.Tests.dll",
+    "Test run for D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\bin\\Debug\\net9.0\\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)",
+    "A total of 1 test files matched the specified pattern.",
+    "",
+    "Passed!  - Failed:     0, Passed:    93, Skipped:     0, Total:    93, Duration: 20 s - LagoVista.StorageProvider.Tests.dll (net9.0)",
+    "",
+    "Attachments:",
+    "  D:\\NuvIoT\\cs.CloudStorage\\Tests\\LagoVista.StorageProvider.Tests\\TestResults\\46e1fde8-9f0a-457d-af95-684b6a92b88e\\coverage.cobertura.xml"
+  ],
+  "StandardError": []
+}

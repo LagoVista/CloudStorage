@@ -1,0 +1,29 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "mongo-document-collection-provisioner-integration",
+  "title": "MongoDocumentCollectionProvisioner Integration Tests",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "mongo-infrastructure",
+  "summary": "Verify missing collection creation, repeat-safe ensure behavior, and first-use NamespaceExists race handling against the local Mongo container.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoDocumentCollectionProvisioner.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/mongo-infrastructure/latest.txt",
+    ".coverage/evidence/mongo-infrastructure/latest.trx"
+  ],
+  "data": {
+    "component": "MongoDocumentCollectionProvisioner",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "test": "tests/LagoVista.StorageProvider.Tests/Mongo/MongoInfrastructureIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-mongo-infrastructure-tests.ps1",
+    "environment": { "type": "docker", "provider": "mongodb" },
+    "coverage": [
+      "create-missing-collection",
+      "repeat-safe-ensure",
+      "namespace-exists-race",
+      "physical-collection-exists"
+    ]
+  }
+}

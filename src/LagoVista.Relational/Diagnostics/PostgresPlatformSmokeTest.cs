@@ -1,4 +1,4 @@
-using LagoVista.CloudStorage.Storage.Connections;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.Diagnostics;
 using Npgsql;

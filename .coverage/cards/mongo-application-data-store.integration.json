@@ -1,0 +1,35 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "mongo-application-data-store-integration",
+  "title": "MongoApplicationDataStore Integration Tests",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "application-data",
+  "summary": "Exercise the Application Data contract and Mongo implementation against the local Mongo container, including storage invariants and physical collection/index behavior.",
+  "source": [
+    "src/LagoVista.CloudStorage/Interfaces/StorageProviders/IApplicationDataStore.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoApplicationDataStore.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/application-data/latest.txt",
+    ".coverage/evidence/application-data/latest.trx"
+  ],
+  "data": {
+    "component": "MongoApplicationDataStore",
+    "contract": "IApplicationDataStore",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "test": "tests/LagoVista.StorageProvider.Tests/Mongo/MongoApplicationDataStoreIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-application-data-tests.ps1",
+    "environment": { "type": "docker", "provider": "mongodb" },
+    "coverage": [
+      "insert-get-update-delete",
+      "timestamp-invariants",
+      "authoritative-import-timestamps",
+      "filtering",
+      "ordering",
+      "continuation-token-paging",
+      "deterministic-collections",
+      "configured-indexes"
+    ]
+  }
+}

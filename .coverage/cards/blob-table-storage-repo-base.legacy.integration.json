@@ -1,0 +1,11 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "blob-table-storage-repo-base-legacy-integration",
+  "title": "BlobTableStorageRepoBase Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "azure-hybrid",
+  "summary": "Protect the legacy table-summary/blob-detail repository behavior while it remains in service.",
+  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/AzureTable/BlobTableStorageRepoBase.cs"],
+  "data": {"legacy":true,"component":"BlobTableStorageRepoBase","testProject":"tests/LagoVista.StorageProvider.Tests"}
+}

@@ -1,4 +1,3 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.2.11415.280
@@ -19,8 +18,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LagoVista.CloudStorage", "s
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ThrowAway", "ThrowAway\ThrowAway.csproj", "{403E64C6-81C7-481E-AC19-D16814CDB6B2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.CloudStorage.IntegrationTests", "tests\LagoVista.CloudStorage.Tests\LagoVista.CloudStorage.IntegrationTests.csproj", "{F6EF035D-ECF7-4243-8FB1-788C3F7E9474}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.Relational", "src\LagoVista.Relational\LagoVista.Relational.csproj", "{35328A71-F6B9-4B3A-88E2-75C10AC8C29B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchemaVerify", "src\SchemaVerify\SchemaVerify.csproj", "{70EBCB3A-8E12-D29E-FE94-039A3A2FE378}"
@@ -29,7 +26,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Relational.Tests", "tests\R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.Relational.Tests.Core", "tests\Relational.Tests.Core\LagoVista.Relational.Tests.Core.csproj", "{611832C7-3E25-EF1E-7A3B-29E133F3B90E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataMigration", "Apps\DataMigration\DataMigration.csproj", "{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntityMigration202608", "Apps\EntityMigration202608\EntityMigration202608.csproj", "{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageMigration", "Apps\StorageMigration\StorageMigration.csproj", "{2F4B05A8-7472-4F79-9B5B-2B89A715264F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.StorageProvider.Tests", "tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj", "{F38FC923-9105-3C5A-CF02-E1D980D56DA7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,10 +46,6 @@ Global
 		{403E64C6-81C7-481E-AC19-D16814CDB6B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{403E64C6-81C7-481E-AC19-D16814CDB6B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{403E64C6-81C7-481E-AC19-D16814CDB6B2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F6EF035D-ECF7-4243-8FB1-788C3F7E9474}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F6EF035D-ECF7-4243-8FB1-788C3F7E9474}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F6EF035D-ECF7-4243-8FB1-788C3F7E9474}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F6EF035D-ECF7-4243-8FB1-788C3F7E9474}.Release|Any CPU.Build.0 = Release|Any CPU
 		{35328A71-F6B9-4B3A-88E2-75C10AC8C29B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{35328A71-F6B9-4B3A-88E2-75C10AC8C29B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{35328A71-F6B9-4B3A-88E2-75C10AC8C29B}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -69,6 +66,14 @@ Global
 		{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{43A2C90B-CC7E-1BA5-E318-6D99C8F5999E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F4B05A8-7472-4F79-9B5B-2B89A715264F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F4B05A8-7472-4F79-9B5B-2B89A715264F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F4B05A8-7472-4F79-9B5B-2B89A715264F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F4B05A8-7472-4F79-9B5B-2B89A715264F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -76,11 +81,11 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{F455BE4A-2F7F-436C-989E-66920E27E541} = {1540DFBB-18D1-44F7-840F-D8F30E5B3CC5}
 		{403E64C6-81C7-481E-AC19-D16814CDB6B2} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
-		{F6EF035D-ECF7-4243-8FB1-788C3F7E9474} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 		{35328A71-F6B9-4B3A-88E2-75C10AC8C29B} = {1540DFBB-18D1-44F7-840F-D8F30E5B3CC5}
 		{70EBCB3A-8E12-D29E-FE94-039A3A2FE378} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 		{5E560BF7-DDB9-43C3-A184-376ED402AA43} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 		{611832C7-3E25-EF1E-7A3B-29E133F3B90E} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
+		{F38FC923-9105-3C5A-CF02-E1D980D56DA7} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BA819EEE-F150-4AD6-94DD-8B2FE92A86EE}

@@ -1,5 +1,5 @@
 ﻿using LagoVista.CloudStorage;
-using LagoVista.CloudStorage.Storage.Connections;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Interfaces.Crypto;
 using LagoVista.Core.Models;

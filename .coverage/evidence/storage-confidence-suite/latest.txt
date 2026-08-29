@@ -1,0 +1,141 @@
+CloudStorage Full Storage Confidence Suite
+StartedUtc: 2026-08-28T01:38:10.1534848Z
+Repository: D:\NuvIoT\cs.CloudStorage
+Branch: refactor/cloudstorage-project-layout
+Commit: 430cdf932211f6fa79bda240a22d07709bce915b
+Configuration: Debug
+TestProject: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
+
+=== START STORAGE DEPENDENCIES ===
+
+[MongoDB]
+Starting local Mongo integration-test container...
+time="2026-08-27T21:38:11-04:00" level=warning msg="Found orphan containers (nuviot-cloudstorage-s3-tests, nuviot-cloudstorage-cassandra-tests) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container nuviot-cloudstorage-mongo-tests Running 
+Mongo integration-test container is healthy on localhost:27018.
+  PASS exit=0 duration=1.13s
+
+[Cosmos emulator]
+Starting local Cosmos emulator lab...
+ Container nuviot-cloudstorage-lab-cosmos Running 
+Cosmos emulator is ready on https://localhost:18081.
+Cosmos Data Explorer: http://localhost:1234
+  PASS exit=0 duration=1.14s
+
+[Cassandra]
+Starting local Cassandra integration-test container...
+time="2026-08-27T21:38:13-04:00" level=warning msg="Found orphan containers (nuviot-cloudstorage-s3-tests, nuviot-cloudstorage-mongo-tests) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container nuviot-cloudstorage-cassandra-tests Running 
+Cassandra node is healthy and joined. Waiting for authenticated CQL readiness...
+Cassandra integration-test container is ready for authenticated CQL on localhost:19042.
+Cassandra integration-test keyspace 'nuviot_storage_tests' is ready.
+  PASS exit=0 duration=2.6s
+
+[Redis]
+Waiting for Redis on localhost:19079...
+Redis is ready.
+  PASS exit=0 duration=1.42s
+
+[PostgreSQL + TimescaleDB]
+Waiting for PostgreSQL + TimescaleDB on localhost:19043...
+PostgreSQL is ready with TimescaleDB 2.29.2.
+  PASS exit=0 duration=5.24s
+
+[PostgreSQL account ledger]
+Waiting for PostgreSQL on localhost:19044...
+PostgreSQL is ready.
+  PASS exit=0 duration=3.74s
+
+[S3 / MinIO]
+Starting local S3-compatible integration-test container...
+time="2026-08-27T21:38:26-04:00" level=warning msg="Found orphan containers (nuviot-cloudstorage-cassandra-tests, nuviot-cloudstorage-mongo-tests) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container nuviot-cloudstorage-s3-tests Running 
+S3-compatible integration-test container is healthy on localhost:19090.
+  PASS exit=0 duration=1.04s
+
+=== BUILD SOLUTION ===
+
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  SchemaVerify -> D:\NuvIoT\cs.CloudStorage\src\SchemaVerify\bin\Debug\net9.0\SchemaVerify.dll
+  LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
+  StorageMigration -> D:\NuvIoT\cs.CloudStorage\Apps\StorageMigration\bin\Debug\net10.0\StorageMigration.dll
+  EntityMigration202608 -> D:\NuvIoT\cs.CloudStorage\Apps\EntityMigration202608\bin\Debug\net10.0\EntityMigration202608.dll
+  LagoVista.Relational -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.Relational\bin\Debug\net9.0\LagoVista.Relational.dll
+  ThrowAway -> D:\NuvIoT\cs.CloudStorage\ThrowAway\bin\Debug\net9.0\ThrowAway.dll
+  Relational.Tests -> D:\NuvIoT\cs.CloudStorage\tests\Relational.Tests\bin\Debug\net9.0\Relational.Tests.dll
+  LagoVista.Relational.Tests.Core -> D:\NuvIoT\cs.CloudStorage\tests\Relational.Tests.Core\bin\Debug\net9.0\LagoVista.Relational.Tests.Core.dll
+  LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.52
+Build: PASS exit=0 duration=3.8s
+
+=== RUN ALL STORAGE PROVIDER TESTS ===
+No category filter is used. Every test currently in LagoVista.StorageProvider.Tests participates in this gate.
+
+Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\storage-confidence-suite\latest.trx
+
+Passed!  - Failed:     0, Passed:    95, Skipped:     0, Total:    95, Duration: 23 s - LagoVista.StorageProvider.Tests.dll (net9.0)
+Tests: PASS exit=0 duration=26.14s
+
+=== STOP STORAGE DEPENDENCIES ===
+
+[Stop Cassandra]
+Stopping local Cassandra integration-test container...
+ Container nuviot-cloudstorage-cassandra-tests Stopping 
+ Container nuviot-cloudstorage-cassandra-tests Stopped 
+ Container nuviot-cloudstorage-cassandra-tests Removing 
+ Container nuviot-cloudstorage-cassandra-tests Removed 
+ Network powershell_default Removing 
+ Network powershell_default Resource is still in use 
+  PASS exit=0 duration=5.57s
+
+[Stop MongoDB]
+Stopping local Mongo integration-test container...
+ Container nuviot-cloudstorage-mongo-tests Stopping 
+ Container nuviot-cloudstorage-mongo-tests Stopped 
+ Container nuviot-cloudstorage-mongo-tests Removing 
+ Container nuviot-cloudstorage-mongo-tests Removed 
+ Network powershell_default Removing 
+ Network powershell_default Resource is still in use 
+  PASS exit=0 duration=1.65s
+
+[Stop Cosmos emulator]
+Stopping local CloudStorage lab...
+ Container nuviot-cloudstorage-lab-mongo Stopping 
+ Container nuviot-cloudstorage-lab-cosmos Stopping 
+ Container nuviot-cloudstorage-lab-mongo Stopped 
+ Container nuviot-cloudstorage-lab-mongo Removing 
+ Container nuviot-cloudstorage-lab-mongo Removed 
+ Container nuviot-cloudstorage-lab-cosmos Stopped 
+ Container nuviot-cloudstorage-lab-cosmos Removing 
+ Container nuviot-cloudstorage-lab-cosmos Removed 
+ Network nuviot-cloudstorage-storage-lab_default Removing 
+ Network nuviot-cloudstorage-storage-lab_default Removed 
+  PASS exit=0 duration=2.26s
+
+[Stop S3 / MinIO]
+ Container nuviot-cloudstorage-s3-tests Stopping 
+ Container nuviot-cloudstorage-s3-tests Stopped 
+ Container nuviot-cloudstorage-s3-tests Removing 
+ Container nuviot-cloudstorage-s3-tests Removed 
+ Network powershell_default Removing 
+ Network powershell_default Removed 
+  PASS exit=0 duration=0.93s
+
+[Remove standalone test containers]
+  PASS exit=0 duration=1.48s
+
+=== SUMMARY ===
+Overall: PASS
+StartedUtc: 2026-08-28T01:38:10.1534848Z
+CompletedUtc: 2026-08-28T01:39:08.9270761Z
+DurationSeconds: 58.77
+Tests: total=95 executed=95 passed=95 failed=0 notExecuted=0
+Evidence: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\storage-confidence-suite

@@ -1,0 +1,32 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cassandra-record-map-integration",
+  "title": "CassandraRecordMap Integration Tests",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "cassandra",
+  "summary": "Exercise Cassandra record type mapping, driver value conversion, null handling, round-trip deserialization, and unsupported property rejection through the public activity-record store.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraRecordMap.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/cassandra-activity-record-store/latest.txt",
+    ".coverage/evidence/cassandra-activity-record-store/latest.trx"
+  ],
+  "data": {
+    "component": "CassandraRecordMap",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Cassandra/CassandraRecordMapIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cassandra-activity-record-tests.ps1",
+    "coverageLayers": {
+      "completed": [
+        "supported-cql-type-mapping",
+        "driver-value-conversion",
+        "round-trip-deserialization",
+        "nullable-null-handling",
+        "unsupported-type-rejection"
+      ],
+      "next": []
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "mongo-storage-client-provider-integration",
+  "title": "MongoStorageClientFactory Integration Tests",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "mongo-infrastructure",
+  "summary": "Verify Mongo client reuse, requested database resolution, and live connectivity against the local Mongo container.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Mongo/MongoStorageClientProvider.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/mongo-infrastructure/latest.txt",
+    ".coverage/evidence/mongo-infrastructure/latest.trx"
+  ],
+  "data": {
+    "component": "MongoStorageClientFactory",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "test": "tests/LagoVista.StorageProvider.Tests/Mongo/MongoInfrastructureIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-mongo-infrastructure-tests.ps1",
+    "environment": { "type": "docker", "provider": "mongodb" },
+    "coverage": [
+      "client-reuse-by-connection-string",
+      "requested-database-resolution",
+      "live-connectivity"
+    ]
+  }
+}

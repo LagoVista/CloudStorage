@@ -1,0 +1,147 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="5888e4fc-a400-490b-9101-1ef8e1537ec8" name="kevin@BEAST-LAPTOP 2026-08-26 18:02:27" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T18:02:27.1008725-04:00" queuing="2026-08-26T18:02:27.1008731-04:00" start="2026-08-26T18:02:25.8608354-04:00" finish="2026-08-26T18:02:27.2989392-04:00" />
+  <TestSettings name="default" id="6e240d3c-ff12-4834-9f9a-b02aed769347">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_18_02_27" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="790025ca-2d38-4868-b12a-7cfff536532f" testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" testName="NotFoundSemantics_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0124132" startTime="2026-08-26T18:02:26.7326525-04:00" endTime="2026-08-26T18:02:26.7451956-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="790025ca-2d38-4868-b12a-7cfff536532f" />
+    <UnitTestResult executionId="49ef9de8-114e-4f5c-b5ab-134edd108818" testId="d3146e32-6d75-1164-5efc-6699ee56ba1a" testName="QueryAll_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0289131" startTime="2026-08-26T18:02:27.1555397-04:00" endTime="2026-08-26T18:02:27.1855922-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="49ef9de8-114e-4f5c-b5ab-134edd108818" />
+    <UnitTestResult executionId="e44ffd41-5dc4-4186-9a08-23d70be3f478" testId="913225ce-04a8-0da0-7611-d507fd139a25" testName="SummaryQuery_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0357711" startTime="2026-08-26T18:02:27.1195952-04:00" endTime="2026-08-26T18:02:27.1554759-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e44ffd41-5dc4-4186-9a08-23d70be3f478" />
+    <UnitTestResult executionId="f5255234-af99-4fb4-bb37-9d8942170138" testId="f5d4e47a-80dd-0a28-b83f-978228ba301e" testName="Patch_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0421537" startTime="2026-08-26T18:02:26.8104185-04:00" endTime="2026-08-26T18:02:26.8526954-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f5255234-af99-4fb4-bb37-9d8942170138" />
+    <UnitTestResult executionId="bc5fccb2-b4ad-4221-b057-eac6897eb684" testId="3b903429-2d9b-2027-c2bf-09e572807b2d" testName="OwnedLookup_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0216805" startTime="2026-08-26T18:02:26.9686815-04:00" endTime="2026-08-26T18:02:26.9904629-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bc5fccb2-b4ad-4221-b057-eac6897eb684" />
+    <UnitTestResult executionId="ebfdf827-2074-4758-ac19-55f84cedcba0" testId="80f7978e-f904-8096-c392-7156e5254871" testName="RawDocumentAndPage_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0510907" startTime="2026-08-26T18:02:26.9905245-04:00" endTime="2026-08-26T18:02:27.0417353-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ebfdf827-2074-4758-ac19-55f84cedcba0" />
+    <UnitTestResult executionId="a22cd784-8cc9-4bf4-8aca-743a1c8e1ab8" testId="02689d0a-61e3-ba5e-036a-3b9228fc47d1" testName="KnownEntityQueries_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0590689" startTime="2026-08-26T18:02:27.0603318-04:00" endTime="2026-08-26T18:02:27.1195263-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a22cd784-8cc9-4bf4-8aca-743a1c8e1ab8" />
+    <UnitTestResult executionId="afe22971-56ca-407e-9743-708d4c4d38ed" testId="4a870b65-70e8-6097-132f-597ba012043a" testName="OptimisticConcurrency_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0225397" startTime="2026-08-26T18:02:26.7876919-04:00" endTime="2026-08-26T18:02:26.8103453-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="afe22971-56ca-407e-9743-708d4c4d38ed" />
+    <UnitTestResult executionId="31950ad5-6ad4-47d0-bb06-fed235555b78" testId="b3b93969-220f-d33d-44d8-dfcc8894d48b" testName="ProjectionAndKeyLookup_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.1157475" startTime="2026-08-26T18:02:26.8527685-04:00" endTime="2026-08-26T18:02:26.9686234-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="31950ad5-6ad4-47d0-bb06-fed235555b78" />
+    <UnitTestResult executionId="b3dcbf0a-c552-45dd-9c0f-3f9704c57d07" testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" testName="CrudLifecycle_SatisfiesSharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.2152592" startTime="2026-08-26T18:02:26.5151904-04:00" endTime="2026-08-26T18:02:26.7324071-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b3dcbf0a-c552-45dd-9c0f-3f9704c57d07" />
+    <UnitTestResult executionId="412f805b-d805-4a5e-82c5-1f5b14ec14fa" testId="5740ce22-3e7d-27b1-bf70-6b394351048c" testName="QueryAndPaging_SatisfySharedContract" computerName="BEAST-LAPTOP" duration="00:00:00.0422205" startTime="2026-08-26T18:02:26.7452640-04:00" endTime="2026-08-26T18:02:26.7876077-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="412f805b-d805-4a5e-82c5-1f5b14ec14fa" />
+    <UnitTestResult executionId="9a8c7939-c59d-46d4-a8d2-28e4a75913ab" testId="7ab050b8-5a69-2260-e077-287155f4f99e" testName="DatabaseIdentity_MatchesConfiguredDatabase" computerName="BEAST-LAPTOP" duration="00:00:00.2345315" startTime="2026-08-26T18:02:26.2644235-04:00" endTime="2026-08-26T18:02:26.5113848-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9a8c7939-c59d-46d4-a8d2-28e4a75913ab" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="RawDocumentAndPage_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="80f7978e-f904-8096-c392-7156e5254871">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="ebfdf827-2074-4758-ac19-55f84cedcba0" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="RawDocumentAndPage_SatisfySharedContract" />
+    </UnitTest>
+    <UnitTest name="Patch_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="f5d4e47a-80dd-0a28-b83f-978228ba301e">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="f5255234-af99-4fb4-bb37-9d8942170138" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="Patch_SatisfiesSharedContract" />
+    </UnitTest>
+    <UnitTest name="QueryAndPaging_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="5740ce22-3e7d-27b1-bf70-6b394351048c">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="412f805b-d805-4a5e-82c5-1f5b14ec14fa" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="QueryAndPaging_SatisfySharedContract" />
+    </UnitTest>
+    <UnitTest name="NotFoundSemantics_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="a5f7bab7-f0a8-9b4c-0362-2588492d3849">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="790025ca-2d38-4868-b12a-7cfff536532f" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="NotFoundSemantics_SatisfySharedContract" />
+    </UnitTest>
+    <UnitTest name="DatabaseIdentity_MatchesConfiguredDatabase" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="7ab050b8-5a69-2260-e077-287155f4f99e">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="9a8c7939-c59d-46d4-a8d2-28e4a75913ab" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="DatabaseIdentity_MatchesConfiguredDatabase" />
+    </UnitTest>
+    <UnitTest name="QueryAll_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="d3146e32-6d75-1164-5efc-6699ee56ba1a">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="49ef9de8-114e-4f5c-b5ab-134edd108818" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="QueryAll_SatisfiesSharedContract" />
+    </UnitTest>
+    <UnitTest name="KnownEntityQueries_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="02689d0a-61e3-ba5e-036a-3b9228fc47d1">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="a22cd784-8cc9-4bf4-8aca-743a1c8e1ab8" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="KnownEntityQueries_SatisfySharedContract" />
+    </UnitTest>
+    <UnitTest name="CrudLifecycle_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="7c53ee9f-6323-9c16-1f25-adeb7a495fd3">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="b3dcbf0a-c552-45dd-9c0f-3f9704c57d07" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="CrudLifecycle_SatisfiesSharedContract" />
+    </UnitTest>
+    <UnitTest name="OptimisticConcurrency_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="4a870b65-70e8-6097-132f-597ba012043a">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="afe22971-56ca-407e-9743-708d4c4d38ed" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="OptimisticConcurrency_SatisfiesSharedContract" />
+    </UnitTest>
+    <UnitTest name="SummaryQuery_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="913225ce-04a8-0da0-7611-d507fd139a25">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="e44ffd41-5dc4-4186-9a08-23d70be3f478" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="SummaryQuery_SatisfiesSharedContract" />
+    </UnitTest>
+    <UnitTest name="ProjectionAndKeyLookup_SatisfySharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="b3b93969-220f-d33d-44d8-dfcc8894d48b">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="31950ad5-6ad4-47d0-bb06-fed235555b78" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="ProjectionAndKeyLookup_SatisfySharedContract" />
+    </UnitTest>
+    <UnitTest name="OwnedLookup_SatisfiesSharedContract" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="3b903429-2d9b-2027-c2bf-09e572807b2d">
+      <TestCategory>
+        <TestCategoryItem TestCategory="DocumentStorageContract" />
+        <TestCategoryItem TestCategory="Mongo" />
+      </TestCategory>
+      <Execution id="bc5fccb2-b4ad-4221-b057-eac6897eb684" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Mongo.MongoDocumentStorageClientContractTests" name="OwnedLookup_SatisfiesSharedContract" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="a5f7bab7-f0a8-9b4c-0362-2588492d3849" executionId="790025ca-2d38-4868-b12a-7cfff536532f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d3146e32-6d75-1164-5efc-6699ee56ba1a" executionId="49ef9de8-114e-4f5c-b5ab-134edd108818" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="913225ce-04a8-0da0-7611-d507fd139a25" executionId="e44ffd41-5dc4-4186-9a08-23d70be3f478" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f5d4e47a-80dd-0a28-b83f-978228ba301e" executionId="f5255234-af99-4fb4-bb37-9d8942170138" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3b903429-2d9b-2027-c2bf-09e572807b2d" executionId="bc5fccb2-b4ad-4221-b057-eac6897eb684" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="80f7978e-f904-8096-c392-7156e5254871" executionId="ebfdf827-2074-4758-ac19-55f84cedcba0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="02689d0a-61e3-ba5e-036a-3b9228fc47d1" executionId="a22cd784-8cc9-4bf4-8aca-743a1c8e1ab8" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4a870b65-70e8-6097-132f-597ba012043a" executionId="afe22971-56ca-407e-9743-708d4c4d38ed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b3b93969-220f-d33d-44d8-dfcc8894d48b" executionId="31950ad5-6ad4-47d0-bb06-fed235555b78" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7c53ee9f-6323-9c16-1f25-adeb7a495fd3" executionId="b3dcbf0a-c552-45dd-9c0f-3f9704c57d07" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="5740ce22-3e7d-27b1-bf70-6b394351048c" executionId="412f805b-d805-4a5e-82c5-1f5b14ec14fa" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7ab050b8-5a69-2260-e077-287155f4f99e" executionId="9a8c7939-c59d-46d4-a8d2-28e4a75913ab" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="12" executed="12" passed="12" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
+Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
+   NUnit3TestExecutor discovered 0 of 0 NUnit test cases using Current Discovery mode, Explicit run&#xD;
+NUnit Adapter 5.1.0.0: Test execution complete&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

@@ -1,0 +1,1663 @@
+﻿using LagoVista.CloudStorage.DocumentDB;
+using LagoVista.CloudStorage.Exceptions;
+using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Models;
+using LagoVista.CloudStorage.Models.Storage;
+using LagoVista.CloudStorage.Repositories;
+using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.StorageProviders;
+using LagoVista.CloudStorage.StorageProviders;
+using LagoVista.Core;
+using LagoVista.Core.Interfaces;
+using LagoVista.Core.Models;
+using LagoVista.Core.PlatformSupport;
+using LagoVista.Core.Validation;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
+
+namespace LagoVista.CloudStorage.Repositories
+{
+    public class EntityUtilsRepository : IEntityUtilsRepository
+    {
+        private readonly IEntityDetailResponseFactory _entityDetailResponseFactory;
+        private readonly ILogger _logger;
+        private readonly ICacheProvider _cacheProvider;
+        private readonly IRagIndexingServices _ragIndexingServices;
+        private readonly IDependencyManager _dependencyManager;
+        private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
+        public const string ALL_MODULES_CACHE_KEY = "NUVIOT_ALL_MODULES";
+        public const string MODULE_CACHE_KEY = "NUVIOT_MODULE_";
+        private readonly string _dbName;
+        private readonly IDocumentStorageClient _storageClient;
+
+        public EntityUtilsRepository(IDocumentStorageClientProvider documentStorageClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
+        {
+            _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
+            _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _ragIndexingServices = ragIndexingServices ?? throw new ArgumentNullException(nameof(ragIndexingServices));
+            _entityListCacheInvalidator = entityListCacheInvalidator ?? throw new ArgumentNullException(nameof(entityListCacheInvalidator));
+            _dependencyManager = dependencyManager ?? throw new ArgumentNullException(nameof(dependencyManager));
+            _storageClient = documentStorageClientProvider?.GetClient() ?? throw new ArgumentNullException(nameof(documentStorageClientProvider));
+            _dbName = _storageClient.DatabaseName;
+
+        }
+
+        private static string GetDocumentETag(JObject document)
+        {
+            return document?["_etag"]?.Value<string>() ?? document?[nameof(IEntityBase.ETag)]?.Value<string>();
+        }
+
+        private string GetCacheKey(string entityType, string id)
+        {
+            return $"{_dbName}-{entityType}-{id}".ToLower();
+        }
+
+        public async Task<List<EntityCoreSummary>> GetEntityCoreAsync(string entityType, EntityHeader org, CancellationToken ct = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+
+            if (org == null)
+                throw new ArgumentNullException(nameof(org));
+
+            if (String.IsNullOrWhiteSpace(org.Id))
+                throw new ArgumentException("org.Id is required.", nameof(org));
+
+            var result = await GetEntitiesByTypeAsync(entityType.Trim(), org.Id.Trim(), ct).ConfigureAwait(false);
+
+            if (!result.Successful)
+                throw new InvalidOperationException($"Could not retrieve entities of type '{entityType}'.");
+
+            var entities = new List<EntityCoreSummary>();
+
+            foreach (var document in result.Result ?? new List<JObject>())
+            {
+                var entity = document.ToObject<EntityCoreSummary>();
+                if (entity == null)
+                {
+                    var entityId = document["id"]?.Value<string>() ?? "unknown";
+
+                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not deserialize entity '{entityId}' as {nameof(EntityCoreSummary)}.");
+
+                    throw new InvalidOperationException($"Could not deserialize entity '{entityId}' as {nameof(EntityCoreSummary)}.");
+                }
+
+                entities.Add(entity);
+            }
+
+            return entities;
+        }
+
+        public async Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org, CancellationToken ct = default)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+
+            if (org == null)
+                throw new ArgumentNullException(nameof(org));
+
+            if (String.IsNullOrWhiteSpace(org.Id))
+                throw new ArgumentException("org.Id is required.", nameof(org));
+
+            var result = await GetEntitiesByTypeAsync(entityType.Trim(), org.Id.Trim(), ct).ConfigureAwait(false);
+
+            if (!result.Successful)
+                throw new InvalidOperationException($"Could not retrieve entities of type '{entityType}'.");
+
+            var entities = new List<EntityBaseSummary>();
+
+            foreach (var document in result.Result ?? new List<JObject>())
+            {
+                var entity = document.ToObject<EntityBaseSummary>();
+                if (entity == null)
+                {
+                    var entityId = document["id"]?.Value<string>() ?? "unknown";
+
+                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not deserialize entity '{entityId}' as {nameof(EntityBaseSummary)}.");
+
+                    throw new InvalidOperationException($"Could not deserialize entity '{entityId}' as {nameof(EntityBaseSummary)}.");
+                }
+
+                entities.Add(entity);
+            }
+
+            return entities;
+        }
+
+        private const string StatusFieldName = "Status";
+
+        public async Task<InvokeResult<EntityHeaderStatusPatchResult>> PatchEntityHeaderStatusAsync(string entityType, string orgId, IEnumerable<string> currentStatusIds, JObject desiredStatus, EntityHeader user, bool dryRun, int maxItems, CancellationToken ct)
+        {
+            _logger.Trace($"{this.Tag()} - {entityType} - {JsonConvert.SerializeObject(desiredStatus)}.");
+
+            if (String.IsNullOrWhiteSpace(entityType)) return InvokeResult<EntityHeaderStatusPatchResult>.FromError("Entity type is required.");
+            if (String.IsNullOrWhiteSpace(orgId)) return InvokeResult<EntityHeaderStatusPatchResult>.FromError("Organization id is required.");
+            if (currentStatusIds == null) throw new ArgumentNullException(nameof(currentStatusIds));
+            if (desiredStatus == null) throw new ArgumentNullException(nameof(desiredStatus));
+            if (String.IsNullOrWhiteSpace(desiredStatus["Id"]?.Value<string>())) return InvokeResult<EntityHeaderStatusPatchResult>.FromError("Desired status id is required.");
+            if (user == null) throw new ArgumentNullException(nameof(user));
+            if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+
+            var statusIds = currentStatusIds.Where(id => !String.IsNullOrWhiteSpace(id)).Select(id => id.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+            if (!statusIds.Any())
+                return InvokeResult<EntityHeaderStatusPatchResult>.FromError("At least one current status id is required.");
+
+            foreach (var statusId in statusIds)
+            {
+                if (!IsSafeStatusId(statusId))
+                    return InvokeResult<EntityHeaderStatusPatchResult>.FromError($"Status id '{statusId}' is not safe for a document query.");
+            }
+
+            if (!IsSafeStatusId(desiredStatus["Id"]?.Value<string>()))
+                return InvokeResult<EntityHeaderStatusPatchResult>.FromError($"Desired status id '{desiredStatus["Id"]?.Value<string>()}' is not safe.");
+
+            var result = new EntityHeaderStatusPatchResult { EntityType = entityType.Trim(), DesiredStatusId = desiredStatus["Id"]?.Value<string>() };
+
+            var candidatesResult = await GetEntitiesWithStatusIdsAsync(entityType.Trim(), orgId.Trim(), statusIds, Math.Min(maxItems, 5000), ct).ConfigureAwait(false);
+
+            if (!candidatesResult.Successful)
+                candidatesResult.ToInvokeResult<EntityHeaderStatusPatchResult>();
+
+            result.Found = candidatesResult.Result.Count;
+
+            _logger.Trace($"{this.Tag()} - Found {result.Found} {entityType} entities with Status.Id in [{String.Join(", ", statusIds)}] for organization '{orgId}'.");
+
+            foreach (var doc in candidatesResult.Result)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var id = doc["id"]?.Value<string>();
+                var foundEntityType = doc[nameof(EntityBase.EntityType)]?.Value<string>();
+                var currentStatusId = doc[EntityUtilsRepository.StatusFieldName]?["Id"]?.Value<string>();
+                var desiredStatusId = desiredStatus["Id"]?.Value<string>();
+
+                if (!String.Equals(foundEntityType, entityType, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"Invalid entity type update Expected: {entityType} - Found: {foundEntityType}");
+
+                if (String.IsNullOrWhiteSpace(id))
+                {
+                    result.Errors++;
+                    result.ErrorMessages.Add("Encountered a matching document without an id.");
+                    continue;
+                }
+
+                if (String.IsNullOrWhiteSpace(desiredStatusId))
+                {
+                    result.Errors++;
+                    result.ErrorMessages.Add("Desired status is missing Id.");
+                    continue;
+                }
+
+                if (String.Equals(currentStatusId, desiredStatusId, StringComparison.OrdinalIgnoreCase))
+                {
+                    result.Skipped++;
+                    result.SkippedIds.Add(id);
+                    continue;
+                }
+
+                result.Matched++;
+
+                if (dryRun)
+                {
+                    result.Updated++;
+                    result.UpdatedIds.Add(id);
+                    continue;
+                }
+
+                var fields = new Dictionary<string, JToken> { [EntityUtilsRepository.StatusFieldName] = desiredStatus };
+                var patchResult = await PatchEntityFieldsAsync(id, fields, user, ct).ConfigureAwait(false);
+
+                if (patchResult.Successful)
+                {
+                    result.Updated++;
+                    result.UpdatedIds.Add(id);
+                }
+                else
+                {
+                    result.Errors++;
+                    result.ErrorMessages.Add($"{id} - {String.Join("; ", patchResult.Errors.Select(err => err.Message))}");
+                }
+            }
+
+            return InvokeResult<EntityHeaderStatusPatchResult>.Create(result);
+        }
+
+        private async Task<InvokeResult<List<JObject>>> GetEntitiesWithStatusIdsAsync(string entityType, string orgId, IReadOnlyCollection<string> statusIds, int maxItems, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+            if (statusIds == null) throw new ArgumentNullException(nameof(statusIds));
+            if (!statusIds.Any()) return InvokeResult<List<JObject>>.Create(new List<JObject>());
+            if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+
+            try
+            {
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByStatusIds)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("statusIds", statusIds.ToList())
+                    .WithParameter("maxItems", Math.Min(maxItems, 5000));
+
+                var results = (await _storageClient.QueryKnownAsync<JObject>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} {entityType} entities with Status.Id in [{String.Join(", ", statusIds)}].");
+
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
+            }
+        }
+
+        private static bool IsSafeStatusId(string statusId)
+        {
+            if (String.IsNullOrWhiteSpace(statusId))
+                return false;
+
+            if (statusId.Length > 128)
+                return false;
+
+            foreach (var ch in statusId)
+            {
+                if (!(Char.IsLetterOrDigit(ch) || ch == '_' || ch == '-' || ch == '.'))
+                    return false;
+            }
+
+            return true;
+        }
+
+        public Task<InvokeResult> PatchMasterStatusAsync(string id, MasterEntityStatus masterStatus, EntityHeader user, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(id))
+                throw new ArgumentException("id is required.", nameof(id));
+
+            if (masterStatus == null)
+                throw new ArgumentNullException(nameof(masterStatus));
+
+            if (user == null)
+                throw new ArgumentNullException(nameof(user));
+
+            var fields = new Dictionary<string, JToken>
+            {
+                [nameof(IEntityBase.MasterStatus)] = JObject.FromObject(masterStatus)
+            };
+
+            return PatchEntityFieldsAsync(id, fields, user, ct);
+        }
+
+        public async Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org, CancellationToken ct = default)
+        {
+            if (String.IsNullOrWhiteSpace(id))
+                throw new ArgumentException("id is required.", nameof(id));
+
+            if (org == null)
+                throw new ArgumentNullException(nameof(org));
+
+            if (String.IsNullOrWhiteSpace(org.Id))
+                throw new ArgumentException("org.Id is required.", nameof(org));
+
+            var document = await LoadDocumentByIdAsync(id.Trim(), CancellationToken.None).ConfigureAwait(false);
+
+            if (document == null)
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not find document with id '{id}'.");
+                throw new KeyNotFoundException($"Could not find record with id: {id}");
+            }
+
+            var ownerOrganizationId = document[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>();
+
+            if (!String.Equals(ownerOrganizationId, org.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Entity '{id}' is owned by organization '{ownerOrganizationId ?? "unknown"}' rather than '{org.Id}'.");
+
+                throw new UnauthorizedAccessException($"Entity '{id}' does not belong to organization '{org.Id}'.");
+            }
+
+            var entity = document.ToObject<EntityBase>();
+
+            if (entity == null)
+                throw new InvalidOperationException($"Could not deserialize entity '{id}' as {nameof(EntityBase)}.");
+
+            return entity;
+        }
+
+        public async Task<InvokeResult<List<JObject>>> GetEntityReadinessScorecardCandidatesAsync(IEnumerable<string> entityTypes, string orgId, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+
+            var requestedEntityTypes = (entityTypes ?? Enumerable.Empty<string>()).Where(entityType => !String.IsNullOrWhiteSpace(entityType)).Select(entityType => entityType.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+            if (requestedEntityTypes.Count == 0)
+                return InvokeResult<List<JObject>>.Create(new List<JObject>());
+
+            try
+            {
+                var results = new List<JObject>();
+
+                foreach (var entityType in requestedEntityTypes)
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    var projections = await _storageClient.GetDocumentProjectionsAsync<ReadinessScorecardProjection>(entityType, item => item.OwnerOrganization != null && item.OwnerOrganization.Id == orgId, ct).ConfigureAwait(false);
+
+                    foreach (var projection in projections)
+                    {
+                        var result = new JObject
+                        {
+                            ["id"] = projection.Id,
+                            [nameof(EntityBase.EntityType)] = projection.EntityType,
+                            [nameof(EntityBase.ReadinessChecks)] = projection.ReadinessChecks
+                        };
+
+                        results.Add(result);
+                    }
+                }
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} readiness scorecard entities across {requestedEntityTypes.Count} entity types for organization '{orgId}'.");
+
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
+            }
+        }
+
+        public async Task<InvokeResult<List<JObject>>> GetEntityReadinessCandidatesAsync(string entityType, string orgId, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+
+            try
+            {
+                var projections = await _storageClient.GetDocumentProjectionsAsync<ReadinessCandidateProjection>(entityType.Trim(), item => item.OwnerOrganization != null && item.OwnerOrganization.Id == orgId.Trim(), ct).ConfigureAwait(false);
+
+                var results = projections.Select(projection =>
+                {
+                    var result = new JObject
+                    {
+                        ["id"] = projection.Id,
+                        [nameof(EntityBase.EntityType)] = projection.EntityType,
+                        [nameof(EntityBase.ChecklistStatus)] = projection.ChecklistStatus,
+                        [nameof(EntityBase.ReadinessChecks)] = projection.ReadinessChecks,
+                        [nameof(EntityBase.MasterStatus)] = projection.MasterStatus
+                    };
+
+                    if (!String.IsNullOrWhiteSpace(projection.StorageETag))
+                        result["_etag"] = projection.StorageETag;
+
+                    return result;
+                }).ToList();
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} readiness reconciliation candidates for entity type '{entityType}' in organization '{orgId}'.");
+
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
+            }
+        }
+
+
+        public async Task<InvokeResult<List<JObject>>> GetEntitiesWithEmptyFieldAsync(string entityType, string fieldName, string orgId, int maxItems, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(fieldName)) throw new ArgumentException("fieldName is required.", nameof(fieldName));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+            if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+
+            var safeFieldName = fieldName.Trim();
+
+            if (!IsSafeDocumentPropertyName(safeFieldName))
+                return InvokeResult<List<JObject>>.FromError($"Field name '{fieldName}' is not safe for a document query.");
+
+            try
+            {
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsWithEmptyField)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("fieldName", safeFieldName)
+                    .WithParameter("maxItems", Math.Min(maxItems, 5000));
+
+                var results = (await _storageClient.QueryKnownAsync<JObject>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} {entityType} entities with empty field '{safeFieldName}'.");
+
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
+            }
+        }
+
+        private static bool IsSafeDocumentPropertyName(string fieldName)
+        {
+            if (String.IsNullOrWhiteSpace(fieldName))
+                return false;
+
+            if (fieldName.Length > 128)
+                return false;
+
+            foreach (var ch in fieldName)
+            {
+                if (!(Char.IsLetterOrDigit(ch) || ch == '_'))
+                    return false;
+            }
+
+            return true;
+        }
+
+
+        public async Task<InvokeResult> CalculateHashAsync(string id, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+
+            var doc = await LoadDocumentByIdAsync(id.Trim(), ct).ConfigureAwait(false);
+
+            if (doc == null)
+                return InvokeResult.FromError($"Could not find record with id: {id}");
+
+            var entityType = doc[nameof(EntityBase.EntityType)]?.Value<string>()?.Trim();
+
+            if (String.IsNullOrWhiteSpace(entityType))
+                return InvokeResult.FromError($"Could not calculate hash for '{id}' because EntityType was missing.");
+
+            var sha256Hex = EntityHasher.CalculateHash(doc);
+
+            var request = new PatchRequest
+            {
+                Id = id.Trim(),
+                EntityType = entityType,
+                Steps = new[]
+                {
+                    new PatchStep
+                    {
+                        Op = PatchOp.Set,
+                        LogicalPath = nameof(IEntityBase.Sha256Hex),
+                        Value = sha256Hex
+                    }
+                }
+            };
+
+            await _storageClient.PatchDocumentAsync(entityType, request, ct).ConfigureAwait(false);
+
+            var key = doc[nameof(EntityBase.Key)]?.Value<string>()?.Trim();
+
+            await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
+
+            if (entityType == "Module")
+            {
+                await _cacheProvider.RemoveAsync(ALL_MODULES_CACHE_KEY);
+                await _cacheProvider.RemoveAsync($"{MODULE_CACHE_KEY}{key}");
+            }
+
+            return InvokeResult.Success;
+        }
+
+        public async Task<InvokeResult> IndexEntityAsync(string id, EntityHeader org, EntityHeader user, CancellationToken ct)
+        {
+            var modelResult = await _entityDetailResponseFactory.LoadModelAsync(id, user, org);
+            if (modelResult.Model is IEntityBase model)
+            {
+                await _ragIndexingServices.IndexAsync(model);
+                return InvokeResult.Success;
+            }
+            else
+                return InvokeResult.FromError("not a entity");
+        }
+        public async Task<InvokeResult> PatchEntityFieldsAsync(string id, Dictionary<string, JToken> fields, EntityHeader user, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+            if (fields == null) throw new ArgumentNullException(nameof(fields));
+            if (!fields.Any()) return InvokeResult.Success;
+            if (user == null) throw new ArgumentNullException(nameof(user));
+
+            const int maxAttempts = 5;
+            var documentId = id.Trim();
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var doc = await LoadDocumentByIdAsync(documentId, ct).ConfigureAwait(false);
+
+                if (doc == null)
+                {
+                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not find document with id '{documentId}' to patch entity fields.");
+                    return InvokeResult.FromError($"Could not find record with id: {documentId}");
+                }
+
+                var entityTypeName = doc[nameof(EntityBase.EntityType)]?.Value<string>();
+                var ownerOrgId = doc[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>();
+                var existingName = doc[nameof(EntityBase.Name)]?.Value<string>();
+                var eTag = GetDocumentETag(doc);
+
+                if (String.IsNullOrWhiteSpace(entityTypeName))
+                    return InvokeResult.FromError($"Could not patch entity '{documentId}' because EntityType was missing.");
+
+                if (String.IsNullOrWhiteSpace(eTag))
+                    return InvokeResult.FromError($"Could not patch entity '{documentId}' because its ETag was missing.");
+
+                var nameField = fields.FirstOrDefault(field => String.Equals(field.Key, nameof(EntityBase.Name), StringComparison.OrdinalIgnoreCase));
+                var updatedName = nameField.Value?.Type == JTokenType.String ? nameField.Value.Value<string>() : null;
+                var nameChanged = !String.IsNullOrWhiteSpace(updatedName) && !String.Equals(existingName, updatedName, StringComparison.Ordinal);
+
+                var now = UtcTimestamp.Now.Value;
+                var steps = new List<PatchStep>();
+
+                foreach (var field in fields)
+                {
+                    if (String.IsNullOrWhiteSpace(field.Key))
+                        return InvokeResult.FromError("Could not patch entity because a field name was empty.");
+
+                    steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = field.Key, Value = field.Value ?? JValue.CreateNull() });
+                }
+
+                steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(EntityBase.LastUpdatedDate), Value = now });
+                steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(EntityBase.RevisionTimeStamp), Value = now });
+
+                if (doc[nameof(EntityBase.Revision)] != null)
+                {
+                    var currentRevision = doc[nameof(EntityBase.Revision)].Value<int>();
+                    steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(EntityBase.Revision), Value = currentRevision + 1 });
+                }
+
+                steps.Add(new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(EntityBase.LastUpdatedBy), Value = JObject.FromObject(user) });
+
+                var request = new PatchRequest
+                {
+                    Id = documentId,
+                    EntityType = entityTypeName,
+                    ETag = eTag,
+                    Steps = steps
+                };
+
+                try
+                {
+                    await _storageClient.PatchDocumentAsync(entityTypeName, request, ct).ConfigureAwait(false);
+
+                    _logger.Trace($"{this.Tag()} - Patched fields [{String.Join(", ", fields.Keys)}] for entity '{documentId}' on attempt {attempt}.");
+
+                    await RemoveEntityCachesAsync(doc).ConfigureAwait(false);
+
+                    if (nameChanged && !String.IsNullOrWhiteSpace(ownerOrgId))
+                    {
+                        var sourceType = EntityReferenceRegistry.GetAllRegistrations().Where(registration => String.Equals(registration.SourceType.Name, entityTypeName, StringComparison.Ordinal)).Select(registration => registration.SourceType).FirstOrDefault();
+
+                        if (sourceType != null)
+                            await _dependencyManager.RenameRegisteredReferencesAsync(user, sourceType, documentId, ownerOrgId, updatedName, ct).ConfigureAwait(false);
+                    }
+
+                    return InvokeResult.Success;
+                }
+                catch (ContentModifiedException)
+                {
+                    if (attempt == maxAttempts)
+                    {
+                        _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"ETag conflict while patching fields for entity '{documentId}'. All {maxAttempts} attempts failed.");
+                        return InvokeResult.FromError($"Could not patch fields for entity '{documentId}' because the document was updated concurrently.");
+                    }
+
+                    var delay = TimeSpan.FromMilliseconds(50 * (1 << (attempt - 1)) + new Random().Next(0, 50));
+
+                    _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"ETag conflict while patching fields for entity '{documentId}'. Retrying attempt {attempt + 1}.");
+
+                    await Task.Delay(delay, ct).ConfigureAwait(false);
+                }
+            }
+
+            return InvokeResult.FromError($"Could not patch fields for entity '{documentId}' because the document was updated concurrently.");
+        }
+
+
+        public async Task<InvokeResult> UpsertAiEntitySessionAsync(string id, AiEntitySession session, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+            if (session == null) throw new ArgumentNullException(nameof(session));
+            if (session.Session == null || String.IsNullOrWhiteSpace(session.Session.Id)) throw new ArgumentException("session.Session is required.", nameof(session));
+            if (String.IsNullOrWhiteSpace(session.SessionType)) throw new ArgumentException("session.SessionType is required.", nameof(session));
+            if (String.IsNullOrWhiteSpace(session.SessionTypeKey)) throw new ArgumentException("session.SessionTypeKey is required.", nameof(session));
+
+            var documentId = id.Trim();
+
+            for (var attempt = 1; attempt <= 3; attempt++)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var doc = await LoadDocumentByIdAsync(documentId, ct).ConfigureAwait(false);
+
+                if (doc == null)
+                    return InvokeResult.FromError($"Could not find record with id: {id}");
+
+                var entityType = doc[nameof(EntityBase.EntityType)]?.Value<string>();
+                var eTag = GetDocumentETag(doc);
+
+                if (String.IsNullOrWhiteSpace(entityType))
+                    return InvokeResult.FromError($"Could not update AI entity sessions for '{id}' because EntityType was missing.");
+
+                if (String.IsNullOrWhiteSpace(eTag))
+                    return InvokeResult.FromError($"Could not update AI entity sessions for '{id}' because its ETag was missing.");
+
+                var sessions = ReadAiEntitySessions(doc);
+                var existing = sessions.SingleOrDefault(item => String.Equals(item.SessionType, session.SessionType, StringComparison.OrdinalIgnoreCase) && String.Equals(item.SessionTypeKey, session.SessionTypeKey, StringComparison.OrdinalIgnoreCase));
+
+                if (existing == null)
+                {
+                    sessions.Add(session);
+                }
+                else
+                {
+                    existing.Session = session.Session;
+                    existing.SessionType = session.SessionType;
+                    existing.SessionTypeKey = session.SessionTypeKey;
+                    existing.CreationDate = session.CreationDate;
+                    existing.CreatedBy = session.CreatedBy;
+                }
+
+                var request = new PatchRequest
+                {
+                    Id = documentId,
+                    EntityType = entityType,
+                    ETag = eTag,
+                    Steps = new[]
+                    {
+                new PatchStep
+                {
+                    Op = PatchOp.Set,
+                    LogicalPath = nameof(EntityBase.AiEntitySessions),
+                    Value = JArray.FromObject(sessions)
+                }
+            }
+                };
+
+                try
+                {
+                    await _storageClient.PatchDocumentAsync(entityType, request, ct).ConfigureAwait(false);
+
+                    _logger.Trace($"{this.Tag()} - Upserted AI entity session for entity '{id}' on attempt {attempt}.");
+
+                    await RemoveEntityCachesAsync(doc).ConfigureAwait(false);
+
+                    return InvokeResult.Success;
+                }
+                catch (ContentModifiedException) when (attempt < 3)
+                {
+                    _logger.AddCustomEvent(LogLevel.Warning, this.Tag(), $"ETag conflict while upserting AI entity session for entity '{id}'. Retrying attempt {attempt + 1}.");
+                }
+            }
+
+            return InvokeResult.FromError($"Could not upsert AI entity session for entity '{id}' because the document was updated concurrently.");
+        }
+
+        private Task<JObject> LoadDocumentByIdAsync(string id, CancellationToken ct)
+        {
+            return _storageClient.GetDocumentProjectionAsync<JObject>(id, false, ct);
+        }
+
+        public async Task<JObject> GetEntityByIdAsync(string entityId, string orgId, CancellationToken token)
+        {
+
+            if (String.IsNullOrWhiteSpace(entityId))
+            {
+                throw new ArgumentException("Entity id is required.", nameof(entityId));
+            }
+
+            if (String.IsNullOrWhiteSpace(orgId))
+            {
+                throw new ArgumentException("Organization id is required.", nameof(orgId));
+            }
+
+            var doc = await LoadDocumentByIdAsync(entityId.Trim(), token);
+
+            if (doc == null)
+            {
+                return null;
+            }
+
+            var owner = doc[nameof(EntityBase.OwnerOrganization)]?.ToObject<EntityHeader>();
+
+            if (owner == null || String.IsNullOrWhiteSpace(owner.Id))
+            {
+                throw new InvalidOperationException("Owner organization is not present; ownership could not be verified.");
+            }
+
+            if (!String.Equals(owner.Id, orgId.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The entity does not belong to the specified organization.");
+            }
+
+            return doc;
+        }
+
+
+        public async Task<JObject> GetEntityByIdAsync(string entityType, string entityId, string orgId, CancellationToken token)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+            {
+                throw new ArgumentException("Entity type is required.", nameof(entityType));
+            }
+
+            if (String.IsNullOrWhiteSpace(entityId))
+            {
+                throw new ArgumentException("Entity id is required.", nameof(entityId));
+            }
+
+            if (String.IsNullOrWhiteSpace(orgId))
+            {
+                throw new ArgumentException("Organization id is required.", nameof(orgId));
+            }
+
+            var doc = await LoadDocumentByIdAsync(entityId.Trim(), token);
+
+            if (doc == null)
+            {
+                return null;
+            }
+
+            var owner = doc[nameof(EntityBase.OwnerOrganization)]?.ToObject<EntityHeader>();
+
+            if (owner == null || String.IsNullOrWhiteSpace(owner.Id))
+            {
+                throw new InvalidOperationException("Owner organization is not present; ownership could not be verified.");
+            }
+
+            if (!String.Equals(owner.Id, orgId.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The entity does not belong to the specified organization.");
+            }
+
+            var storedEntityType = doc[nameof(EntityBase.EntityType)]?.Value<string>();
+
+            if (!String.Equals(storedEntityType, entityType.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"Entity type mismatch. Expected '{entityType}', but found '{storedEntityType}'.");
+            }
+
+            return doc;
+        }
+
+        public async Task<InvokeResult<Dictionary<string, JToken>>> GetEntityFieldsAsync(string id, IEnumerable<string> fieldNames, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(id))
+            {
+                throw new ArgumentException("id is required.", nameof(id));
+            }
+
+            if (fieldNames == null)
+            {
+                throw new ArgumentNullException(nameof(fieldNames));
+            }
+
+            var requestedFields = fieldNames
+                .Where(fieldName => !String.IsNullOrWhiteSpace(fieldName))
+                .Select(fieldName => fieldName.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!requestedFields.Any())
+            {
+                return InvokeResult<Dictionary<string, JToken>>.Create(new Dictionary<string, JToken>());
+            }
+
+            var doc = await LoadDocumentByIdAsync(id.Trim(), ct).ConfigureAwait(false);
+
+            if (doc == null)
+            {
+                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not find document with id '{id}' to read entity fields.");
+                return InvokeResult<Dictionary<string, JToken>>.FromError($"Could not find record with id: {id}");
+            }
+
+            var result = new Dictionary<string, JToken>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var fieldName in requestedFields)
+            {
+                result[fieldName] = doc.TryGetValue(fieldName, StringComparison.OrdinalIgnoreCase, out var token)
+                    ? token
+                    : JValue.CreateNull();
+            }
+
+            return InvokeResult<Dictionary<string, JToken>>.Create(result);
+        }
+
+        private static List<AiEntitySession> ReadAiEntitySessions(JObject doc)
+        {
+            var sessionsToken = doc[nameof(EntityBase.AiEntitySessions)];
+
+            if (sessionsToken == null || sessionsToken.Type == JTokenType.Null)
+                return new List<AiEntitySession>();
+
+            if (sessionsToken.Type != JTokenType.Array)
+                throw new InvalidOperationException($"Could not update AI entity sessions because {nameof(EntityBase.AiEntitySessions)} was not an array.");
+
+            return sessionsToken.ToObject<List<AiEntitySession>>() ?? new List<AiEntitySession>();
+        }
+
+        private async Task RemoveEntityCachesAsync(JObject doc)
+        {
+            var entityType = doc["EntityType"]?.Value<string>()?.Trim();
+            var key = doc["Key"]?.Value<string>()?.Trim();
+            var id = doc["id"]?.Value<string>()?.Trim();
+
+            if (String.IsNullOrWhiteSpace(entityType) || String.IsNullOrWhiteSpace(id))
+                return;
+
+            await _cacheProvider.RemoveAsync(GetCacheKey(entityType, id));
+
+            var ownerOrgId = doc[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>()?.Trim();
+            if (!String.IsNullOrWhiteSpace(ownerOrgId))
+            {
+                try
+                {
+                    await _entityListCacheInvalidator.InvalidateAsync(ownerOrgId, entityType);
+                }
+                catch (Exception ex)
+                {
+                    _logger.AddException(this.Tag(), ex);
+                }
+            }
+
+            if (entityType == "Module")
+            {
+                await _cacheProvider.RemoveAsync(ALL_MODULES_CACHE_KEY);
+                await _cacheProvider.RemoveAsync($"{MODULE_CACHE_KEY}{key}");
+            }
+        }
+
+        public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, int maxItems, CancellationToken ct)
+        {
+            return GetEntitiesWithCompletedChecklistStepsInternalAsync(entityType, orgId, checklistStepKeys, null, maxItems, ct);
+        }
+
+        public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, string targetChecklistStepKey, int maxItems, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(targetChecklistStepKey))
+            {
+                throw new ArgumentException("targetChecklistStepKey is required.", nameof(targetChecklistStepKey));
+            }
+
+            return GetEntitiesWithCompletedChecklistStepsInternalAsync(entityType, orgId, checklistStepKeys, targetChecklistStepKey.Trim(), maxItems, ct);
+        }
+
+        public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<EntityChecklistStep> checklistSteps, int maxItems, CancellationToken ct)
+        {
+            if (checklistSteps == null)
+            {
+                throw new ArgumentNullException(nameof(checklistSteps));
+            }
+
+            var checklistStepKeys = checklistSteps
+                .Where(step => step != null && !String.IsNullOrWhiteSpace(step.Key))
+                .Select(step => step.Key)
+                .ToList();
+
+            return GetEntitiesWithCompletedChecklistStepsAsync(entityType, orgId, checklistStepKeys, maxItems, ct);
+        }
+
+        private async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesWithCompletedChecklistStepsInternalAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, string targetChecklistStepKey, int maxItems, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+            if (checklistStepKeys == null) throw new ArgumentNullException(nameof(checklistStepKeys));
+            if (maxItems <= 0) throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+
+            var stepKeys = NormalizeChecklistStepKeys(checklistStepKeys);
+
+            if (!stepKeys.Any())
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromError("At least one checklist step key is required.");
+
+            var validation = ValidateChecklistStepKeys(stepKeys);
+
+            if (!validation.Successful)
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromInvokeResult(validation);
+
+            try
+            {
+                var take = Math.Min(maxItems, 5000);
+
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsCompletedChecklistCandidates)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("stepKeys", stepKeys)
+                    .WithParameter("maxItems", take);
+
+                var documents = (await _storageClient.QueryKnownAsync<EntityChecklistCandidateDocument>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
+
+                return BuildChecklistCandidateSummaries(documents, stepKeys, targetChecklistStepKey, $"{this.Tag()} - Found completed checklist candidates for {entityType} with steps [{String.Join(", ", stepKeys)}].");
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromException(this.Tag(), ex);
+            }
+        }
+
+
+        public Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesReadyForChecklistStepAsync(string entityType, string orgId, IEnumerable<string> requiredCompletedStepKeys, string targetIncompleteStepKey, int maxItems, CancellationToken ct)
+        {
+            var targetIncompleteStepKeys = String.IsNullOrWhiteSpace(targetIncompleteStepKey) ? Enumerable.Empty<string>() : new[] { targetIncompleteStepKey };
+
+            return GetEntitiesReadyForChecklistStepAsync(entityType, orgId, requiredCompletedStepKeys, targetIncompleteStepKeys, maxItems, ct);
+        }
+
+        public async Task<InvokeResult<List<EntityChecklistCandidateSummary>>> GetEntitiesReadyForChecklistStepAsync(string entityType, string orgId, IEnumerable<string> requiredCompletedStepKeys, IEnumerable<string> targetIncompleteStepKeys, int maxItems, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType))
+            {
+                throw new ArgumentException("entityType is required.", nameof(entityType));
+            }
+
+            if (String.IsNullOrWhiteSpace(orgId))
+            {
+                throw new ArgumentException("orgId is required.", nameof(orgId));
+            }
+
+            if (requiredCompletedStepKeys == null)
+            {
+                throw new ArgumentNullException(nameof(requiredCompletedStepKeys));
+            }
+
+            if (targetIncompleteStepKeys == null)
+            {
+                throw new ArgumentNullException(nameof(targetIncompleteStepKeys));
+            }
+
+            if (maxItems <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+            }
+
+            var requiredStepKeys = NormalizeChecklistStepKeys(requiredCompletedStepKeys);
+            var targetStepKeys = NormalizeChecklistStepKeys(targetIncompleteStepKeys);
+
+            if (!targetStepKeys.Any())
+            {
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromError("At least one target incomplete checklist step key is required.");
+            }
+
+            var requiredValidation = ValidateChecklistStepKeys(requiredStepKeys);
+            if (!requiredValidation.Successful)
+            {
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromInvokeResult(requiredValidation);
+            }
+
+            var targetValidation = ValidateChecklistStepKeys(targetStepKeys);
+            if (!targetValidation.Successful)
+            {
+                return InvokeResult<List<EntityChecklistCandidateSummary>>.FromInvokeResult(targetValidation);
+            }
+
+            var take = Math.Min(maxItems, 5000);
+
+            var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsReadyChecklistCandidates)
+                .WithParameter("entityType", entityType.Trim())
+                .WithParameter("orgId", orgId.Trim())
+                .WithParameter("requiredStepKeys", requiredStepKeys)
+                .WithParameter("targetStepKeys", targetStepKeys)
+                .WithParameter("maxItems", take);
+
+            var documents = (await _storageClient.QueryKnownAsync<EntityChecklistCandidateDocument>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
+
+            return BuildChecklistCandidateSummaries(documents, targetStepKeys, null, $"{this.Tag()} - Found ready checklist candidates for {entityType} with prerequisites [{String.Join(", ", requiredStepKeys)}] and targets [{String.Join(", ", targetStepKeys)}].");
+        }
+
+        public async Task<InvokeResult<int>> CountEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct)
+        {
+            const string tag = "[EntityUtilsRepository__CountEntitiesByTypeAsync]";
+
+            try
+            {
+                if (String.IsNullOrWhiteSpace(entityType)) return InvokeResult<int>.FromError("Entity type is required.");
+                if (String.IsNullOrWhiteSpace(orgId)) return InvokeResult<int>.FromError("Organization id is required.");
+
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsCountByType).WithParameter("entityType", entityType.Trim()).WithParameter("orgId", orgId.Trim());
+                var result = (await _storageClient.QueryKnownAsync<DocumentCountResult>(entityType.Trim(), request, ct).ConfigureAwait(false)).FirstOrDefault();
+
+                return InvokeResult<int>.Create(result?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(tag, ex);
+                return InvokeResult<int>.FromException(tag, ex);
+            }
+        }
+        private InvokeResult<List<EntityChecklistCandidateSummary>> BuildChecklistCandidateSummaries(IEnumerable<EntityChecklistCandidateDocument> documents, IEnumerable<string> checklistStepKeys, string targetChecklistStepKey, string successMessage)
+        {
+            var normalizedChecklistStepKeys = NormalizeChecklistStepKeys(checklistStepKeys ?? Enumerable.Empty<string>());
+            var checklistStepKeySet = normalizedChecklistStepKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var results = (documents ?? Enumerable.Empty<EntityChecklistCandidateDocument>())
+                .Select(document =>
+                {
+                    var checklistStatus = document.ChecklistStatus ?? new List<EntityChecklistStatus>();
+
+                    var completedTargetStepKeys = checklistStatus
+                        .Where(status => status != null &&
+                                         !String.IsNullOrWhiteSpace(status.StepKey) &&
+                                         checklistStepKeySet.Contains(status.StepKey) &&
+                                         status.Status != null &&
+                                         String.Equals(status.Status.Key, EntityChecklistStatus.Completed, StringComparison.OrdinalIgnoreCase))
+                        .Select(status => status.StepKey)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    var targetChecklistStatus = String.IsNullOrWhiteSpace(targetChecklistStepKey)
+                        ? null
+                        : checklistStatus.FirstOrDefault(status => status != null && String.Equals(status.StepKey, targetChecklistStepKey, StringComparison.OrdinalIgnoreCase));
+
+                    return new EntityChecklistCandidateSummary
+                    {
+                        Id = document.Id,
+                        EntityType = document.EntityType,
+                        Name = document.Name,
+                        Key = document.Key,
+                        Description = document.Description,
+                        CompletedTargetStepKeys = completedTargetStepKeys,
+                        CompletedTargetStepCount = completedTargetStepKeys.Count,
+                        TargetStepCount = normalizedChecklistStepKeys.Count,
+                        TargetChecklistStatus = targetChecklistStatus
+                    };
+                })
+                .ToList();
+
+            _logger.Trace(successMessage);
+
+            return InvokeResult<List<EntityChecklistCandidateSummary>>.Create(results);
+        }
+
+
+        public async Task<InvokeResult<int>> CountEntitiesWithCompletedChecklistStepsAsync(string entityType, string orgId, IEnumerable<string> checklistStepKeys, CancellationToken ct)
+        {
+            const string tag = "[EntityUtilsRepository__CountEntitiesWithCompletedChecklistStepsAsync]";
+
+            try
+            {
+                if (String.IsNullOrWhiteSpace(entityType)) return InvokeResult<int>.FromError("Entity type is required.");
+                if (String.IsNullOrWhiteSpace(orgId)) return InvokeResult<int>.FromError("Organization id is required.");
+                if (checklistStepKeys == null) throw new ArgumentNullException(nameof(checklistStepKeys));
+
+                var stepKeys = NormalizeChecklistStepKeys(checklistStepKeys);
+
+                if (!stepKeys.Any())
+                    return InvokeResult<int>.FromError("At least one completed checklist step key is required.");
+
+                var validation = ValidateChecklistStepKeys(stepKeys);
+
+                if (!validation.Successful)
+                    return InvokeResult<int>.FromInvokeResult(validation);
+
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsCompletedChecklistCount)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("stepKeys", stepKeys);
+
+                var result = (await _storageClient.QueryKnownAsync<DocumentCountResult>(entityType.Trim(), request, ct).ConfigureAwait(false)).FirstOrDefault();
+
+                return InvokeResult<int>.Create(result?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(tag, ex);
+                return InvokeResult<int>.FromException(tag, ex);
+            }
+        }
+
+        public Task<InvokeResult<int>> CountEntitiesReadyForChecklistStepAsync(string entityType, string orgId, IEnumerable<string> requiredCompletedStepKeys, string targetIncompleteStepKey, CancellationToken ct)
+        {
+            var targetIncompleteStepKeys = String.IsNullOrWhiteSpace(targetIncompleteStepKey) ? Enumerable.Empty<string>() : new[] { targetIncompleteStepKey };
+
+            return CountEntitiesReadyForChecklistStepAsync(entityType, orgId, requiredCompletedStepKeys, targetIncompleteStepKeys, ct);
+        }
+
+        public async Task<InvokeResult<int>> CountEntitiesReadyForChecklistStepAsync(string entityType, string orgId, IEnumerable<string> requiredCompletedStepKeys, IEnumerable<string> targetIncompleteStepKeys, CancellationToken ct)
+        {
+            const string tag = "[EntityUtilsRepository__CountEntitiesReadyForChecklistStepAsync]";
+
+            try
+            {
+                if (String.IsNullOrWhiteSpace(entityType))
+                {
+                    return InvokeResult<int>.FromError("Entity type is required.");
+                }
+
+                if (String.IsNullOrWhiteSpace(orgId))
+                {
+                    return InvokeResult<int>.FromError("Organization id is required.");
+                }
+
+                if (requiredCompletedStepKeys == null)
+                {
+                    throw new ArgumentNullException(nameof(requiredCompletedStepKeys));
+                }
+
+                if (targetIncompleteStepKeys == null)
+                {
+                    throw new ArgumentNullException(nameof(targetIncompleteStepKeys));
+                }
+
+                var requiredStepKeys = NormalizeChecklistStepKeys(requiredCompletedStepKeys);
+                var targetStepKeys = NormalizeChecklistStepKeys(targetIncompleteStepKeys);
+
+                if (!targetStepKeys.Any())
+                {
+                    return InvokeResult<int>.FromError("At least one target incomplete checklist step key is required.");
+                }
+
+                var requiredValidation = ValidateChecklistStepKeys(requiredStepKeys);
+                if (!requiredValidation.Successful)
+                {
+                    return InvokeResult<int>.FromInvokeResult(requiredValidation);
+                }
+
+                var targetValidation = ValidateChecklistStepKeys(targetStepKeys);
+                if (!targetValidation.Successful)
+                {
+                    return InvokeResult<int>.FromInvokeResult(targetValidation);
+                }
+
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsReadyChecklistCount)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("requiredStepKeys", requiredStepKeys)
+                    .WithParameter("targetStepKeys", targetStepKeys);
+
+                var result = (await _storageClient.QueryKnownAsync<DocumentCountResult>(entityType.Trim(), request, ct).ConfigureAwait(false)).FirstOrDefault();
+
+                return InvokeResult<int>.Create(result?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(tag, ex);
+                return InvokeResult<int>.FromException(tag, ex);
+            }
+        }
+
+
+
+        private static InvokeResult ValidateChecklistStepKeys(IEnumerable<string> stepKeys)
+        {
+            foreach (var stepKey in stepKeys)
+            {
+                if (!IsSafeChecklistStepKey(stepKey))
+                {
+                    return InvokeResult.FromError($"Checklist step key '{stepKey}' is not safe for a document query.");
+                }
+            }
+
+            return InvokeResult.Success;
+        }
+
+        private static List<string> NormalizeChecklistStepKeys(IEnumerable<string> stepKeys)
+        {
+            return stepKeys.Where(stepKey => !String.IsNullOrWhiteSpace(stepKey)).Select(stepKey => stepKey.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private static bool IsSafeChecklistStepKey(string stepKey)
+        {
+            if (String.IsNullOrWhiteSpace(stepKey))
+            {
+                return false;
+            }
+
+            if (stepKey.Length > 128)
+            {
+                return false;
+            }
+
+            foreach (var ch in stepKey)
+            {
+                if (!(Char.IsLetterOrDigit(ch) || ch == '_' || ch == '-' || ch == '.'))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public async Task<InvokeResult<List<EntityChecklistBlockedCandidateSummary>>> GetEntitiesBlockedByChecklistPrerequisitesAsync(
+    string entityType,
+    string orgId,
+    IEnumerable<string> requiredCompletedStepKeys,
+    int maxItems,
+    CancellationToken ct)
+        {
+            const string tag = "[EntityUtilsRepository__GetEntitiesBlockedByChecklistPrerequisitesAsync]";
+
+            try
+            {
+                if (String.IsNullOrWhiteSpace(entityType))
+                {
+                    throw new ArgumentException("entityType is required.", nameof(entityType));
+                }
+
+                if (String.IsNullOrWhiteSpace(orgId))
+                {
+                    throw new ArgumentException("orgId is required.", nameof(orgId));
+                }
+
+                if (requiredCompletedStepKeys == null)
+                {
+                    throw new ArgumentNullException(nameof(requiredCompletedStepKeys));
+                }
+
+                if (maxItems <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(maxItems), "maxItems must be greater than zero.");
+                }
+
+                var requiredStepKeys = NormalizeChecklistStepKeys(requiredCompletedStepKeys);
+
+                if (!requiredStepKeys.Any())
+                {
+                    return InvokeResult<List<EntityChecklistBlockedCandidateSummary>>.FromError(
+                        "At least one required completed checklist step key is required.");
+                }
+
+                var validation = ValidateChecklistStepKeys(requiredStepKeys);
+
+                if (!validation.Successful)
+                {
+                    return InvokeResult<List<EntityChecklistBlockedCandidateSummary>>.FromInvokeResult(validation);
+                }
+
+                var take = Math.Min(maxItems, 5000);
+                
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsBlockedChecklistCandidates)
+                    .WithParameter("entityType", entityType.Trim())
+                    .WithParameter("orgId", orgId.Trim())
+                    .WithParameter("requiredStepKeys", requiredStepKeys)
+                    .WithParameter("maxItems", take);
+
+                var documents = (await _storageClient.QueryKnownAsync<EntityChecklistBlockedCandidateDocument>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
+
+                _logger.Trace(
+                    $"{this.Tag()} - Found {documents.Count} blocked checklist candidates from the query {entityType} " +
+                    $"with prerequisites [{String.Join(", ", requiredStepKeys)}].");
+
+                foreach (var document in documents)
+                {
+                    _logger.Trace(
+                        $"{this.Tag()} - Blocked candidate '{document.Name ?? document.Id}' " +
+                        $"has {document.ChecklistStatus?.Count ?? 0} checklist status entries.");
+
+                    foreach (var status in document.ChecklistStatus)
+                    {
+                        _logger.Trace(
+                            $"{this.Tag()} - Checklist status: StepKey='{status.StepKey}', " +
+                            $"Status='{status.Status?.Key}'.");
+                    }
+                }
+
+
+                var results = documents
+                    .Select(document =>
+                    {
+                        var completedStepKeys = (document.ChecklistStatus)
+                            .Where(status =>
+                                status != null &&
+                                !String.IsNullOrWhiteSpace(status.StepKey) &&
+                                status.Status != null &&
+                                String.Equals(
+                                    status.Status.Key,
+                                    EntityChecklistStatus.Completed,
+                                    StringComparison.OrdinalIgnoreCase))
+                            .Select(status => status.StepKey)
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                        var missingStepKeys = requiredStepKeys
+                            .Where(stepKey => !completedStepKeys.Contains(stepKey))
+                            .ToList();
+
+                        _logger.Trace(
+                            $"{this.Tag()} - Candidate '{document.Name ?? document.Id}' completed " +
+                            $"[{String.Join(", ", completedStepKeys)}] and is missing " +
+                            $"[{String.Join(", ", missingStepKeys)}].");
+
+                        return new EntityChecklistBlockedCandidateSummary
+                        {
+                            Id = document.Id,
+                            EntityType = document.EntityType,
+                            Name = document.Name,
+                            Key = document.Key,
+                            Description = document.Description,
+                            MissingRequiredStepKeys = missingStepKeys
+                        };
+                    })
+                    .Where(candidate => candidate.MissingRequiredStepKeys.Any())
+                    .ToList();
+
+                _logger.Trace(
+                    $"{this.Tag()} - Found {results.Count} blocked checklist candidates for {entityType} " +
+                    $"with prerequisites [{String.Join(", ", requiredStepKeys)}].");
+
+                return InvokeResult<List<EntityChecklistBlockedCandidateSummary>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(tag, ex);
+                return InvokeResult<List<EntityChecklistBlockedCandidateSummary>>.FromException(tag, ex);
+            }
+        }
+
+        public async Task<InvokeResult<List<JObject>>> GetEntitiesByTypeAsync(string entityType, string orgId, CancellationToken ct)
+        {
+            try
+            {
+                if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+                if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+
+                var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByType).WithParameter("entityType", entityType.Trim()).WithParameter("orgId", orgId.Trim());
+                var results = (await _storageClient.QueryKnownAsync<JObject>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
+
+                _logger.Trace($"{this.Tag()} - Found {results.Count} entities of type '{entityType}' for organization '{orgId}'.");
+                return InvokeResult<List<JObject>>.Create(results);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex);
+                return InvokeResult<List<JObject>>.FromException(this.Tag(), ex);
+            }
+        }
+
+
+        public Task<bool> IsKeyUniqueAsync(string entityType, string orgId, string key, string id = null, CancellationToken ct = default)
+        {
+            return IsSemanticIdentifierUniqueAsync(entityType, orgId, nameof(EntityBase.Key), NormalizeKey(key), id, ct);
+        }
+
+        private const string TlaFieldName = "Tla";
+
+        public Task<bool> IsTlaUniqueAsync(string entityType, string orgId, string tla, string id = null, CancellationToken ct = default)
+        {
+            return IsSemanticIdentifierUniqueAsync(entityType, orgId, TlaFieldName, NormalizeTla(tla), id, ct);
+        }
+
+        public async Task<string> GenerateUniqueKeyAsync(string entityType, string orgId, string name, string key = null, string id = null, CancellationToken ct = default)
+        {
+            var baseKey = NormalizeKey(String.IsNullOrWhiteSpace(key) ? name : key);
+
+            if (String.IsNullOrWhiteSpace(baseKey))
+                baseKey = "entity";
+
+            if (baseKey.Length < 3)
+                baseKey = baseKey.PadRight(3, 'x');
+
+            if (await IsKeyUniqueAsync(entityType, orgId, baseKey, id, ct).ConfigureAwait(false))
+                return baseKey;
+
+            for (var idx = 2; idx < 10000; idx++)
+            {
+                var suffix = idx.ToString();
+                var candidate = $"{baseKey.Substring(0, Math.Min(baseKey.Length, 32 - suffix.Length))}{suffix}";
+
+                if (await IsKeyUniqueAsync(entityType, orgId, candidate, id, ct).ConfigureAwait(false))
+                    return candidate;
+            }
+
+            throw new InvalidOperationException($"Could not generate a unique key for entity type '{entityType}' in organization '{orgId}'.");
+        }
+
+        private static IReadOnlyList<string> BuildTlaCandidates(string preferredTla, string name, string entityType)
+        {
+            var candidates = new List<string>();
+            var phrase = FirstNonBlank(name, entityType, "Entity");
+            var words = SplitWords(phrase);
+            var letters = new String(phrase.Where(Char.IsLetter).Select(Char.ToUpperInvariant).ToArray());
+
+            if (letters.Length == 0)
+                letters = "ENT";
+
+            var first = letters[0];
+            var normalizedPreferred = NormalizeTla(preferredTla);
+
+            if (IsValidTla(normalizedPreferred))
+                AddTlaCandidate(candidates, normalizedPreferred);
+
+            if (words.Count >= 2)
+                AddTlaCandidate(candidates, BuildTlaFromWords(words));
+
+            AddTlaCandidate(candidates, BuildFallbackTla(phrase));
+
+            for (var secondIdx = 1; secondIdx < letters.Length; secondIdx++)
+            {
+                for (var thirdIdx = secondIdx + 1; thirdIdx < letters.Length; thirdIdx++)
+                    AddTlaCandidate(candidates, $"{first}{letters[secondIdx]}{letters[thirdIdx]}");
+            }
+
+            for (var secondIdx = 1; secondIdx < letters.Length; secondIdx++)
+                AddTlaCandidate(candidates, $"{first}{letters[secondIdx]}X");
+
+            AddTlaCandidate(candidates, $"{first}XX");
+            AddTlaCandidate(candidates, "ENT");
+
+            return candidates;
+        }
+
+        private static IEnumerable<string> BuildExhaustiveTlaCandidates(string name, string entityType)
+        {
+            var phrase = FirstNonBlank(name, entityType, "Entity");
+            var first = phrase.Where(Char.IsLetter).Select(Char.ToUpperInvariant).FirstOrDefault();
+
+            if (first >= 'A' && first <= 'Z')
+            {
+                for (var second = 'A'; second <= 'Z'; second++)
+                {
+                    for (var third = 'A'; third <= 'Z'; third++)
+                        yield return $"{first}{second}{third}";
+                }
+            }
+
+            for (var firstLetter = 'A'; firstLetter <= 'Z'; firstLetter++)
+            {
+                for (var second = 'A'; second <= 'Z'; second++)
+                {
+                    for (var third = 'A'; third <= 'Z'; third++)
+                        yield return $"{firstLetter}{second}{third}";
+                }
+            }
+        }
+
+        private static void AddTlaCandidate(List<string> candidates, string candidate)
+        {
+            candidate = NormalizeTla(candidate);
+
+            if (!IsValidTla(candidate))
+                return;
+
+            if (!candidates.Contains(candidate, StringComparer.OrdinalIgnoreCase))
+                candidates.Add(candidate);
+        }
+
+        private static string BuildTlaFromWords(List<string> words)
+        {
+            var first = FirstLetter(words.ElementAtOrDefault(0));
+            var second = FirstLetter(words.ElementAtOrDefault(1));
+            var third = words.Count >= 3 ? FirstLetter(words.ElementAtOrDefault(2)) : FirstLetter(words.ElementAtOrDefault(words.Count - 1), 1);
+
+            return $"{first}{second}{third}";
+        }
+
+        private static string BuildFallbackTla(string value)
+        {
+            var letters = new String((value ?? String.Empty).Where(Char.IsLetter).Select(Char.ToUpperInvariant).ToArray());
+
+            if (letters.Length >= 3)
+                return letters.Substring(0, 3);
+
+            if (letters.Length == 2)
+                return $"{letters}X";
+
+            if (letters.Length == 1)
+                return $"{letters}XX";
+
+            return "ENT";
+        }
+
+        private static char FirstLetter(string value, int offset = 0)
+        {
+            var letters = String.IsNullOrWhiteSpace(value) ? String.Empty : new String(value.Where(Char.IsLetter).Select(Char.ToUpperInvariant).ToArray());
+
+            if (letters.Length > offset)
+                return letters[offset];
+
+            if (letters.Length > 0)
+                return letters[0];
+
+            return 'X';
+        }
+
+        private static List<string> SplitWords(string value)
+        {
+            if (String.IsNullOrWhiteSpace(value))
+                return new List<string>();
+
+            var normalized = System.Text.RegularExpressions.Regex.Replace(value, "([a-z])([A-Z])", "$1 $2");
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, "[^A-Za-z]+", " ");
+
+            return normalized.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Where(word => !String.IsNullOrWhiteSpace(word)).ToList();
+        }
+
+        private static string FirstNonBlank(params string[] values)
+        {
+            return values.FirstOrDefault(value => !String.IsNullOrWhiteSpace(value));
+        }
+
+        private static string NormalizeKey(string value)
+        {
+            if (String.IsNullOrWhiteSpace(value))
+                return null;
+
+            var builder = new System.Text.StringBuilder();
+
+            foreach (var ch in value.ToLowerInvariant())
+            {
+                if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9'))
+                    builder.Append(ch);
+            }
+
+            var key = builder.ToString();
+
+            if (String.IsNullOrWhiteSpace(key))
+                return null;
+
+            if (!Char.IsLetter(key[0]))
+                key = $"a{key}";
+
+            if (key.Length > 32)
+                key = key.Substring(0, 32);
+
+            if (key.Length < 3)
+                key = key.PadRight(3, 'x');
+
+            return key;
+        }
+
+        private static string NormalizeTla(string value)
+        {
+            if (String.IsNullOrWhiteSpace(value))
+                return null;
+
+            var letters = new String(value.Where(Char.IsLetter).Select(Char.ToUpperInvariant).ToArray());
+
+            if (letters.Length < 3)
+                return null;
+
+            return letters.Substring(0, 3);
+        }
+
+        private static bool IsValidTla(string value)
+        {
+            return !String.IsNullOrWhiteSpace(value) && value.Length == 3 && value.All(ch => ch >= 'A' && ch <= 'Z');
+        }
+
+        public async Task<string> GenerateUniqueTlaAsync(string entityType, string orgId, string name, string tla = null, string id = null, CancellationToken ct = default)
+        {
+            foreach (var candidate in BuildTlaCandidates(tla, name, entityType))
+            {
+                if (await IsTlaUniqueAsync(entityType, orgId, candidate, id, ct).ConfigureAwait(false))
+                    return candidate;
+            }
+
+            foreach (var candidate in BuildExhaustiveTlaCandidates(name, entityType))
+            {
+                if (await IsTlaUniqueAsync(entityType, orgId, candidate, id, ct).ConfigureAwait(false))
+                    return candidate;
+            }
+
+            throw new InvalidOperationException($"Could not generate a unique TLA for entity type '{entityType}' in organization '{orgId}'.");
+        }
+
+        private async Task<bool> IsSemanticIdentifierUniqueAsync(string entityType, string orgId, string fieldName, string value, string id, CancellationToken ct)
+        {
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("entityType is required.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(orgId)) throw new ArgumentException("orgId is required.", nameof(orgId));
+            if (String.IsNullOrWhiteSpace(fieldName)) throw new ArgumentException("fieldName is required.", nameof(fieldName));
+
+            if (String.IsNullOrWhiteSpace(value))
+                return true;
+
+            if (!IsSafeDocumentPropertyName(fieldName))
+                throw new ArgumentException($"Field name '{fieldName}' is not safe for a document query.", nameof(fieldName));
+
+            var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByFieldValue)
+                .WithParameter("entityType", entityType.Trim())
+                .WithParameter("orgId", orgId.Trim())
+                .WithParameter("fieldName", fieldName.Trim())
+                .WithParameter("value", value.Trim());
+
+            var matches = await _storageClient.QueryKnownAsync<DocumentIdProjection>(entityType.Trim(), request, ct).ConfigureAwait(false);
+            var matchingIds = matches.Where(match => !String.IsNullOrWhiteSpace(match.Id)).Select(match => match.Id).ToList();
+
+            if (String.IsNullOrWhiteSpace(id))
+                return !matchingIds.Any();
+
+            return !matchingIds.Any(matchId => !String.Equals(matchId, id.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        private class EntityChecklistBlockedCandidateDocument
+        {
+            public string Id { get; set; }
+
+            public string EntityType { get; set; }
+
+            public string Name { get; set; }
+
+            public string Key { get; set; }
+
+            public string Description { get; set; }
+
+            public List<EntityChecklistStatus> ChecklistStatus { get; set; } = new List<EntityChecklistStatus>();
+        }
+
+        private class EntityChecklistCandidateDocument
+        {
+            public string Id { get; set; }
+
+            public string EntityType { get; set; }
+
+            public string Name { get; set; }
+
+            public string Key { get; set; }
+
+            public string Description { get; set; }
+
+            public List<EntityChecklistStatus> ChecklistStatus { get; set; } = new List<EntityChecklistStatus>();
+        }
+    }
+}

@@ -1,0 +1,304 @@
+// --- BEGIN CODE INDEX META (do not edit) ---
+// ContentHash: 73ccdcdc6691bbce18c2bc28f254684bcf4b8d35e3c9da61ec54b09473afd68b
+// IndexVersion: 2
+// --- END CODE INDEX META ---
+using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using LagoVista.Core;
+using LagoVista.Core.Validation;
+using LagoVista.IoT.Logging.Loggers;
+using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
+
+namespace LagoVista.CloudStorage.Storage.StorageProviders.File
+{
+    public class CloudFileStorage
+    {
+        private readonly IAdminLogger _logger;
+
+        private string _accountId;
+        private string _accessKey;
+        private string _containerName;
+
+        public CloudFileStorage(string accountId, string accessKey, string containerName, IAdminLogger adminLogger) : this(accountId, accessKey, adminLogger)
+        {
+            _containerName = containerName;
+        }
+
+        public CloudFileStorage(string accountId, string accessKey, IAdminLogger adminLogger)
+        {
+            _logger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
+            if (String.IsNullOrEmpty(accessKey))
+                throw new ArgumentNullException(nameof(accessKey));
+
+            if (String.IsNullOrEmpty(accountId))
+                throw new ArgumentNullException(nameof(accountId));
+
+            _accountId = accountId;
+            _accessKey = accessKey;
+            _containerName = null;
+        }
+
+        public CloudFileStorage(IAdminLogger adminLogger)
+        {
+            _logger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
+        }
+
+        public void InitConnectionSettings(string accountId, string accessKey)
+        {
+            _accountId = accountId;
+            _accessKey = accessKey;
+
+            if (String.IsNullOrEmpty(accountId)) throw new ArgumentNullException(nameof(accountId));
+            if (String.IsNullOrEmpty(accessKey)) throw new ArgumentNullException(nameof(accessKey));
+        }
+
+
+        private async Task<BlobContainerClient> CreateBlobContainerClient(String containerName )
+        {
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountId};AccountKey={_accessKey}";
+            var blobClient = new BlobServiceClient(connectionString);
+            var blobContainerClient = blobClient.GetBlobContainerClient(containerName);
+            await blobContainerClient.CreateIfNotExistsAsync();
+            return blobContainerClient;
+        }
+
+        public Task<InvokeResult<Uri>> AddFileAsync(string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null)
+        {
+            if(String.IsNullOrEmpty(_containerName))
+                throw new InvalidOperationException("Container name not specified for this instance of CloudFileStorage.  Use the overload that takes a container name.");
+
+            return AddFileAsync(_containerName, fileName, data, contentType, cacheControl);
+        }
+
+        public async Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, byte[] data, string contentType = "application/octet-stream", string cacheControl = null, bool rejectUpdates = false)
+        {
+            var sw = Stopwatch.StartNew();
+            if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
+            if (String.IsNullOrEmpty(containerName)) throw new ArgumentNullException(nameof(containerName));
+            if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
+            if (String.IsNullOrEmpty(_accessKey)) throw new ArgumentNullException("Must provide access key in constructor, or provide in InitConnectionSettings");
+
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
+            var containerClient = await CreateBlobContainerClient(containerName);
+
+            if (fileName.StartsWith("/"))
+                fileName = fileName.TrimStart('/');
+
+            var blobClient = containerClient.GetBlobClient(fileName);
+            var header = new BlobHttpHeaders { ContentType = contentType };
+            if (cacheControl != null)
+                header.CacheControl = cacheControl;
+
+
+            _logger.Trace($"{this.Tag()} - Uploading File to Blob Storage: {fileName}", fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
+
+            var numberRetries = 5;
+            var retryCount = 0;
+            var completed = false;
+
+            while (retryCount++ < numberRetries && !completed)
+            {
+                try
+                {
+                    _logger.Trace($"{this.Tag()} - adding content", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), containerName.ToKVP("container"), fileName.ToKVP("fileName"));
+
+                    var blobOptions = new BlobUploadOptions { HttpHeaders = header };
+                    if(rejectUpdates)
+                        blobOptions.Conditions = new BlobRequestConditions { IfNoneMatch = Azure.ETag.All };
+
+                    var binaryData = new BinaryData(data);
+                    var blobResult = await blobClient.UploadAsync(binaryData, blobOptions);
+                    var statusCode = blobResult.GetRawResponse().Status;
+                    if (statusCode < 200 || statusCode > 299)
+                        throw new InvalidOperationException($"Invalid response Code {statusCode}");
+
+                    _logger.Trace($"{this.Tag()} - added content", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), containerName.ToKVP("container"), fileName.ToKVP("fileName"));
+
+                    return InvokeResult<Uri>.Create(blobClient.Uri);
+                }
+                catch (RequestFailedException ex) when (IsBlobLeaseFailure(ex))
+                {
+                    _logger.AddCustomEvent(
+                        LagoVista.Core.PlatformSupport.LogLevel.Error,
+                        this.Tag(),
+                        "Blob lease failure during upload.",
+                        ex.Message.ToKVP("exceptionMessage"),
+                        ex.ErrorCode.ToKVP("errorCode"),
+                        ex.Status.ToString().ToKVP("status"),
+                        containerName.ToKVP("containerName"),
+                        fileName.ToKVP("fileName"),
+                        rejectUpdates.ToString().ToKVP("rejectUpdates"));
+
+                    return InvokeResult<Uri>.FromError($"Blob is currently leased and cannot be uploaded without a lease id: {fileName}");
+                }
+                catch (RequestFailedException ex) when (rejectUpdates && IsBlobAlreadyExistsOrConditionFailed(ex))
+                {
+                    _logger.AddCustomEvent(
+                        LagoVista.Core.PlatformSupport.LogLevel.Warning,
+                        this.Tag(),
+                        "Blob already exists; upload rejected.",
+                        ex.Message.ToKVP("exceptionMessage"),
+                        ex.Status.ToString().ToKVP("status"),
+                        containerName.ToKVP("containerName"),
+                        fileName.ToKVP("fileName"));
+
+                    return InvokeResult<Uri>.FromError($"Blob already exists: {fileName}");
+                }
+                catch (Exception ex)
+                {
+                    if (retryCount == numberRetries)
+                    {
+                        _logger.AddException(this.Tag(), ex, containerName.ToKVP("containerName"));
+                        var exceptionResult = InvokeResult.FromException("[CloudFileStorage__AddFileAsync]", ex);
+                        return InvokeResult<Uri>.FromInvokeResult(exceptionResult);
+                    }
+                    else
+                    {
+                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, this.Tag(), "", ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
+                    }
+                    await Task.Delay(retryCount * 250);
+                }
+            }
+
+            //really never get here....
+            return InvokeResult<Uri>.FromError("Could not upload file");
+        }
+
+        private static bool IsBlobLeaseFailure(RequestFailedException ex)
+        {
+            return ex.ErrorCode == BlobErrorCode.LeaseIdMissing.ToString() ||
+                   ex.ErrorCode == BlobErrorCode.LeaseIdMismatchWithBlobOperation.ToString() ||
+                   ex.ErrorCode == BlobErrorCode.LeaseAlreadyPresent.ToString();
+        }
+
+
+        private static bool IsBlobAlreadyExistsOrConditionFailed(RequestFailedException ex)
+        {
+            return ex.ErrorCode == BlobErrorCode.BlobAlreadyExists.ToString() ||
+                   ex.ErrorCode == BlobErrorCode.ConditionNotMet.ToString();
+        }
+
+        public Task<InvokeResult<Uri>> UpdateFileAsync(string containerName, string fileName, string data, string contentType = "text/plain", string cacheControl = null)
+        {
+            return AddFileAsync(containerName, fileName, data, contentType, cacheControl);
+        }
+
+        public Task<InvokeResult<Uri>> AddFileAsync(string containerName, string fileName, string data, string contentType = "text/plain", string cacheControl = null)
+        {
+            var buffer = System.Text.ASCIIEncoding.UTF8.GetBytes(data);
+            return AddFileAsync(containerName, fileName, buffer, contentType, cacheControl);
+        }
+
+        public async Task<InvokeResult<byte[]>> GetFileAsync(string fileName)
+        {
+            if (String.IsNullOrEmpty(_containerName))
+                throw new InvalidOperationException("Container name not specified for this instance of CloudFileStorage.  Use the overload that takes a container name.");
+
+            return await GetFileAsync(_containerName, fileName);
+        }
+
+        public async Task<InvokeResult<byte[]>> GetFileAsync(string containerName, string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
+            if (String.IsNullOrEmpty(containerName)) throw new ArgumentNullException(nameof(containerName));
+            if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
+            if (String.IsNullOrEmpty(_accessKey)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
+
+            if (fileName.StartsWith("/"))
+                fileName = fileName.TrimStart('/');
+
+            var containerClient = await CreateBlobContainerClient(containerName);
+            var blobClient = containerClient.GetBlobClient(fileName);
+
+            var numberRetries = 5;
+            var retryCount = 0;
+            var completed = false;
+            while (retryCount++ < numberRetries && !completed)
+            {
+                try
+                {
+                    _logger.Trace($"{this.Tag()} - getting blob", containerName.ToKVP("container"), fileName.ToKVP("fileName"));
+                    var content = await blobClient.DownloadContentAsync();
+                    _logger.Trace($"{this.Tag()} - got blob", containerName.ToKVP("container"), fileName.ToKVP("fileName"));
+                    return InvokeResult<byte[]>.Create(content.Value.Content.ToArray());
+                }
+                catch (Exception ex)
+                {
+                    if (retryCount == numberRetries)
+                    {
+                        _logger.AddException(this.Tag(), ex, containerName.ToKVP("containerName"));
+                        return InvokeResult<byte[]>.FromException("CloudFileStorage_GetFileAsync", ex);
+                    }
+                    else
+                    {
+                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, this.Tag(), "", fileName.ToKVP("fileName"), _accountId.ToKVP("accountId"),
+                           containerName.ToKVP("containerName"), ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
+                    }
+                    await Task.Delay(retryCount * 250);
+                }
+            }
+
+            return InvokeResult<byte[]>.FromError("Could not retrieve Media Item");
+        }
+
+        public Task<InvokeResult> DeleteFileAsync(string fileName)
+        {
+            if (String.IsNullOrEmpty(_containerName))
+                throw new InvalidOperationException("Container name not specified for this instance of CloudFileStorage.  Use the overload that takes a container name.");
+
+            return DeleteFileAsync(_containerName, fileName);
+        }
+
+        public async Task<InvokeResult> DeleteFileAsync(string containerName, string fileName)
+        { 
+            if (string.IsNullOrEmpty(fileName)) throw new ArgumentNullException(nameof(fileName));
+            if (String.IsNullOrEmpty(containerName)) throw new ArgumentNullException(nameof(containerName));
+            if (String.IsNullOrEmpty(_accountId)) throw new ArgumentNullException("Must provide account id in constructor, or provide in InitConnectionSettings");
+            if (String.IsNullOrEmpty(_accessKey)) throw new ArgumentNullException("Must provide access key in constructor, or provide in InitConnectionSettings");
+
+            if (fileName.StartsWith("/"))
+                fileName = fileName.TrimStart('/');
+
+            var containerClient = await CreateBlobContainerClient(containerName);
+            var blobClient = containerClient.GetBlobClient(fileName);
+            var numberRetries = 5;
+            var retryCount = 0;
+            var completed = false;
+            while (retryCount++ < numberRetries && !completed)
+            {
+                try
+                {
+                    var sw = Stopwatch.StartNew();
+                    _logger.Trace($"{this.Tag()} - deleting blob", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), containerName.ToKVP("container"), fileName.ToKVP("fileName"));
+                    await blobClient.DeleteAsync();
+                    _logger.Trace($"{this.Tag()} - deleted blob", sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), containerName.ToKVP("container"), fileName.ToKVP("fileName"));
+
+                    return InvokeResult.Success;
+                }
+                catch (Exception ex)
+                {
+                    if (retryCount == numberRetries)
+                    {
+                        _logger.AddException(this.Tag(), ex,  containerName.ToKVP("container"), fileName.ToKVP("fileName"));
+                        return InvokeResult.FromException("[CloudFileStorage_GetFileAsync]", ex);
+                    }
+                    else
+                    {
+                        _logger.AddCustomEvent(LagoVista.Core.PlatformSupport.LogLevel.Warning, this.Tag(), "retry delete", fileName.ToKVP("fileName"),
+                           containerName.ToKVP("containerName"), ex.Message.ToKVP("exceptionMessage"), ex.GetType().Name.ToKVP("exceptionType"), retryCount.ToString().ToKVP("retryCount"));
+                    }
+                    await Task.Delay(retryCount * 250);
+                }
+            }
+
+            return InvokeResult.FromError("Could not delete Media Item");
+        }
+    }
+}

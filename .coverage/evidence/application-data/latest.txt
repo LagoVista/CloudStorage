@@ -1,0 +1,18 @@
+CloudStorage Application Data Integration Test Evidence
+StartedUtc: 2026-08-26T19:35:09.6218048Z
+Project: D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj
+Filter: TestCategory=ApplicationData
+Provider: MongoDB localhost:27018
+
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  LagoVista.CloudStorage -> D:\NuvIoT\cs.CloudStorage\src\LagoVista.CloudStorage\bin\Debug\netstandard2.1\LagoVista.CloudStorage.dll
+  LagoVista.StorageProvider.Tests -> D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll
+Test run for D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll (.NETCoreApp,Version=v9.0)
+A total of 1 test files matched the specified pattern.
+Results File: D:\NuvIoT\cs.CloudStorage\.coverage\evidence\application-data\latest.trx
+
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: 484 ms - LagoVista.StorageProvider.Tests.dll (net9.0)
+
+CompletedUtc: 2026-08-26T19:35:12.9888152Z
+ExitCode: 0

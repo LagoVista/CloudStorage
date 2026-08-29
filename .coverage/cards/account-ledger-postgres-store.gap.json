@@ -1,0 +1,47 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "account-ledger-postgres-store-gap",
+  "title": "Account Ledger PostgreSQL Store",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "account-ledger-storage",
+  "summary": "Exercise the concrete PostgreSQL IAccountLedgerStore implementation, authoritative balances, integrity chaining, serialized concurrent writes, stable paging, range queries, and failure semantics.",
+  "source": [
+    "src/LagoVista.CloudStorage/Interfaces/StorageProviders/IAccountLedgerStore.cs",
+    "src/LagoVista.CloudStorage/Models/Ledger/AccountLedgerModels.cs",
+    "src/LagoVista.Relational/Storage/PostgresAccountLedgerStore.cs",
+    "src/LagoVista.Relational/Storage/PostgresAccountLedgerStorageServiceCollectionExtensions.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/account-ledger-postgres-store/latest.txt",
+    ".coverage/evidence/account-ledger-postgres-store/latest.trx"
+  ],
+  "data": {
+    "contract": "IAccountLedgerStore<TRecord>",
+    "provider": "postgresql",
+    "implementationStatus": "implemented",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Postgres/PostgresAccountLedgerStoreIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-postgres-account-ledger-tests.ps1",
+    "environment": {
+      "type": "docker",
+      "provider": "postgresql",
+      "port": 19044
+    },
+    "coverageLayers": {
+      "completed": [
+        "dependency-registration",
+        "schema-provisioning",
+        "credit-and-debit-append",
+        "authoritative-balance",
+        "integrity-chain",
+        "same-ledger-concurrency-serialization",
+        "stable-continuation-paging",
+        "date-range-query",
+        "newest-first-ordering",
+        "validation-and-rollback"
+      ],
+      "next": []
+    }
+  }
+}

@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="29c9f419-ca17-4998-9edd-73feb540ed51" name="kevin@BEAST-LAPTOP 2026-08-26 19:58:17" runUser="BEAST-LAPTOP\kevin" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-26T19:58:17.0999105-04:00" queuing="2026-08-26T19:58:17.0999111-04:00" start="2026-08-26T19:58:15.8617793-04:00" finish="2026-08-26T19:58:17.1056264-04:00" />
+  <TestSettings name="default" id="7d039dee-68f3-4be4-9562-6d2511b6161c">
+    <Deployment runDeploymentRoot="kevin_BEAST-LAPTOP_2026-08-26_19_58_17" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="fd9a76d6-42dd-4ed1-82b9-b8e8c0670ee0" testId="4c1bcf7a-cfe0-ae14-de78-6220a2726a67" testName="AddTransactionAsync_SerializesConcurrentWritesToSameLedger" computerName="BEAST-LAPTOP" duration="00:00:00.1556303" startTime="2026-08-26T19:58:16.6696907-04:00" endTime="2026-08-26T19:58:16.8256798-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fd9a76d6-42dd-4ed1-82b9-b8e8c0670ee0" />
+    <UnitTestResult executionId="30ce3f41-b483-4000-be71-8a90d762534b" testId="4f1e4aec-36a7-53a9-2ae1-9556636a6837" testName="InvalidOrDuplicateTransactions_DoNotCorruptBalance" computerName="BEAST-LAPTOP" duration="00:00:00.0208612" startTime="2026-08-26T19:58:16.8640493-04:00" endTime="2026-08-26T19:58:16.8850344-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="30ce3f41-b483-4000-be71-8a90d762534b" />
+    <UnitTestResult executionId="9fe3ec5f-cbda-4577-8415-ab67798c6932" testId="911ef9ba-f677-4bdd-6a89-423c7b808c72" testName="DependencyRegistration_ResolvesConcretePostgresStore" computerName="BEAST-LAPTOP" duration="00:00:00.0003344" startTime="2026-08-26T19:58:16.8851005-04:00" endTime="2026-08-26T19:58:16.8871002-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9fe3ec5f-cbda-4577-8415-ab67798c6932" />
+    <UnitTestResult executionId="4e137b93-9f10-4f4f-b5d1-12daef4a1f5d" testId="22dd0144-cc59-a34e-1ab8-dc2602603f84" testName="AddTransactionAsync_MaintainsBalanceAndIntegrityChain" computerName="BEAST-LAPTOP" duration="00:00:00.2673112" startTime="2026-08-26T19:58:16.3848490-04:00" endTime="2026-08-26T19:58:16.6664686-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4e137b93-9f10-4f4f-b5d1-12daef4a1f5d" />
+    <UnitTestResult executionId="97755039-8113-45aa-bec6-f81f7e3e7568" testId="ba7e111a-a387-ee4a-be0e-704e6e1661cc" testName="QueryAsync_SupportsDateRangeAndStablePaging" computerName="BEAST-LAPTOP" duration="00:00:00.0378552" startTime="2026-08-26T19:58:16.8259694-04:00" endTime="2026-08-26T19:58:16.8639710-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="97755039-8113-45aa-bec6-f81f7e3e7568" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="QueryAsync_SupportsDateRangeAndStablePaging" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="ba7e111a-a387-ee4a-be0e-704e6e1661cc">
+      <TestCategory>
+        <TestCategoryItem TestCategory="PostgresAccountLedger" />
+        <TestCategoryItem TestCategory="Postgres" />
+      </TestCategory>
+      <Execution id="97755039-8113-45aa-bec6-f81f7e3e7568" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Postgres.PostgresAccountLedgerStoreIntegrationTests" name="QueryAsync_SupportsDateRangeAndStablePaging" />
+    </UnitTest>
+    <UnitTest name="AddTransactionAsync_MaintainsBalanceAndIntegrityChain" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="22dd0144-cc59-a34e-1ab8-dc2602603f84">
+      <TestCategory>
+        <TestCategoryItem TestCategory="PostgresAccountLedger" />
+        <TestCategoryItem TestCategory="Postgres" />
+      </TestCategory>
+      <Execution id="4e137b93-9f10-4f4f-b5d1-12daef4a1f5d" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Postgres.PostgresAccountLedgerStoreIntegrationTests" name="AddTransactionAsync_MaintainsBalanceAndIntegrityChain" />
+    </UnitTest>
+    <UnitTest name="DependencyRegistration_ResolvesConcretePostgresStore" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="911ef9ba-f677-4bdd-6a89-423c7b808c72">
+      <TestCategory>
+        <TestCategoryItem TestCategory="PostgresAccountLedger" />
+        <TestCategoryItem TestCategory="Postgres" />
+      </TestCategory>
+      <Execution id="9fe3ec5f-cbda-4577-8415-ab67798c6932" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Postgres.PostgresAccountLedgerStoreIntegrationTests" name="DependencyRegistration_ResolvesConcretePostgresStore" />
+    </UnitTest>
+    <UnitTest name="AddTransactionAsync_SerializesConcurrentWritesToSameLedger" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="4c1bcf7a-cfe0-ae14-de78-6220a2726a67">
+      <TestCategory>
+        <TestCategoryItem TestCategory="PostgresAccountLedger" />
+        <TestCategoryItem TestCategory="Postgres" />
+      </TestCategory>
+      <Execution id="fd9a76d6-42dd-4ed1-82b9-b8e8c0670ee0" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Postgres.PostgresAccountLedgerStoreIntegrationTests" name="AddTransactionAsync_SerializesConcurrentWritesToSameLedger" />
+    </UnitTest>
+    <UnitTest name="InvalidOrDuplicateTransactions_DoNotCorruptBalance" storage="d:\nuviot\cs.cloudstorage\tests\lagovista.storageprovider.tests\bin\debug\net9.0\lagovista.storageprovider.tests.dll" id="4f1e4aec-36a7-53a9-2ae1-9556636a6837">
+      <TestCategory>
+        <TestCategoryItem TestCategory="PostgresAccountLedger" />
+        <TestCategoryItem TestCategory="Postgres" />
+      </TestCategory>
+      <Execution id="30ce3f41-b483-4000-be71-8a90d762534b" />
+      <TestMethod codeBase="D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="LagoVista.StorageProvider.Tests.Postgres.PostgresAccountLedgerStoreIntegrationTests" name="InvalidOrDuplicateTransactions_DoNotCorruptBalance" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="4c1bcf7a-cfe0-ae14-de78-6220a2726a67" executionId="fd9a76d6-42dd-4ed1-82b9-b8e8c0670ee0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4f1e4aec-36a7-53a9-2ae1-9556636a6837" executionId="30ce3f41-b483-4000-be71-8a90d762534b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="911ef9ba-f677-4bdd-6a89-423c7b808c72" executionId="9fe3ec5f-cbda-4577-8415-ab67798c6932" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="22dd0144-cc59-a34e-1ab8-dc2602603f84" executionId="4e137b93-9f10-4f4f-b5d1-12daef4a1f5d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ba7e111a-a387-ee4a-be0e-704e6e1661cc" executionId="97755039-8113-45aa-bec6-f81f7e3e7568" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="5" executed="5" passed="5" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>NUnit Adapter 5.1.0.0: Test execution started&#xD;
+Running selected tests in D:\NuvIoT\cs.CloudStorage\tests\LagoVista.StorageProvider.Tests\bin\Debug\net9.0\LagoVista.StorageProvider.Tests.dll&#xD;
+   NUnit3TestExecutor discovered 0 of 0 NUnit test cases using Current Discovery mode, Explicit run&#xD;
+NUnit Adapter 5.1.0.0: Test execution complete&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

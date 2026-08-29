@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.Diagnostics;
 using MongoDB.Bson;
@@ -12,9 +13,9 @@ namespace LagoVista.CloudStorage.Diagnostics
     public class MongoDocumentStorageSmokeTest : IPlatformSmokeTest
     {
         private readonly IDocumentStorageProviderSettings _providerSettings;
-        private readonly IMongoConnectionSettings _settings;
+        private readonly IMongoDocumentStorageConnectionSettings _settings;
 
-        public MongoDocumentStorageSmokeTest(IDocumentStorageProviderSettings providerSettings, IMongoConnectionSettings settings)
+        public MongoDocumentStorageSmokeTest(IDocumentStorageProviderSettings providerSettings, IMongoDocumentStorageConnectionSettings settings)
         {
             _providerSettings = providerSettings ?? throw new ArgumentNullException(nameof(providerSettings));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
@@ -35,14 +36,16 @@ namespace LagoVista.CloudStorage.Diagnostics
                 };
             }
 
-            var client = new MongoClient(_settings.ConnectionString);
+            var conectionString = _settings.BuildConnectionString();
+
+            var client = new MongoClient(conectionString);
             var database = client.GetDatabase(_settings.DatabaseName);
             await database.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: cancellationToken).ConfigureAwait(false);
 
             return new PlatformSmokeTestResult
             {
                 Status = PlatformSmokeTestStatus.Passed,
-                Target = GetSanitizedTarget(_settings.ConnectionString, _settings.DatabaseName),
+                Target = GetSanitizedTarget(conectionString, _settings.DatabaseName),
                 Message = "Mongo ping succeeded."
             };
         }

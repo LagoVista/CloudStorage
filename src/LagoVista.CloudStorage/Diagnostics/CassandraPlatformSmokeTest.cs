@@ -1,5 +1,7 @@
 using Cassandra;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
+using LagoVista.CloudStorage.Storage.StorageProviders.Cassandra;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.Diagnostics;
 using System;

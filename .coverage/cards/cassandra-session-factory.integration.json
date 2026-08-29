@@ -1,0 +1,36 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cassandra-session-factory-integration",
+  "title": "CassandraSessionFactory Integration Tests",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "cassandra",
+  "summary": "Verify Cassandra session creation, keyspace connectivity, configuration, and failure behavior against the local Cassandra container.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraSessionFactory.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/cassandra-infrastructure/latest.txt",
+    ".coverage/evidence/cassandra-infrastructure/latest.trx"
+  ],
+  "data": {
+    "component": "CassandraSessionFactory",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Cassandra/CassandraSessionFactoryIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cassandra-tests.ps1",
+    "environment": {
+      "type": "docker",
+      "provider": "cassandra",
+      "port": 19042,
+      "keyspace": "nuviot_storage_tests"
+    },
+    "coverageLayers": {
+      "completed": [
+        "configured-keyspace-connection",
+        "session-reuse",
+        "failure-behavior"
+      ],
+      "next": []
+    }
+  }
+}

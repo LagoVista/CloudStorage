@@ -1,0 +1,42 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "s3-cloud-file-storage-integration",
+  "title": "S3CloudFileStorageClient Integration Tests",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "file-storage",
+  "summary": "Exercise the provider-neutral cloud file storage contract against a real S3-compatible MinIO endpoint, including automatic bucket provisioning, round-trip writes, updates, deletes, bound-container overloads, object-key normalization, safe rejection of unsupported create-only writes, and short-lived signed read URLs.",
+  "source": [
+    "src/LagoVista.CloudStorage/Interfaces/StorageProviders/ICloudFileStorageClient.cs",
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/File/S3CloudFileStorageClient.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/s3-cloud-file-storage/latest.txt",
+    ".coverage/evidence/s3-cloud-file-storage/latest.trx"
+  ],
+  "data": {
+    "component": "S3CloudFileStorageClient",
+    "contract": "ICloudFileStorageClient",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "providerFixture": "tests/LagoVista.StorageProvider.Tests/S3/S3CloudFileStorageClientIntegrationTests.cs",
+    "signedReadUrlFixture": "tests/LagoVista.StorageProvider.Tests/S3/S3CloudFileStorageReadUrlIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-s3-cloud-file-storage-tests.ps1",
+    "environment": { "type": "docker", "provider": "minio" },
+    "coverageLayers": {
+      "completed": [
+        "bucket-auto-provisioning",
+        "binary-round-trip",
+        "string-update-round-trip",
+        "bound-container-overloads",
+        "object-key-normalization-and-uri",
+        "delete-semantics",
+        "reject-updates-preserves-existing-content",
+        "missing-bound-container-validation",
+        "signed-read-url-download",
+        "signed-read-url-lifetime-validation",
+        "signed-read-url-missing-object"
+      ],
+      "next": []
+    }
+  }
+}

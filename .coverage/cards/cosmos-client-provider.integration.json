@@ -1,0 +1,35 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cosmos-client-provider-integration",
+  "title": "CosmosClientProvider Integration Tests",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "cosmos",
+  "summary": "Verify Cosmos client creation, normalized endpoint reuse, connectivity, configuration validation, and failure behavior against the local Cosmos emulator.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/CosmosDB/CosmosClientProvider.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/cosmos-infrastructure/latest.txt",
+    ".coverage/evidence/cosmos-infrastructure/latest.trx"
+  ],
+  "data": {
+    "component": "CosmosClientProvider",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Cosmos/CosmosInfrastructureIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cosmos-infrastructure-tests.ps1",
+    "environment": {
+      "type": "docker",
+      "provider": "cosmos-emulator",
+      "port": 18081
+    },
+    "coverageLayers": {
+      "completed": [
+        "connectivity",
+        "normalized-client-reuse",
+        "connection-material-validation"
+      ],
+      "next": []
+    }
+  }
+}

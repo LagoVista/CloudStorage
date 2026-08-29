@@ -1,0 +1,40 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "cassandra-operational-data-store-integration",
+  "title": "CassandraOperationalDataStore Integration Tests",
+  "status": "completed",
+  "category": "integration-test",
+  "area": "cassandra",
+  "summary": "Exercise mutable operational-record writes, reads, timestamps, paging, indexed filtering, retention, and partition access against local Cassandra.",
+  "source": [
+    "src/LagoVista.CloudStorage/Storage/StorageProviders/Cassandra/CassandraOperationalDataStore.cs"
+  ],
+  "evidence": [
+    ".coverage/evidence/cassandra-operational-data-store/latest.txt",
+    ".coverage/evidence/cassandra-operational-data-store/latest.trx"
+  ],
+  "data": {
+    "component": "CassandraOperationalDataStore",
+    "testProject": "tests/LagoVista.StorageProvider.Tests",
+    "testFile": "tests/LagoVista.StorageProvider.Tests/Cassandra/CassandraOperationalDataStoreIntegrationTests.cs",
+    "runner": "tests/LagoVista.StorageProvider.Tests/PowerShell/run-cassandra-operational-data-tests.ps1",
+    "environment": {
+      "type": "docker",
+      "provider": "cassandra",
+      "port": 19042,
+      "keyspace": "nuviot_storage_tests"
+    },
+    "coverageLayers": {
+      "completed": [
+        "schema-provisioning",
+        "upsert-get-delete",
+        "timestamp-stamping",
+        "batch-upsert",
+        "partition-paging",
+        "indexed-filtering",
+        "retention-ttl"
+      ],
+      "next": []
+    }
+  }
+}

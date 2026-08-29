@@ -1,0 +1,11 @@
+{
+  "$schema": "../schemas/coverage-card.schema.json",
+  "id": "azure-blob-cloud-file-storage-integration",
+  "title": "CloudFileStorage Integration Tests",
+  "status": "backlog",
+  "category": "integration-test",
+  "area": "azure-blob",
+  "summary": "Cover the legacy Azure Blob read/write boundary used by CloudFileStorage.",
+  "source": ["src/LagoVista.CloudStorage/Storage/StorageProviders/File/CloudFileStorage.cs"],
+  "data": {"legacy":true,"component":"CloudFileStorage","testProject":"tests/LagoVista.StorageProvider.Tests"}
+}
