@@ -3,18 +3,15 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Platform-managed internal packages -->
-    <PackageVersion Include="LagoVista.Core" Version="5.0.0" />
-    <PackageVersion Include="LagoVista.Core.Configuration" Version="5.0.0" />
-    <PackageVersion Include="LagoVista.Core.TestBase" Version="5.0.0" />
-    <PackageVersion Include="LagoVista.Crypto" Version="5.0.0" />
-    <PackageVersion Include="LagoVista.IoT.Logging" Version="5.0.3" />
-
-    <!-- Repository-managed external packages -->
     <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageVersion Include="CassandraCSharpDriver" Version="3.22.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="LagoVista.Core" Version="5.0.5" />
+    <PackageVersion Include="LagoVista.Core.Configuration" Version="5.0.5" />
+    <PackageVersion Include="LagoVista.Core.TestBase" Version="5.0.5" />
+    <PackageVersion Include="LagoVista.Crypto" Version="5.0.5" />
+    <PackageVersion Include="LagoVista.IoT.Logging" Version="5.0.4" />
     <PackageVersion Include="log4net" Version="3.3.1" />
     <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.0" />
