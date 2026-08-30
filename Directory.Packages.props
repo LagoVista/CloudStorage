@@ -8,7 +8,7 @@
     <PackageVersion Include="LagoVista.Core.Configuration" Version="5.0.0" />
     <PackageVersion Include="LagoVista.Core.TestBase" Version="5.0.0" />
     <PackageVersion Include="LagoVista.Crypto" Version="5.0.0" />
-    <PackageVersion Include="LagoVista.IoT.Logging" Version="5.0.0" />
+    <PackageVersion Include="LagoVista.IoT.Logging" Version="5.0.3" />
 
     <!-- Repository-managed external packages -->
     <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
