@@ -12,6 +12,24 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+function Write-PackageStatus {
+    param(
+        [Parameter(Mandatory = $true)][string]$PackageId,
+        [Parameter(Mandatory = $true)][string]$PackageVersion,
+        [Parameter(Mandatory = $true)][string]$State,
+        [Parameter(Mandatory = $false)][string]$Message
+    )
+
+    $payload = [ordered]@{
+        type = 'package'
+        state = $State
+        packageId = $PackageId
+        version = $PackageVersion
+        message = $Message
+    }
+    Write-Output ('BUILD_STATUS:' + ($payload | ConvertTo-Json -Compress))
+}
+
 $repoRoot = $PSScriptRoot
 Set-Location $repoRoot
 
@@ -54,12 +72,26 @@ foreach ($nuspec in $nuspecFiles) {
     $packageId = [string]$metadata.id
     if ($packageIds.ContainsKey($packageId)) { throw "Duplicate package id '$packageId'." }
 
+    $projectFiles = @(Get-ChildItem -Path $nuspec.DirectoryName -Filter '*.csproj' -File)
+    if ($projectFiles.Count -ne 1) {
+        throw "Expected exactly one project beside '$($nuspec.FullName)', found $($projectFiles.Count)."
+    }
+
     $packageIds[$packageId] = $nuspec.FullName
-    $packages += [pscustomobject]@{ Id = $packageId; NuSpecPath = $nuspec.FullName; Xml = $xml }
+    $packages += [pscustomobject]@{
+        Id = $packageId
+        NuSpecPath = $nuspec.FullName
+        ProjectPath = $projectFiles[0].FullName
+        BasePath = $nuspec.DirectoryName
+        Xml = $xml
+    }
 }
 
 Write-Host "Discovered $($packages.Count) CloudStorage packages:"
-$packages | Sort-Object Id | ForEach-Object { Write-Host "  $($_.Id)" }
+$packages | Sort-Object Id | ForEach-Object {
+    Write-Host "  $($_.Id)"
+    Write-PackageStatus -PackageId $_.Id -PackageVersion $Version -State 'pending' -Message 'Waiting to pack package'
+}
 
 $xmlSettings = New-Object System.Xml.XmlWriterSettings
 $xmlSettings.Indent = $true
@@ -101,13 +133,28 @@ if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCO
 
 $catalogPackages = @()
 foreach ($package in ($packages | Sort-Object Id)) {
-    Write-Host "Packing $($package.Id) $Version..."
-    nuget pack $package.NuSpecPath -Version $Version -OutputDirectory $outputPath -NonInteractive
-    if ($LASTEXITCODE -ne 0) { throw "nuget pack failed for '$($package.Id)' with exit code $LASTEXITCODE." }
+    Write-PackageStatus -PackageId $package.Id -PackageVersion $Version -State 'packing' -Message 'Creating NuGet package'
+    Write-Host "Packing $($package.Id) $Version with .NET SDK..."
+    dotnet pack $package.ProjectPath `
+        --configuration Release `
+        --no-build `
+        --no-restore `
+        --output $outputPath `
+        "-p:IsPackable=true" `
+        "-p:NuspecFile=$($package.NuSpecPath)" `
+        "-p:NuspecBasePath=$($package.BasePath)"
+    if ($LASTEXITCODE -ne 0) {
+        Write-PackageStatus -PackageId $package.Id -PackageVersion $Version -State 'failed' -Message "dotnet pack exited with code $LASTEXITCODE"
+        throw "dotnet pack failed for '$($package.Id)' with exit code $LASTEXITCODE."
+    }
 
     $packageFile = "$($package.Id).$Version.nupkg"
     $packagePath = Join-Path $outputPath $packageFile
-    if (-not (Test-Path $packagePath)) { throw "Expected package was not produced: $packagePath" }
+    if (-not (Test-Path $packagePath)) {
+        Write-PackageStatus -PackageId $package.Id -PackageVersion $Version -State 'failed' -Message "Expected package was not produced: $packagePath"
+        throw "Expected package was not produced: $packagePath"
+    }
+    Write-PackageStatus -PackageId $package.Id -PackageVersion $Version -State 'packed' -Message "Created $packageFile"
 
     $frameworks = @($package.Xml.SelectNodes('//dependencies/group') | ForEach-Object { [string]$_.targetFramework } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
     $dependencies = @()
