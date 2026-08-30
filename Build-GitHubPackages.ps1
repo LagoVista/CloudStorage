@@ -123,7 +123,7 @@ foreach ($package in $packages) {
         foreach ($fileNode in @($package.Xml.SelectNodes('//files/file'))) {
             $sourcePath = [string]$fileNode.src
             if (-not [string]::IsNullOrWhiteSpace($sourcePath)) {
-                $sourcePath = $sourcePath.Replace('\\', '/')
+                $sourcePath = $sourcePath.Replace('\', '/')
                 $sourcePath = [regex]::Replace(
                     $sourcePath,
                     '^bin/release/',
