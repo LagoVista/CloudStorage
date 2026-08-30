@@ -119,6 +119,21 @@ foreach ($package in $packages) {
         }
     }
 
+    if (-not $IsWindows) {
+        foreach ($fileNode in @($package.Xml.SelectNodes('//files/file'))) {
+            $sourcePath = [string]$fileNode.src
+            if (-not [string]::IsNullOrWhiteSpace($sourcePath)) {
+                $sourcePath = $sourcePath.Replace('\\', '/')
+                $sourcePath = [regex]::Replace(
+                    $sourcePath,
+                    '^bin/release/',
+                    'bin/Release/',
+                    [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+                $fileNode.src = $sourcePath
+            }
+        }
+    }
+
     $writer = [System.Xml.XmlWriter]::Create($package.NuSpecPath, $xmlSettings)
     try { $package.Xml.Save($writer) } finally { $writer.Dispose() }
 }
