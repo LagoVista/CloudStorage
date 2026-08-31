@@ -1,8 +1,8 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <package>
   <metadata>
     <id>LagoVista.Relational.Tests.Core</id>
-    <version>3.0.3389.0632</version>
+    <version>6.0.0</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -20,14 +20,14 @@
         <dependency id="Microsoft.Data.Sqlite.Core" version="10.0.3" />
         <dependency id="Microsoft.EntityFrameworkCore.Sqlite" version="9.0.13" />
         <dependency id="LagoVista.Crypto" version="5.0.5" />
-        <dependency id="LagoVista.CloudStorage" version="5.0.2" />
-        <dependency id="LagoVista.Relational" version="5.0.2" />
+        <dependency id="LagoVista.CloudStorage" version="6.0.0" />
+        <dependency id="LagoVista.Relational" version="6.0.0" />
       </group>
     </dependencies>
   </metadata>
   <files>
     <file src="LagoVistaIcon.png" target="LagoVistaIcon.png" />
-    <file src="bin\release\net9.0\LagoVista.Relational.Tests.Core.dll" target="lib\net9.0\LagoVista.Relational.Tests.Core.dll" />
-    <file src="bin\release\net9.0\LagoVista.Relational.Tests.Core.pdb" target="lib\net9.0\LagoVista.Relational.Tests.Core.pdb" />
+    <file src="bin/Release/net9.0/LagoVista.Relational.Tests.Core.dll" target="lib/net9.0/LagoVista.Relational.Tests.Core.dll" />
+    <file src="bin/Release/net9.0/LagoVista.Relational.Tests.Core.pdb" target="lib/net9.0/LagoVista.Relational.Tests.Core.pdb" />
   </files>
 </package>

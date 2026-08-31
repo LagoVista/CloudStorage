@@ -1,8 +1,8 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <package>
   <metadata>
     <id>LagoVista.CloudStorage</id>
-    <version>5.0.0</version>
+    <version>6.0.0</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -31,7 +31,7 @@
   </metadata>
   <files>
     <file src="LagoVistaIcon.png" target="LagoVistaIcon.png" />
-    <file src="bin\release\netstandard2.1\LagoVista.CloudStorage.dll" target="lib\netstandard2.1\LagoVista.CloudStorage.dll" />
-    <file src="bin\release\netstandard2.1\LagoVista.CloudStorage.pdb" target="lib\netstandard2.1\LagoVista.CloudStorage.pdb" />
+    <file src="bin/Release/netstandard2.1/LagoVista.CloudStorage.dll" target="lib/netstandard2.1/LagoVista.CloudStorage.dll" />
+    <file src="bin/Release/netstandard2.1/LagoVista.CloudStorage.pdb" target="lib/netstandard2.1/LagoVista.CloudStorage.pdb" />
   </files>
 </package>
