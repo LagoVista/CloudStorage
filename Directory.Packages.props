@@ -14,7 +14,7 @@
     <PackageVersion Include="LagoVista.IoT.Logging" Version="6.0.3" />
     <PackageVersion Include="log4net" Version="3.3.1" />
     <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.0" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.1" />
     <PackageVersion Include="Microsoft.Data.Sqlite.Core" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.13" />
