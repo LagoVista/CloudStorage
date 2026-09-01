@@ -14,7 +14,7 @@ namespace LagoVista.StorageProvider.Tests.Configuration
     public class RemoteConfigurationIntegrationTests
     {
         private const string DefaultAppKey = "web";
-        private const string DefaultEnvironmentKey = "live";
+        private const string DefaultEnvironmentKey = "dev";
         private const string DefaultConfigurationServiceBaseUrl = "https://config.nuviot.com";
         private const string AppKeyEnvironmentVariable = "CFG_APP_KEY";
         private const string EnvironmentKeyEnvironmentVariable = "CFG_ENVIRONMENT_KEY";
