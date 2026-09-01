@@ -2,9 +2,9 @@ using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models.Migration;
 using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.CloudStorage.Storage.Migration;
 using LagoVista.CloudStorage.Storage.StorageProviders;
-using LagoVista.CloudStorage.Utils;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -29,25 +29,26 @@ internal sealed class EntityMigrationRunner
     private readonly MongoDocumentStorageSettings _target;
     private readonly MigrationProgressStore _progressStore;
 
-    public EntityMigrationRunner(string environment)
+    public EntityMigrationRunner(
+        string environment,
+        ICosmosConnectionSettings sourceConnection,
+        IMongoDocumentStorageConnectionSettings mongoConnection,
+        IApplicationDataStorageSettings progressSettings,
+        IDocumentMigrationService migrationService)
     {
         _environment = String.Equals(environment, "prod", StringComparison.OrdinalIgnoreCase) ? "prod" : "dev";
-
-        var sourceConnection = _environment == "prod"
-            ? TestConnections.ProductionDocDB
-            : TestConnections.DevDocDB;
+        sourceConnection = sourceConnection ?? throw new ArgumentNullException(nameof(sourceConnection));
+        mongoConnection = mongoConnection ?? throw new ArgumentNullException(nameof(mongoConnection));
+        progressSettings = progressSettings ?? throw new ArgumentNullException(nameof(progressSettings));
+        _migrationService = migrationService ?? throw new ArgumentNullException(nameof(migrationService));
 
         _source = new DocumentStorageSettings
         {
             Provider = DocumentStorageProviderType.Cosmos,
-            Endpoint = sourceConnection.Uri,
+            Endpoint = sourceConnection.Endpoint,
             SharedKey = sourceConnection.AccessKey,
-            DatabaseName = sourceConnection.ResourceName
+            DatabaseName = sourceConnection.DatabaseName
         };
-
-        var mongoConnection = _environment == "prod"
-            ? TestConnections.ProductionMongoDocumentStorage
-            : TestConnections.DevMongoDocumentStorage;
 
         var mongoUrlBuilder = new MongoUrlBuilder(mongoConnection.BuildConnectionString())
         {
@@ -63,8 +64,7 @@ internal sealed class EntityMigrationRunner
                 : mongoConnection.DatabaseName
         };
 
-        _migrationService = new DocumentMigrationService(CosmosClientProvider.Shared, new DocumentCollectionNameResolver());
-        _progressStore = MigrationProgressStore.Create(_environment);
+        _progressStore = MigrationProgressStore.Create(_environment, progressSettings);
     }
 
     public async Task DryRunAsync(int batchSize = 200, int maxPages = 0, CancellationToken ct = default)
