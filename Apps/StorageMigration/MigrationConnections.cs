@@ -1,48 +1,53 @@
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
-using LagoVista.CloudStorage.Utils;
+using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using System.Globalization;
 
 namespace LagoVista.StorageMigration;
 
 public static class MigrationConnections
 {
-    public static string AzureTableConnectionString(string logicalConnection)
-    {
-        var settings = AzureStorageSettings();
+    private static IDefaultConnectionSettings? _defaultConnections;
+    private static IS3ObjectStorageConnectionSettings? _s3ObjectStorage;
+    private static ICassandraStorageSettings? _cassandra;
+    private static IApplicationDataStorageSettings? _applicationDataStorage;
 
-        if (String.IsNullOrWhiteSpace(settings.AccountId))
-            throw new InvalidOperationException($"Missing {EnvironmentName.ToUpperInvariant()} table storage account id.");
-        if (String.IsNullOrWhiteSpace(settings.AccessKey))
-            throw new InvalidOperationException($"Missing {EnvironmentName.ToUpperInvariant()} table storage access key.");
-
-        return $"DefaultEndpointsProtocol=https;AccountName={settings.AccountId};AccountKey={settings.AccessKey}";
-    }
-
-    public static string AzureBlobConnectionString()
-    {
-        var settings = AzureStorageSettings();
-
-        if (String.IsNullOrWhiteSpace(settings.AccountId))
-            throw new InvalidOperationException($"Missing {EnvironmentName.ToUpperInvariant()} Azure storage account id.");
-        if (String.IsNullOrWhiteSpace(settings.AccessKey))
-            throw new InvalidOperationException($"Missing {EnvironmentName.ToUpperInvariant()} Azure storage access key.");
-
-        return $"DefaultEndpointsProtocol=https;AccountName={settings.AccountId};AccountKey={settings.AccessKey}";
-    }
+    public static string EnvironmentName { get; private set; } = "dev";
 
     public static IS3ObjectStorageConnectionSettings S3ObjectStorage =>
-        String.Equals(EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase)
-            ? TestConnections.ProductionS3ObjectStorage
-            : TestConnections.DevS3ObjectStorage;
+        _s3ObjectStorage ?? throw new InvalidOperationException("Migration connections have not been configured.");
+
+    public static IApplicationDataStorageSettings ApplicationDataStorage =>
+        _applicationDataStorage ?? throw new InvalidOperationException("Migration connections have not been configured.");
+
+    public static void Configure(
+        string environmentName,
+        IDefaultConnectionSettings defaultConnections,
+        IS3ObjectStorageConnectionSettings s3ObjectStorage,
+        ICassandraStorageSettings cassandra,
+        IApplicationDataStorageSettings applicationDataStorage)
+    {
+        EnvironmentName = NormalizeEnvironment(environmentName);
+        _defaultConnections = defaultConnections ?? throw new ArgumentNullException(nameof(defaultConnections));
+        _s3ObjectStorage = s3ObjectStorage ?? throw new ArgumentNullException(nameof(s3ObjectStorage));
+        _cassandra = cassandra ?? throw new ArgumentNullException(nameof(cassandra));
+        _applicationDataStorage = applicationDataStorage ?? throw new ArgumentNullException(nameof(applicationDataStorage));
+    }
+
+    public static string AzureTableConnectionString(string logicalConnection)
+    {
+        _ = logicalConnection;
+        return AzureStorageConnectionString();
+    }
+
+    public static string AzureBlobConnectionString() => AzureStorageConnectionString();
 
     public static CassandraMigrationConnection Cassandra
     {
         get
         {
-            var settings = String.Equals(EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase)
-                ? TestConnections.ProductionCassandraStorage
-                : TestConnections.DevCassandraStorage;
-
+            var settings = _cassandra ?? throw new InvalidOperationException("Migration connections have not been configured.");
             return new CassandraMigrationConnection
             {
                 ContactPoints = settings.ContactPoints.ToArray(),
@@ -56,17 +61,27 @@ public static class MigrationConnections
         }
     }
 
-    public static string EnvironmentName => String.Equals(Optional("MIGRATION_ENVIRONMENT"), "prod", StringComparison.OrdinalIgnoreCase) ? "prod" : "dev";
+    private static string AzureStorageConnectionString()
+    {
+        var settings = _defaultConnections?.DefaultTableStorageSettings
+            ?? throw new InvalidOperationException("Migration connections have not been configured.");
 
-    private static LagoVista.Core.Models.ConnectionSettings AzureStorageSettings() =>
-        String.Equals(EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase)
-            ? TestConnections.ProductionTableStorageDB
-            : TestConnections.DevTableStorageDB;
+        if (String.IsNullOrWhiteSpace(settings.AccountId))
+            throw new InvalidOperationException("DefaultTableStorage:Name is missing from resolved configuration.");
+        if (String.IsNullOrWhiteSpace(settings.AccessKey))
+            throw new InvalidOperationException("DefaultTableStorage:AccessKey is missing from resolved configuration.");
+
+        return $"DefaultEndpointsProtocol=https;AccountName={settings.AccountId};AccountKey={settings.AccessKey}";
+    }
+
+    private static string NormalizeEnvironment(string value) =>
+        String.Equals(value, "prod", StringComparison.OrdinalIgnoreCase) ? "live" : value.Trim().ToLowerInvariant();
 
     private static string? Optional(string name)
     {
-        var value = System.Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User)
-            ?? System.Environment.GetEnvironmentVariable(name);
+        var value = Environment.GetEnvironmentVariable(name);
+        if (String.IsNullOrWhiteSpace(value) && OperatingSystem.IsWindows())
+            value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
         return String.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
