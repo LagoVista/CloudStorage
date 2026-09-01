@@ -1,8 +1,8 @@
 using EntityMigration202608;
 using LagoVista;
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
-using LagoVista.CloudStorage.Storage.Migration;
 using LagoVista.Core.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
