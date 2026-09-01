@@ -41,12 +41,14 @@ public sealed class ApplicationDataMigrationStateStore : IMigrationStateStore
         _store = new MongoApplicationDataStore(settings, new MongoStorageClientFactory(), EmptyServiceProvider.Instance);
     }
 
-    public static ApplicationDataMigrationStateStore Create(string environment)
+    public static ApplicationDataMigrationStateStore Create(IApplicationDataStorageSettings settings)
     {
-        var settings = MigrationApplicationDataSettings.FromEnvironment(environment);
-        Console.WriteLine($"Migration state DB : {settings.DatabaseName}");
+        if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+        var directSettings = new MigrationApplicationDataSettings(settings);
+        Console.WriteLine($"Migration state DB : {directSettings.DatabaseName}");
         Console.WriteLine("Migration state Mongo connection: direct external endpoint");
-        return new ApplicationDataMigrationStateStore(settings);
+        return new ApplicationDataMigrationStateStore(directSettings);
     }
 
     public async Task<MigrationRunState?> GetAsync(string migrationKey, CancellationToken cancellationToken = default)
@@ -147,41 +149,41 @@ public sealed class ApplicationDataMigrationStateStore : IMigrationStateStore
 
     private sealed class MigrationApplicationDataSettings : IApplicationDataStorageSettings
     {
-        private readonly MongoDocumentStorageConnectionSettings _mongo;
-        private MigrationApplicationDataSettings(MongoDocumentStorageConnectionSettings mongo, string databaseName) { _mongo = mongo; DatabaseName = databaseName; }
-        public IReadOnlyList<string> Hosts => _mongo.Hosts;
-        public int Port => _mongo.Port;
-        public string UserName => _mongo.UserName;
-        public string Password => _mongo.Password;
-        public string AuthenticationDatabase => _mongo.AuthenticationDatabase;
-        public string DatabaseName { get; }
-        public string ReplicaSet => _mongo.ReplicaSet;
-        public bool UseTls => _mongo.UseTls;
+        private readonly IApplicationDataStorageSettings _settings;
 
-        public bool DirectConnect => _mongo.DirectConnect;
-
-        public static MigrationApplicationDataSettings FromEnvironment(string environment)
+        public MigrationApplicationDataSettings(IApplicationDataStorageSettings settings)
         {
-            var prefix = String.Equals(environment, "prod", StringComparison.OrdinalIgnoreCase) ? "PROD" : "DEV";
-            var mongo = prefix == "PROD" ? LagoVista.CloudStorage.Utils.TestConnections.ProductionMongoDocumentStorage : LagoVista.CloudStorage.Utils.TestConnections.DevMongoDocumentStorage;
-            var databaseName = Environment.GetEnvironmentVariable($"{prefix}_ApplicationDataStorage:DatabaseName")
-                ?? Environment.GetEnvironmentVariable($"{prefix}_ApplicationDataStorage__DatabaseName")
-                ?? Environment.GetEnvironmentVariable("ApplicationDataStorage:DatabaseName")
-                ?? Environment.GetEnvironmentVariable("ApplicationDataStorage__DatabaseName");
-            if (String.IsNullOrWhiteSpace(databaseName)) throw new InvalidOperationException($"Missing {prefix}_ApplicationDataStorage:DatabaseName environment variable.");
-            return new MigrationApplicationDataSettings(mongo, databaseName);
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
+
+        public IReadOnlyList<string> Hosts => _settings.Hosts;
+        public int Port => _settings.Port;
+        public string UserName => _settings.UserName;
+        public string Password => _settings.Password;
+        public string AuthenticationDatabase => _settings.AuthenticationDatabase;
+        public string DatabaseName => _settings.DatabaseName;
+        public string ReplicaSet => null;
+        public bool DirectConnect => true;
+        public bool UseTls => _settings.UseTls;
 
         public string BuildConnectionString()
         {
-            if (Hosts == null || Hosts.Count != 1 || String.IsNullOrWhiteSpace(Hosts[0])) throw new InvalidOperationException("StorageMigration direct Mongo mode requires exactly one externally reachable Mongo host.");
+            if (Hosts == null || Hosts.Count != 1 || String.IsNullOrWhiteSpace(Hosts[0]))
+                throw new InvalidOperationException("StorageMigration direct Mongo mode requires exactly one externally reachable Mongo host.");
+
             var direct = new MongoDocumentStorageConnectionSettings
             {
-                Hosts = Hosts, Port = Port, UserName = UserName, Password = Password,
-                AuthenticationDatabase = AuthenticationDatabase, DatabaseName = DatabaseName,
-                ReplicaSet = null, UseTls = UseTls
+                Hosts = Hosts,
+                Port = Port,
+                UserName = UserName,
+                Password = Password,
+                AuthenticationDatabase = AuthenticationDatabase,
+                DatabaseName = DatabaseName,
+                ReplicaSet = null,
+                UseTls = UseTls,
+                DirectConnect = true
             };
-            return direct.BuildConnectionString() + "&directConnection=true";
+            return direct.BuildConnectionString();
         }
     }
 }
