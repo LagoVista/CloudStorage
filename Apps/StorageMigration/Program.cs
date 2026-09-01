@@ -1,8 +1,72 @@
+using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
+using LagoVista.CloudStorage.Storage;
+using LagoVista.CloudStorage.Storage.ConnectionSettings;
+using LagoVista.Core.Configuration;
 using LagoVista.StorageMigration;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using System.Text;
+
+const string defaultAppKey = "web";
+const string defaultDeploymentKey = "dev";
+const string defaultConfigurationServiceBaseUrl = "https://config.nuviot.com";
 
 var definitionDirectory = Path.Combine(AppContext.BaseDirectory, "Definitions");
 var catalog = new MigrationCatalog(definitionDirectory);
 var command = args.Length == 0 ? "catalog" : args[0].ToLowerInvariant();
+ServiceProvider? serviceProvider = null;
+
+if (RequiresConnections(command))
+{
+    var requestedDeployment = ReadOptionalEnvironmentVariable("CFG_ENVIRONMENT_KEY")
+        ?? ReadOptionalEnvironmentVariable("MIGRATION_ENVIRONMENT")
+        ?? defaultDeploymentKey;
+    var deploymentKey = NormalizeDeploymentKey(requestedDeployment);
+    var appKey = ReadOptionalEnvironmentVariable("CFG_APP_KEY") ?? defaultAppKey;
+    var baseUrl = ReadOptionalEnvironmentVariable("CFG_SRVR_URL") ?? defaultConfigurationServiceBaseUrl;
+    var tokenEnvironmentVariable = BuildTokenEnvironmentVariableName(appKey, deploymentKey);
+    var token = ReadOptionalEnvironmentVariable(tokenEnvironmentVariable);
+
+    if (String.IsNullOrWhiteSpace(token))
+        throw new InvalidOperationException($"Missing remote configuration token environment variable '{tokenEnvironmentVariable}'.");
+
+    Console.WriteLine("Storage migration configuration bootstrap");
+    Console.WriteLine($"Application:          {appKey}");
+    Console.WriteLine($"Deployment:           {deploymentKey}");
+    Console.WriteLine($"Configuration server: {baseUrl}");
+    Console.WriteLine($"Token variable:       {tokenEnvironmentVariable}");
+    Console.WriteLine();
+
+    IConfigurationRoot configuration;
+    var bootstrapServices = new ServiceCollection();
+    bootstrapServices.AddRemoteConfigurationClient();
+    using (var bootstrapProvider = bootstrapServices.BuildServiceProvider())
+    {
+        var remoteConfigurationClient = bootstrapProvider.GetRequiredService<IRemoteConfigurationClient>();
+        configuration = await remoteConfigurationClient.LoadAsync(
+            new RemoteConfigurationSettings
+            {
+                ConfigurationServiceBaseUrl = baseUrl,
+                AuthorizationToken = token
+            },
+            appKey,
+            deploymentKey);
+    }
+
+    var services = new ServiceCollection();
+    services.AddSingleton<IConfiguration>(configuration);
+    services.AddSingleton<IConfigurationRoot>(configuration);
+    LagoVista.CloudStorage.Startup.ConfigureServices(services);
+    serviceProvider = services.BuildServiceProvider();
+
+    MigrationConnections.Configure(
+        deploymentKey,
+        serviceProvider.GetRequiredService<IDefaultConnectionSettings>(),
+        serviceProvider.GetRequiredService<IS3ObjectStorageConnectionSettings>(),
+        serviceProvider.GetRequiredService<ICassandraStorageSettings>(),
+        serviceProvider.GetRequiredService<IApplicationDataStorageSettings>());
+}
 
 try
 {
@@ -60,8 +124,12 @@ catch (Exception ex)
     Console.Error.WriteLine($"FAIL: {ex}");
     Environment.ExitCode = 1;
 }
+finally
+{
+    serviceProvider?.Dispose();
+}
 
-static ApplicationDataMigrationStateStore StateStore() => ApplicationDataMigrationStateStore.Create(MigrationConnections.EnvironmentName);
+static ApplicationDataMigrationStateStore StateStore() => ApplicationDataMigrationStateStore.Create(MigrationConnections.ApplicationDataStorage);
 
 static async Task ObjectProbeAsync(int? maxObjects)
 {
@@ -362,6 +430,35 @@ static int? GetPositiveIntOption(string[] args, string option)
     return null;
 }
 
+static bool RequiresConnections(string command) =>
+    !String.Equals(command, "catalog", StringComparison.OrdinalIgnoreCase) &&
+    !String.Equals(command, "validate", StringComparison.OrdinalIgnoreCase);
+
+static string NormalizeDeploymentKey(string value)
+{
+    if (String.IsNullOrWhiteSpace(value)) return "dev";
+    return value.Trim().Equals("prod", StringComparison.OrdinalIgnoreCase) ? "live" : value.Trim().ToLowerInvariant();
+}
+
+static string BuildTokenEnvironmentVariableName(string appKey, string deploymentKey) =>
+    $"CFG_{ToEnvironmentVariableSegment(appKey)}_{ToEnvironmentVariableSegment(deploymentKey)}_TOKEN";
+
+static string ToEnvironmentVariableSegment(string value)
+{
+    var result = new StringBuilder(value.Length);
+    foreach (var character in value)
+        result.Append(Char.IsLetterOrDigit(character) ? Char.ToUpperInvariant(character) : '_');
+    return result.ToString();
+}
+
+static string? ReadOptionalEnvironmentVariable(string name)
+{
+    var value = Environment.GetEnvironmentVariable(name);
+    if (String.IsNullOrWhiteSpace(value) && OperatingSystem.IsWindows())
+        value = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+    return String.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}
+
 static void PrintUsage()
 {
     Console.Error.WriteLine("Commands:");
@@ -376,5 +473,5 @@ static void PrintUsage()
     Console.Error.WriteLine("  object-status");
     Console.Error.WriteLine("  object-reset");
     Console.Error.WriteLine("  object-migrate [--max-objects N] [--batch-size N] [--parallelism N]");
-    Console.Error.WriteLine("Environment: set MIGRATION_ENVIRONMENT=dev|prod for environment-prefixed storage settings.");
+    Console.Error.WriteLine("Environment: CFG_ENVIRONMENT_KEY or MIGRATION_ENVIRONMENT selects dev/live; prod is accepted as an alias for live.");
 }
