@@ -3,7 +3,6 @@ using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using LagoVista.CloudStorage.StorageProviders;
-using LagoVista.CloudStorage.Utils;
 using LagoVista.Core;
 using LagoVista.Core.Models;
 
@@ -74,11 +73,13 @@ internal sealed class MigrationProgressStore
 
     public string DatabaseName => _settings.DatabaseName;
 
-    public static MigrationProgressStore Create(string environment)
+    public static MigrationProgressStore Create(string environment, IApplicationDataStorageSettings settings)
     {
-        var settings = MigrationApplicationDataSettings.FromEnvironment(environment);
-        PrintConnectionDiagnostics(environment, settings);
-        return new MigrationProgressStore(environment, settings);
+        if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+        var directSettings = new MigrationApplicationDataSettings(settings);
+        PrintConnectionDiagnostics(environment, directSettings);
+        return new MigrationProgressStore(environment, directSettings);
     }
 
     public async Task<EntityMigration202608Progress> LoadOrCreateAsync(
@@ -185,42 +186,22 @@ internal sealed class MigrationProgressStore
     /// </summary>
     private sealed class MigrationApplicationDataSettings : IApplicationDataStorageSettings
     {
-        private readonly MongoDocumentStorageConnectionSettings _mongo;
+        private readonly IApplicationDataStorageSettings _settings;
 
-        private MigrationApplicationDataSettings(MongoDocumentStorageConnectionSettings mongo, string databaseName)
+        public MigrationApplicationDataSettings(IApplicationDataStorageSettings settings)
         {
-            _mongo = mongo ?? throw new ArgumentNullException(nameof(mongo));
-            DatabaseName = databaseName;
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
-        public IReadOnlyList<string> Hosts => _mongo.Hosts;
-        public int Port => _mongo.Port;
-        public string UserName => _mongo.UserName;
-        public string Password => _mongo.Password;
-        public string AuthenticationDatabase => _mongo.AuthenticationDatabase;
-        public string DatabaseName { get; }
-        public string ReplicaSet => _mongo.ReplicaSet;
-
-        public bool DirectConnect => _mongo.DirectConnect;
-        public bool UseTls => _mongo.UseTls;
-
-        public static MigrationApplicationDataSettings FromEnvironment(string environment)
-        {
-            var prefix = String.Equals(environment, "prod", StringComparison.OrdinalIgnoreCase) ? "PROD" : "DEV";
-            var mongo = prefix == "PROD"
-                ? TestConnections.ProductionMongoDocumentStorage
-                : TestConnections.DevMongoDocumentStorage;
-
-            var databaseName = Environment.GetEnvironmentVariable($"{prefix}_ApplicationDataStorage:DatabaseName")
-                ?? Environment.GetEnvironmentVariable($"{prefix}_ApplicationDataStorage__DatabaseName")
-                ?? Environment.GetEnvironmentVariable("ApplicationDataStorage:DatabaseName")
-                ?? Environment.GetEnvironmentVariable("ApplicationDataStorage__DatabaseName");
-
-            if (String.IsNullOrWhiteSpace(databaseName))
-                throw new InvalidOperationException($"Missing {prefix}_ApplicationDataStorage:DatabaseName environment variable.");
-
-            return new MigrationApplicationDataSettings(mongo, databaseName);
-        }
+        public IReadOnlyList<string> Hosts => _settings.Hosts;
+        public int Port => _settings.Port;
+        public string UserName => _settings.UserName;
+        public string Password => _settings.Password;
+        public string AuthenticationDatabase => _settings.AuthenticationDatabase;
+        public string DatabaseName => _settings.DatabaseName;
+        public string ReplicaSet => null;
+        public bool DirectConnect => true;
+        public bool UseTls => _settings.UseTls;
 
         public string BuildConnectionString()
         {
@@ -236,10 +217,11 @@ internal sealed class MigrationProgressStore
                 AuthenticationDatabase = AuthenticationDatabase,
                 DatabaseName = DatabaseName,
                 ReplicaSet = null,
-                UseTls = UseTls
+                UseTls = UseTls,
+                DirectConnect = true
             };
 
-            return directSettings.BuildConnectionString() + "&directConnection=true";
+            return directSettings.BuildConnectionString();
         }
     }
 }
