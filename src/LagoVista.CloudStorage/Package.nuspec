@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>LagoVista.CloudStorage</id>
-    <version>7.0.1</version>
+    <version>7.0.2</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -18,7 +18,7 @@
         <dependency id="Azure.Data.Tables" version="12.11.0" />
         <dependency id="Azure.Storage.Blobs" version="12.27.0" />
         <dependency id="CassandraCSharpDriver" version="3.22.0" />
-        <dependency id="LagoVista.IoT.Logging" version="7.0.1" />
+        <dependency id="LagoVista.IoT.Logging" version="7.0.2" />
         <dependency id="log4net" version="3.3.1" />
         <dependency id="Microsoft.Azure.Cosmos" version="3.57.0" />
         <dependency id="Minio" version="7.0.0" />
