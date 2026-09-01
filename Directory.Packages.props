@@ -53,7 +53,7 @@
     <PackageVersion Include="LagoVista.Campaigns.Repos" Version="7.0.2" />
     <PackageVersion Include="LagoVista.Campaigns.Rest" Version="7.0.2" />
     <PackageVersion Include="LagoVista.Client.Core" Version="3.0.3301.734" />
-    <PackageVersion Include="LagoVista.CloudStorage" Version="7.0.6-ws-c-a37efb58" />
+    <PackageVersion Include="LagoVista.CloudStorage" Version="7.0.6-ws-c-e3d02054" />
     <PackageVersion Include="LagoVista.Configuration" Version="7.0.1" />
     <PackageVersion Include="LagoVista.Configuration.Client" Version="7.0.1" />
     <PackageVersion Include="LagoVista.Configuration.Models" Version="7.0.1" />
@@ -173,8 +173,8 @@
     <PackageVersion Include="LagoVista.ProjectManagement.Core" Version="7.0.2" />
     <PackageVersion Include="LagoVista.ProjectManagement.Models" Version="7.0.2" />
     <PackageVersion Include="LagoVista.ProjectManagement.Rest" Version="7.0.2" />
-    <PackageVersion Include="LagoVista.Relational" Version="7.0.6-ws-c-a37efb58" />
-    <PackageVersion Include="LagoVista.Relational.Tests.Core" Version="7.0.6-ws-c-a37efb58" />
+    <PackageVersion Include="LagoVista.Relational" Version="7.0.6-ws-c-e3d02054" />
+    <PackageVersion Include="LagoVista.Relational.Tests.Core" Version="7.0.6-ws-c-e3d02054" />
     <PackageVersion Include="LagoVista.SecureStorage" Version="7.0.1" />
     <PackageVersion Include="LagoVista.UI.ViewManager" Version="7.0.1" />
     <PackageVersion Include="LagoVista.UI.ViewManager.CloudRepos" Version="7.0.1" />
