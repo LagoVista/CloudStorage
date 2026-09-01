@@ -36,7 +36,12 @@ internal sealed class EntityMigrationRunner
         IApplicationDataStorageSettings progressSettings,
         IDocumentMigrationService migrationService)
     {
-        _environment = String.Equals(environment, "prod", StringComparison.OrdinalIgnoreCase) ? "prod" : "dev";
+        _environment = environment?.Trim().ToLowerInvariant() switch
+        {
+            "dev" => "dev",
+            "live" or "prod" => "live",
+            _ => throw new ArgumentException($"Unsupported migration environment '{environment}'. Expected dev or live.", nameof(environment))
+        };
         sourceConnection = sourceConnection ?? throw new ArgumentNullException(nameof(sourceConnection));
         mongoConnection = mongoConnection ?? throw new ArgumentNullException(nameof(mongoConnection));
         progressSettings = progressSettings ?? throw new ArgumentNullException(nameof(progressSettings));
@@ -325,7 +330,7 @@ internal sealed class EntityMigrationRunner
             SourceCollectionName = sourceCollectionName,
             BatchSize = batchSize,
             MaxPages = maxPages,
-            ContinuationToken = continuationToken,
+            ContinuationToken = String.IsNullOrWhiteSpace(continuationToken) ? null : continuationToken,
             DryRun = dryRun,
             ExcludedEntityTypes = ExcludedEntityTypes.ToArray()
         };
