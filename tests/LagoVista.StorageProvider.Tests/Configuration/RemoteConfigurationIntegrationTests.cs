@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace LagoVista.StorageProvider.Tests.Configuration
@@ -12,27 +13,29 @@ namespace LagoVista.StorageProvider.Tests.Configuration
     [TestClass]
     public class RemoteConfigurationIntegrationTests
     {
-        private const string AppKey = "web";
-        private const string EnvironmentKey = "live";
+        private const string DefaultAppKey = "web";
+        private const string DefaultEnvironmentKey = "live";
         private const string DefaultConfigurationServiceBaseUrl = "https://config.nuviot.com";
-        private const string LiveTokenEnvironmentVariable = "CFG_SRVR_LIVE";
+        private const string AppKeyEnvironmentVariable = "CFG_APP_KEY";
+        private const string EnvironmentKeyEnvironmentVariable = "CFG_ENVIRONMENT_KEY";
         private const string ConfigurationServiceBaseUrlEnvironmentVariable = "CFG_SRVR_URL";
 
         [TestMethod]
         [TestCategory("Integration")]
-        public async Task WebLiveRemoteConfigurationResolvesCassandraSettingsThroughNormalCloudStorageDI()
+        public async Task RemoteConfigurationResolvesCassandraSettingsThroughNormalCloudStorageDI()
         {
-            var token = Environment.GetEnvironmentVariable(LiveTokenEnvironmentVariable);
+            var appKey = ReadOptionalEnvironmentVariable(AppKeyEnvironmentVariable) ?? DefaultAppKey;
+            var environmentKey = ReadOptionalEnvironmentVariable(EnvironmentKeyEnvironmentVariable) ?? DefaultEnvironmentKey;
+            var tokenEnvironmentVariable = BuildTokenEnvironmentVariableName(appKey, environmentKey);
+            var token = Environment.GetEnvironmentVariable(tokenEnvironmentVariable);
+
             if (String.IsNullOrWhiteSpace(token))
             {
-                Assert.Inconclusive($"Set {LiveTokenEnvironmentVariable} to run the live remote configuration integration test.");
+                Assert.Inconclusive($"Set {tokenEnvironmentVariable} to run the remote configuration integration test for app '{appKey}' and environment '{environmentKey}'.");
             }
 
-            var baseUrl = Environment.GetEnvironmentVariable(ConfigurationServiceBaseUrlEnvironmentVariable);
-            if (String.IsNullOrWhiteSpace(baseUrl))
-            {
-                baseUrl = DefaultConfigurationServiceBaseUrl;
-            }
+            var baseUrl = ReadOptionalEnvironmentVariable(ConfigurationServiceBaseUrlEnvironmentVariable)
+                ?? DefaultConfigurationServiceBaseUrl;
 
             var services = new ServiceCollection();
             services.AddRemoteConfigurationClient();
@@ -47,8 +50,8 @@ namespace LagoVista.StorageProvider.Tests.Configuration
                         ConfigurationServiceBaseUrl = baseUrl,
                         AuthorizationToken = token
                     },
-                    AppKey,
-                    EnvironmentKey);
+                    appKey,
+                    environmentKey);
             }
 
             Assert.IsNotNull(configuration);
@@ -69,6 +72,28 @@ namespace LagoVista.StorageProvider.Tests.Configuration
             Assert.IsFalse(String.IsNullOrWhiteSpace(settings.Password), "CloudStorage DI resolved Cassandra settings without a password.");
             Assert.IsFalse(String.IsNullOrWhiteSpace(settings.Keyspace), "CloudStorage DI resolved Cassandra settings without a keyspace.");
             Assert.IsTrue(settings.Port > 0, "CloudStorage DI resolved an invalid Cassandra port.");
+        }
+
+        private static string BuildTokenEnvironmentVariableName(string appKey, string environmentKey)
+        {
+            return $"CFG_{ToEnvironmentVariableSegment(appKey)}_{ToEnvironmentVariableSegment(environmentKey)}_TOKEN";
+        }
+
+        private static string ToEnvironmentVariableSegment(string value)
+        {
+            var result = new StringBuilder(value.Length);
+            foreach (var character in value)
+            {
+                result.Append(Char.IsLetterOrDigit(character) ? Char.ToUpperInvariant(character) : '_');
+            }
+
+            return result.ToString();
+        }
+
+        private static string ReadOptionalEnvironmentVariable(string name)
+        {
+            var value = Environment.GetEnvironmentVariable(name);
+            return String.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
     }
 }
