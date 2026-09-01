@@ -2,7 +2,7 @@
 
 Storage migration utility owned by LagoVista/CloudStorage.
 
-The operator app intentionally does not reference downstream business model assemblies. Source/target shape and field mappings for structured migrations live in `Definitions/*.json`; environment-specific endpoints and credentials stay in environment variables.
+The operator app intentionally does not reference downstream business model assemblies. Source/target shape and field mappings for structured migrations live in `Definitions/*.json`. Runtime endpoints and credentials come from the normal CloudStorage configuration model loaded from the NuvIoT remote configuration service.
 
 Current migration paths and tooling:
 
@@ -12,6 +12,42 @@ Azure Blob Storage  -> SeaweedFS/S3
 ```
 
 Both migration paths are resumable and persist checkpoints through CloudStorage Application Data. S3 object PUTs use the original Azure container and blob names so retry/resume is idempotent.
+
+## Configuration bootstrap
+
+Commands that access storage load remote configuration before resolving connections.
+
+Defaults:
+
+```text
+Application:          web
+Deployment:           dev
+Configuration server: https://config.nuviot.com
+```
+
+Environment selection is taken from `CFG_ENVIRONMENT_KEY`, then the legacy `MIGRATION_ENVIRONMENT`, then defaults to `dev`. `prod` remains accepted as an alias for `live`.
+
+The configuration token is injected through the standard V1 token convention:
+
+```text
+CFG_WEB_DEV_TOKEN
+CFG_WEB_LIVE_TOKEN
+```
+
+`CFG_APP_KEY` and `CFG_SRVR_URL` may override the default application key and configuration server URL.
+
+After loading the remote configuration, the utility registers the normal `LagoVista.CloudStorage.Startup` services and resolves the same typed connection settings used by the application:
+
+```text
+IDefaultConnectionSettings
+IS3ObjectStorageConnectionSettings
+ICassandraStorageSettings
+IApplicationDataStorageSettings
+```
+
+The migration engine no longer selects DEV/PROD `TestConnections` for these runtime data sources.
+
+`catalog` and `validate <migration-key>` operate only on local migration definitions and therefore do not require remote configuration.
 
 ## Commands
 
@@ -34,7 +70,7 @@ dotnet run -- migrate useradmin-access-log --catch-up
 
 `--catch-up` is accepted only after the current pass has completed.
 
-## Azure Blob -> S3
+## Azure Blob -> SeaweedFS/S3
 
 For a non-destructive Azure Blob -> SeaweedFS/S3 connectivity and inventory probe:
 
@@ -50,6 +86,13 @@ The object probe:
 - reports object count and total bytes per container;
 - reports oldest/newest last-modified timestamps per container;
 - never uploads, modifies, or deletes an object.
+
+For a source-only inventory that does not connect to SeaweedFS:
+
+```powershell
+dotnet run -- object-inventory
+dotnet run -- object-inventory --max-objects 100
+```
 
 To copy a deliberately bounded batch:
 
@@ -70,6 +113,12 @@ To let the migration run through all remaining containers and blobs:
 dotnet run -- object-migrate
 ```
 
+Optional performance controls remain unchanged:
+
+```powershell
+dotnet run -- object-migrate --batch-size 10 --parallelism 8
+```
+
 Object migration behavior:
 
 - every Azure container is created as the corresponding S3 bucket when needed;
@@ -81,93 +130,63 @@ Object migration behavior:
 - if one object fails, the run stops without advancing the checkpoint beyond that object;
 - no Azure source object is deleted by this utility.
 
-## Azure source connections
+## Azure source
 
-Definitions keep a logical `source.connection` label to describe the workload, but Azure Storage credentials come from the standard CloudStorage `TestConnections` settings.
-
-Set `MIGRATION_ENVIRONMENT=dev` to use:
+Azure Table and Blob migration use `IDefaultConnectionSettings.DefaultTableStorageSettings` from resolved configuration. The source connection string is constructed from:
 
 ```text
-TestConnections.DevTableStorageDB
-DEV_TS_STORAGE_ACCOUNT_ID
-DEV_TS_STORAGE_ACCOUNT_ACCESS_KEY
+DefaultTableStorage:Name
+DefaultTableStorage:AccessKey
 ```
 
-Set `MIGRATION_ENVIRONMENT=prod` to use:
-
-```text
-TestConnections.ProductionTableStorageDB
-PROD_TS_STORAGE_ACCOUNT_ID
-PROD_TS_STORAGE_ACCOUNT_ACCESS_KEY
-```
-
-The same Azure Storage account credentials are currently used by the object migration path for Blob service access. If historical blobs are found in additional Azure Storage accounts, add those as explicit migration source connections rather than embedding credentials in migration definitions.
-
-The migration utility does not maintain a separate `MIGRATION_AZURE_*` credential namespace.
+The same Azure Storage account credentials are used by the object migration path for Blob service access. If historical blobs are found in additional Azure Storage accounts, add those as explicit migration source connections rather than embedding credentials in migration definitions.
 
 ## SeaweedFS / S3 target
 
-The object migration path uses the standard `S3ObjectStorageConnectionSettings` shape through `LagoVista.CloudStorage.Utils.TestConnections`.
-
-Set `MIGRATION_ENVIRONMENT=dev` to load:
+The object migration path resolves `IS3ObjectStorageConnectionSettings` from the normal CloudStorage DI registration. Its configuration section is:
 
 ```text
-DEV_S3ObjectStorage:Host
-DEV_S3ObjectStorage:Port
-DEV_S3ObjectStorage:AccessKey
-DEV_S3ObjectStorage:SecretKey
-DEV_S3ObjectStorage:UseTls
-DEV_S3ObjectStorage:Region
-DEV_S3ObjectStorage:PublicHost
-DEV_S3ObjectStorage:PublicPort
-DEV_S3ObjectStorage:PublicUseTls
+S3ObjectStorage:Host
+S3ObjectStorage:Port
+S3ObjectStorage:AccessKey
+S3ObjectStorage:SecretKey
+S3ObjectStorage:UseTls
+S3ObjectStorage:Region
+S3ObjectStorage:PublicHost
+S3ObjectStorage:PublicPort
+S3ObjectStorage:PublicUseTls
 ```
-
-For production use the same names with the `PROD_` prefix.
 
 `Port`, `UseTls`, and `Region` retain the defaults and parsing behavior defined by `S3ObjectStorageConnectionSettings`; the migration utility does not duplicate those defaults.
 
 ## Cassandra target
 
-The migration utility uses the standard `CassandraStorageSettings` shape through `LagoVista.CloudStorage.Utils.TestConnections`.
-
-Set `MIGRATION_ENVIRONMENT=dev` to load:
+The structured migration path resolves `ICassandraStorageSettings` from the normal CloudStorage DI registration. Its configuration section is:
 
 ```text
-DEV_CassandraStorage:ContactPoints
-DEV_CassandraStorage:Port
-DEV_CassandraStorage:UserName
-DEV_CassandraStorage:Password
-DEV_CassandraStorage:Keyspace
-DEV_CassandraStorage:LocalDataCenter
+CassandraStorage:ContactPoints
+CassandraStorage:Port
+CassandraStorage:UserName
+CassandraStorage:Password
+CassandraStorage:Keyspace
+CassandraStorage:LocalDataCenter
 ```
 
-Set `MIGRATION_ENVIRONMENT=prod` to use the same names with the `PROD_` prefix.
-
-`ContactPoints` accepts comma- or semicolon-separated hosts, matching the standard CloudStorage Cassandra settings parser.
-
-Replication factor is migration/bootstrap-specific rather than part of `CassandraStorageSettings`, so it remains:
+Replication factor is migration/bootstrap-specific rather than part of `ICassandraStorageSettings`, so it remains an operator override:
 
 ```text
 MIGRATION_CASSANDRA_REPLICATION_FACTOR
 ```
 
-If omitted it defaults to `1`. The three-node dev cluster should normally use replication factor `3` when the migration utility is responsible for creating the keyspace.
+If omitted it defaults to `1`.
 
 ## Migration checkpoint state
 
-Checkpoint state uses the shared Mongo connection already configured for CloudStorage and the Application Data database name.
+Checkpoint state resolves the normal `IApplicationDataStorageSettings` from remote configuration.
 
-Set:
+Because this operator app normally runs outside Kubernetes while only one Mongo endpoint is mapped externally, its Application Data client deliberately wraps those resolved settings with `directConnection=true` and disables replica-set discovery. Runtime services inside the cluster are not affected.
 
-```text
-MIGRATION_ENVIRONMENT=dev
-DEV_ApplicationDataStorage:DatabaseName=ApplicationData
-```
-
-For production use `MIGRATION_ENVIRONMENT=prod` and the corresponding `PROD_ApplicationDataStorage:DatabaseName` setting.
-
-Because this operator app normally runs outside Kubernetes while only one Mongo endpoint is mapped externally, its Application Data client deliberately uses `directConnection=true` and disables replica-set discovery. Runtime services inside the cluster are not affected.
+The connection endpoint, credentials, authentication database, database name, and TLS setting all come directly from the resolved `ApplicationDataStorage` settings; the migration utility no longer rebuilds those values from environment variables or `TestConnections`.
 
 ## Definitions
 
