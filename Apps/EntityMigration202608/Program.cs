@@ -17,7 +17,7 @@ var requestedDeployment = args.Length > 1
     ? args[1].Trim()
     : ReadOptionalEnvironmentVariable("CFG_ENVIRONMENT_KEY") ?? defaultDeploymentKey;
 var deploymentKey = NormalizeDeploymentKey(requestedDeployment);
-var migrationEnvironment = String.Equals(deploymentKey, "live", StringComparison.OrdinalIgnoreCase) ? "prod" : "dev";
+var migrationEnvironment = deploymentKey;
 var appKey = ReadOptionalEnvironmentVariable("CFG_APP_KEY") ?? defaultAppKey;
 var baseUrl = ReadOptionalEnvironmentVariable("CFG_SRVR_URL") ?? defaultConfigurationServiceBaseUrl;
 var tokenEnvironmentVariable = BuildTokenEnvironmentVariableName(appKey, deploymentKey);
