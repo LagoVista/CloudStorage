@@ -224,28 +224,60 @@ public sealed class AzureBlobToS3Migration
         {
             try
             {
-                var sourceBlob = container.GetBlobClient(item.Name);
-                var download = await sourceBlob.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                await using var stream = download.Value.Content;
+                var contentType = String.IsNullOrWhiteSpace(item.ContentType)
+                    ? "application/octet-stream"
+                    : item.ContentType;
 
-                var put = new PutObjectArgs()
-                    .WithBucket(containerName)
-                    .WithObject(item.Name)
-                    .WithStreamData(stream)
-                    .WithObjectSize(item.ContentLength)
-                    .WithContentType(String.IsNullOrWhiteSpace(item.ContentType)
-                        ? "application/octet-stream"
-                        : item.ContentType);
-
-                if (!String.IsNullOrWhiteSpace(item.CacheControl))
+                if (item.ContentLength == 0)
                 {
-                    put = put.WithHeaders(new Dictionary<string, string>
+                    var emptyFile = Path.GetTempFileName();
+                    try
                     {
-                        ["Cache-Control"] = item.CacheControl
-                    });
+                        var putEmpty = new PutObjectArgs()
+                            .WithBucket(containerName)
+                            .WithObject(item.Name)
+                            .WithFileName(emptyFile)
+                            .WithContentType(contentType);
+
+                        if (!String.IsNullOrWhiteSpace(item.CacheControl))
+                        {
+                            putEmpty = putEmpty.WithHeaders(new Dictionary<string, string>
+                            {
+                                ["Cache-Control"] = item.CacheControl
+                            });
+                        }
+
+                        await _target.PutObjectAsync(putEmpty, cancellationToken).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        File.Delete(emptyFile);
+                    }
+                }
+                else
+                {
+                    var sourceBlob = container.GetBlobClient(item.Name);
+                    var download = await sourceBlob.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                    await using var stream = download.Value.Content;
+
+                    var put = new PutObjectArgs()
+                        .WithBucket(containerName)
+                        .WithObject(item.Name)
+                        .WithStreamData(stream)
+                        .WithObjectSize(item.ContentLength)
+                        .WithContentType(contentType);
+
+                    if (!String.IsNullOrWhiteSpace(item.CacheControl))
+                    {
+                        put = put.WithHeaders(new Dictionary<string, string>
+                        {
+                            ["Cache-Control"] = item.CacheControl
+                        });
+                    }
+
+                    await _target.PutObjectAsync(put, cancellationToken).ConfigureAwait(false);
                 }
 
-                await _target.PutObjectAsync(put, cancellationToken).ConfigureAwait(false);
                 return new ObjectCopyResult(item, null);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
