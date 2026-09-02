@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>LagoVista.Relational.Tests.Core</id>
-    <version>7.0.9-ws-c-27d6e63d</version>
+    <version>7.0.10-ws-c-0f4250ba</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -16,10 +16,10 @@
     <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
       <group targetFramework="net9.0">
-        <dependency id="LagoVista.CloudStorage" version="7.0.9-ws-c-27d6e63d" />
+        <dependency id="LagoVista.CloudStorage" version="7.0.10-ws-c-0f4250ba" />
         <dependency id="LagoVista.Core.TestBase" version="7.0.4-ws-c-8cd5e119" />
         <dependency id="LagoVista.Crypto" version="7.0.4-ws-c-8cd5e119" />
-        <dependency id="LagoVista.Relational" version="7.0.9-ws-c-27d6e63d" />
+        <dependency id="LagoVista.Relational" version="7.0.10-ws-c-0f4250ba" />
         <dependency id="Microsoft.Data.Sqlite.Core" version="10.0.3" />
         <dependency id="Microsoft.EntityFrameworkCore.Sqlite" version="9.0.13" />
       </group>
