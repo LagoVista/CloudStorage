@@ -9,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Text;
 
 const string defaultAppKey = "web";
-const string defaultDeploymentKey = "dev";
 const string defaultConfigurationServiceBaseUrl = "https://config.nuviot.com";
 
 var definitionDirectory = Path.Combine(AppContext.BaseDirectory, "Definitions");
@@ -19,10 +18,9 @@ ServiceProvider? serviceProvider = null;
 
 if (RequiresConnections(command))
 {
-    var requestedDeployment = ReadOptionalEnvironmentVariable("CFG_ENVIRONMENT_KEY")
-        ?? ReadOptionalEnvironmentVariable("MIGRATION_ENVIRONMENT")
-        ?? defaultDeploymentKey;
-    var deploymentKey = NormalizeDeploymentKey(requestedDeployment);
+    var deploymentKey = RequireDeploymentArgument(args, command);
+    ConfirmDeployment(deploymentKey);
+
     var appKey = ReadOptionalEnvironmentVariable("CFG_APP_KEY") ?? defaultAppKey;
     var baseUrl = ReadOptionalEnvironmentVariable("CFG_SRVR_URL") ?? defaultConfigurationServiceBaseUrl;
     var tokenEnvironmentVariable = BuildTokenEnvironmentVariableName(appKey, deploymentKey);
@@ -31,6 +29,7 @@ if (RequiresConnections(command))
     if (String.IsNullOrWhiteSpace(token))
         throw new InvalidOperationException($"Missing remote configuration token environment variable '{tokenEnvironmentVariable}'.");
 
+    Console.WriteLine();
     Console.WriteLine("Storage migration configuration bootstrap");
     Console.WriteLine($"Application:          {appKey}");
     Console.WriteLine($"Deployment:           {deploymentKey}");
@@ -76,24 +75,24 @@ try
             foreach (var item in catalog.LoadAll()) Console.WriteLine($"{item.Key,-36} {item.Target.Table,-24} {item.Source.TableName}{item.Source.TablePattern}");
             break;
         case "validate":
-            RequireKey(args, command);
+            RequireDefinitionKey(args, command, 1);
             PrintDefinition(catalog, catalog.LoadByKey(args[1]));
             break;
         case "status":
-            RequireKey(args, command);
-            await PrintStatusAsync(catalog.LoadByKey(args[1]));
+            RequireDefinitionKey(args, command, 2);
+            await PrintStatusAsync(catalog.LoadByKey(args[2]));
             break;
         case "probe":
-            RequireKey(args, command);
-            await ProbeAsync(catalog.LoadByKey(args[1]));
+            RequireDefinitionKey(args, command, 2);
+            await ProbeAsync(catalog.LoadByKey(args[2]));
             break;
         case "migrate":
-            RequireKey(args, command);
-            await MigrateAsync(catalog, catalog.LoadByKey(args[1]), HasOption(args, "--catch-up"), GetPositiveIntOption(args, "--max-records"));
+            RequireDefinitionKey(args, command, 2);
+            await MigrateAsync(catalog, catalog.LoadByKey(args[2]), HasOption(args, "--catch-up"), GetPositiveIntOption(args, "--max-records"));
             break;
         case "verify":
-            RequireKey(args, command);
-            await VerifyAsync(catalog, catalog.LoadByKey(args[1]));
+            RequireDefinitionKey(args, command, 2);
+            await VerifyAsync(catalog, catalog.LoadByKey(args[2]));
             break;
         case "object-probe":
             await ObjectProbeAsync(GetPositiveIntOption(args, "--max-objects"));
@@ -401,7 +400,34 @@ static string FormatBytes(long bytes)
     return $"{value:0.##} {suffixes[suffix]}";
 }
 
-static void RequireKey(string[] args, string command) { if (args.Length < 2) throw new ArgumentException($"{command} requires a migration key."); }
+static void RequireDefinitionKey(string[] args, string command, int index)
+{
+    if (args.Length <= index)
+        throw new ArgumentException($"{command} requires a migration key.");
+}
+
+static string RequireDeploymentArgument(string[] args, string command)
+{
+    if (args.Length < 2 || args[1].StartsWith("--", StringComparison.Ordinal))
+        throw new ArgumentException($"{command} requires an explicit environment argument: dev or live.");
+
+    var deployment = NormalizeDeploymentKey(args[1]);
+    if (!String.Equals(deployment, "dev", StringComparison.Ordinal) &&
+        !String.Equals(deployment, "live", StringComparison.Ordinal))
+        throw new ArgumentException($"Unknown environment '{args[1]}'. Expected dev or live.");
+
+    return deployment;
+}
+
+static void ConfirmDeployment(string deploymentKey)
+{
+    Console.WriteLine($"Environment selected: {deploymentKey}");
+    Console.Write($"Type {deploymentKey} to confirm: ");
+    var confirmation = Console.ReadLine();
+    if (!String.Equals(confirmation, deploymentKey, StringComparison.Ordinal))
+        throw new OperationCanceledException($"Environment confirmation failed. Expected '{deploymentKey}'.");
+}
+
 static bool HasOption(string[] args, string option) => args.Any(arg => String.Equals(arg, option, StringComparison.OrdinalIgnoreCase));
 static int? GetPositiveIntOption(string[] args, string option)
 {
@@ -436,7 +462,7 @@ static bool RequiresConnections(string command) =>
 
 static string NormalizeDeploymentKey(string value)
 {
-    if (String.IsNullOrWhiteSpace(value)) return "dev";
+    if (String.IsNullOrWhiteSpace(value)) return String.Empty;
     return value.Trim().Equals("prod", StringComparison.OrdinalIgnoreCase) ? "live" : value.Trim().ToLowerInvariant();
 }
 
@@ -464,14 +490,14 @@ static void PrintUsage()
     Console.Error.WriteLine("Commands:");
     Console.Error.WriteLine("  catalog");
     Console.Error.WriteLine("  validate <migration-key>");
-    Console.Error.WriteLine("  status <migration-key>");
-    Console.Error.WriteLine("  probe <migration-key>");
-    Console.Error.WriteLine("  migrate <migration-key> [--max-records N] [--catch-up]");
-    Console.Error.WriteLine("  verify <migration-key>");
-    Console.Error.WriteLine("  object-probe [--max-objects N]");
-    Console.Error.WriteLine("  object-inventory [--max-objects N]");
-    Console.Error.WriteLine("  object-status");
-    Console.Error.WriteLine("  object-reset");
-    Console.Error.WriteLine("  object-migrate [--max-objects N] [--batch-size N] [--parallelism N]");
-    Console.Error.WriteLine("Environment: CFG_ENVIRONMENT_KEY or MIGRATION_ENVIRONMENT selects dev/live; prod is accepted as an alias for live.");
+    Console.Error.WriteLine("  status <dev|live> <migration-key>");
+    Console.Error.WriteLine("  probe <dev|live> <migration-key>");
+    Console.Error.WriteLine("  migrate <dev|live> <migration-key> [--max-records N] [--catch-up]");
+    Console.Error.WriteLine("  verify <dev|live> <migration-key>");
+    Console.Error.WriteLine("  object-probe <dev|live> [--max-objects N]");
+    Console.Error.WriteLine("  object-inventory <dev|live> [--max-objects N]");
+    Console.Error.WriteLine("  object-status <dev|live>");
+    Console.Error.WriteLine("  object-reset <dev|live>");
+    Console.Error.WriteLine("  object-migrate <dev|live> [--max-objects N] [--batch-size N] [--parallelism N]");
+    Console.Error.WriteLine("Every environment-aware command requires explicit dev/live selection and matching typed confirmation before connecting.");
 }
