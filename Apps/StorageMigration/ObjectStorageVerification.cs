@@ -2,6 +2,7 @@ using Azure.Storage.Blobs;
 using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
 using Minio;
 using Minio.DataModel.Args;
+using System.Diagnostics;
 
 namespace LagoVista.StorageMigration;
 
@@ -21,6 +22,9 @@ public sealed record ObjectStorageSizeMismatch(string Key, long AzureBytes, long
 
 public sealed class AzureBlobToS3Verifier
 {
+    private const int ProgressObjectInterval = 5_000;
+    private static readonly TimeSpan ProgressTimeInterval = TimeSpan.FromSeconds(5);
+
     private readonly BlobServiceClient _azure;
     private readonly IMinioClient _s3;
 
@@ -41,14 +45,24 @@ public sealed class AzureBlobToS3Verifier
 
     public async Task<ObjectStorageVerificationResult> VerifyAsync(CancellationToken cancellationToken = default)
     {
+        var stopwatch = Stopwatch.StartNew();
+        var lastProgress = TimeSpan.Zero;
+
+        Console.WriteLine("[1/3] Enumerating Azure Blob objects...");
         var azureObjects = new Dictionary<string, long>(StringComparer.Ordinal);
         await foreach (var container in _azure.GetBlobContainersAsync(cancellationToken: cancellationToken))
         {
             var containerClient = _azure.GetBlobContainerClient(container.Name);
             await foreach (var blob in containerClient.GetBlobsAsync(cancellationToken: cancellationToken))
+            {
                 azureObjects[BuildKey(container.Name, blob.Name)] = blob.Properties.ContentLength ?? 0;
+                ReportProgress("Azure", azureObjects.Count, stopwatch, ref lastProgress);
+            }
         }
+        Console.WriteLine($"      Azure complete: {azureObjects.Count:N0} objects, {azureObjects.Values.Sum():N0} bytes.");
 
+        Console.WriteLine("[2/3] Enumerating SeaweedFS S3 objects...");
+        lastProgress = stopwatch.Elapsed;
         var seaweedObjects = new Dictionary<string, long>(StringComparer.Ordinal);
         var buckets = await _s3.ListBucketsAsync(cancellationToken).ConfigureAwait(false);
         foreach (var bucket in buckets.Buckets)
@@ -58,8 +72,14 @@ public sealed class AzureBlobToS3Verifier
                 .WithRecursive(true);
 
             await foreach (var item in _s3.ListObjectsEnumAsync(args, cancellationToken).ConfigureAwait(false))
+            {
                 seaweedObjects[BuildKey(bucket.Name, item.Key)] = checked((long)item.Size);
+                ReportProgress("SeaweedFS", seaweedObjects.Count, stopwatch, ref lastProgress);
+            }
         }
+        Console.WriteLine($"      SeaweedFS complete: {seaweedObjects.Count:N0} objects, {seaweedObjects.Values.Sum():N0} bytes.");
+
+        Console.WriteLine("[3/3] Comparing object keys and sizes...");
 
         var missing = azureObjects.Keys
             .Where(key => !seaweedObjects.ContainsKey(key))
@@ -77,6 +97,8 @@ public sealed class AzureBlobToS3Verifier
             .OrderBy(item => item.Key, StringComparer.Ordinal)
             .ToArray();
 
+        Console.WriteLine($"      Comparison complete in {stopwatch.Elapsed.TotalSeconds:0.0}s.");
+
         return new ObjectStorageVerificationResult
         {
             AzureObjectCount = azureObjects.Count,
@@ -87,6 +109,16 @@ public sealed class AzureBlobToS3Verifier
             UnexpectedObjects = unexpected,
             SizeMismatches = mismatches
         };
+    }
+
+    private static void ReportProgress(string phase, int objectCount, Stopwatch stopwatch, ref TimeSpan lastProgress)
+    {
+        var elapsedSinceProgress = stopwatch.Elapsed - lastProgress;
+        if (objectCount % ProgressObjectInterval != 0 && elapsedSinceProgress < ProgressTimeInterval)
+            return;
+
+        Console.WriteLine($"      {phase}: {objectCount:N0} objects scanned ({stopwatch.Elapsed.TotalSeconds:0.0}s elapsed)");
+        lastProgress = stopwatch.Elapsed;
     }
 
     private static string BuildKey(string container, string objectKey) => $"{container}/{objectKey}";
