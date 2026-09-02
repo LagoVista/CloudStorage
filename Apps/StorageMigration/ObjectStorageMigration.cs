@@ -200,7 +200,10 @@ public sealed class AzureBlobToS3Migration
 
             var first = failed[0];
             throw new InvalidOperationException(
-                $"Object batch failed for '{containerName}/{first.Item.Name}' after {ObjectCopyAttempts} attempts. The batch checkpoint was not advanced and will be replayed safely.",
+                $"Object batch failed for '{containerName}/{first.Item.Name}' after {ObjectCopyAttempts} attempts. " +
+                $"ListedLength={first.Item.ContentLength:N0}; ContentType='{first.Item.ContentType ?? "<none>"}'; " +
+                $"CacheControl='{first.Item.CacheControl ?? "<none>"}'. " +
+                "The batch checkpoint was not advanced and will be replayed safely.",
                 first.Error);
         }
 
