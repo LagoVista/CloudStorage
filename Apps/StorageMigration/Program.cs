@@ -112,6 +112,9 @@ try
                 GetPositiveIntOption(args, "--batch-size") ?? 10,
                 GetPositiveIntOption(args, "--parallelism") ?? 8);
             break;
+        case "object-verify":
+            await ObjectVerifyAsync();
+            break;
         default:
             PrintUsage();
             Environment.ExitCode = 2;
@@ -191,6 +194,42 @@ static void PrintObjectInventory(ObjectStorageInventory inventory)
     Console.WriteLine($"TOTAL                                {inventory.ObjectCount,12:N0} {inventory.TotalBytes,16:N0} {FormatBytes(inventory.TotalBytes),12}");
     if (inventory.WasLimited)
         Console.WriteLine("NOTE: inventory was intentionally limited; totals are partial.");
+}
+
+static async Task ObjectVerifyAsync()
+{
+    Console.WriteLine("Azure Blob -> SeaweedFS object verification");
+    Console.WriteLine($"Environment: {MigrationConnections.EnvironmentName}");
+    Console.WriteLine("Mode       : read-only metadata comparison; object payloads are not downloaded");
+    Console.WriteLine();
+    Console.WriteLine("Enumerating Azure Blob and SeaweedFS inventories...");
+
+    var verifier = new AzureBlobToS3Verifier(
+        MigrationConnections.AzureBlobConnectionString(),
+        MigrationConnections.S3ObjectStorage);
+    var result = await verifier.VerifyAsync();
+
+    Console.WriteLine();
+    Console.WriteLine($"Azure objects       : {result.AzureObjectCount:N0}");
+    Console.WriteLine($"SeaweedFS objects   : {result.SeaweedObjectCount:N0}");
+    Console.WriteLine($"Azure bytes         : {result.AzureBytes:N0} ({FormatBytes(result.AzureBytes)})");
+    Console.WriteLine($"SeaweedFS bytes     : {result.SeaweedBytes:N0} ({FormatBytes(result.SeaweedBytes)})");
+    Console.WriteLine($"Missing objects     : {result.MissingObjects.Count:N0}");
+    Console.WriteLine($"Unexpected objects  : {result.UnexpectedObjects.Count:N0}");
+    Console.WriteLine($"Size mismatches     : {result.SizeMismatches.Count:N0}");
+
+    foreach (var key in result.MissingObjects.Take(20))
+        Console.WriteLine($"  MISSING    {key}");
+    foreach (var key in result.UnexpectedObjects.Take(20))
+        Console.WriteLine($"  UNEXPECTED {key}");
+    foreach (var mismatch in result.SizeMismatches.Take(20))
+        Console.WriteLine($"  SIZE       {mismatch.Key}: Azure={mismatch.AzureBytes:N0}, SeaweedFS={mismatch.SeaweedBytes:N0}");
+
+    if (!result.Matches)
+        throw new InvalidOperationException("Azure Blob and SeaweedFS inventories do not match.");
+
+    Console.WriteLine();
+    Console.WriteLine("PASS: Azure Blob and SeaweedFS inventories match by container/bucket, object key, and size.");
 }
 
 static async Task ObjectMigrateAsync(int? maxObjects, int batchSize, int parallelism)
@@ -499,5 +538,6 @@ static void PrintUsage()
     Console.Error.WriteLine("  object-status <dev|live>");
     Console.Error.WriteLine("  object-reset <dev|live>");
     Console.Error.WriteLine("  object-migrate <dev|live> [--max-objects N] [--batch-size N] [--parallelism N]");
+    Console.Error.WriteLine("  object-verify <dev|live>");
     Console.Error.WriteLine("Every environment-aware command requires explicit dev/live selection and matching typed confirmation before connecting.");
 }
