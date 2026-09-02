@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>LagoVista.Relational</id>
-    <version>7.0.13-ws-c-9a3edbf3</version>
+    <version>7.0.14-ws-c-c93a7cda</version>
     <authors>Software Logistics, LLC</authors>
     <owners>Software Logistics, LLC</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -16,7 +16,7 @@
     <repository url="https://www.github.com/lagovista" type="git" branch="master"></repository>
     <dependencies>
       <group targetFramework="net9.0">
-        <dependency id="LagoVista.CloudStorage" version="7.0.13-ws-c-9a3edbf3" />
+        <dependency id="LagoVista.CloudStorage" version="7.0.14-ws-c-c93a7cda" />
         <dependency id="LagoVista.Core" version="7.0.4-ws-c-8cd5e119" />
         <dependency id="LagoVista.Core.Configuration" version="7.0.4-ws-c-8cd5e119" />
         <dependency id="Microsoft.EntityFrameworkCore.Design" version="9.0.13" />
