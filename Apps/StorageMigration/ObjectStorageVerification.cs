@@ -58,7 +58,7 @@ public sealed class AzureBlobToS3Verifier
                 .WithRecursive(true);
 
             await foreach (var item in _s3.ListObjectsEnumAsync(args, cancellationToken).ConfigureAwait(false))
-                seaweedObjects[BuildKey(bucket.Name, item.Key)] = item.Size;
+                seaweedObjects[BuildKey(bucket.Name, item.Key)] = checked((long)item.Size);
         }
 
         var missing = azureObjects.Keys
