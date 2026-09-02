@@ -251,7 +251,7 @@ public sealed class AzureBlobToS3Migration
                     }
                     finally
                     {
-                        File.Delete(emptyFile);
+                        await DeleteTempFileBestEffortAsync(emptyFile).ConfigureAwait(false);
                     }
                 }
                 else
@@ -296,6 +296,35 @@ public sealed class AzureBlobToS3Migration
         }
 
         return new ObjectCopyResult(item, lastError ?? new InvalidOperationException("Object copy failed without an exception."));
+    }
+
+    private static async Task DeleteTempFileBestEffortAsync(string path)
+    {
+        for (var attempt = 1; attempt <= 10; attempt++)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+                return;
+            }
+            catch (IOException) when (attempt < 10)
+            {
+                await Task.Delay(100).ConfigureAwait(false);
+            }
+            catch (UnauthorizedAccessException) when (attempt < 10)
+            {
+                await Task.Delay(100).ConfigureAwait(false);
+            }
+            catch (IOException)
+            {
+                return;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return;
+            }
+        }
     }
 
     private static void CommitBatch(
