@@ -3,6 +3,7 @@ using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
 using Minio;
 using Minio.DataModel.Args;
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -23,7 +24,9 @@ public sealed class AzureBlobToS3Migration
 {
     public const string MigrationKey = "azure-blob-to-s3";
     private const int ObjectCopyAttempts = 5;
+    private const string EmptyPayloadSha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     private static readonly string DefinitionSha256 = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("azure-blob-to-s3-v1")));
+    private static readonly HttpClient S3HttpClient = new();
 
     private readonly BlobServiceClient _source;
     private readonly IMinioClient _target;
@@ -230,29 +233,12 @@ public sealed class AzureBlobToS3Migration
 
                 if (item.ContentLength == 0)
                 {
-                    var emptyFile = Path.GetTempFileName();
-                    try
-                    {
-                        var putEmpty = new PutObjectArgs()
-                            .WithBucket(containerName)
-                            .WithObject(item.Name)
-                            .WithFileName(emptyFile)
-                            .WithContentType(contentType);
-
-                        if (!String.IsNullOrWhiteSpace(item.CacheControl))
-                        {
-                            putEmpty = putEmpty.WithHeaders(new Dictionary<string, string>
-                            {
-                                ["Cache-Control"] = item.CacheControl
-                            });
-                        }
-
-                        await _target.PutObjectAsync(putEmpty, cancellationToken).ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        await DeleteTempFileBestEffortAsync(emptyFile).ConfigureAwait(false);
-                    }
+                    await PutEmptyObjectAsync(
+                        containerName,
+                        item.Name,
+                        contentType,
+                        item.CacheControl,
+                        cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -298,34 +284,82 @@ public sealed class AzureBlobToS3Migration
         return new ObjectCopyResult(item, lastError ?? new InvalidOperationException("Object copy failed without an exception."));
     }
 
-    private static async Task DeleteTempFileBestEffortAsync(string path)
+    private async Task PutEmptyObjectAsync(
+        string bucketName,
+        string objectName,
+        string contentType,
+        string? cacheControl,
+        CancellationToken cancellationToken)
     {
-        for (var attempt = 1; attempt <= 10; attempt++)
-        {
-            try
-            {
-                if (File.Exists(path))
-                    File.Delete(path);
-                return;
-            }
-            catch (IOException) when (attempt < 10)
-            {
-                await Task.Delay(100).ConfigureAwait(false);
-            }
-            catch (UnauthorizedAccessException) when (attempt < 10)
-            {
-                await Task.Delay(100).ConfigureAwait(false);
-            }
-            catch (IOException)
-            {
-                return;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return;
-            }
-        }
+        var region = String.IsNullOrWhiteSpace(_settings.Region) ? "us-east-1" : _settings.Region.Trim();
+        var now = DateTime.UtcNow;
+        var amzDate = now.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
+        var dateStamp = now.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+        var canonicalUri = "/" + EncodeS3Path(bucketName) + "/" + EncodeS3Path(objectName);
+        var defaultPort = _settings.UseTls ? 443 : 80;
+        var hostHeader = _settings.Port == defaultPort
+            ? _settings.Host
+            : $"{_settings.Host}:{_settings.Port}";
+        var canonicalHeaders =
+            $"host:{hostHeader}\n" +
+            $"x-amz-content-sha256:{EmptyPayloadSha256}\n" +
+            $"x-amz-date:{amzDate}\n";
+        const string signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+        var canonicalRequest =
+            $"PUT\n{canonicalUri}\n\n{canonicalHeaders}\n{signedHeaders}\n{EmptyPayloadSha256}";
+        var scope = $"{dateStamp}/{region}/s3/aws4_request";
+        var stringToSign =
+            $"AWS4-HMAC-SHA256\n{amzDate}\n{scope}\n{Sha256Hex(canonicalRequest)}";
+        var signingKey = DeriveSigningKey(_settings.SecretKey, dateStamp, region, "s3");
+        var signature = HmacSha256Hex(signingKey, stringToSign);
+        var authorization =
+            $"AWS4-HMAC-SHA256 Credential={_settings.AccessKey}/{scope}, " +
+            $"SignedHeaders={signedHeaders}, Signature={signature}";
+        var scheme = _settings.UseTls ? "https" : "http";
+
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"{scheme}://{hostHeader}{canonicalUri}");
+        request.Headers.Host = hostHeader;
+        request.Headers.TryAddWithoutValidation("x-amz-content-sha256", EmptyPayloadSha256);
+        request.Headers.TryAddWithoutValidation("x-amz-date", amzDate);
+        request.Headers.TryAddWithoutValidation("Authorization", authorization);
+        if (!String.IsNullOrWhiteSpace(cacheControl))
+            request.Headers.TryAddWithoutValidation("Cache-Control", cacheControl);
+
+        request.Content = new ByteArrayContent(Array.Empty<byte>());
+        request.Content.Headers.ContentLength = 0;
+        request.Content.Headers.TryAddWithoutValidation("Content-Type", contentType);
+
+        using var response = await S3HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+        if (response.IsSuccessStatusCode)
+            return;
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        throw new InvalidOperationException(
+            $"Direct zero-byte S3 PUT failed with HTTP {(int)response.StatusCode} ({response.ReasonPhrase}). {body}");
     }
+
+    private static string EncodeS3Path(string value) =>
+        String.Join("/", value.Split('/').Select(Uri.EscapeDataString));
+
+    private static string Sha256Hex(string value) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+
+    private static byte[] DeriveSigningKey(string secretKey, string dateStamp, string region, string service)
+    {
+        var dateKey = HmacSha256(Encoding.UTF8.GetBytes("AWS4" + secretKey), dateStamp);
+        var regionKey = HmacSha256(dateKey, region);
+        var serviceKey = HmacSha256(regionKey, service);
+        return HmacSha256(serviceKey, "aws4_request");
+    }
+
+    private static byte[] HmacSha256(byte[] key, string value)
+    {
+        using var hmac = new HMACSHA256(key);
+        return hmac.ComputeHash(Encoding.UTF8.GetBytes(value));
+    }
+
+    private static string HmacSha256Hex(byte[] key, string value) =>
+        Convert.ToHexString(HmacSha256(key, value)).ToLowerInvariant();
 
     private static void CommitBatch(
         MigrationRunState state,
