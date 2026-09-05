@@ -7,18 +7,18 @@
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageVersion Include="CassandraCSharpDriver" Version="3.22.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="LagoVista.Core" Version="7.0.3" />
-    <PackageVersion Include="LagoVista.Core.Configuration" Version="7.0.3" />
-    <PackageVersion Include="LagoVista.Core.TestBase" Version="7.0.3" />
-    <PackageVersion Include="LagoVista.Crypto" Version="7.0.3" />
-    <PackageVersion Include="LagoVista.IoT.Logging" Version="7.0.3" />
+    <PackageVersion Include="LagoVista.Core" Version="7.0.4" />
+    <PackageVersion Include="LagoVista.Core.Configuration" Version="7.0.4" />
+    <PackageVersion Include="LagoVista.Core.TestBase" Version="7.0.4" />
+    <PackageVersion Include="LagoVista.Crypto" Version="7.0.4" />
+    <PackageVersion Include="LagoVista.IoT.Logging" Version="7.0.4" />
     <PackageVersion Include="log4net" Version="3.3.1" />
     <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.1" />
     <PackageVersion Include="Microsoft.Data.Sqlite.Core" Version="10.0.3" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.13" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.13" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.13" />
