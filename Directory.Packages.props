@@ -7,7 +7,7 @@
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageVersion Include="CassandraCSharpDriver" Version="3.22.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="LagoVista.Core" Version="7.0.4" />
+    <PackageVersion Include="LagoVista.Core" Version="7.0.10" />
     <PackageVersion Include="LagoVista.Core.Configuration" Version="7.0.4" />
     <PackageVersion Include="LagoVista.Core.TestBase" Version="7.0.4" />
     <PackageVersion Include="LagoVista.Crypto" Version="7.0.4" />

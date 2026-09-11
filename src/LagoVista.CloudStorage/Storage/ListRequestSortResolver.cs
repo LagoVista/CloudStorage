@@ -89,9 +89,7 @@ namespace LagoVista.CloudStorage.Storage
                    scalar == typeof(decimal) ||
                    scalar == typeof(Guid) ||
                    scalar == typeof(DateTime) ||
-                   scalar == typeof(DateTimeOffset) ||
-                   scalar == typeof(DateOnly) ||
-                   scalar == typeof(TimeOnly);
+                   scalar == typeof(DateTimeOffset);
         }
     }
 }
