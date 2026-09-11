@@ -151,6 +151,31 @@ namespace LagoVista.StorageProvider.Tests.Mongo
         }
 
         [TestMethod]
+        public async Task ListRequestSortField_ExercisesManagedAscendingDescendingAndPaging()
+        {
+            await _client.CreateDocumentAsync(CreateEntity("managed-sort", "Twenty-B", 20));
+            await _client.CreateDocumentAsync(CreateEntity("managed-sort", "Ten", 10));
+            await _client.CreateDocumentAsync(CreateEntity("managed-sort", "Thirty", 30));
+            await _client.CreateDocumentAsync(CreateEntity("managed-sort", "Twenty-A", 20));
+
+            var firstPage = await _client.QueryAsync<MongoDepthDocumentEntity>(
+                item => item.Detail == "managed-sort",
+                new ListRequest { PageIndex = 1, PageSize = 2, SortField = "SortOrder", SortDescending = false });
+            var secondPage = await _client.QueryAsync<MongoDepthDocumentEntity>(
+                item => item.Detail == "managed-sort",
+                new ListRequest { PageIndex = 2, PageSize = 2, SortField = "SortOrder", SortDescending = false });
+
+            CollectionAssert.AreEqual(new[] { 10, 20 }, firstPage.Model.Select(item => item.SortOrder).ToArray());
+            CollectionAssert.AreEqual(new[] { 20, 30 }, secondPage.Model.Select(item => item.SortOrder).ToArray());
+            Assert.AreEqual(4, firstPage.Model.Concat(secondPage.Model).Select(item => item.Id).Distinct().Count());
+
+            var descending = await _client.QueryAsync<MongoDepthDocumentEntity>(
+                item => item.Detail == "managed-sort",
+                new ListRequest { PageIndex = 1, PageSize = 4, SortField = "sortorder", SortDescending = true });
+            CollectionAssert.AreEqual(new[] { 30, 20, 20, 10 }, descending.Model.Select(item => item.SortOrder).ToArray());
+        }
+
+        [TestMethod]
         public async Task TypedProjectionLookups_ExerciseIdKeyOwnedAndNotFoundPaths()
         {
             var entity = CreateEntity("typed-projection", "Typed Projection", 42);
