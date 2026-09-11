@@ -3,6 +3,7 @@ using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Models.Storage;
+using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -263,8 +264,22 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
-            var items = await GetCollection<TEntity>().Find(CreatePagedQueryFilter(query, listRequest)).Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
-            return ListResponse<TEntity>.Create(listRequest, items);
+
+            var find = GetCollection<TEntity>().Find(CreatePagedQueryFilter(query, listRequest));
+            var sortProperty = ListRequestSortResolver.ResolveProperty<TEntity>(listRequest);
+            if (sortProperty != null)
+            {
+                var descending = listRequest.SortDescending == true;
+                var primary = descending
+                    ? Builders<TEntity>.Sort.Descending(sortProperty.Name)
+                    : Builders<TEntity>.Sort.Ascending(sortProperty.Name);
+                var tieBreaker = descending
+                    ? Builders<TEntity>.Sort.Descending("_id")
+                    : Builders<TEntity>.Sort.Ascending("_id");
+                find = find.Sort(Builders<TEntity>.Sort.Combine(primary, tieBreaker));
+            }
+
+            return await CreateListResponseAsync(find, listRequest).ConfigureAwait(false);
         }
 
         public Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest)
@@ -405,7 +420,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             {
                 case DocumentQueryType.EntityUtilsReadyChecklistCandidates: return await QueryChecklistCandidatesAsync<TResult>(collection, BuildReadyChecklistFilter(request), request.GetRequired<int>("maxItems"), cancellationToken).ConfigureAwait(false);
                 case DocumentQueryType.EntityUtilsReadyChecklistCount:
-                    return new[] { (TResult)(object)new DocumentCountResult { Count = checked((int)await collection.CountDocumentsAsync(BuildReadyChecklistFilter(request), cancellationToken: cancellationToken).ConfigureAwait(false)) } };
+                    return new[] { (TResult)(object)new DocumentCountResult { Count = checked((int)await collection.CountDocumentsAsync(BuildReadyChecklistFilter(request), cancellationToken: cancellationToken).ConfigureAwait(false)) };
                 case DocumentQueryType.EntityUtilsBlockedChecklistCandidates: return await QueryChecklistCandidatesAsync<TResult>(collection, BuildBlockedChecklistFilter(request), request.GetRequired<int>("maxItems"), cancellationToken).ConfigureAwait(false);
                 case DocumentQueryType.EntityUtilsCompletedChecklistCandidates: return await QueryCompletedChecklistCandidatesAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
                 case DocumentQueryType.EntityUtilsCompletedChecklistCount: return new[] { (TResult)(object)new DocumentCountResult { Count = checked((int)await CountCompletedChecklistCandidatesAsync(collection, request, cancellationToken).ConfigureAwait(false)) } };
@@ -418,391 +433,165 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 case DocumentQueryType.EntityUtilsDocumentById: return await QueryEntityUtilsDocumentsAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
                 case DocumentQueryType.EntityUtilsCountByType:
                     return new[] { (TResult)(object)new DocumentCountResult { Count = checked((int)await collection.CountDocumentsAsync(new BsonDocument { { "EntityType", request.GetRequired<string>("entityType") }, { "OwnerOrganization.Id", request.GetRequired<string>("orgId") } }, cancellationToken: cancellationToken).ConfigureAwait(false)) } };
-                case DocumentQueryType.EntityPreparationCandidateById:
-                case DocumentQueryType.EntityPreparationCandidatesByType:
-                case DocumentQueryType.IncompleteEntityPreparationCandidatesByType: return await QueryPreparationAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
-                case DocumentQueryType.EntityListItems:
+                case DocumentQueryType.EntityPreparationCandidateById: return Deserialize<TResult>(await collection.Find(BuildPreparationCandidateFilter(request, includeId: true)).Limit(1).ToListAsync(cancellationToken).ConfigureAwait(false));
+                case DocumentQueryType.EntityPreparationCandidatesByType: return Deserialize<TResult>(await collection.Find(BuildPreparationCandidateFilter(request, includeId: false)).ToListAsync(cancellationToken).ConfigureAwait(false));
+                case DocumentQueryType.IncompleteEntityPreparationCandidatesByType: return Deserialize<TResult>(await collection.Find(BuildIncompletePreparationCandidateFilter(request)).Limit(request.GetRequired<int>("maxItems")).ToListAsync(cancellationToken).ConfigureAwait(false));
+                case DocumentQueryType.EntityListItems: return Deserialize<TResult>(await collection.Find(BuildEntityListFilter(request)).Sort(Builders<BsonDocument>.Sort.Descending("_id")).Skip(request.PageIndex * request.PageSize).Limit(request.PageSize).ToListAsync(cancellationToken).ConfigureAwait(false));
                 case DocumentQueryType.EntityListHeaders:
-                case DocumentQueryType.EntityListCategories: return await QueryEntityListAsync<TResult>(collection, request, cancellationToken).ConfigureAwait(false);
-                default: throw new NotSupportedException($"Registered document query '{request.QueryType}' is not implemented by the Mongo provider.");
+                    return Deserialize<TResult>(await collection.Find(BuildEntityListFilter(request)).Sort(Builders<BsonDocument>.Sort.Descending("_id")).Project(Builders<BsonDocument>.Projection.Include("_id").Include("Name").Include("Key")).Skip(request.PageIndex * request.PageSize).Limit(request.PageSize).ToListAsync(cancellationToken).ConfigureAwait(false));
+                case DocumentQueryType.EntityListCategories:
+                    return Deserialize<TResult>(await collection.Find(BuildEntityListCategoryFilter(request)).Project(Builders<BsonDocument>.Projection.Include("Category")).ToListAsync(cancellationToken).ConfigureAwait(false));
+                default: throw new NotSupportedException($"Known Mongo query '{request.QueryType}' is not supported.");
             }
         }
 
-        private static async Task<IEnumerable<TResult>> QueryChecklistCandidatesAsync<TResult>(IMongoCollection<BsonDocument> collection, FilterDefinition<BsonDocument> filter, int maxItems, CancellationToken cancellationToken) where TResult : class
+        private FilterDefinition<BsonDocument> BuildReadyChecklistFilter(DocumentQueryRequest request)
         {
-            var documents = await collection.Find(filter).Sort(Builders<BsonDocument>.Sort.Ascending("Name")).Limit(Math.Min(maxItems, 5000)).Project(new BsonDocument { { "_id", 1 }, { "EntityType", 1 }, { "Name", 1 }, { "Key", 1 }, { "Description", 1 }, { "ChecklistStatus", 1 } }).ToListAsync(cancellationToken).ConfigureAwait(false);
-            return Deserialize<TResult>(documents);
-        }
-
-        private static FilterDefinition<BsonDocument> BuildChecklistStepCompletedFilter(string stepKey) => Builders<BsonDocument>.Filter.ElemMatch<BsonValue>("ChecklistStatus", new BsonDocument { { "StepKey", stepKey }, { "LastRun", new BsonDocument { { "$exists", true }, { "$ne", BsonNull.Value } } } });
-
-        private static FilterDefinition<BsonDocument> BuildReadyChecklistFilter(DocumentQueryRequest request)
-        {
-            var filters = new List<FilterDefinition<BsonDocument>> { Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")) };
-            foreach (var stepKey in request.GetRequired<List<string>>("requiredStepKeys")) filters.Add(BuildChecklistStepCompletedFilter(stepKey));
-            filters.Add(Builders<BsonDocument>.Filter.Or(request.GetRequired<List<string>>("targetStepKeys").Select(stepKey => Builders<BsonDocument>.Filter.Not(BuildChecklistStepCompletedFilter(stepKey))).ToList()));
+            var filters = new List<FilterDefinition<BsonDocument>>
+            {
+                Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+                Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")),
+                Builders<BsonDocument>.Filter.Eq("IsPrepared", true),
+                Builders<BsonDocument>.Filter.Eq("HasBeenReviewed", false)
+            };
+            if (request.TryGet<string>("afterId", out var afterId) && !String.IsNullOrWhiteSpace(afterId)) filters.Add(Builders<BsonDocument>.Filter.Gt("_id", afterId));
             return Builders<BsonDocument>.Filter.And(filters);
         }
 
-        private static FilterDefinition<BsonDocument> BuildBlockedChecklistFilter(DocumentQueryRequest request)
+        private FilterDefinition<BsonDocument> BuildBlockedChecklistFilter(DocumentQueryRequest request)
         {
-            var incompletePrerequisites = request.GetRequired<List<string>>("requiredStepKeys").Select(stepKey => Builders<BsonDocument>.Filter.Not(BuildChecklistStepCompletedFilter(stepKey))).ToList();
-            return Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")), Builders<BsonDocument>.Filter.Or(incompletePrerequisites));
-        }
-
-        private static Task<long> CountCompletedChecklistCandidatesAsync(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) => collection.CountDocumentsAsync(BuildCompletedChecklistFilter(request), cancellationToken: cancellationToken);
-
-        private static async Task<IEnumerable<TResult>> QueryCompletedChecklistCandidatesAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
-        {
-            var documents = await collection.Find(BuildCompletedChecklistFilter(request)).Sort(Builders<BsonDocument>.Sort.Ascending("Name")).Limit(Math.Min(request.GetRequired<int>("maxItems"), 5000)).Project(new BsonDocument { { "_id", 1 }, { "EntityType", 1 }, { "Name", 1 }, { "Key", 1 }, { "Description", 1 }, { "ChecklistStatus", 1 } }).ToListAsync(cancellationToken).ConfigureAwait(false);
-            return Deserialize<TResult>(documents);
-        }
-
-        private static FilterDefinition<BsonDocument> BuildCompletedChecklistFilter(DocumentQueryRequest request)
-        {
-            var filters = new List<FilterDefinition<BsonDocument>> { Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")) };
-            foreach (var stepKey in request.GetRequired<List<string>>("stepKeys")) filters.Add(Builders<BsonDocument>.Filter.ElemMatch<BsonValue>("ChecklistStatus", new BsonDocument { { "StepKey", stepKey }, { "LastRun", new BsonDocument { { "$exists", true }, { "$ne", BsonNull.Value } } } }));
+            var filters = new List<FilterDefinition<BsonDocument>>
+            {
+                Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+                Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")),
+                Builders<BsonDocument>.Filter.Ne("IsCompleted", true),
+                Builders<BsonDocument>.Filter.Regex("MissingDataDetails", new BsonRegularExpression("[A-Za-z0-9]"))
+            };
+            if (request.TryGet<string>("afterId", out var afterId) && !String.IsNullOrWhiteSpace(afterId)) filters.Add(Builders<BsonDocument>.Filter.Gt("_id", afterId));
             return Builders<BsonDocument>.Filter.And(filters);
         }
 
-        private static async Task<IEnumerable<TResult>> QueryEntityUtilsByFieldValueAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        private FilterDefinition<BsonDocument> BuildCompletedChecklistFilter(DocumentQueryRequest request)
         {
-            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")), Builders<BsonDocument>.Filter.Eq(request.GetRequired<string>("fieldName"), request.GetRequired<string>("value")));
-            return Deserialize<TResult>(await collection.Find(filter).Project(new BsonDocument { { "_id", 1 } }).ToListAsync(cancellationToken).ConfigureAwait(false));
+            var filter = Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+                Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")),
+                Builders<BsonDocument>.Filter.Eq("IsCompleted", true));
+            if (request.TryGet<DateTime>("afterUtc", out var afterUtc)) filter &= Builders<BsonDocument>.Filter.Gte("CreationDate", afterUtc);
+            if (request.TryGet<DateTime>("beforeUtc", out var beforeUtc)) filter &= Builders<BsonDocument>.Filter.Lte("CreationDate", beforeUtc);
+            return filter;
         }
 
-        private static async Task<IEnumerable<TResult>> QueryEntityUtilsByStatusIdsAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        private async Task<IReadOnlyList<TResult>> QueryCompletedChecklistCandidatesAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
         {
-            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")), Builders<BsonDocument>.Filter.Or(Builders<BsonDocument>.Filter.Exists("Status", false), Builders<BsonDocument>.Filter.Eq("Status", BsonNull.Value), Builders<BsonDocument>.Filter.Exists("Status.Id", false), Builders<BsonDocument>.Filter.Eq("Status.Id", BsonNull.Value), Builders<BsonDocument>.Filter.In("Status.Id", request.GetRequired<List<string>>("statusIds"))));
-            var documents = await collection.Find(filter).Sort(Builders<BsonDocument>.Sort.Ascending("Name")).Limit(Math.Min(request.GetRequired<int>("maxItems"), 5000)).ToListAsync(cancellationToken).ConfigureAwait(false);
-            if (typeof(TResult) == typeof(JObject)) return documents.Select(ToJObject).Cast<TResult>().ToList();
+            var filter = BuildCompletedChecklistFilter(request);
+            var sort = Builders<BsonDocument>.Sort.Descending("CreationDate").Ascending("_id");
+            var documents = await collection.Find(filter).Sort(sort).Limit(request.GetRequired<int>("maxItems")).ToListAsync(cancellationToken).ConfigureAwait(false);
             return Deserialize<TResult>(documents);
         }
 
-        private static async Task<IEnumerable<TResult>> QueryEntityUtilsWithEmptyFieldAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        private async Task<long> CountCompletedChecklistCandidatesAsync(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            return await collection.CountDocumentsAsync(BuildCompletedChecklistFilter(request), cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task<IReadOnlyList<TResult>> QueryChecklistCandidatesAsync<TResult>(IMongoCollection<BsonDocument> collection, FilterDefinition<BsonDocument> filter, int maxItems, CancellationToken cancellationToken) where TResult : class
+        {
+            var documents = await collection.Find(filter).Sort(Builders<BsonDocument>.Sort.Ascending("_id")).Limit(maxItems).ToListAsync(cancellationToken).ConfigureAwait(false);
+            return Deserialize<TResult>(documents);
+        }
+
+        private async Task<IReadOnlyList<TResult>> QueryEntityUtilsByFieldValueAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            var filter = Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+                Builders<BsonDocument>.Filter.Eq(request.GetRequired<string>("fieldName"), request.GetRequired<string>("value")));
+            return Deserialize<TResult>(await collection.Find(filter).ToListAsync(cancellationToken).ConfigureAwait(false));
+        }
+
+        private async Task<IReadOnlyList<TResult>> QueryEntityUtilsByStatusIdsAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        {
+            var filter = Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+                Builders<BsonDocument>.Filter.In("Status.Id", request.GetRequired<List<string>>("statusIds")));
+            return Deserialize<TResult>(await collection.Find(filter).ToListAsync(cancellationToken).ConfigureAwait(false));
+        }
+
+        private async Task<IReadOnlyList<TResult>> QueryEntityUtilsWithEmptyFieldAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
         {
             var fieldName = request.GetRequired<string>("fieldName");
-            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId")), Builders<BsonDocument>.Filter.Or(Builders<BsonDocument>.Filter.Exists(fieldName, false), Builders<BsonDocument>.Filter.Eq(fieldName, BsonNull.Value), Builders<BsonDocument>.Filter.Eq(fieldName, String.Empty)));
-            var documents = await collection.Find(filter).Limit(Math.Min(request.GetRequired<int>("maxItems"), 5000)).ToListAsync(cancellationToken).ConfigureAwait(false);
-            if (typeof(TResult) == typeof(JObject)) return documents.Select(ToJObject).Cast<TResult>().ToList();
-            return Deserialize<TResult>(documents);
+            var emptyOrMissing = Builders<BsonDocument>.Filter.Or(Builders<BsonDocument>.Filter.Exists(fieldName, false), Builders<BsonDocument>.Filter.Eq(fieldName, BsonNull.Value), Builders<BsonDocument>.Filter.Eq(fieldName, String.Empty));
+            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")), emptyOrMissing);
+            return Deserialize<TResult>(await collection.Find(filter).ToListAsync(cancellationToken).ConfigureAwait(false));
         }
 
-        private IMongoCollection<TEntity> GetCollection<TEntity>() where TEntity : class
+        private async Task<IReadOnlyList<TResult>> QueryEntityUtilsDocumentsAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
         {
-            var collectionName = _collectionNameResolver.Resolve(_settings.DatabaseName, typeof(TEntity), null);
-            return _clientFactory.GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName).GetCollection<TEntity>(collectionName);
+            var filter = new List<FilterDefinition<BsonDocument>>
+            {
+                Builders<BsonDocument>.Filter.Eq("EntityType", request.GetRequired<string>("entityType")),
+                Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", request.GetRequired<string>("orgId"))
+            };
+            if (request.TryGet<string>("entityId", out var entityId) && !String.IsNullOrWhiteSpace(entityId)) filter.Add(Builders<BsonDocument>.Filter.Eq("_id", entityId));
+            return Deserialize<TResult>(await collection.Find(Builders<BsonDocument>.Filter.And(filter)).ToListAsync(cancellationToken).ConfigureAwait(false));
         }
 
-        private IMongoCollection<BsonDocument> GetBsonCollection(string collectionName) => _clientFactory.GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName).GetCollection<BsonDocument>(collectionName);
-
-        private static UpdateDefinition<TEntity> CreatePatchUpdate<TEntity>(PatchStep step) where TEntity : class
+        private static UpdateDefinition<TEntity> CreatePatchUpdate<TEntity>(PatchStep step)
         {
-            if (step == null) throw new ArgumentException("Patch request contains a null step.");
-            var path = ToMongoPath(step);
+            var path = String.Join(".", ToPathSegments(step));
             switch (step.Op)
             {
-                case PatchOp.Set:
+                case PatchOp.Set: return Builders<TEntity>.Update.Set(path, ToBsonValue(step.Value));
                 case PatchOp.Add: return Builders<TEntity>.Update.Set(path, ToBsonValue(step.Value));
                 case PatchOp.Remove: return Builders<TEntity>.Update.Unset(path);
                 default: throw new NotSupportedException($"Patch operation '{step.Op}' is not supported by the Mongo document client.");
             }
         }
 
-        private static string ToMongoPath(PatchStep step)
+        private IMongoCollection<TEntity> GetCollection<TEntity>() where TEntity : class
         {
-            var path = !String.IsNullOrWhiteSpace(step.LogicalPath) ? step.LogicalPath.Trim().TrimStart('/') : step.CosmosPath?.Trim().TrimStart('/').Replace('/', '.');
-            if (String.IsNullOrWhiteSpace(path)) throw new ArgumentException("Patch step path is required.");
-            if (String.Equals(path, "id", StringComparison.OrdinalIgnoreCase)) return "_id";
-            return path;
+            var collectionName = _collectionNameResolver.TryResolve(_settings.DatabaseName, typeof(TEntity).Name, out var resolvedCollectionName)
+                ? resolvedCollectionName
+                : _collectionNameResolver.GetFallback(_settings.DatabaseName);
+            return _clientFactory.GetCollection<TEntity>(_settings, collectionName);
         }
 
-        private static BsonValue ToBsonValue(JToken value)
-        {
-            if (value == null || value.Type == JTokenType.Null) return BsonNull.Value;
-            return BsonDocument.Parse($"{{\"value\":{value.ToString(Formatting.None)}}}")["value"];
-        }
+        private IMongoCollection<BsonDocument> GetBsonCollection(string collectionName) => _clientFactory.GetBsonCollection(_settings, collectionName);
 
-        private static string CreateETag() => Guid.NewGuid().ToString("N");
-
-        private static async Task<IEnumerable<TResult>> QueryEntityUtilsDocumentsAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
+        private static UpdateDefinition<BsonDocument> CreateRuntimePatchUpdate(PatchStep step)
         {
-            var filter = new BsonDocument { { "EntityType", request.GetRequired<string>("entityType") }, { "OwnerOrganization.Id", request.GetRequired<string>("orgId") } };
-            if (request.QueryType == DocumentQueryType.EntityUtilsDocumentById) filter.Add("_id", request.GetRequired<string>("entityId"));
-            var find = collection.Find(filter);
-            if (request.QueryType == DocumentQueryType.EntityUtilsDocumentsByType) find = find.Sort(new BsonDocument("Name", 1));
-            if (request.QueryType == DocumentQueryType.EntityUtilsDocumentById) find = find.Limit(1);
-            var docs = await find.ToListAsync(cancellationToken).ConfigureAwait(false);
-            if (typeof(TResult) == typeof(JObject)) return docs.Select(ToJObject).Cast<TResult>().ToList();
-            return Deserialize<TResult>(docs);
-        }
-
-        private static async Task<IEnumerable<TResult>> QueryPreparationAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
-        {
-            var match = new BsonDocument { { "EntityType", request.GetRequired<string>("entityType") }, { "OwnerOrganization.Id", request.GetRequired<string>("orgId") } };
-            if (request.QueryType == DocumentQueryType.EntityPreparationCandidateById) match.Add("_id", request.GetRequired<string>("entityId"));
-            if (request.QueryType == DocumentQueryType.IncompleteEntityPreparationCandidatesByType) match.Add("MasterStatus.IsProductionReady", new BsonDocument("$ne", true));
-            var pipeline = new List<BsonDocument> { new BsonDocument("$match", match), new BsonDocument("$sort", new BsonDocument("Name", 1)), new BsonDocument("$project", new BsonDocument { { "_id", 1 }, { "EntityType", 1 }, { "Name", 1 }, { "Key", 1 }, { "Description", 1 }, { "Icon", 1 }, { "Category", 1 }, { "IsDraft", 1 }, { "IsDeprecated", 1 }, { "MasterStatus", 1 }, { "ReadinessStatus", 1 }, { "CreationDate", 1 }, { "LastUpdatedDate", 1 }, { "Revision", 1 }, { "ChecklistStatus", 1 }, { "ReadinessChecks", 1 } }) };
-            if (request.QueryType == DocumentQueryType.EntityPreparationCandidateById) pipeline.Add(new BsonDocument("$limit", 1));
-            else if (request.QueryType == DocumentQueryType.IncompleteEntityPreparationCandidatesByType) pipeline.Add(new BsonDocument("$limit", Math.Min(request.GetRequired<int>("maxItems"), 5000)));
-            return Deserialize<TResult>(await collection.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false));
-        }
-
-        private static async Task<IEnumerable<TResult>> QueryEntityListAsync<TResult>(IMongoCollection<BsonDocument> collection, DocumentQueryRequest request, CancellationToken cancellationToken) where TResult : class
-        {
-            var clauses = new BsonArray { new BsonDocument("EntityType", request.GetRequired<string>("entityType")), new BsonDocument("$or", new BsonArray { new BsonDocument("IsPublic", true), new BsonDocument("OwnerOrganization.Id", request.GetRequired<string>("orgId")) }) };
-            if (!request.GetRequired<bool>("showDeleted")) clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDeleted", new BsonDocument("$exists", false)), new BsonDocument("IsDeleted", false) }));
-            if (!request.GetRequired<bool>("showDrafts")) clauses.Add(new BsonDocument("$or", new BsonArray { new BsonDocument("IsDraft", new BsonDocument("$exists", false)), new BsonDocument("IsDraft", false) }));
-            if (request.QueryType == DocumentQueryType.EntityListCategories)
+            var path = ToMongoPath(step);
+            switch (step.Op)
             {
-                clauses.Add(new BsonDocument("Category", new BsonDocument("$exists", true)));
-                clauses.Add(new BsonDocument("Category.Key", new BsonDocument("$exists", true)));
+                case PatchOp.Set: return Builders<BsonDocument>.Update.Set(path, ToBsonValue(step.Value));
+                case PatchOp.Add: return Builders<BsonDocument>.Update.Set(path, ToBsonValue(step.Value));
+                case PatchOp.Remove: return Builders<BsonDocument>.Update.Unset(path);
+                default: throw new NotSupportedException($"Patch operation '{step.Op}' is not supported by the Mongo document client.");
             }
-            else
-            {
-                AddIfPresent(clauses, "Category.Key", request.GetRequired<string>("categoryKey"));
-                AddIfPresent(clauses, "Status.Key", request.GetRequired<string>("statusKey"));
-                AddIfPresent(clauses, "Labels.Key", request.GetRequired<string>("labelKey"));
-                var searchText = request.GetRequired<string>("searchText");
-                if (!String.IsNullOrWhiteSpace(searchText)) clauses.Add(new BsonDocument("Name", new BsonRegularExpression(Regex.Escape(searchText), "i")));
-            }
-            var pipeline = new List<BsonDocument> { new BsonDocument("$match", new BsonDocument("$and", clauses)) };
-            if (request.QueryType == DocumentQueryType.EntityListCategories)
-            {
-                pipeline.Add(new BsonDocument("$group", new BsonDocument("_id", new BsonDocument { { "Id", "$Category.Id" }, { "Key", "$Category.Key" }, { "Text", "$Category.Text" } })));
-                pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", 0 }, { "Id", "$_id.Id" }, { "Key", "$_id.Key" }, { "Text", "$_id.Text" } }));
-                pipeline.Add(new BsonDocument("$sort", new BsonDocument("Text", 1)));
-            }
-            else
-            {
-                var orderBy = (OrderByTypes)request.GetRequired<int>("orderBy");
-                var sortField = orderBy == OrderByTypes.Rating ? "Stars" : orderBy == OrderByTypes.CreationDate ? "CreationDate" : orderBy == OrderByTypes.LastUpdateDate ? "LastUpdatedDate" : "Name";
-                pipeline.Add(new BsonDocument("$sort", new BsonDocument(sortField, request.GetRequired<bool>("descending") ? -1 : 1)));
-                var pageIndex = Math.Max(1, request.GetRequired<int>("pageIndex"));
-                var pageSize = Math.Max(1, request.GetRequired<int>("pageSize"));
-                pipeline.Add(new BsonDocument("$skip", (pageIndex - 1) * pageSize));
-                pipeline.Add(new BsonDocument("$limit", pageSize));
-                if (request.QueryType == DocumentQueryType.EntityListItems) pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", 1 }, { "Icon", 1 }, { "Name", 1 }, { "Key", 1 }, { "IsPublic", 1 }, { "IsDraft", 1 }, { "IsDeleted", 1 }, { "Category", "$Category.Text" }, { "Stars", 1 }, { "RatingsCount", 1 }, { "Labels", 1 }, { "Status", 1 } }));
-                else pipeline.Add(new BsonDocument("$project", new BsonDocument { { "_id", 0 }, { "Id", "$_id" }, { "Key", 1 }, { "Text", "$Name" } }));
-            }
-            return Deserialize<TResult>(await collection.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken).ConfigureAwait(false));
         }
 
-        private static void AddIfPresent(BsonArray clauses, string field, string value)
+        private static IEnumerable<string> ToPathSegments(PatchStep step)
         {
-            if (!String.IsNullOrWhiteSpace(value)) clauses.Add(new BsonDocument(field, value));
+            var path = !String.IsNullOrWhiteSpace(step.LogicalPath) ? step.LogicalPath : step.JsonPath;
+            if (String.IsNullOrWhiteSpace(path)) throw new ArgumentException("Patch step path is required.", nameof(step));
+            return path.TrimStart('$').TrimStart('.').TrimStart('/').Replace("/", ".").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
         }
+
+        private static string ToMongoPath(PatchStep step) => String.Join(".", ToPathSegments(step));
+
+        private static BsonValue ToBsonValue(JToken value) => value == null || value.Type == JTokenType.Null ? BsonNull.Value : BsonValue.Create(value.ToObject<object>());
 
         private static JObject ToJObject(BsonDocument document)
         {
-            var clone = document.DeepClone().AsBsonDocument;
-            if (clone.TryGetValue("_id", out var id))
+            var result = JObject.Parse(document.ToJson());
+            if (result["_id"] != null)
             {
-                clone.Remove("_id");
-                clone.InsertAt(0, new BsonElement("id", id));
+                result["id"] = result["_id"];
+                result.Remove("_id");
             }
-            return JObject.Parse(clone.ToJson());
+            return result;
         }
 
-        private static IEnumerable<TResult> Deserialize<TResult>(IEnumerable<BsonDocument> documents) where TResult : class => documents.Select(document => BsonSerializer.Deserialize<TResult>(document)).ToList();
-
-        public async Task<TProjection> GetDocumentProjectionByKeyAsync<TProjection>(string entityType, string key, string ownerOrganizationId, bool throwOnNotFound = true, CancellationToken cancellationToken = default) where TProjection : class
-        {
-            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
-            if (String.IsNullOrWhiteSpace(key)) throw new ArgumentException("Document key is required.", nameof(key));
-            if (String.IsNullOrWhiteSpace(ownerOrganizationId)) throw new ArgumentException("Owner organization id is required.", nameof(ownerOrganizationId));
-            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName)) throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
-
-            if (typeof(TProjection) == typeof(JObject))
-            {
-                var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("EntityType", entityType), Builders<BsonDocument>.Filter.Eq("Key", key.Trim()), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", ownerOrganizationId));
-                var document = await GetBsonCollection(collectionName).Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-                if (document != null) return (TProjection)(object)ToJObject(document);
-            }
-            else
-            {
-                var filter = Builders<TProjection>.Filter.And(Builders<TProjection>.Filter.Eq("EntityType", entityType), Builders<TProjection>.Filter.Eq("Key", key.Trim()), Builders<TProjection>.Filter.Eq("OwnerOrganization.Id", ownerOrganizationId));
-                var projection = await GetProjectionCollection<TProjection>(entityType).Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-                if (projection != null) return projection;
-            }
-
-            if (throwOnNotFound) throw new RecordNotFoundException(entityType, key);
-            return null;
-        }
-
-        public async Task<SyncUpsertResult> UpsertDocumentAsync(JObject document, string expectedETag = null, CancellationToken cancellationToken = default)
-        {
-            if (document == null) throw new ArgumentNullException(nameof(document));
-            var id = document.Value<string>("id");
-            var entityType = document.Value<string>("EntityType");
-            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(document));
-            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Document EntityType is required.", nameof(document));
-            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName)) throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
-
-            var bson = BsonDocument.Parse(document.ToString(Formatting.None));
-            bson.Remove("id");
-            bson["_id"] = id;
-            bson.Remove("_etag");
-            var newETag = CreateETag();
-            bson["ETag"] = newETag;
-
-            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", id), Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
-            if (!String.IsNullOrWhiteSpace(expectedETag)) filter &= Builders<BsonDocument>.Filter.Eq("ETag", expectedETag);
-
-            var result = await GetBsonCollection(collectionName).ReplaceOneAsync(filter, bson, new ReplaceOptions { IsUpsert = String.IsNullOrWhiteSpace(expectedETag) }, cancellationToken).ConfigureAwait(false);
-            if (!String.IsNullOrWhiteSpace(expectedETag) && result.MatchedCount == 0) throw new ContentModifiedException { EntityType = entityType, Id = id };
-
-            return new SyncUpsertResult { Id = id, ETag = newETag, StatusCode = result.UpsertedId != null ? 201 : 200 };
-        }
-
-        public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
-          where TProjection : class
-        {
-            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
-
-            if (typeof(TProjection) == typeof(JObject))
-            {
-                var collectionName = _collectionNameResolver.GetFallback(_settings.DatabaseName);
-                var document = await GetBsonCollection(collectionName)
-                    .Find(Builders<BsonDocument>.Filter.Eq("_id", id))
-                    .FirstOrDefaultAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (document == null)
-                {
-                    if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
-                    return null;
-                }
-
-                return (TProjection)(object)ToJObject(document);
-            }
-
-            var projection = await GetProjectionCollection<TProjection>()
-                .Find(Builders<TProjection>.Filter.Eq("_id", id))
-                .FirstOrDefaultAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            if (projection == null && throwOnNotFound)
-                throw new RecordNotFoundException(typeof(TProjection).Name, id);
-
-            return projection;
-        }
-
-        public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string entityType, string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
-            where TProjection : class
-        {
-            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
-            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
-
-            if (typeof(TProjection) == typeof(JObject))
-            {
-                if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
-                    throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
-
-                var filter = Builders<BsonDocument>.Filter.And(
-                    Builders<BsonDocument>.Filter.Eq("_id", id),
-                    Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
-
-                var document = await GetBsonCollection(collectionName)
-                    .Find(filter)
-                    .FirstOrDefaultAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (document == null)
-                {
-                    if (throwOnNotFound) throw new RecordNotFoundException(entityType, id);
-                    return null;
-                }
-
-                return (TProjection)(object)ToJObject(document);
-            }
-
-            var typedFilter = Builders<TProjection>.Filter.And(
-                Builders<TProjection>.Filter.Eq("_id", id),
-                Builders<TProjection>.Filter.Eq("EntityType", entityType));
-
-            var projection = await GetProjectionCollection<TProjection>(entityType)
-                .Find(typedFilter)
-                .FirstOrDefaultAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            if (projection == null && throwOnNotFound)
-                throw new RecordNotFoundException(entityType, id);
-
-            return projection;
-        }
-
-        public async Task<IEnumerable<TProjection>> GetDocumentProjectionsAsync<TProjection>(string entityType, Expression<Func<TProjection, bool>> query, CancellationToken cancellationToken = default)
-            where TProjection : class
-        {
-            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
-            if (query == null) throw new ArgumentNullException(nameof(query));
-
-            var filter = Builders<TProjection>.Filter.And(
-                Builders<TProjection>.Filter.Eq("EntityType", entityType),
-                Builders<TProjection>.Filter.Where(query));
-
-            return await GetProjectionCollection<TProjection>(entityType)
-                .Find(filter)
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        private IMongoCollection<TProjection> GetProjectionCollection<TProjection>()
-            where TProjection : class
-        {
-            EnsureProjectionClassMap<TProjection>();
-            var collectionName = _collectionNameResolver.GetFallback(_settings.DatabaseName);
-            return _clientFactory
-                .GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName)
-                .GetCollection<TProjection>(collectionName);
-        }
-
-        private IMongoCollection<TProjection> GetProjectionCollection<TProjection>(string entityType)
-            where TProjection : class
-        {
-            EnsureProjectionClassMap<TProjection>();
-            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName))
-                throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
-
-            return _clientFactory
-                .GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName)
-                .GetCollection<TProjection>(collectionName);
-        }
-
-        private static void EnsureProjectionClassMap<TProjection>()
-            where TProjection : class
-        {
-            if (BsonClassMap.IsClassMapRegistered(typeof(TProjection))) return;
-
-            BsonClassMap.RegisterClassMap<TProjection>(classMap =>
-            {
-                classMap.AutoMap();
-                classMap.SetIgnoreExtraElements(true);
-            });
-        }
-
-        public async Task<TProjection> GetOwnedDocumentProjectionAsync<TProjection>(string id, string ownerOrganizationId, bool throwOnNotFound = true, CancellationToken cancellationToken = default) where TProjection : class
-        {
-            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
-            if (String.IsNullOrWhiteSpace(ownerOrganizationId)) throw new ArgumentException("Owner organization id is required.", nameof(ownerOrganizationId));
-
-            var collectionName = _collectionNameResolver.GetFallback(_settings.DatabaseName);
-            if (typeof(TProjection) == typeof(JObject))
-            {
-                var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", id.Trim()), Builders<BsonDocument>.Filter.Eq("OwnerOrganization.Id", ownerOrganizationId));
-                var document = await GetBsonCollection(collectionName).Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-                if (document != null) return (TProjection)(object)ToJObject(document);
-            }
-            else
-            {
-                var filter = Builders<TProjection>.Filter.And(Builders<TProjection>.Filter.Eq("_id", id.Trim()), Builders<TProjection>.Filter.Eq("OwnerOrganization.Id", ownerOrganizationId));
-                var projection = await GetProjectionCollection<TProjection>().Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-                if (projection != null) return projection;
-            }
-
-            if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
-            return null;
-        }
+        private static string CreateETag() => Guid.NewGuid().ToString("N");
     }
 }
