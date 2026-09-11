@@ -8,9 +8,9 @@
     <PackageVersion Include="CassandraCSharpDriver" Version="3.22.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="LagoVista.Core" Version="7.0.12" />
-    <PackageVersion Include="LagoVista.Core.Configuration" Version="7.0.4" />
-    <PackageVersion Include="LagoVista.Core.TestBase" Version="7.0.4" />
-    <PackageVersion Include="LagoVista.Crypto" Version="7.0.4" />
+    <PackageVersion Include="LagoVista.Core.Configuration" Version="7.0.12" />
+    <PackageVersion Include="LagoVista.Core.TestBase" Version="7.0.12" />
+    <PackageVersion Include="LagoVista.Crypto" Version="7.0.12" />
     <PackageVersion Include="LagoVista.IoT.Logging" Version="7.0.4" />
     <PackageVersion Include="log4net" Version="3.3.1" />
     <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
