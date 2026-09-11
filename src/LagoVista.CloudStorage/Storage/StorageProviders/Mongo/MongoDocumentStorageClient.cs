@@ -269,7 +269,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var sortProperty = ListRequestSortResolver.ResolveProperty<TEntity>(listRequest);
             if (sortProperty != null)
             {
-                var descending = listRequest.SortDescending == true;
+                var descending = ListRequestSortResolver.IsDescending(listRequest);
                 var primary = descending
                     ? Builders<TEntity>.Sort.Descending(sortProperty.Name)
                     : Builders<TEntity>.Sort.Ascending(sortProperty.Name);

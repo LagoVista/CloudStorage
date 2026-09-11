@@ -11,20 +11,21 @@ namespace LagoVista.CloudStorage.Storage
         public static PropertyInfo ResolveProperty<TEntity>(ListRequest request)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
-            if (String.IsNullOrWhiteSpace(request.SortField)) return null;
+            var sortField = GetOptionalRequestProperty<string>(request, "SortField");
+            if (String.IsNullOrWhiteSpace(sortField)) return null;
 
             var property = typeof(TEntity)
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .FirstOrDefault(candidate =>
                     candidate.CanRead &&
                     candidate.GetIndexParameters().Length == 0 &&
-                    String.Equals(candidate.Name, request.SortField, StringComparison.OrdinalIgnoreCase));
+                    String.Equals(candidate.Name, sortField, StringComparison.OrdinalIgnoreCase));
 
             if (property == null)
-                throw new ArgumentException($"Sort field '{request.SortField}' is not a readable public property on {typeof(TEntity).Name}.", nameof(request));
+                throw new ArgumentException($"Sort field '{sortField}' is not a readable public property on {typeof(TEntity).Name}.", nameof(request));
 
             if (!IsSupportedScalar(property.PropertyType))
-                throw new ArgumentException($"Sort field '{request.SortField}' on {typeof(TEntity).Name} is not a supported scalar sort type.", nameof(request));
+                throw new ArgumentException($"Sort field '{sortField}' on {typeof(TEntity).Name} is not a supported scalar sort type.", nameof(request));
 
             return property;
         }
@@ -35,7 +36,7 @@ namespace LagoVista.CloudStorage.Storage
             var property = ResolveProperty<TEntity>(request);
             if (property == null) return query;
 
-            var descending = request.SortDescending == true;
+            var descending = IsDescending(request);
             var ordered = ApplyOrder(query, property, descending, thenBy: false);
 
             var idProperty = typeof(TEntity)
@@ -68,6 +69,22 @@ namespace LagoVista.CloudStorage.Storage
                 .MakeGenericMethod(typeof(TEntity), property.PropertyType);
 
             return (IOrderedQueryable<TEntity>)method.Invoke(null, new object[] { query, selector });
+        }
+
+        public static bool IsDescending(ListRequest request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            return GetOptionalRequestProperty<bool?>(request, "SortDescending") == true;
+        }
+
+        private static TValue GetOptionalRequestProperty<TValue>(ListRequest request, string propertyName)
+        {
+            var property = request.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+            if (property == null || !property.CanRead) return default;
+
+            var value = property.GetValue(request);
+            if (value == null) return default;
+            return value is TValue typed ? typed : default;
         }
 
         private static bool IsSupportedScalar(Type type)
