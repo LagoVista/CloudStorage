@@ -3,6 +3,7 @@ using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Models.Storage;
+using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
@@ -263,8 +264,22 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
-            var items = await GetCollection<TEntity>().Find(CreatePagedQueryFilter(query, listRequest)).Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize).Limit(listRequest.PageSize).ToListAsync().ConfigureAwait(false);
-            return ListResponse<TEntity>.Create(listRequest, items);
+
+            var find = GetCollection<TEntity>().Find(CreatePagedQueryFilter(query, listRequest));
+            var sortProperty = ListRequestSortResolver.ResolveProperty<TEntity>(listRequest);
+            if (sortProperty != null)
+            {
+                var descending = listRequest.SortDescending == true;
+                var primary = descending
+                    ? Builders<TEntity>.Sort.Descending(sortProperty.Name)
+                    : Builders<TEntity>.Sort.Ascending(sortProperty.Name);
+                var tieBreaker = descending
+                    ? Builders<TEntity>.Sort.Descending("_id")
+                    : Builders<TEntity>.Sort.Ascending("_id");
+                find = find.Sort(Builders<TEntity>.Sort.Combine(primary, tieBreaker));
+            }
+
+            return await CreateListResponseAsync(find, listRequest).ConfigureAwait(false);
         }
 
         public Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, Expression<Func<TEntity, string>> sort, ListRequest listRequest)
