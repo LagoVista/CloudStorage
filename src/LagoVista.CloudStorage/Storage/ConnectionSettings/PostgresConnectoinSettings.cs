@@ -23,7 +23,11 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
             HostName = section.Require("HostName");
             UserName = section.Require("UserName");
             Password = section.Require("Password");
-            Port = int.Parse(section.Require("Port"));
+            var port = section.Require("Port");
+            
+            if(!String.IsNullOrEmpty(port))
+                Port = int.Parse(port);
+
             SchemaName = section.Require("SchemaName");
         }
 
