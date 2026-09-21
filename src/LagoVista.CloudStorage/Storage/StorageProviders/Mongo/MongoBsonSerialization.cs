@@ -219,7 +219,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             while (context.Reader.ReadBsonType() != BsonType.EndOfDocument)
             {
-                var elementName = context.Reader.ReadName();
+                var elementName = context.Reader.ReadName(MongoDB.Bson.IO.Utf8NameDecoder.Instance);
 
                 if (!_membersByElement.TryGetValue(elementName, out var member))
                 {
