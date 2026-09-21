@@ -556,8 +556,11 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             _logger.AddCustomEvent(LogLevel.Message,
                 $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]",
-                $"Query returned {result.Count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms",
+                $"Query returned {result.Count} {typeof(TEntity).Name} documents from {_storageClient.GetType().Name} database '{_dbName}' in {sw.Elapsed.TotalMilliseconds} ms",
                 typeof(TEntity).Name.ToKVP("recordType"),
+                _storageClient.GetType().Name.ToKVP("storageProvider"),
+                _dbName.ToKVP("databaseName"),
+                query.ToString().ToKVP("query"),
                 result.Count.ToString().ToKVP("recordCount"),
                 sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
