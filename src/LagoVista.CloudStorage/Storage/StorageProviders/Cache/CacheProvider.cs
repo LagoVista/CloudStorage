@@ -17,6 +17,8 @@ namespace LagoVista.CloudStorage.Storage
         private readonly IAdminLogger _logger;
         private readonly ConnectionMultiplexer _multiplexer = null;
 
+        private readonly bool _useCache;
+
         private static readonly Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); 
         private static readonly Dictionary<string, Dictionary<string, string>> _inMemoryCollections = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -24,7 +26,10 @@ namespace LagoVista.CloudStorage.Storage
         {
             _logger = adminlogger ?? throw new ArgumentNullException(nameof(adminlogger));
 
+
+
             if (settings == null) throw new ArgumentNullException(nameof(settings));
+            _useCache = settings.UseCache;
 
             if (settings.UseCache)
             {
@@ -178,6 +183,12 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<string> GetAsync(string key)
         {
+            if (!_useCache)
+            {
+                Console.WriteLine($"{this.Tag()} - Cache Not Enabled - Get {key}.");
+                return null;
+            }
+
             var normalizedKey = NormalizeKey(key);
 
             if (_multiplexer != null)
@@ -338,6 +349,11 @@ namespace LagoVista.CloudStorage.Storage
 
         public async Task<T> GetAsync<T>(string key) where T : class
         {
+            if(!_useCache)
+            {
+                return null;
+            }
+
             var normalizedKey = NormalizeKey(key);
 
             var json = await GetAsync(normalizedKey);
@@ -392,6 +408,11 @@ return v
 
         public async Task<long> GetLongAsync(string key)
         {
+            if (!_useCache)
+            {
+                return 0;
+            }
+
             var normalizedKey = NormalizeKey(key);
 
             if (_multiplexer != null)
