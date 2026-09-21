@@ -30,6 +30,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             {
                 if (_configured) return;
 
+                BsonSerializer.TryRegisterSerializer(
+                    typeof(object),
+                    new ObjectSerializer(type =>
+                        ObjectSerializer.DefaultAllowedTypes(type) ||
+                        typeof(JToken).IsAssignableFrom(type)));
+
                 if (!BsonClassMap.IsClassMapRegistered(typeof(EntityHeader)))
                 {
                     BsonClassMap.RegisterClassMap<EntityHeader>(classMap =>
@@ -68,7 +74,6 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         private static void PrepareTypeGraph(Type type, HashSet<Type> visiting)
         {
             type = Nullable.GetUnderlyingType(type) ?? type;
-            if (ShouldSkipType(type)) return;
             if (!visiting.Add(type)) return;
 
             try
@@ -79,13 +84,24 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                     return;
                 }
 
+                // Walk generic arguments even for System collection/container types. This is
+                // important for shapes such as List<DeviceMessageDefinitionField> and
+                // List<KeyValuePair<string, object>> where the interesting LagoVista type
+                // is nested inside a framework container.
                 if (type.IsGenericType)
                 {
                     foreach (var argument in type.GetGenericArguments())
                         PrepareTypeGraph(argument, visiting);
                 }
 
-                if (HasShadowedSerializableProperty(type) && _preparedTypes.TryAdd(type, 0))
+                if (ShouldSkipType(type))
+                    return;
+
+                // Mongo's built-in class mapper handles virtual overrides correctly. We only
+                // need the compatibility serializer for true CLR member hiding ("new").
+                if (!IsEntityHeaderType(type) &&
+                    HasShadowedSerializableProperty(type) &&
+                    _preparedTypes.TryAdd(type, 0))
                 {
                     var serializerType = typeof(ShadowedMemberBsonSerializer<>).MakeGenericType(type);
                     var serializer = (IBsonSerializer)Activator.CreateInstance(serializerType);
@@ -99,6 +115,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             {
                 visiting.Remove(type);
             }
+        }
+
+        private static bool IsEntityHeaderType(Type type)
+        {
+            return type == typeof(EntityHeader) ||
+                (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(EntityHeader<>));
         }
 
         private static bool ShouldSkipType(Type type)
@@ -120,13 +142,26 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
         private static bool HasShadowedSerializableProperty(Type type)
         {
-            var names = new HashSet<string>(StringComparer.Ordinal);
+            var properties = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
+
             for (var current = type; current != null && current != typeof(object); current = current.BaseType)
             {
                 foreach (var property in current.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
                 {
                     if (!IsSerializableProperty(property)) continue;
-                    if (!names.Add(property.Name)) return true;
+
+                    var baseDefinition = property.GetMethod.GetBaseDefinition();
+                    if (!properties.TryGetValue(property.Name, out var existingBaseDefinition))
+                    {
+                        properties[property.Name] = baseDefinition;
+                        continue;
+                    }
+
+                    // Same virtual slot means this is an override, not a hidden member.
+                    if (existingBaseDefinition == baseDefinition)
+                        continue;
+
+                    return true;
                 }
             }
 
