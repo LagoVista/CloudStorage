@@ -517,6 +517,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
         private IMongoCollection<TEntity> GetCollection<TEntity>() where TEntity : class
         {
+            MongoBsonSerialization.ConfigureForType(typeof(TEntity));
             var collectionName = _collectionNameResolver.Resolve(_settings.DatabaseName, typeof(TEntity), null);
             return _clientFactory.GetDatabase(_settings.BuildConnectionString(), _settings.DatabaseName).GetCollection<TEntity>(collectionName);
         }
