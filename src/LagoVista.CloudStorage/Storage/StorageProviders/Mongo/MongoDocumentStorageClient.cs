@@ -255,8 +255,20 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             if (query == null) throw new ArgumentNullException(nameof(query));
-            var filter = Builders<TEntity>.Filter.And(Builders<TEntity>.Filter.Where(query), Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
-            return await GetCollection<TEntity>().Find(filter).ToListAsync().ConfigureAwait(false);
+
+            var collection = GetCollection<TEntity>();
+            var filter = Builders<TEntity>.Filter.And(
+                Builders<TEntity>.Filter.Where(query),
+                Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
+
+            Console.WriteLine(
+                $"[MongoDocumentStorageClient__QueryAsync<{typeof(TEntity).Name}>] " +
+                $"Database={_settings.DatabaseName}; " +
+                $"Collection={collection.CollectionNamespace.CollectionName}; " +
+                $"EntityType={typeof(TEntity).Name}; " +
+                $"Query={query}");
+
+            return await collection.Find(filter).ToListAsync().ConfigureAwait(false);
         }
 
         public async Task<ListResponse<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query, ListRequest listRequest)
