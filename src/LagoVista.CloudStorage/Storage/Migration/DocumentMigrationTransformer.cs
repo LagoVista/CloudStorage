@@ -1,3 +1,5 @@
+using LagoVista;
+using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
 using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using MongoDB.Bson;
@@ -67,6 +69,21 @@ namespace LagoVista.CloudStorage.Storage.Migration
                     return false;
                 }
 
+                // Cosmos' document id is authoritative. Some legacy records also contain a
+                // stale StoredId value (including GuidString36 values) that can overwrite the
+                // JsonProperty("id") value during Newtonsoft materialization. Re-assert the
+                // canonical document id before BSON serialization.
+                if (model is IIDEntity idEntity)
+                {
+                    if (!NormalizedId32.TryCreate(id, out var normalizedId))
+                    {
+                        error = $"Document id '{id}' for EntityType '{entityType}' is not a valid NormalizedId32.";
+                        return false;
+                    }
+
+                    idEntity.Id = normalizedId;
+                }
+
                 // Prepare the full CLR graph before Mongo resolves/freeze class maps so
                 // shadowed CLR members and JSON payload members use the runtime compatibility serializers.
                 MongoBsonSerialization.ConfigureForType(modelType);
@@ -74,10 +91,17 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // Serialize through the exact Mongo serializer contract used at runtime.
                 target = model.ToBsonDocument(modelType);
 
-                if (!target.TryGetValue("_id", out var bsonId) ||
-                    !String.Equals(bsonId.ToString(), id, StringComparison.OrdinalIgnoreCase))
+                if (!target.TryGetValue("_id", out var bsonId))
                 {
-                    error = $"Mongo serialization changed or omitted id for EntityType '{entityType}', document '{id}'.";
+                    error = $"Mongo serialization omitted _id for EntityType '{entityType}', document '{id}'.";
+                    target = null;
+                    return false;
+                }
+
+                var serializedId = bsonId.IsString ? bsonId.AsString : bsonId.ToString();
+                if (!String.Equals(serializedId, id, StringComparison.OrdinalIgnoreCase))
+                {
+                    error = $"Mongo serialization changed id for EntityType '{entityType}', document '{id}'. Serialized _id was '{serializedId}'.";
                     target = null;
                     return false;
                 }
