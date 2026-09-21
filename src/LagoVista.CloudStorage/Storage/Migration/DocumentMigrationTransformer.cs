@@ -1,6 +1,6 @@
 using LagoVista.Core.Models.UIMetaData;
+using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using MongoDB.Bson;
-using MongoDB.Bson.IO;
 using MongoDB.Bson.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -60,7 +60,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 var copy = (JObject)source.DeepClone();
                 foreach (var field in _cosmosSystemFields) RemoveProperty(copy, field);
 
-                var model = JsonConvert.DeserializeObject(copy.ToString(Formatting.None), modelType);
+                var model = Newtonsoft.Json.JsonConvert.DeserializeObject(copy.ToString(Formatting.None), modelType);
                 if (model == null)
                 {
                     error = $"Newtonsoft deserialization returned null for EntityType '{entityType}', document '{id}'.";
@@ -89,7 +89,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // Prove the generated BSON can be materialized by the runtime Mongo serializer
                 // before allowing it to be written.
                 var serializer = BsonSerializer.LookupSerializer(modelType);
-                using (var reader = new BsonDocumentReader(target))
+                using (var reader = new MongoDB.Bson.IO.BsonDocumentReader(target))
                 {
                     var context = BsonDeserializationContext.CreateRoot(reader);
                     var args = new BsonDeserializationArgs { NominalType = modelType };
