@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Storage.Migration;
+using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MongoDB.Bson;
@@ -36,6 +37,12 @@ namespace LagoVista.StorageProvider.Tests.Migration
                 if (String.Equals(entityType, nameof(MigrationJObjectEntity), StringComparison.OrdinalIgnoreCase))
                 {
                     modelType = typeof(MigrationJObjectEntity);
+                    return true;
+                }
+
+                if (String.Equals(entityType, nameof(MigrationEntityBase), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationEntityBase);
                     return true;
                 }
 
@@ -85,6 +92,10 @@ namespace LagoVista.StorageProvider.Tests.Migration
             public string Id { get; set; }
             public string EntityType { get; set; }
             public List<KeyValuePair<string, object>> Mappings { get; set; }
+        }
+
+        private sealed class MigrationEntityBase : EntityBase
+        {
         }
 
         [TestMethod]
@@ -177,6 +188,25 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.AreEqual("sensor-a", payload["source"].AsString);
             Assert.AreEqual(12.5, payload["reading"].AsDouble, 0.001);
             Assert.IsTrue(payload["nested"].AsBsonDocument["active"].AsBoolean);
+        }
+
+        [TestMethod]
+        public void TransformUsesCosmosDocumentIdWhenLegacyStoredIdDisagrees()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': '0123456789ABCDEF0123456789ABCDEF',
+                    'EntityType': 'MigrationEntityBase',
+                    'StoredId': 'fed695f2-2d20-432d-983a-4a81b678426e'
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            Assert.AreEqual("0123456789ABCDEF0123456789ABCDEF", target["_id"].AsString);
+            Assert.AreEqual("0123456789ABCDEF0123456789ABCDEF", target["StoredId"].AsString);
         }
 
         [TestMethod]
