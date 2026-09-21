@@ -1,5 +1,6 @@
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models.Migration;
+using LagoVista.Core.Models.UIMetaData;
 using Microsoft.Azure.Cosmos;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -20,11 +21,18 @@ namespace LagoVista.CloudStorage.Storage.Migration
 
         private readonly ICosmosClientProvider _cosmosClientProvider;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
+        private readonly DocumentMigrationTransformer _transformer;
 
         public DocumentMigrationService(ICosmosClientProvider cosmosClientProvider, IDocumentCollectionNameResolver collectionNameResolver)
+            : this(cosmosClientProvider, collectionNameResolver, MetaDataHelper.Instance)
+        {
+        }
+
+        public DocumentMigrationService(ICosmosClientProvider cosmosClientProvider, IDocumentCollectionNameResolver collectionNameResolver, IEntityTypeResolver entityTypeResolver)
         {
             _cosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
             _collectionNameResolver = collectionNameResolver ?? throw new ArgumentNullException(nameof(collectionNameResolver));
+            _transformer = new DocumentMigrationTransformer(entityTypeResolver ?? throw new ArgumentNullException(nameof(entityTypeResolver)));
         }
 
         public async Task<CosmosToMongoMigrationResult> MigrateCosmosToMongoAsync(CosmosToMongoMigrationRequest request, CancellationToken cancellationToken = default)
@@ -63,11 +71,12 @@ namespace LagoVista.CloudStorage.Storage.Migration
                         continue;
                     }
 
-                    if (!DocumentMigrationTransformer.TryTransform(sourceDocument, out var targetDocument))
+                    if (!_transformer.TryTransform(sourceDocument, out var targetDocument, out var transformError))
                     {
                         result.DocumentsSkipped++;
                         result.DocumentsFailed++;
                         route.Failed++;
+                        Console.Error.WriteLine($"Migration transform failed: EntityType={DisplayEntityType(entityType)}; Id={GetString(sourceDocument, "id") ?? "<missing>"}; Error={transformError}");
                         continue;
                     }
 
@@ -186,6 +195,8 @@ namespace LagoVista.CloudStorage.Storage.Migration
             result.Routes.Add(route);
             return route;
         }
+
+        private static string DisplayEntityType(string entityType) => String.IsNullOrWhiteSpace(entityType) ? "<missing>" : entityType;
 
         private static string GetString(JObject document, string propertyName)
         {
