@@ -1,11 +1,15 @@
 using LagoVista;
 using LagoVista.Core.Interfaces;
+using LagoVista.Core;
 using LagoVista.Core.Models.UIMetaData;
 using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
+using System.Collections.Generic;
+using System.Globalization;
 using System;
 using System.Linq;
 
@@ -14,6 +18,15 @@ namespace LagoVista.CloudStorage.Storage.Migration
     public sealed class DocumentMigrationTransformer
     {
         private static readonly string[] _cosmosSystemFields = { "_rid", "_self", "_etag", "_attachments", "_ts" };
+        private static readonly string[] _legacyUtcFormats =
+        {
+            "M/d/yyyy H:mm:ss",
+            "M/d/yyyy H:mm:ss.FFFFFFF",
+            "M/d/yyyy h:mm:ss tt",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF"
+        };
+        private static readonly DefaultContractResolver _contractResolver = new DefaultContractResolver();
         private readonly IEntityTypeResolver _entityTypeResolver;
 
         public DocumentMigrationTransformer(IEntityTypeResolver entityTypeResolver)
@@ -61,6 +74,12 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // are not blindly copied into Mongo.
                 var copy = (JObject)source.DeepClone();
                 foreach (var field in _cosmosSystemFields) RemoveProperty(copy, field);
+
+                // Historical Cosmos documents can contain UTC values emitted by older serializers
+                // as invariant date/time strings without the required trailing Z. Normalize only
+                // JSON values whose current CLR contract is UtcTimestamp so unrelated strings are
+                // never rewritten by migration.
+                NormalizeLegacyUtcTimestamps(copy, modelType);
 
                 var model = Newtonsoft.Json.JsonConvert.DeserializeObject(copy.ToString(Formatting.None), modelType);
                 if (model == null)
@@ -137,6 +156,59 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 error = $"Failed to transform EntityType '{entityType}', document '{id}': {ex.Message}";
                 target = null;
                 return false;
+            }
+        }
+
+        private static void NormalizeLegacyUtcTimestamps(JToken token, Type declaredType)
+        {
+            if (token == null || declaredType == null) return;
+
+            var targetType = Nullable.GetUnderlyingType(declaredType) ?? declaredType;
+            if (targetType == typeof(UtcTimestamp))
+            {
+                if (token is JValue value && value.Type == JTokenType.String)
+                {
+                    var text = value.Value?.ToString();
+                    if (!String.IsNullOrWhiteSpace(text) && !text.EndsWith("Z", StringComparison.Ordinal))
+                    {
+                        if (DateTime.TryParseExact(
+                            text,
+                            _legacyUtcFormats,
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                            out var parsed))
+                        {
+                            value.Value = DateTime.SpecifyKind(parsed, DateTimeKind.Utc)
+                                .ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
+                        }
+                    }
+                }
+
+                return;
+            }
+
+            var contract = _contractResolver.ResolveContract(targetType);
+            if (token is JObject document && contract is JsonObjectContract objectContract)
+            {
+                foreach (var property in objectContract.Properties)
+                {
+                    if (property.PropertyType == null) continue;
+
+                    var jsonProperty = document.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, property.PropertyName, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(item.Name, property.UnderlyingName, StringComparison.OrdinalIgnoreCase));
+                    if (jsonProperty == null) continue;
+
+                    NormalizeLegacyUtcTimestamps(jsonProperty.Value, property.PropertyType);
+                }
+
+                return;
+            }
+
+            if (token is JArray array && contract is JsonArrayContract arrayContract && arrayContract.CollectionItemType != null)
+            {
+                foreach (var item in array)
+                    NormalizeLegacyUtcTimestamps(item, arrayContract.CollectionItemType);
             }
         }
 
