@@ -77,14 +77,14 @@ namespace LagoVista.StorageProvider.Tests.Migration
         {
             public string Id { get; set; }
             public string EntityType { get; set; }
-            public MigrationShadowDerived Nested { get; set; }
+            public List<MigrationShadowDerived> Items { get; set; }
         }
 
         private sealed class MigrationJObjectEntity
         {
             public string Id { get; set; }
             public string EntityType { get; set; }
-            public JObject Payload { get; set; }
+            public List<KeyValuePair<string, object>> Mappings { get; set; }
         }
 
         [TestMethod]
@@ -132,11 +132,11 @@ namespace LagoVista.StorageProvider.Tests.Migration
                 @"{
                     'id': 'SHADOW1',
                     'EntityType': 'MigrationShadowEntity',
-                    'Nested': {
+                    'Items': [{
                         'Key': 42,
                         'BaseValue': 'base',
                         'DerivedValue': 'derived'
-                    }
+                    }]
                 }");
 
             var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
@@ -144,7 +144,7 @@ namespace LagoVista.StorageProvider.Tests.Migration
             var success = transformer.TryTransform(source, out var target, out var error);
 
             Assert.IsTrue(success, error);
-            var nested = target["Nested"].AsBsonDocument;
+            var nested = target["Items"].AsBsonArray[0].AsBsonDocument;
             Assert.AreEqual(42, nested["Key"].AsInt32);
             Assert.AreEqual("base", nested["BaseValue"].AsString);
             Assert.AreEqual("derived", nested["DerivedValue"].AsString);
@@ -157,11 +157,14 @@ namespace LagoVista.StorageProvider.Tests.Migration
                 @"{
                     'id': 'JSON1',
                     'EntityType': 'MigrationJObjectEntity',
-                    'Payload': {
-                        'source': 'sensor-a',
-                        'reading': 12.5,
-                        'nested': { 'active': true }
-                    }
+                    'Mappings': [{
+                        'Key': 'payload',
+                        'Value': {
+                            'source': 'sensor-a',
+                            'reading': 12.5,
+                            'nested': { 'active': true }
+                        }
+                    }]
                 }");
 
             var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
@@ -169,7 +172,8 @@ namespace LagoVista.StorageProvider.Tests.Migration
             var success = transformer.TryTransform(source, out var target, out var error);
 
             Assert.IsTrue(success, error);
-            var payload = target["Payload"].AsBsonDocument;
+            var mapping = target["Mappings"].AsBsonArray[0].AsBsonDocument;
+            var payload = mapping["v"].AsBsonDocument;
             Assert.AreEqual("sensor-a", payload["source"].AsString);
             Assert.AreEqual(12.5, payload["reading"].AsDouble, 0.001);
             Assert.IsTrue(payload["nested"].AsBsonDocument["active"].AsBoolean);
