@@ -67,7 +67,11 @@ namespace LagoVista.CloudStorage.Storage.Migration
                     return false;
                 }
 
-                // Serialize through the exact Mongo class-map/serializer contract used at runtime.
+                // Prepare the full CLR graph before Mongo resolves/freeze class maps so
+                // shadowed CLR members and JSON payload members use the runtime compatibility serializers.
+                MongoBsonSerialization.ConfigureForType(modelType);
+
+                // Serialize through the exact Mongo serializer contract used at runtime.
                 target = model.ToBsonDocument(modelType);
 
                 if (!target.TryGetValue("_id", out var bsonId) ||
