@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Storage.Migration;
+using LagoVista.Core;
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -43,6 +44,12 @@ namespace LagoVista.StorageProvider.Tests.Migration
                 if (String.Equals(entityType, nameof(MigrationEntityBase), StringComparison.OrdinalIgnoreCase))
                 {
                     modelType = typeof(MigrationEntityBase);
+                    return true;
+                }
+
+                if (String.Equals(entityType, nameof(MigrationTimestampEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationTimestampEntity);
                     return true;
                 }
 
@@ -96,6 +103,20 @@ namespace LagoVista.StorageProvider.Tests.Migration
 
         private sealed class MigrationEntityBase : EntityBase
         {
+        }
+
+        private sealed class MigrationTimestampEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public List<MigrationTimestampChild> Items { get; set; }
+        }
+
+        private sealed class MigrationTimestampChild
+        {
+            public UtcTimestamp CreationDate { get; set; }
+            public UtcTimestamp? LastUpdated { get; set; }
+            public string Note { get; set; }
         }
 
         [TestMethod]
@@ -207,6 +228,31 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.IsTrue(success, error);
             Assert.AreEqual("0123456789ABCDEF0123456789ABCDEF", target["_id"].AsString);
             Assert.AreEqual("0123456789ABCDEF0123456789ABCDEF", target["StoredId"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformNormalizesLegacyUtcTimestampStringsOnlyForUtcTimestampProperties()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'TIME1',
+                    'EntityType': 'MigrationTimestampEntity',
+                    'Items': [{
+                        'CreationDate': '05/08/2019 10:45:09',
+                        'LastUpdated': '03/30/2020 17:57:09',
+                        'Note': '03/30/2020 17:57:09'
+                    }]
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            var item = target["Items"].AsBsonArray[0].AsBsonDocument;
+            Assert.AreEqual("2019-05-08T10:45:09.000Z", item["CreationDate"].AsString);
+            Assert.AreEqual("2020-03-30T17:57:09.000Z", item["LastUpdated"].AsString);
+            Assert.AreEqual("03/30/2020 17:57:09", item["Note"].AsString);
         }
 
         [TestMethod]
