@@ -27,6 +27,18 @@ namespace LagoVista.StorageProvider.Tests.Migration
                     return true;
                 }
 
+                if (String.Equals(entityType, nameof(MigrationShadowEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationShadowEntity);
+                    return true;
+                }
+
+                if (String.Equals(entityType, nameof(MigrationJObjectEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationJObjectEntity);
+                    return true;
+                }
+
                 modelType = null;
                 return false;
             }
@@ -47,6 +59,32 @@ namespace LagoVista.StorageProvider.Tests.Migration
             public int Value { get; set; }
             public string Text { get; set; }
             public bool HasValue => Value != 0;
+        }
+
+        private class MigrationShadowBase
+        {
+            public string Key { get; set; }
+            public string BaseValue { get; set; }
+        }
+
+        private sealed class MigrationShadowDerived : MigrationShadowBase
+        {
+            public new int Key { get; set; }
+            public string DerivedValue { get; set; }
+        }
+
+        private sealed class MigrationShadowEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public MigrationShadowDerived Nested { get; set; }
+        }
+
+        private sealed class MigrationJObjectEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public JObject Payload { get; set; }
         }
 
         [TestMethod]
@@ -84,6 +122,57 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.AreEqual(2, status["Value"].AsInt32);
             Assert.AreEqual("Ready", status["Text"].AsString);
             Assert.IsFalse(status.Contains("HasValue"));
+        }
+
+
+        [TestMethod]
+        public void TransformUsesMostDerivedShadowedMemberWithoutChangingClrModel()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'SHADOW1',
+                    'EntityType': 'MigrationShadowEntity',
+                    'Nested': {
+                        'Key': 42,
+                        'BaseValue': 'base',
+                        'DerivedValue': 'derived'
+                    }
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            var nested = target["Nested"].AsBsonDocument;
+            Assert.AreEqual(42, nested["Key"].AsInt32);
+            Assert.AreEqual("base", nested["BaseValue"].AsString);
+            Assert.AreEqual("derived", nested["DerivedValue"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformRoundTripsJObjectPayload()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'JSON1',
+                    'EntityType': 'MigrationJObjectEntity',
+                    'Payload': {
+                        'source': 'sensor-a',
+                        'reading': 12.5,
+                        'nested': { 'active': true }
+                    }
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            var payload = target["Payload"].AsBsonDocument;
+            Assert.AreEqual("sensor-a", payload["source"].AsString);
+            Assert.AreEqual(12.5, payload["reading"].AsDouble, 0.001);
+            Assert.IsTrue(payload["nested"].AsBsonDocument["active"].AsBoolean);
         }
 
         [TestMethod]
