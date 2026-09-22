@@ -53,6 +53,18 @@ namespace LagoVista.StorageProvider.Tests.Migration
                     return true;
                 }
 
+                if (String.Equals(entityType, nameof(MigrationLegacyGuidEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationLegacyGuidEntity);
+                    return true;
+                }
+
+                if (String.Equals(entityType, nameof(MigrationStateSetEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationStateSetEntity);
+                    return true;
+                }
+
                 modelType = null;
                 return false;
             }
@@ -117,6 +129,24 @@ namespace LagoVista.StorageProvider.Tests.Migration
             public UtcTimestamp CreationDate { get; set; }
             public UtcTimestamp? LastUpdated { get; set; }
             public string Note { get; set; }
+        }
+
+        [AllowLegacyGuidDocumentId]
+        private sealed class MigrationLegacyGuidEntity : EntityBase
+        {
+        }
+
+        private sealed class MigrationStateSetEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public EntityHeader<StateSet> StateSet { get; set; }
+        }
+
+        private sealed class StateSet
+        {
+            public LagoVistaKey Key { get; set; }
+            public string Name { get; set; }
         }
 
         [TestMethod]
@@ -253,6 +283,51 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.AreEqual("2019-05-08T10:45:09.000Z", item["CreationDate"].AsString);
             Assert.AreEqual("2020-03-30T17:57:09.000Z", item["LastUpdated"].AsString);
             Assert.AreEqual("03/30/2020 17:57:09", item["Note"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformAllowsLegacyGuidDocumentIdForOptedInEntity()
+        {
+            const string legacyId = "1647f003-5ee9-4dc8-be05-13c0c77bb4cc";
+            var source = JObject.Parse(
+                $@"{{
+                    'id': '{legacyId}',
+                    'EntityType': 'MigrationLegacyGuidEntity'
+                }}");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            Assert.AreEqual(new GuidString36(legacyId).ToNormalizedId32().Value, target["_id"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformFillsMissingEmbeddedStateSetKeyFromEntityHeaderId()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'STATESET1',
+                    'EntityType': 'MigrationStateSetEntity',
+                    'StateSet': {
+                        'HasValue': true,
+                        'Value': {
+                            'Key': null,
+                            'Name': null
+                        },
+                        'Id': 'dronaffiliation',
+                        'Text': 'Drone Affiliation'
+                    }
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            var stateSet = target["StateSet"].AsBsonDocument["Value"].AsBsonDocument;
+            Assert.AreEqual("dronaffiliation", stateSet["Key"].AsString);
         }
 
         [TestMethod]
