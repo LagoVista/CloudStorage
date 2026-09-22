@@ -83,6 +83,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // never rewritten by migration.
                 NormalizeLegacyUtcTimestamps(copy, modelType);
                 NormalizeLegacyOrgNamespaces(copy, modelType);
+                NormalizeLegacyLagoVistaKeys(copy, modelType, id, "$");
                 NormalizeMissingNestedNormalizedIds(copy, modelType, id, "$", true);
                 NormalizeEmbeddedStateSetKeys(copy, modelType);
 
@@ -92,6 +93,8 @@ namespace LagoVista.CloudStorage.Storage.Migration
                     error = $"Newtonsoft deserialization returned null for EntityType '{entityType}', document '{id}'.";
                     return false;
                 }
+
+                NormalizeObjectPayloads(model, modelType, new HashSet<object>(ReferenceEqualityComparer.Instance));
 
                 // Cosmos' document id is authoritative. Some legacy records also contain a
                 // stale StoredId value (including GuidString36 values) that can overwrite the
@@ -309,6 +312,199 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 normalized = normalized.Substring(0, 64);
 
             return normalized;
+        }
+
+        private static void NormalizeLegacyLagoVistaKeys(JToken token, Type declaredType, string documentId, string path)
+        {
+            if (token == null || declaredType == null) return;
+
+            var nullableType = Nullable.GetUnderlyingType(declaredType);
+            var targetType = nullableType ?? declaredType;
+
+            if (targetType == typeof(LagoVistaKey))
+            {
+                if (nullableType != null && (token.Type == JTokenType.Null ||
+                    (token.Type == JTokenType.String && String.IsNullOrWhiteSpace(token.ToString()))))
+                    return;
+
+                if (token is JValue value)
+                {
+                    var source = value.Type == JTokenType.Null ? null : value.Value?.ToString();
+                    if (!TryParseLagoVistaKey(source, out _))
+                    {
+                        value.Value = CreateDeterministicLegacyKey(source, documentId, path);
+                    }
+                }
+
+                return;
+            }
+
+            var contract = _contractResolver.ResolveContract(targetType);
+            if (token is JObject document && contract is JsonObjectContract objectContract)
+            {
+                foreach (var property in objectContract.Properties)
+                {
+                    if (property.PropertyType == null || property.Ignored) continue;
+
+                    var jsonProperty = document.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, property.PropertyName, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(item.Name, property.UnderlyingName, StringComparison.OrdinalIgnoreCase));
+                    if (jsonProperty == null) continue;
+
+                    NormalizeLegacyLagoVistaKeys(
+                        jsonProperty.Value,
+                        property.PropertyType,
+                        documentId,
+                        path + "." + (property.UnderlyingName ?? property.PropertyName));
+                }
+
+                return;
+            }
+
+            if (token is JArray array && contract is JsonArrayContract arrayContract && arrayContract.CollectionItemType != null)
+            {
+                for (var index = 0; index < array.Count; index++)
+                    NormalizeLegacyLagoVistaKeys(array[index], arrayContract.CollectionItemType, documentId, path + "[" + index + "]");
+            }
+        }
+
+        private static bool TryParseLagoVistaKey(string value, out LagoVistaKey key)
+        {
+            try
+            {
+                key = new LagoVistaKey(value);
+                return true;
+            }
+            catch
+            {
+                key = default(LagoVistaKey);
+                return false;
+            }
+        }
+
+        private static string CreateDeterministicLegacyKey(string value, string documentId, string path)
+        {
+            var raw = (value ?? String.Empty).Trim().ToLowerInvariant();
+            var builder = new StringBuilder();
+            var lastWasDash = false;
+
+            foreach (var ch in raw.Normalize(NormalizationForm.FormD))
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark)
+                    continue;
+
+                if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9'))
+                {
+                    builder.Append(ch);
+                    lastWasDash = false;
+                }
+                else if (!lastWasDash && builder.Length > 0)
+                {
+                    builder.Append('-');
+                    lastWasDash = true;
+                }
+            }
+
+            var candidate = builder.ToString().Trim('-');
+            if (String.IsNullOrWhiteSpace(candidate))
+                candidate = "key";
+
+            if (candidate[0] < 'a' || candidate[0] > 'z')
+                candidate = "k-" + candidate;
+
+            while (candidate.Length < 3)
+                candidate += "k";
+
+            using (var sha = SHA256.Create())
+            {
+                var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes((documentId ?? String.Empty) + "|" + (path ?? String.Empty) + "|" + raw));
+                var suffix = BitConverter.ToString(hashBytes, 0, 4).Replace("-", String.Empty).ToLowerInvariant();
+
+                // If the source was invalid, include a short deterministic suffix so normalization
+                // cannot silently collapse distinct historical keys to the same value.
+                var maxBaseLength = 128 - suffix.Length - 1;
+                if (candidate.Length > maxBaseLength)
+                    candidate = candidate.Substring(0, maxBaseLength).TrimEnd('-');
+
+                candidate = candidate + "-" + suffix;
+            }
+
+            return candidate;
+        }
+
+        private static void NormalizeObjectPayloads(object instance, Type declaredType, HashSet<object> visited)
+        {
+            if (instance == null || declaredType == null) return;
+            if (instance is string || declaredType.IsValueType) return;
+            if (!visited.Add(instance)) return;
+
+            if (instance is IDictionary<string, object> objectDictionary)
+            {
+                foreach (var key in objectDictionary.Keys.ToList())
+                    objectDictionary[key] = ConvertJTokenPayload(objectDictionary[key]);
+
+                return;
+            }
+
+            if (instance is IEnumerable enumerable && !(instance is string))
+            {
+                foreach (var item in enumerable)
+                {
+                    if (item != null)
+                        NormalizeObjectPayloads(item, item.GetType(), visited);
+                }
+
+                return;
+            }
+
+            foreach (var property in declaredType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            {
+                if (property.GetIndexParameters().Length != 0 || property.GetMethod == null) continue;
+
+                var value = property.GetValue(instance);
+                if (value == null) continue;
+
+                if (value is IDictionary<string, object> dictionary)
+                {
+                    foreach (var key in dictionary.Keys.ToList())
+                        dictionary[key] = ConvertJTokenPayload(dictionary[key]);
+                }
+                else
+                {
+                    NormalizeObjectPayloads(value, property.PropertyType, visited);
+                }
+            }
+        }
+
+        private static object ConvertJTokenPayload(object value)
+        {
+            if (!(value is JToken token)) return value;
+
+            switch (token.Type)
+            {
+                case JTokenType.Object:
+                    return ((JObject)token).Properties()
+                        .ToDictionary(property => property.Name, property => ConvertJTokenPayload(property.Value), StringComparer.Ordinal);
+
+                case JTokenType.Array:
+                    return ((JArray)token).Select(item => ConvertJTokenPayload(item)).ToList();
+
+                case JTokenType.Null:
+                case JTokenType.Undefined:
+                    return null;
+
+                default:
+                    return token is JValue scalar ? scalar.Value : token.ToString(Formatting.None);
+            }
+        }
+
+        private sealed class ReferenceEqualityComparer : IEqualityComparer<object>
+        {
+            public static readonly ReferenceEqualityComparer Instance = new ReferenceEqualityComparer();
+
+            public new bool Equals(object x, object y) => Object.ReferenceEquals(x, y);
+
+            public int GetHashCode(object obj) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
         }
 
         private static void NormalizeMissingNestedNormalizedIds(JToken token, Type declaredType, string documentId, string path, bool isRoot)
