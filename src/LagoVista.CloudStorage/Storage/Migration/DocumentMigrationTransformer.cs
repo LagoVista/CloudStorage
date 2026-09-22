@@ -80,6 +80,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // JSON values whose current CLR contract is UtcTimestamp so unrelated strings are
                 // never rewritten by migration.
                 NormalizeLegacyUtcTimestamps(copy, modelType);
+                NormalizeLegacyOrgNamespaces(copy, modelType);
                 NormalizeEmbeddedStateSetKeys(copy, modelType);
 
                 var model = Newtonsoft.Json.JsonConvert.DeserializeObject(copy.ToString(Formatting.None), modelType);
@@ -220,6 +221,62 @@ namespace LagoVista.CloudStorage.Storage.Migration
             {
                 foreach (var item in array)
                     NormalizeLegacyUtcTimestamps(item, arrayContract.CollectionItemType);
+            }
+        }
+
+        private static void NormalizeLegacyOrgNamespaces(JToken token, Type declaredType)
+        {
+            if (token == null || declaredType == null) return;
+
+            var targetType = Nullable.GetUnderlyingType(declaredType) ?? declaredType;
+            if (targetType == typeof(OrgNamespace))
+            {
+                if (token is JValue value && value.Type == JTokenType.String)
+                {
+                    var text = value.Value?.ToString();
+                    if (!String.IsNullOrWhiteSpace(text) &&
+                        !OrgNamespace.IsValid(text) &&
+                        text.Length < 6 &&
+                        text.All(ch => (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) &&
+                        text[0] >= 'a' && text[0] <= 'z')
+                    {
+                        var normalized = text;
+                        while (normalized.Length < 6)
+                            normalized += "nsp";
+
+                        if (normalized.Length > 64)
+                            normalized = normalized.Substring(0, 64);
+
+                        if (OrgNamespace.IsValid(normalized))
+                            value.Value = normalized;
+                    }
+                }
+
+                return;
+            }
+
+            var contract = _contractResolver.ResolveContract(targetType);
+            if (token is JObject document && contract is JsonObjectContract objectContract)
+            {
+                foreach (var property in objectContract.Properties)
+                {
+                    if (property.PropertyType == null) continue;
+
+                    var jsonProperty = document.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, property.PropertyName, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(item.Name, property.UnderlyingName, StringComparison.OrdinalIgnoreCase));
+                    if (jsonProperty == null) continue;
+
+                    NormalizeLegacyOrgNamespaces(jsonProperty.Value, property.PropertyType);
+                }
+
+                return;
+            }
+
+            if (token is JArray array && contract is JsonArrayContract arrayContract && arrayContract.CollectionItemType != null)
+            {
+                foreach (var item in array)
+                    NormalizeLegacyOrgNamespaces(item, arrayContract.CollectionItemType);
             }
         }
 
