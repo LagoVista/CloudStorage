@@ -83,6 +83,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // never rewritten by migration.
                 NormalizeLegacyUtcTimestamps(copy, modelType);
                 NormalizeLegacyOrgNamespaces(copy, modelType);
+                NormalizeMissingNestedNormalizedIds(copy, modelType, id, "$", true);
                 NormalizeEmbeddedStateSetKeys(copy, modelType);
 
                 var model = Newtonsoft.Json.JsonConvert.DeserializeObject(copy.ToString(Formatting.None), modelType);
@@ -308,6 +309,68 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 normalized = normalized.Substring(0, 64);
 
             return normalized;
+        }
+
+        private static void NormalizeMissingNestedNormalizedIds(JToken token, Type declaredType, string documentId, string path, bool isRoot)
+        {
+            if (token == null || declaredType == null) return;
+
+            var nullableType = Nullable.GetUnderlyingType(declaredType);
+            var targetType = nullableType ?? declaredType;
+
+            if (targetType == typeof(NormalizedId32))
+            {
+                // Nullable identifiers are allowed to remain null/empty. For non-nullable
+                // nested identifiers, historical Cosmos documents occasionally persisted
+                // explicit null/empty values even though current constructors always create
+                // an id. Repair those deterministically from the document id + CLR path.
+                if (nullableType == null && !isRoot && token is JValue value &&
+                    (value.Type == JTokenType.Null ||
+                     (value.Type == JTokenType.String && String.IsNullOrWhiteSpace(value.Value?.ToString()))))
+                {
+                    value.Value = CreateDeterministicNormalizedId(documentId, path);
+                }
+
+                return;
+            }
+
+            var contract = _contractResolver.ResolveContract(targetType);
+            if (token is JObject document && contract is JsonObjectContract objectContract)
+            {
+                foreach (var property in objectContract.Properties)
+                {
+                    if (property.PropertyType == null || property.Ignored) continue;
+
+                    var jsonProperty = document.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, property.PropertyName, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(item.Name, property.UnderlyingName, StringComparison.OrdinalIgnoreCase));
+                    if (jsonProperty == null) continue;
+
+                    var childPath = path + "." + (property.UnderlyingName ?? property.PropertyName);
+                    NormalizeMissingNestedNormalizedIds(jsonProperty.Value, property.PropertyType, documentId, childPath, false);
+                }
+
+                return;
+            }
+
+            if (token is JArray array && contract is JsonArrayContract arrayContract && arrayContract.CollectionItemType != null)
+            {
+                for (var index = 0; index < array.Count; index++)
+                    NormalizeMissingNestedNormalizedIds(array[index], arrayContract.CollectionItemType, documentId, path + "[" + index + "]", false);
+            }
+        }
+
+        private static string CreateDeterministicNormalizedId(string documentId, string path)
+        {
+            using (var sha = SHA256.Create())
+            {
+                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes((documentId ?? String.Empty) + "|" + (path ?? String.Empty)));
+                var builder = new StringBuilder(32);
+                for (var i = 0; i < 16; i++)
+                    builder.Append(bytes[i].ToString("X2", CultureInfo.InvariantCulture));
+
+                return builder.ToString();
+            }
         }
 
         private static void NormalizeEmbeddedStateSetKeys(JToken token, Type declaredType)
