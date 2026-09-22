@@ -59,6 +59,18 @@ namespace LagoVista.StorageProvider.Tests.Migration
                     return true;
                 }
 
+                if (String.Equals(entityType, nameof(MigrationLegacyKeyEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationLegacyKeyEntity);
+                    return true;
+                }
+
+                if (String.Equals(entityType, nameof(MigrationPropertyBagEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationPropertyBagEntity);
+                    return true;
+                }
+
                 if (String.Equals(entityType, nameof(MigrationShadowedEntity), StringComparison.OrdinalIgnoreCase))
                 {
                     modelType = typeof(MigrationShadowedEntity);
@@ -138,6 +150,26 @@ namespace LagoVista.StorageProvider.Tests.Migration
         private sealed class MigrationShadowedEntity : EntityBase
         {
             public new List<EntityHeader> Labels { get; set; } = new List<EntityHeader>();
+        }
+
+        private sealed class MigrationLegacyKeyEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public LagoVistaKey Key { get; set; }
+            public List<MigrationLegacyKeyChild> Items { get; set; }
+        }
+
+        private sealed class MigrationLegacyKeyChild
+        {
+            public LagoVistaKey Key { get; set; }
+        }
+
+        private sealed class MigrationPropertyBagEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public Dictionary<string, object> PropertyBag { get; set; }
         }
 
         private sealed class MigrationNestedIdEntity
@@ -322,6 +354,80 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.IsTrue(success, error);
             Assert.AreEqual("AABBCCDDEEFF00112233445566778899", target["_id"].AsString);
             Assert.AreEqual("MigrationShadowedEntity", target["EntityType"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformRepairsInvalidLegacyKeysDeterministically()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'KEY1',
+                    'EntityType': 'MigrationLegacyKeyEntity',
+                    'Key': '-1000',
+                    'Items': [
+                        { 'Key': 'g***cmp' },
+                        { 'Key': null }
+                    ]
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var firstSuccess = transformer.TryTransform(source, out var first, out var firstError);
+            var secondSuccess = transformer.TryTransform(source, out var second, out var secondError);
+
+            Assert.IsTrue(firstSuccess, firstError);
+            Assert.IsTrue(secondSuccess, secondError);
+
+            Assert.AreEqual(first["Key"].AsString, second["Key"].AsString);
+            Assert.AreEqual(first["Items"].AsBsonArray[0].AsBsonDocument["Key"].AsString,
+                second["Items"].AsBsonArray[0].AsBsonDocument["Key"].AsString);
+            Assert.AreEqual(first["Items"].AsBsonArray[1].AsBsonDocument["Key"].AsString,
+                second["Items"].AsBsonArray[1].AsBsonDocument["Key"].AsString);
+
+            Assert.IsTrue(TryValidKey(first["Key"].AsString));
+            Assert.IsTrue(TryValidKey(first["Items"].AsBsonArray[0].AsBsonDocument["Key"].AsString));
+            Assert.IsTrue(TryValidKey(first["Items"].AsBsonArray[1].AsBsonDocument["Key"].AsString));
+        }
+
+        [TestMethod]
+        public void TransformConvertsJTokenPropertyBagValuesToNativeClrPayloads()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'BAG1',
+                    'EntityType': 'MigrationPropertyBagEntity',
+                    'PropertyBag': {
+                        'name': 'alpha',
+                        'count': 3,
+                        'nested': { 'enabled': true },
+                        'items': [1, 'two', { 'three': 3 }]
+                    }
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            var bag = target["PropertyBag"].AsBsonDocument;
+            Assert.AreEqual("alpha", bag["name"].AsString);
+            Assert.AreEqual(3L, bag["count"].ToInt64());
+            Assert.IsTrue(bag["nested"].AsBsonDocument["enabled"].AsBoolean);
+            Assert.AreEqual("two", bag["items"].AsBsonArray[1].AsString);
+            Assert.AreEqual(3L, bag["items"].AsBsonArray[2].AsBsonDocument["three"].ToInt64());
+        }
+
+        private static bool TryValidKey(string value)
+        {
+            try
+            {
+                var key = new LagoVistaKey(value);
+                return !String.IsNullOrWhiteSpace(key.Value);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         [TestMethod]
