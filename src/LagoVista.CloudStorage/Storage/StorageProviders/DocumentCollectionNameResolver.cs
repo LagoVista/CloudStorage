@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,19 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
         {
             if (String.IsNullOrWhiteSpace(databaseName)) throw new ArgumentNullException(nameof(databaseName));
             if (!String.IsNullOrWhiteSpace(explicitCollectionName)) return Normalize(explicitCollectionName);
+
+            if (entityType != null)
+            {
+                var collectionName = entityType
+                    .GetCustomAttributes(typeof(CollectionNameAttribute), true)
+                    .OfType<CollectionNameAttribute>()
+                    .FirstOrDefault()
+                    ?.CollectionName;
+
+                if (!String.IsNullOrWhiteSpace(collectionName))
+                    return Normalize(collectionName);
+            }
+
             return EntitiesCollectionName;
         }
 
@@ -24,8 +38,13 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
 
             if (String.IsNullOrWhiteSpace(entityTypeName)) return false;
 
-            return GetLoadedEntityTypes()
-                .Any(type => String.Equals(type.Name, entityTypeName, StringComparison.OrdinalIgnoreCase));
+            var entityType = GetLoadedEntityTypes()
+                .FirstOrDefault(type => String.Equals(type.Name, entityTypeName, StringComparison.OrdinalIgnoreCase));
+
+            if (entityType == null) return false;
+
+            collectionName = Resolve(databaseName, entityType);
+            return true;
         }
 
         public string GetFallback(string databaseName)
