@@ -64,7 +64,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                     var route = GetRoute(result, entityType, targetCollectionName);
                     route.Read++;
 
-                    if (excludedEntityTypes.Contains(entityType))
+                    if (String.IsNullOrWhiteSpace(entityType) || excludedEntityTypes.Contains(entityType))
                     {
                         result.DocumentsExcluded++;
                         route.Excluded++;
