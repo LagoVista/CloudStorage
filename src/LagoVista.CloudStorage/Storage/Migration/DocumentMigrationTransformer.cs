@@ -80,6 +80,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // JSON values whose current CLR contract is UtcTimestamp so unrelated strings are
                 // never rewritten by migration.
                 NormalizeLegacyUtcTimestamps(copy, modelType);
+                NormalizeEmbeddedStateSetKeys(copy, modelType);
 
                 var model = Newtonsoft.Json.JsonConvert.DeserializeObject(copy.ToString(Formatting.None), modelType);
                 if (model == null)
@@ -92,15 +93,25 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // stale StoredId value (including GuidString36 values) that can overwrite the
                 // JsonProperty("id") value during Newtonsoft materialization. Re-assert the
                 // canonical document id before BSON serialization.
+                var expectedSerializedId = id;
                 if (model is IIDEntity idEntity)
                 {
-                    if (!NormalizedId32.TryCreate(id, out var normalizedId))
+                    if (NormalizedId32.TryCreate(id, out var normalizedId))
+                    {
+                        idEntity.Id = normalizedId;
+                    }
+                    else if (AllowsLegacyGuidDocumentId(modelType) && GuidString36.IsStrictLowerD(id))
+                    {
+                        // ProductEntity is a deliberate legacy exception. Its Cosmos id remains
+                        // available through StoredId while EntityBase exposes the canonical
+                        // NormalizedId32 form through Id, which is what Mongo persists as _id.
+                        expectedSerializedId = new GuidString36(id).ToNormalizedId32().Value;
+                    }
+                    else
                     {
                         error = $"Document id '{id}' for EntityType '{entityType}' is not a valid NormalizedId32.";
                         return false;
                     }
-
-                    idEntity.Id = normalizedId;
                 }
 
                 // Prepare the full CLR graph before Mongo resolves/freeze class maps so
@@ -118,9 +129,9 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 }
 
                 var serializedId = bsonId.IsString ? bsonId.AsString : bsonId.ToString();
-                if (!String.Equals(serializedId, id, StringComparison.OrdinalIgnoreCase))
+                if (!String.Equals(serializedId, expectedSerializedId, StringComparison.OrdinalIgnoreCase))
                 {
-                    error = $"Mongo serialization changed id for EntityType '{entityType}', document '{id}'. Serialized _id was '{serializedId}'.";
+                    error = $"Mongo serialization changed id for EntityType '{entityType}', document '{id}'. Expected _id '{expectedSerializedId}', serialized _id was '{serializedId}'.";
                     target = null;
                     return false;
                 }
@@ -211,6 +222,60 @@ namespace LagoVista.CloudStorage.Storage.Migration
                     NormalizeLegacyUtcTimestamps(item, arrayContract.CollectionItemType);
             }
         }
+
+        private static void NormalizeEmbeddedStateSetKeys(JToken token, Type declaredType)
+        {
+            if (token == null || declaredType == null) return;
+
+            var targetType = Nullable.GetUnderlyingType(declaredType) ?? declaredType;
+            if (targetType.IsGenericType &&
+                targetType.GetGenericTypeDefinition() == typeof(LagoVista.Core.Models.EntityHeader<>) &&
+                targetType.GetGenericArguments()[0].Name == "StateSet" &&
+                token is JObject header)
+            {
+                var headerId = GetString(header, "Id");
+                var valueProperty = header.Properties().FirstOrDefault(item =>
+                    String.Equals(item.Name, "Value", StringComparison.OrdinalIgnoreCase));
+
+                if (!String.IsNullOrWhiteSpace(headerId) && valueProperty?.Value is JObject value)
+                {
+                    var keyProperty = value.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, "Key", StringComparison.OrdinalIgnoreCase));
+
+                    if (keyProperty == null)
+                        value.Add("Key", headerId);
+                    else if (keyProperty.Value.Type == JTokenType.Null || String.IsNullOrWhiteSpace(keyProperty.Value.ToString()))
+                        keyProperty.Value = headerId;
+                }
+            }
+
+            var contract = _contractResolver.ResolveContract(targetType);
+            if (token is JObject document && contract is JsonObjectContract objectContract)
+            {
+                foreach (var property in objectContract.Properties)
+                {
+                    if (property.PropertyType == null) continue;
+
+                    var jsonProperty = document.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, property.PropertyName, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(item.Name, property.UnderlyingName, StringComparison.OrdinalIgnoreCase));
+                    if (jsonProperty == null) continue;
+
+                    NormalizeEmbeddedStateSetKeys(jsonProperty.Value, property.PropertyType);
+                }
+
+                return;
+            }
+
+            if (token is JArray array && contract is JsonArrayContract arrayContract && arrayContract.CollectionItemType != null)
+            {
+                foreach (var item in array)
+                    NormalizeEmbeddedStateSetKeys(item, arrayContract.CollectionItemType);
+            }
+        }
+
+        private static bool AllowsLegacyGuidDocumentId(Type modelType) =>
+            Attribute.IsDefined(modelType, typeof(AllowLegacyGuidDocumentIdAttribute), inherit: true);
 
         private static string GetString(JObject document, string propertyName)
         {
