@@ -45,6 +45,47 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
             _accessKey = accessKey;
         }
 
+        public async Task<InvokeResult<Uri>> CreateWriteUrlAsync(string containerName, string fileName, string contentType, TimeSpan validFor)
+        {
+            if (String.IsNullOrWhiteSpace(containerName)) throw new ArgumentNullException(nameof(containerName));
+            if (String.IsNullOrWhiteSpace(fileName)) throw new ArgumentNullException(nameof(fileName));
+            if (String.IsNullOrWhiteSpace(_accountId) || String.IsNullOrWhiteSpace(_accessKey))
+                return InvokeResult<Uri>.FromError("Azure storage connection settings are required to create a temporary write URL.");
+            if (validFor <= TimeSpan.Zero)
+                return InvokeResult<Uri>.FromError("Signed write URL lifetime must be greater than zero.");
+
+            fileName = fileName.TrimStart('/');
+
+            try
+            {
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_accountId};AccountKey={_accessKey}";
+                var serviceClient = new BlobServiceClient(connectionString);
+                var containerClient = serviceClient.GetBlobContainerClient(containerName);
+                await containerClient.CreateIfNotExistsAsync();
+                var blobClient = containerClient.GetBlobClient(fileName);
+
+                if (!blobClient.CanGenerateSasUri)
+                    return InvokeResult<Uri>.FromError($"Azure storage client cannot generate a signed write URL for '{fileName}'.");
+
+                var sasBuilder = new BlobSasBuilder
+                {
+                    BlobContainerName = containerName,
+                    BlobName = fileName,
+                    Resource = "b",
+                    StartsOn = DateTimeOffset.UtcNow.AddMinutes(-5),
+                    ExpiresOn = DateTimeOffset.UtcNow.Add(validFor),
+                    ContentType = contentType
+                };
+                sasBuilder.SetPermissions(BlobSasPermissions.Create | BlobSasPermissions.Write);
+
+                return InvokeResult<Uri>.Create(blobClient.GenerateSasUri(sasBuilder));
+            }
+            catch (Exception ex)
+            {
+                return InvokeResult<Uri>.FromException("[AzureBlobCloudFileStorageClient__CreateWriteUrlAsync]", ex);
+            }
+        }
+
         public async Task<InvokeResult<Uri>> CreateReadUrlAsync(string containerName, string fileName, TimeSpan validFor)
         {
             if (String.IsNullOrWhiteSpace(containerName)) throw new ArgumentNullException(nameof(containerName));
