@@ -12,6 +12,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace LagoVista.CloudStorage.Storage.Migration
 {
@@ -234,19 +236,9 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 if (token is JValue value && value.Type == JTokenType.String)
                 {
                     var text = value.Value?.ToString();
-                    if (!String.IsNullOrWhiteSpace(text) &&
-                        !OrgNamespace.IsValid(text) &&
-                        text.Length < 6 &&
-                        text.All(ch => (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) &&
-                        text[0] >= 'a' && text[0] <= 'z')
+                    if (!String.IsNullOrWhiteSpace(text) && !OrgNamespace.IsValid(text))
                     {
-                        var normalized = text;
-                        while (normalized.Length < 6)
-                            normalized += "nsp";
-
-                        if (normalized.Length > 64)
-                            normalized = normalized.Substring(0, 64);
-
+                        var normalized = NormalizeLegacyOrgNamespaceValue(text);
                         if (OrgNamespace.IsValid(normalized))
                             value.Value = normalized;
                     }
@@ -278,6 +270,44 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 foreach (var item in array)
                     NormalizeLegacyOrgNamespaces(item, arrayContract.CollectionItemType);
             }
+        }
+
+        private static string NormalizeLegacyOrgNamespaceValue(string value)
+        {
+            var trimmed = (value ?? String.Empty).Trim().ToLowerInvariant();
+            var decomposed = trimmed.Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder();
+
+            foreach (var ch in decomposed)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark)
+                    continue;
+
+                if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9'))
+                    builder.Append(ch);
+            }
+
+            var normalized = builder.ToString();
+            if (String.IsNullOrWhiteSpace(normalized))
+            {
+                using (var sha = SHA256.Create())
+                {
+                    var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(trimmed));
+                    normalized = "org" + BitConverter.ToString(hash, 0, 6).Replace("-", String.Empty).ToLowerInvariant();
+                }
+            }
+            else if (normalized[0] < 'a' || normalized[0] > 'z')
+            {
+                normalized = "org" + normalized;
+            }
+
+            while (normalized.Length < 6)
+                normalized += "nsp";
+
+            if (normalized.Length > 64)
+                normalized = normalized.Substring(0, 64);
+
+            return normalized;
         }
 
         private static void NormalizeEmbeddedStateSetKeys(JToken token, Type declaredType)
