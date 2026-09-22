@@ -422,6 +422,50 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.AreEqual("ker", target["Note"].AsString);
         }
 
+        [DataTestMethod]
+        [DataRow("1steven", "org1steven")]
+        [DataRow("2wtech", "org2wtech")]
+        [DataRow("plant_monitor", "plantmonitor")]
+        [DataRow("ADMATECH ", "admatech")]
+        [DataRow("Heer parmar", "heerparmar")]
+        [DataRow("nguyễnthịngọc", "nguyenthngoc")]
+        public void TransformNormalizesCommonLegacyOrgNamespaceShapes(string sourceNamespace, string expectedNamespace)
+        {
+            var source = JObject.Parse(
+                $@"{{
+                    'id': 'ORGNS2',
+                    'EntityType': 'MigrationOrgNamespaceEntity',
+                    'Namespace': '{sourceNamespace}'
+                }}");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            Assert.AreEqual(expectedNamespace, target["Namespace"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformUsesStableFallbackForLegacyOrgNamespaceWithoutAsciiCharacters()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'ORGNS3',
+                    'EntityType': 'MigrationOrgNamespaceEntity',
+                    'Namespace': 'глухов'
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            var normalized = target["Namespace"].AsString;
+            Assert.IsTrue(OrgNamespace.IsValid(normalized));
+            StringAssert.StartsWith(normalized, "org");
+        }
+
         [TestMethod]
         public void TransformFailsClosedWhenEntityTypeCannotBeResolved()
         {
