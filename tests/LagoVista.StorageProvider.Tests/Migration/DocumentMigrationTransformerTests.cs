@@ -300,7 +300,7 @@ namespace LagoVista.StorageProvider.Tests.Migration
             var success = transformer.TryTransform(source, out var target, out var error);
 
             Assert.IsTrue(success, error);
-            Assert.AreEqual(new GuidString36(legacyId).ToNormalizedId32().Value, target["_id"].AsString);
+            Assert.AreEqual(legacyId, target["_id"].AsString);
         }
 
         [TestMethod]
@@ -328,6 +328,34 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.IsTrue(success, error);
             var stateSet = target["StateSet"].AsBsonDocument["Value"].AsBsonDocument;
             Assert.AreEqual("dronaffiliation", stateSet["Key"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformFillsMissingEmbeddedStateSetKeyFromValueIdWhenHeaderIdentityIsMissing()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'STATESET2',
+                    'EntityType': 'MigrationStateSetEntity',
+                    'StateSet': {
+                        'HasValue': false,
+                        'Value': {
+                            'Key': null,
+                            'id': '6AA35E8626D7401DAB12E3180DEE7C93',
+                            'Name': null
+                        },
+                        'Id': null,
+                        'Text': null
+                    }
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            var stateSet = target["StateSet"].AsBsonDocument["Value"].AsBsonDocument;
+            Assert.AreEqual("stateset-6aa35e8626d7401dab12e3180dee7c93", stateSet["Key"].AsString);
         }
 
         [TestMethod]
