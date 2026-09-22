@@ -59,6 +59,12 @@ namespace LagoVista.StorageProvider.Tests.Migration
                     return true;
                 }
 
+                if (String.Equals(entityType, nameof(MigrationLegacyEntityBase), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationLegacyEntityBase);
+                    return true;
+                }
+
                 if (String.Equals(entityType, nameof(MigrationNestedIdEntity), StringComparison.OrdinalIgnoreCase))
                 {
                     modelType = typeof(MigrationNestedIdEntity);
@@ -210,6 +216,11 @@ namespace LagoVista.StorageProvider.Tests.Migration
             public NormalizedId32 Id { get; set; }
             public NormalizedId32? OptionalId { get; set; }
             public string Name { get; set; }
+        }
+
+        private sealed class MigrationLegacyEntityBase : EntityBase
+        {
+            public MigrationLegacyEntityBase Child { get; set; }
         }
 
         private sealed class MigrationThrowingSetterEntity
@@ -527,6 +538,51 @@ namespace LagoVista.StorageProvider.Tests.Migration
 
             Assert.IsTrue(firstItems[0].AsBsonDocument["OptionalId"].IsBsonNull);
             Assert.IsTrue(firstItems[1].AsBsonDocument["OptionalId"].IsBsonNull);
+        }
+
+        [DataTestMethod]
+        [DataRow("a1cc0c68-262e-4e9f-ac7a-84710384eeed", "A1CC0C68262E4E9FAC7A84710384EEED")]
+        [DataRow("60d6133d913a46199cea14f0d395dc63", "60D6133D913A46199CEA14F0D395DC63")]
+        public void TransformNormalizesLegacyEntityBaseDocumentIds(string sourceId, string expectedId)
+        {
+            var source = JObject.Parse(
+                $@"{{
+                    'id': '{sourceId}',
+                    'EntityType': 'MigrationLegacyEntityBase',
+                    'Key': 'legacyentity'
+                }}");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            Assert.AreEqual(expectedId, target["_id"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformNormalizesNestedLegacyEntityBaseDocumentIds()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+                    'EntityType': 'MigrationLegacyEntityBase',
+                    'Key': 'parententity',
+                    'Child': {
+                        'id': 'c94a7362-c7fb-47d0-89a6-88a09d68c7a9',
+                        'EntityType': 'MigrationLegacyEntityBase',
+                        'Key': 'childentity'
+                    }
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            Assert.AreEqual(
+                "C94A7362C7FB47D089A688A09D68C7A9",
+                target["Child"].AsBsonDocument["_id"].AsString);
         }
 
         [TestMethod]
