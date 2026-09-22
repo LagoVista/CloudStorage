@@ -174,10 +174,34 @@ namespace LagoVista.CloudStorage.Storage.Migration
             }
             catch (Exception ex)
             {
-                error = $"Failed to transform EntityType '{entityType}', document '{id}': {ex.Message}";
+                error = $"Failed to transform EntityType '{entityType}', document '{id}': {DescribeException(ex)}";
                 target = null;
                 return false;
             }
+        }
+
+        private static string DescribeException(Exception ex)
+        {
+            if (ex == null) return "Unknown migration error.";
+
+            var parts = new List<string>();
+            var current = ex;
+            var depth = 0;
+
+            while (current != null && depth++ < 8)
+            {
+                var detail = current.Message;
+                if (current is JsonSerializationException jsonError && !String.IsNullOrWhiteSpace(jsonError.Path))
+                    detail += $" [Path: {jsonError.Path}]";
+
+                var part = $"{current.GetType().Name}: {detail}";
+                if (!parts.Contains(part, StringComparer.Ordinal))
+                    parts.Add(part);
+
+                current = current.InnerException;
+            }
+
+            return String.Join(" -> ", parts);
         }
 
         private static void NormalizeLegacyUtcTimestamps(JToken token, Type declaredType)
