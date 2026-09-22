@@ -102,10 +102,10 @@ namespace LagoVista.CloudStorage.Storage.Migration
                     }
                     else if (AllowsLegacyGuidDocumentId(modelType) && GuidString36.IsStrictLowerD(id))
                     {
-                        // ProductEntity is a deliberate legacy exception. Its Cosmos id remains
-                        // available through StoredId while EntityBase exposes the canonical
-                        // NormalizedId32 form through Id, which is what Mongo persists as _id.
-                        expectedSerializedId = new GuidString36(id).ToNormalizedId32().Value;
+                        // ProductEntity is a deliberate legacy exception. Preserve the historical
+                        // Cosmos document id byte-for-byte as Mongo _id. EntityBase.Id still exposes
+                        // the canonical NormalizedId32 form to application code when the model is read.
+                        expectedSerializedId = id;
                     }
                     else
                     {
@@ -237,15 +237,42 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 var valueProperty = header.Properties().FirstOrDefault(item =>
                     String.Equals(item.Name, "Value", StringComparison.OrdinalIgnoreCase));
 
-                if (!String.IsNullOrWhiteSpace(headerId) && valueProperty?.Value is JObject value)
+                if (valueProperty?.Value is JObject value)
                 {
                     var keyProperty = value.Properties().FirstOrDefault(item =>
                         String.Equals(item.Name, "Key", StringComparison.OrdinalIgnoreCase));
 
-                    if (keyProperty == null)
-                        value.Add("Key", headerId);
-                    else if (keyProperty.Value.Type == JTokenType.Null || String.IsNullOrWhiteSpace(keyProperty.Value.ToString()))
-                        keyProperty.Value = headerId;
+                    var missingKey = keyProperty == null ||
+                        keyProperty.Value.Type == JTokenType.Null ||
+                        String.IsNullOrWhiteSpace(keyProperty.Value.ToString());
+
+                    if (missingKey)
+                    {
+                        string replacementKey = null;
+
+                        // Prefer the EntityHeader id when older embedded snapshots retained it.
+                        if (!String.IsNullOrWhiteSpace(headerId) && LagoVistaKey.TryCreate(headerId, out _))
+                        {
+                            replacementKey = headerId;
+                        }
+                        else
+                        {
+                            // Some very old Device snapshots have null header Id/Text and a populated
+                            // StateSet.Value.id. Use a deterministic migration-only key derived from
+                            // that persisted identity rather than dropping the embedded StateSet.
+                            var valueId = GetString(value, "id");
+                            if (NormalizedId32.TryCreate(valueId, out var normalizedValueId))
+                                replacementKey = $"stateset-{normalizedValueId.Value.ToLowerInvariant()}";
+                        }
+
+                        if (!String.IsNullOrWhiteSpace(replacementKey))
+                        {
+                            if (keyProperty == null)
+                                value.Add("Key", replacementKey);
+                            else
+                                keyProperty.Value = replacementKey;
+                        }
+                    }
                 }
             }
 
