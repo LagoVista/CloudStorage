@@ -59,6 +59,12 @@ namespace LagoVista.StorageProvider.Tests.Migration
                     return true;
                 }
 
+                if (String.Equals(entityType, nameof(MigrationLegacyKeyAndHeaderEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationLegacyKeyAndHeaderEntity);
+                    return true;
+                }
+
                 if (String.Equals(entityType, nameof(MigrationLegacyKeyEntity), StringComparison.OrdinalIgnoreCase))
                 {
                     modelType = typeof(MigrationLegacyKeyEntity);
@@ -170,6 +176,20 @@ namespace LagoVista.StorageProvider.Tests.Migration
             public string Id { get; set; }
             public string EntityType { get; set; }
             public Dictionary<string, object> PropertyBag { get; set; }
+        }
+
+        private enum MigrationHeaderState
+        {
+            Offline,
+            Online
+        }
+
+        private sealed class MigrationLegacyKeyAndHeaderEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public LagoVistaKey Key { get; set; }
+            public EntityHeader<MigrationHeaderState> Status { get; set; }
         }
 
         private sealed class MigrationNestedIdEntity
@@ -428,6 +448,29 @@ namespace LagoVista.StorageProvider.Tests.Migration
             {
                 return false;
             }
+        }
+
+        [TestMethod]
+        public void TransformRepairsLegacyLagoVistaKeyAndEnumHeaderId()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'LEGACY1',
+                    'EntityType': 'MigrationLegacyKeyAndHeaderEntity',
+                    'Key': '-1000',
+                    'Status': {
+                        'Id': 'offline',
+                        'Text': 'Offline'
+                    }
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            Assert.AreEqual("key-1000", target["Key"].AsString);
+            Assert.AreEqual("Offline", target["Status"].AsBsonDocument["Id"].AsString);
         }
 
         [TestMethod]
