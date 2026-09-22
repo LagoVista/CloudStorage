@@ -65,6 +65,12 @@ namespace LagoVista.StorageProvider.Tests.Migration
                     return true;
                 }
 
+                if (String.Equals(entityType, nameof(MigrationOrgNamespaceEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationOrgNamespaceEntity);
+                    return true;
+                }
+
                 modelType = null;
                 return false;
             }
@@ -147,6 +153,14 @@ namespace LagoVista.StorageProvider.Tests.Migration
         {
             public LagoVistaKey Key { get; set; }
             public string Name { get; set; }
+        }
+
+        private sealed class MigrationOrgNamespaceEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public OrgNamespace Namespace { get; set; }
+            public string Note { get; set; }
         }
 
         [TestMethod]
@@ -356,6 +370,26 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.IsTrue(success, error);
             var stateSet = target["StateSet"].AsBsonDocument["Value"].AsBsonDocument;
             Assert.AreEqual("stateset-6aa35e8626d7401dab12e3180dee7c93", stateSet["Key"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformPadsShortLegacyOrgNamespaceWithoutChangingOrdinaryStrings()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'ORGNS1',
+                    'EntityType': 'MigrationOrgNamespaceEntity',
+                    'Namespace': 'ker',
+                    'Note': 'ker'
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            Assert.AreEqual("kernsp", target["Namespace"].AsString);
+            Assert.AreEqual("ker", target["Note"].AsString);
         }
 
         [TestMethod]
