@@ -53,6 +53,12 @@ namespace LagoVista.StorageProvider.Tests.Migration
                     return true;
                 }
 
+                if (String.Equals(entityType, nameof(MigrationShadowedEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationShadowedEntity);
+                    return true;
+                }
+
                 if (String.Equals(entityType, nameof(MigrationLegacyGuidEntity), StringComparison.OrdinalIgnoreCase))
                 {
                     modelType = typeof(MigrationLegacyGuidEntity);
@@ -121,6 +127,11 @@ namespace LagoVista.StorageProvider.Tests.Migration
 
         private sealed class MigrationEntityBase : EntityBase
         {
+        }
+
+        private sealed class MigrationShadowedEntity : EntityBase
+        {
+            public new List<EntityHeader> Labels { get; set; } = new List<EntityHeader>();
         }
 
         private sealed class MigrationTimestampEntity
@@ -272,6 +283,25 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.IsTrue(success, error);
             Assert.AreEqual("0123456789ABCDEF0123456789ABCDEF", target["_id"].AsString);
             Assert.AreEqual("0123456789ABCDEF0123456789ABCDEF", target["StoredId"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformPreservesMongoIdForEntityBaseWithShadowedMembers()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'AABBCCDDEEFF00112233445566778899',
+                    'EntityType': 'MigrationShadowedEntity',
+                    'Labels': []
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out var target, out var error);
+
+            Assert.IsTrue(success, error);
+            Assert.AreEqual("AABBCCDDEEFF00112233445566778899", target["_id"].AsString);
+            Assert.AreEqual("MigrationShadowedEntity", target["EntityType"].AsString);
         }
 
         [TestMethod]
