@@ -119,9 +119,17 @@ namespace LagoVista.CloudStorage.Storage.Migration
                         // the canonical NormalizedId32 form to application code when the model is read.
                         expectedSerializedId = id;
                     }
+                    else if (Guid.TryParse(id, out var legacyGuid))
+                    {
+                        // Historical EntityBase documents sometimes used GUID D-format or lowercase
+                        // GUID N-format ids. Migration upgrades those identities to the current
+                        // NormalizedId32 wire contract while preserving the underlying GUID value.
+                        expectedSerializedId = legacyGuid.ToString("N").ToUpperInvariant();
+                        idEntity.Id = new NormalizedId32(expectedSerializedId);
+                    }
                     else
                     {
-                        error = $"Document id '{id}' for EntityType '{entityType}' is not a valid NormalizedId32.";
+                        error = $"Document id '{id}' for EntityType '{entityType}' is not a valid NormalizedId32 or GUID-shaped legacy id.";
                         return false;
                     }
                 }
