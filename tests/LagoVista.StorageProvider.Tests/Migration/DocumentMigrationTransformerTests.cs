@@ -53,6 +53,12 @@ namespace LagoVista.StorageProvider.Tests.Migration
                     return true;
                 }
 
+                if (String.Equals(entityType, nameof(MigrationThrowingSetterEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationThrowingSetterEntity);
+                    return true;
+                }
+
                 if (String.Equals(entityType, nameof(MigrationNestedIdEntity), StringComparison.OrdinalIgnoreCase))
                 {
                     modelType = typeof(MigrationNestedIdEntity);
@@ -204,6 +210,19 @@ namespace LagoVista.StorageProvider.Tests.Migration
             public NormalizedId32 Id { get; set; }
             public NormalizedId32? OptionalId { get; set; }
             public string Name { get; set; }
+        }
+
+        private sealed class MigrationThrowingSetterEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+
+            private string _value;
+            public string Value
+            {
+                get => _value;
+                set => throw new InvalidOperationException("inner setter failure");
+            }
         }
 
         private sealed class MigrationTimestampEntity
@@ -508,6 +527,25 @@ namespace LagoVista.StorageProvider.Tests.Migration
 
             Assert.IsTrue(firstItems[0].AsBsonDocument["OptionalId"].IsBsonNull);
             Assert.IsTrue(firstItems[1].AsBsonDocument["OptionalId"].IsBsonNull);
+        }
+
+        [TestMethod]
+        public void TransformFailureIncludesInnerExceptionDetails()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'THROW1',
+                    'EntityType': 'MigrationThrowingSetterEntity',
+                    'Value': 'boom'
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var success = transformer.TryTransform(source, out _, out var error);
+
+            Assert.IsFalse(success);
+            StringAssert.Contains(error, "inner setter failure");
+            StringAssert.Contains(error, "TargetInvocationException");
         }
 
         [TestMethod]
