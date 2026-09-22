@@ -45,7 +45,8 @@ namespace LagoVista.CloudStorage.Storage.Migration
             var cosmosClient = _cosmosClientProvider.GetClient(request.Source.Endpoint, request.Source.SharedKey);
             var container = cosmosClient.GetContainer(request.Source.DatabaseName, sourceCollectionName);
             var query = CreateQuery(request.EntityType);
-            var iterator = container.GetItemQueryIterator<JObject>(query, request.ContinuationToken, new QueryRequestOptions { MaxItemCount = request.BatchSize });
+            var continuationToken = String.IsNullOrWhiteSpace(request.ContinuationToken) ? null : request.ContinuationToken;
+            var iterator = container.GetItemQueryIterator<JObject>(query, continuationToken, new QueryRequestOptions { MaxItemCount = request.BatchSize });
             var mongoClient = request.DryRun ? null : new MongoClient(request.Target.ConnectionString);
             var mongoDatabase = mongoClient?.GetDatabase(request.Target.DatabaseName);
 
