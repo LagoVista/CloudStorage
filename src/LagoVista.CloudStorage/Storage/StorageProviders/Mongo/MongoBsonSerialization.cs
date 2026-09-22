@@ -191,7 +191,15 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             if (property.GetMethod == null || !property.GetMethod.IsPublic) return false;
             if (property.SetMethod == null || !property.SetMethod.IsPublic) return false;
             if (property.GetCustomAttribute<BsonIgnoreAttribute>() != null) return false;
-            if (property.GetCustomAttribute<JsonIgnoreAttribute>() != null) return false;
+
+            // EntityBase.Id is intentionally ignored by Newtonsoft because Cosmos persists
+            // StoredId as "id". Mongo's native convention, however, persists the CLR Id
+            // member as "_id". ShadowedMemberBsonSerializer must preserve that native
+            // Mongo identity contract even though the property carries JsonIgnore.
+            if (property.GetCustomAttribute<JsonIgnoreAttribute>() != null &&
+                !(property.Name == nameof(EntityBase.Id) && property.DeclaringType == typeof(EntityBase)))
+                return false;
+
             return true;
         }
 
