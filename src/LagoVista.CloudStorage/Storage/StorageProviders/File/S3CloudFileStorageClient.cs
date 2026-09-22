@@ -234,6 +234,44 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
         }
 
 
+        public async Task<InvokeResult<Uri>> CreateWriteUrlAsync(string containerName, string fileName, string contentType, TimeSpan validFor)
+        {
+            ValidateFileArguments(containerName, fileName);
+            fileName = NormalizeObjectName(fileName);
+
+            if (validFor <= TimeSpan.Zero)
+                return InvokeResult<Uri>.FromError("Signed write URL lifetime must be greater than zero.");
+
+            var expirySeconds = (long)Math.Ceiling(validFor.TotalSeconds);
+            if (expirySeconds > MaxPresignedUrlLifetimeSeconds)
+                return InvokeResult<Uri>.FromError("S3 signed write URLs cannot be valid for more than seven days.");
+
+            try
+            {
+                await EnsureBucketExistsAsync(containerName);
+
+                var signedUrl = await _readUrlClient.PresignedPutObjectAsync(new PresignedPutObjectArgs()
+                    .WithBucket(containerName)
+                    .WithObject(fileName)
+                    .WithExpiry((int)expirySeconds));
+
+                if (!Uri.TryCreate(signedUrl, UriKind.Absolute, out var uri))
+                    return InvokeResult<Uri>.FromError("S3 client returned an invalid signed write URL.");
+
+                return InvokeResult<Uri>.Create(uri);
+            }
+            catch (Exception ex)
+            {
+                _logger.AddException(this.Tag(), ex,
+                    containerName.ToKVP("containerName"),
+                    fileName.ToKVP("fileName"),
+                    contentType.ToKVP("contentType"));
+
+                return InvokeResult<Uri>.FromException("[S3CloudFileStorageClient__CreateWriteUrlAsync]", ex);
+            }
+        }
+
+
         public async Task<InvokeResult> DeleteFileAsync(string containerName, string fileName)
         {
             ValidateFileArguments(containerName, fileName);
