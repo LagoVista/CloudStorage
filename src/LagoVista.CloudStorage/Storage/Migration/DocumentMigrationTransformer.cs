@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -505,6 +506,202 @@ namespace LagoVista.CloudStorage.Storage.Migration
             public new bool Equals(object x, object y) => Object.ReferenceEquals(x, y);
 
             public int GetHashCode(object obj) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
+        }
+
+        private static void NormalizeLegacyLagoVistaKeys(JToken token, Type declaredType)
+        {
+            if (token == null || declaredType == null) return;
+
+            var targetType = Nullable.GetUnderlyingType(declaredType) ?? declaredType;
+            if (targetType == typeof(LagoVistaKey))
+            {
+                if (token is JValue value && value.Type == JTokenType.String)
+                {
+                    var text = value.Value?.ToString();
+                    if (!String.IsNullOrWhiteSpace(text))
+                    {
+                        try
+                        {
+                            _ = new LagoVistaKey(text);
+                        }
+                        catch (FormatException)
+                        {
+                            var normalized = NormalizeLegacyLagoVistaKeyValue(text);
+                            _ = new LagoVistaKey(normalized);
+                            value.Value = normalized;
+                        }
+                    }
+                }
+
+                return;
+            }
+
+            var contract = _contractResolver.ResolveContract(targetType);
+            if (token is JObject document && contract is JsonObjectContract objectContract)
+            {
+                foreach (var property in objectContract.Properties)
+                {
+                    if (property.PropertyType == null || property.Ignored) continue;
+
+                    var jsonProperty = document.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, property.PropertyName, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(item.Name, property.UnderlyingName, StringComparison.OrdinalIgnoreCase));
+                    if (jsonProperty == null) continue;
+
+                    NormalizeLegacyLagoVistaKeys(jsonProperty.Value, property.PropertyType);
+                }
+
+                return;
+            }
+
+            if (token is JArray array && contract is JsonArrayContract arrayContract && arrayContract.CollectionItemType != null)
+            {
+                foreach (var item in array)
+                    NormalizeLegacyLagoVistaKeys(item, arrayContract.CollectionItemType);
+            }
+        }
+
+        private static string NormalizeLegacyLagoVistaKeyValue(string value)
+        {
+            var decomposed = (value ?? String.Empty).Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder();
+            var pendingDash = false;
+
+            foreach (var ch in decomposed)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark)
+                    continue;
+
+                var valid = (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9');
+                if (valid)
+                {
+                    if (pendingDash && builder.Length > 0 && builder[builder.Length - 1] != '-')
+                        builder.Append('-');
+
+                    builder.Append(ch);
+                    pendingDash = false;
+                }
+                else
+                {
+                    pendingDash = true;
+                }
+            }
+
+            var normalized = builder.ToString().Trim('-');
+            if (String.IsNullOrWhiteSpace(normalized))
+                normalized = "legacy-key";
+
+            if (normalized[0] < 'a' || normalized[0] > 'z')
+                normalized = "key-" + normalized;
+
+            while (normalized.Length < 3)
+                normalized += "key";
+
+            if (normalized.Length > 128)
+                normalized = normalized.Substring(0, 128).TrimEnd('-');
+
+            return normalized;
+        }
+
+        private static void NormalizeLegacyEnumEntityHeaders(JToken token, Type declaredType)
+        {
+            if (token == null || declaredType == null) return;
+
+            var targetType = Nullable.GetUnderlyingType(declaredType) ?? declaredType;
+            if (targetType.IsGenericType &&
+                targetType.GetGenericTypeDefinition() == typeof(LagoVista.Core.Models.EntityHeader<>) &&
+                targetType.GetGenericArguments()[0].GetTypeInfo().IsEnum &&
+                token is JObject header)
+            {
+                var enumType = targetType.GetGenericArguments()[0];
+                var idProperty = header.Properties().FirstOrDefault(item => String.Equals(item.Name, "Id", StringComparison.OrdinalIgnoreCase));
+                var id = idProperty?.Value?.Type == JTokenType.Null ? null : idProperty?.Value?.ToString();
+
+                if (!String.IsNullOrWhiteSpace(id) && !IsValidEnumHeaderId(enumType, id))
+                {
+                    var key = GetString(header, "Key");
+                    var text = GetString(header, "Text");
+
+                    if (TryResolveEnumHeaderId(enumType, key, text, id, out var resolved))
+                    {
+                        idProperty.Value = resolved;
+                        var keyProperty = header.Properties().FirstOrDefault(item => String.Equals(item.Name, "Key", StringComparison.OrdinalIgnoreCase));
+                        if (keyProperty == null)
+                            header.Add("Key", resolved);
+                        else if (keyProperty.Value.Type == JTokenType.Null || String.IsNullOrWhiteSpace(keyProperty.Value.ToString()))
+                            keyProperty.Value = resolved;
+                    }
+                }
+            }
+
+            var contract = _contractResolver.ResolveContract(targetType);
+            if (token is JObject document && contract is JsonObjectContract objectContract)
+            {
+                foreach (var property in objectContract.Properties)
+                {
+                    if (property.PropertyType == null || property.Ignored) continue;
+
+                    var jsonProperty = document.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, property.PropertyName, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(item.Name, property.UnderlyingName, StringComparison.OrdinalIgnoreCase));
+                    if (jsonProperty == null) continue;
+
+                    NormalizeLegacyEnumEntityHeaders(jsonProperty.Value, property.PropertyType);
+                }
+
+                return;
+            }
+
+            if (token is JArray array && contract is JsonArrayContract arrayContract && arrayContract.CollectionItemType != null)
+            {
+                foreach (var item in array)
+                    NormalizeLegacyEnumEntityHeaders(item, arrayContract.CollectionItemType);
+            }
+        }
+
+        private static bool IsValidEnumHeaderId(Type enumType, string id)
+        {
+            foreach (var enumValue in Enum.GetValues(enumType))
+            {
+                var member = enumType.GetTypeInfo().DeclaredMembers.FirstOrDefault(item => item.Name == enumValue.ToString());
+                var attr = member?.GetCustomAttribute<EnumLabelAttribute>();
+                var expected = attr?.Key ?? enumValue.ToString();
+                if (String.Equals(expected, id, StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryResolveEnumHeaderId(Type enumType, string key, string text, string id, out string resolved)
+        {
+            foreach (var enumValue in Enum.GetValues(enumType))
+            {
+                var member = enumType.GetTypeInfo().DeclaredMembers.FirstOrDefault(item => item.Name == enumValue.ToString());
+                var attr = member?.GetCustomAttribute<EnumLabelAttribute>();
+                var expected = attr?.Key ?? enumValue.ToString();
+
+                string label = null;
+                if (attr?.ResourceType != null && !String.IsNullOrWhiteSpace(attr.LabelResource))
+                {
+                    var labelProperty = attr.ResourceType.GetTypeInfo().GetDeclaredProperty(attr.LabelResource);
+                    label = labelProperty?.GetValue(labelProperty.DeclaringType, null) as string;
+                }
+
+                if (String.Equals(key, expected, StringComparison.OrdinalIgnoreCase) ||
+                    String.Equals(key, enumValue.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                    String.Equals(text, expected, StringComparison.OrdinalIgnoreCase) ||
+                    String.Equals(text, enumValue.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                    (!String.IsNullOrWhiteSpace(label) && String.Equals(text, label, StringComparison.OrdinalIgnoreCase)) ||
+                    String.Equals(id, enumValue.ToString(), StringComparison.OrdinalIgnoreCase))
+                {
+                    resolved = expected;
+                    return true;
+                }
+            }
+
+            resolved = null;
+            return false;
         }
 
         private static void NormalizeMissingNestedNormalizedIds(JToken token, Type declaredType, string documentId, string path, bool isRoot)
