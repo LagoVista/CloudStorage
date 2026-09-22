@@ -50,6 +50,30 @@ namespace LagoVista.StorageProvider.Tests.S3
         }
 
         [TestMethod]
+        public async Task CreateWriteUrlAsync_ProducesWorkingUnauthenticatedSignedUrl()
+        {
+            var client = new S3CloudFileStorageClient(_settings, _logger);
+            var fileName = $"signed uploads/{Guid.NewGuid():N}.txt";
+            var expected = "short-lived-public-write";
+
+            var writeUrl = await client.CreateWriteUrlAsync(ContainerName, fileName, "text/plain", TimeSpan.FromMinutes(2));
+            Assert.IsTrue(writeUrl.Successful);
+            Assert.IsNotNull(writeUrl.Result);
+            Assert.AreEqual("localhost", writeUrl.Result.Host);
+            Assert.AreEqual(19090, writeUrl.Result.Port);
+            StringAssert.Contains(writeUrl.Result.Query, "X-Amz-Expires=120");
+
+            using var httpClient = new HttpClient();
+            using var content = new StringContent(expected, Encoding.UTF8, "text/plain");
+            var put = await httpClient.PutAsync(writeUrl.Result, content);
+            put.EnsureSuccessStatusCode();
+
+            var read = await client.GetFileAsync(ContainerName, fileName);
+            Assert.IsTrue(read.Successful);
+            Assert.AreEqual(expected, Encoding.UTF8.GetString(read.Result));
+        }
+
+        [TestMethod]
         public async Task CreateReadUrlAsync_RejectsInvalidLifetimes()
         {
             var client = new S3CloudFileStorageClient(_settings, _logger);
