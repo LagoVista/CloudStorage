@@ -1,6 +1,7 @@
 using LagoVista;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Attributes;
+using LagoVista.Core.Models;
 using LagoVista.Core;
 using LagoVista.Core.Models.UIMetaData;
 using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
