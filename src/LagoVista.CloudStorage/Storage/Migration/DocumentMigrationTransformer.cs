@@ -84,6 +84,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // as invariant date/time strings without the required trailing Z. Normalize only
                 // JSON values whose current CLR contract is UtcTimestamp so unrelated strings are
                 // never rewritten by migration.
+                NormalizeLegacyEntityBaseIds(copy, modelType);
                 NormalizeLegacyUtcTimestamps(copy, modelType);
                 NormalizeLegacyOrgNamespaces(copy, modelType);
                 NormalizeLegacyLagoVistaKeys(copy, modelType, id, "$");
@@ -177,6 +178,53 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 error = $"Failed to transform EntityType '{entityType}', document '{id}': {DescribeException(ex)}";
                 target = null;
                 return false;
+            }
+        }
+
+        private static void NormalizeLegacyEntityBaseIds(JToken token, Type declaredType)
+        {
+            if (token == null || declaredType == null) return;
+
+            var targetType = Nullable.GetUnderlyingType(declaredType) ?? declaredType;
+            if (token is JObject document)
+            {
+                if (typeof(EntityBase).IsAssignableFrom(targetType) && !AllowsLegacyGuidDocumentId(targetType))
+                {
+                    var idProperty = document.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, "id", StringComparison.OrdinalIgnoreCase));
+
+                    if (idProperty?.Value?.Type == JTokenType.String)
+                    {
+                        var value = idProperty.Value.ToString();
+                        if (!NormalizedId32.IsNormalizedId32(value) && Guid.TryParse(value, out var guid))
+                            idProperty.Value = guid.ToString("N").ToUpperInvariant();
+                    }
+                }
+
+                var contract = _contractResolver.ResolveContract(targetType);
+                if (contract is JsonObjectContract objectContract)
+                {
+                    foreach (var property in objectContract.Properties)
+                    {
+                        if (property.PropertyType == null || property.Ignored) continue;
+
+                        var jsonProperty = document.Properties().FirstOrDefault(item =>
+                            String.Equals(item.Name, property.PropertyName, StringComparison.OrdinalIgnoreCase) ||
+                            String.Equals(item.Name, property.UnderlyingName, StringComparison.OrdinalIgnoreCase));
+                        if (jsonProperty == null) continue;
+
+                        NormalizeLegacyEntityBaseIds(jsonProperty.Value, property.PropertyType);
+                    }
+                }
+
+                return;
+            }
+
+            var arrayContract = _contractResolver.ResolveContract(targetType) as JsonArrayContract;
+            if (token is JArray array && arrayContract?.CollectionItemType != null)
+            {
+                foreach (var item in array)
+                    NormalizeLegacyEntityBaseIds(item, arrayContract.CollectionItemType);
             }
         }
 
