@@ -53,6 +53,12 @@ namespace LagoVista.StorageProvider.Tests.Migration
                     return true;
                 }
 
+                if (String.Equals(entityType, nameof(MigrationNestedIdEntity), StringComparison.OrdinalIgnoreCase))
+                {
+                    modelType = typeof(MigrationNestedIdEntity);
+                    return true;
+                }
+
                 if (String.Equals(entityType, nameof(MigrationShadowedEntity), StringComparison.OrdinalIgnoreCase))
                 {
                     modelType = typeof(MigrationShadowedEntity);
@@ -132,6 +138,20 @@ namespace LagoVista.StorageProvider.Tests.Migration
         private sealed class MigrationShadowedEntity : EntityBase
         {
             public new List<EntityHeader> Labels { get; set; } = new List<EntityHeader>();
+        }
+
+        private sealed class MigrationNestedIdEntity
+        {
+            public string Id { get; set; }
+            public string EntityType { get; set; }
+            public List<MigrationNestedIdChild> Items { get; set; }
+        }
+
+        private sealed class MigrationNestedIdChild
+        {
+            public NormalizedId32 Id { get; set; }
+            public NormalizedId32? OptionalId { get; set; }
+            public string Name { get; set; }
         }
 
         private sealed class MigrationTimestampEntity
@@ -302,6 +322,43 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.IsTrue(success, error);
             Assert.AreEqual("AABBCCDDEEFF00112233445566778899", target["_id"].AsString);
             Assert.AreEqual("MigrationShadowedEntity", target["EntityType"].AsString);
+        }
+
+        [TestMethod]
+        public void TransformAssignsStableIdsToMissingNestedNonNullableNormalizedIds()
+        {
+            var source = JObject.Parse(
+                @"{
+                    'id': 'NESTED1',
+                    'EntityType': 'MigrationNestedIdEntity',
+                    'Items': [
+                        { 'Id': null, 'OptionalId': null, 'Name': 'one' },
+                        { 'Id': '', 'OptionalId': '', 'Name': 'two' }
+                    ]
+                }");
+
+            var transformer = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var firstSuccess = transformer.TryTransform(source, out var first, out var firstError);
+            var secondSuccess = transformer.TryTransform(source, out var second, out var secondError);
+
+            Assert.IsTrue(firstSuccess, firstError);
+            Assert.IsTrue(secondSuccess, secondError);
+
+            var firstItems = first["Items"].AsBsonArray;
+            var secondItems = second["Items"].AsBsonArray;
+
+            var firstId0 = firstItems[0].AsBsonDocument["Id"].AsString;
+            var firstId1 = firstItems[1].AsBsonDocument["Id"].AsString;
+
+            Assert.IsTrue(NormalizedId32.IsNormalizedId32(firstId0));
+            Assert.IsTrue(NormalizedId32.IsNormalizedId32(firstId1));
+            Assert.AreNotEqual(firstId0, firstId1);
+            Assert.AreEqual(firstId0, secondItems[0].AsBsonDocument["Id"].AsString);
+            Assert.AreEqual(firstId1, secondItems[1].AsBsonDocument["Id"].AsString);
+
+            Assert.IsTrue(firstItems[0].AsBsonDocument["OptionalId"].IsBsonNull);
+            Assert.IsTrue(firstItems[1].AsBsonDocument["OptionalId"].IsBsonNull);
         }
 
         [TestMethod]
