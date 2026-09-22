@@ -8,7 +8,9 @@ using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models.UIMetaData;
+using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
+using LagoVista.IoT.Logging.Loggers;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
@@ -34,17 +36,36 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         private readonly IMongoDocumentStorageConnectionSettings _settings;
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
         private readonly IMongoStorageClientFactory _clientFactory;
+        private readonly IAdminLogger _logger;
         public string DatabaseName => _settings.DatabaseName;
 
         public MongoDocumentStorageClient(
             IMongoDocumentStorageConnectionSettings settings,
             IDocumentCollectionNameResolver collectionNameResolver,
-            IMongoStorageClientFactory clientFactory)
+            IMongoStorageClientFactory clientFactory,
+            IAdminLogger logger = null)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _collectionNameResolver = collectionNameResolver ?? throw new ArgumentNullException(nameof(collectionNameResolver));
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
+            _logger = logger;
             MongoBsonSerialization.Configure();
+        }
+
+        private void LogQuery(string operation, string entityType, string collectionName, string query)
+        {
+            var message = $"Mongo query: Database={_settings.DatabaseName}; Collection={collectionName}; EntityType={entityType}; Query={query}";
+            Console.WriteLine($"[MongoDocumentStorageClient__{operation}] {message}");
+
+            _logger?.AddCustomEvent(
+                LogLevel.Message,
+                $"[MongoDocumentStorageClient__{operation}]",
+                message,
+                new KeyValuePair<string, string>("provider", "MongoDB"),
+                new KeyValuePair<string, string>("database", _settings.DatabaseName),
+                new KeyValuePair<string, string>("collection", collectionName),
+                new KeyValuePair<string, string>("entityType", entityType),
+                new KeyValuePair<string, string>("query", query));
         }
 
         public async Task<DocumentStorageWriteResult> UpsertRawDocumentAsync(string entityType, string id, string json, string expectedETag = null, CancellationToken cancellationToken = default)
@@ -261,12 +282,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 Builders<TEntity>.Filter.Where(query),
                 Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
 
-            Console.WriteLine(
-                $"[MongoDocumentStorageClient__QueryAsync<{typeof(TEntity).Name}>] " +
-                $"Database={_settings.DatabaseName}; " +
-                $"Collection={collection.CollectionNamespace.CollectionName}; " +
-                $"EntityType={typeof(TEntity).Name}; " +
-                $"Query={query}");
+            LogQuery(nameof(QueryAsync), typeof(TEntity).Name, collection.CollectionNamespace.CollectionName, query.ToString());
 
             return await collection.Find(filter).ToListAsync().ConfigureAwait(false);
         }
@@ -277,7 +293,10 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             if (query == null) throw new ArgumentNullException(nameof(query));
             if (listRequest == null) throw new ArgumentNullException(nameof(listRequest));
 
-            var find = GetCollection<TEntity>().Find(CreatePagedQueryFilter(query, listRequest));
+            var collection = GetCollection<TEntity>();
+            LogQuery(nameof(QueryAsync), typeof(TEntity).Name, collection.CollectionNamespace.CollectionName,
+                $"{query}; PageIndex={listRequest.PageIndex}; PageSize={listRequest.PageSize}; ShowDeleted={listRequest.ShowDeleted}; ShowDrafts={listRequest.ShowDrafts}");
+            var find = collection.Find(CreatePagedQueryFilter(query, listRequest));
             var sortProperty = ListRequestSortResolver.ResolveProperty<TEntity>(listRequest);
             if (sortProperty != null)
             {
@@ -387,6 +406,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 filters.Add(Builders<TEntityFactory>.Filter.Eq(item => item.Category.Key, listRequest.CategoryKey));
 
             var filter = Builders<TEntityFactory>.Filter.And(filters);
+            LogQuery(nameof(QuerySummaryAsync), entityType, collection.CollectionNamespace.CollectionName,
+                $"{query}; PageIndex={listRequest.PageIndex}; PageSize={listRequest.PageSize}; ShowDeleted={listRequest.ShowDeleted}; ShowDrafts={listRequest.ShowDrafts}; CategoryKey={listRequest.CategoryKey}");
             var find = collection.Find(filter);
 
             if (sort != null)
