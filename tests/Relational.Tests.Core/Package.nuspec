@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <package>
   <metadata>
     <id>LagoVista.Relational.Tests.Core</id>
@@ -17,8 +17,8 @@
     <dependencies>
       <group targetFramework="net9.0">
         <dependency id="LagoVista.CloudStorage" version="7.0.34" />
-        <dependency id="LagoVista.Core.TestBase" version="7.0.12" />
-        <dependency id="LagoVista.Crypto" version="7.0.12" />
+        <dependency id="LagoVista.Core.TestBase" version="7.0.11" />
+        <dependency id="LagoVista.Crypto" version="7.0.11" />
         <dependency id="LagoVista.Relational" version="7.0.34" />
         <dependency id="Microsoft.Data.Sqlite.Core" version="10.0.3" />
         <dependency id="Microsoft.EntityFrameworkCore.Sqlite" version="9.0.13" />
