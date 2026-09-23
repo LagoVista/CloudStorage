@@ -8,6 +8,7 @@ using LagoVista.CloudStorage.Storage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
+using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.Validation;
 using Microsoft.Azure.Cosmos;
@@ -797,6 +798,37 @@ ORDER BY c.Name";
 
             if (throwOnNotFound) throw new RecordNotFoundException(typeof(TProjection).Name, id);
             return null;
+        }
+
+        public async Task<IEntityBase> GetDocumentAsync(Type entityType, string entityTypeName, string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
+        {
+            if (entityType == null) throw new ArgumentNullException(nameof(entityType));
+            if (!typeof(IEntityBase).IsAssignableFrom(entityType)) throw new ArgumentException($"Type '{entityType.FullName}' does not implement {nameof(IEntityBase)}.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(entityTypeName)) throw new ArgumentException("Entity type name is required.", nameof(entityTypeName));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.id = @id AND c.EntityType = @entityType")
+                .WithParameter("@id", id)
+                .WithParameter("@entityType", entityTypeName);
+
+            using var iterator = GetRawCollection().GetItemQueryIterator<JObject>(query, requestOptions: new QueryRequestOptions { MaxItemCount = 1 });
+            JObject document = null;
+
+            if (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+                document = response.Resource.FirstOrDefault();
+            }
+
+            if (document == null)
+            {
+                if (throwOnNotFound) throw new RecordNotFoundException(entityTypeName, id);
+                return null;
+            }
+
+            var entity = document.ToObject(entityType) as IEntityBase;
+            if (entity == null) throw new InvalidOperationException($"Could not deserialize Cosmos document '{id}' as '{entityType.FullName}'.");
+            return entity;
         }
 
         public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)

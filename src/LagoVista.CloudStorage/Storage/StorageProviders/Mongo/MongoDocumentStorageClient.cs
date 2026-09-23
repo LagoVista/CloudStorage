@@ -7,6 +7,7 @@ using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
+using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
@@ -702,6 +703,33 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             if (!String.IsNullOrWhiteSpace(expectedETag) && result.MatchedCount == 0) throw new ContentModifiedException { EntityType = entityType, Id = id };
 
             return new SyncUpsertResult { Id = id, ETag = newETag, StatusCode = result.UpsertedId != null ? 201 : 200 };
+        }
+
+        public async Task<IEntityBase> GetDocumentAsync(Type entityType, string entityTypeName, string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)
+        {
+            if (entityType == null) throw new ArgumentNullException(nameof(entityType));
+            if (!typeof(IEntityBase).IsAssignableFrom(entityType)) throw new ArgumentException($"Type '{entityType.FullName}' does not implement {nameof(IEntityBase)}.", nameof(entityType));
+            if (String.IsNullOrWhiteSpace(entityTypeName)) throw new ArgumentException("Entity type name is required.", nameof(entityTypeName));
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityTypeName, out var collectionName))
+                throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityTypeName}'.");
+
+            MongoBsonSerialization.ConfigureForType(entityType);
+
+            var filter = Builders<BsonDocument>.Filter.And(
+                Builders<BsonDocument>.Filter.Eq("_id", id),
+                Builders<BsonDocument>.Filter.Eq("EntityType", entityTypeName));
+
+            var document = await GetBsonCollection(collectionName).Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            if (document == null)
+            {
+                if (throwOnNotFound) throw new RecordNotFoundException(entityTypeName, id);
+                return null;
+            }
+
+            var entity = BsonSerializer.Deserialize(document, entityType) as IEntityBase;
+            if (entity == null) throw new InvalidOperationException($"Could not deserialize Mongo document '{id}' as '{entityType.FullName}'.");
+            return entity;
         }
 
         public async Task<TProjection> GetDocumentProjectionAsync<TProjection>(string id, bool throwOnNotFound = true, CancellationToken cancellationToken = default)

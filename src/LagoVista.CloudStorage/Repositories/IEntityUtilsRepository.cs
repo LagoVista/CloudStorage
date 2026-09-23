@@ -2,7 +2,6 @@
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.EntityReadiness;
 using LagoVista.Core.Validation;
-using MongoDB.Bson.Serialization.IdGenerators;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Threading;
@@ -13,6 +12,7 @@ namespace LagoVista.CloudStorage.Repositories
     public interface IEntityUtilsRepository
     {
         Task<InvokeResult<EntityHeaderStatusPatchResult>> PatchEntityHeaderStatusAsync(string entityType, string orgId, IEnumerable<string> currentStatusIds, JObject desiredStatus, EntityHeader user, bool dryRun, int maxItems, CancellationToken ct);
+        Task<IEntityBase> GetEntityAsync(string id, EntityHeader org, CancellationToken ct = default);
         Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org, CancellationToken ct = default);
         Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org, CancellationToken ct = default);
         Task<List<EntityCoreSummary>> GetEntityCoreAsync(string entityType, EntityHeader org, CancellationToken ct = default);

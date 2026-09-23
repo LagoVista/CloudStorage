@@ -7,6 +7,15 @@ using System.Text;
 
 namespace LagoVista.CloudStorage.Models.Storage
 {
+    public sealed class EntityIdentityProjection
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        public string EntityType { get; set; }
+        public EntityHeader OwnerOrganization { get; set; }
+    }
+
     public sealed class ReadinessScorecardProjection
     {
         [JsonProperty("id")]

@@ -10,6 +10,7 @@ using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
+using LagoVista.Core.Models.UIMetaData;
 using LagoVista.Core.PlatformSupport;
 using LagoVista.Core.Validation;
 using Newtonsoft.Json;
@@ -35,10 +36,12 @@ namespace LagoVista.CloudStorage.Repositories
         public const string MODULE_CACHE_KEY = "NUVIOT_MODULE_";
         private readonly string _dbName;
         private readonly IDocumentStorageClient _storageClient;
+        private readonly IEntityTypeResolver _entityTypeResolver;
 
-        public EntityUtilsRepository(IDocumentStorageClientProvider documentStorageClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
+        public EntityUtilsRepository(IDocumentStorageClientProvider documentStorageClientProvider, IEntityDetailResponseFactory entityDetailResponseFactory, IEntityTypeResolver entityTypeResolver, IDependencyManager dependencyManager, ICacheProvider cacheProvider, ILogger logger, IRagIndexingServices ragIndexingServices, IEntityListCacheInvalidator entityListCacheInvalidator)
         {
             _entityDetailResponseFactory = entityDetailResponseFactory ?? throw new ArgumentNullException(nameof(entityDetailResponseFactory));
+            _entityTypeResolver = entityTypeResolver ?? throw new ArgumentNullException(nameof(entityTypeResolver));
             _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ragIndexingServices = ragIndexingServices ?? throw new ArgumentNullException(nameof(ragIndexingServices));
@@ -295,40 +298,38 @@ namespace LagoVista.CloudStorage.Repositories
             return PatchEntityFieldsAsync(id, fields, user, ct);
         }
 
+        public async Task<IEntityBase> GetEntityAsync(string id, EntityHeader org, CancellationToken ct = default)
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("id is required.", nameof(id));
+            if (org == null || String.IsNullOrWhiteSpace(org.Id)) throw new ArgumentException("Organization is required.", nameof(org));
+
+            var identity = await _storageClient.GetDocumentProjectionAsync<EntityIdentityProjection>(id.Trim(), false, ct).ConfigureAwait(false);
+            if (identity == null) return null;
+
+            if (identity.OwnerOrganization == null || String.IsNullOrWhiteSpace(identity.OwnerOrganization.Id))
+                throw new InvalidOperationException($"Entity '{id}' does not identify its owner organization.");
+
+            if (!String.Equals(identity.OwnerOrganization.Id, org.Id, StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException($"Entity '{id}' does not belong to organization '{org.Id}'.");
+
+            if (String.IsNullOrWhiteSpace(identity.EntityType))
+                throw new InvalidOperationException($"Entity '{id}' does not identify its entity type.");
+
+            if (!_entityTypeResolver.TryGetEntityType(identity.EntityType, out var modelType) || modelType == null)
+                throw new InvalidOperationException($"Could not resolve entity type '{identity.EntityType}' for entity '{id}'.");
+
+            if (!typeof(IEntityBase).IsAssignableFrom(modelType))
+                throw new InvalidOperationException($"Resolved entity type '{modelType.FullName}' does not implement {nameof(IEntityBase)}.");
+
+            return await _storageClient.GetDocumentAsync(modelType, identity.EntityType, id.Trim(), true, ct).ConfigureAwait(false);
+        }
+
         public async Task<EntityBase> GetEntityBaseAsync(string id, EntityHeader org, CancellationToken ct = default)
         {
-            if (String.IsNullOrWhiteSpace(id))
-                throw new ArgumentException("id is required.", nameof(id));
-
-            if (org == null)
-                throw new ArgumentNullException(nameof(org));
-
-            if (String.IsNullOrWhiteSpace(org.Id))
-                throw new ArgumentException("org.Id is required.", nameof(org));
-
-            var document = await LoadDocumentByIdAsync(id.Trim(), CancellationToken.None).ConfigureAwait(false);
-
-            if (document == null)
-            {
-                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not find document with id '{id}'.");
-                throw new KeyNotFoundException($"Could not find record with id: {id}");
-            }
-
-            var ownerOrganizationId = document[nameof(EntityBase.OwnerOrganization)]?["Id"]?.Value<string>();
-
-            if (!String.Equals(ownerOrganizationId, org.Id, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Entity '{id}' is owned by organization '{ownerOrganizationId ?? "unknown"}' rather than '{org.Id}'.");
-
-                throw new UnauthorizedAccessException($"Entity '{id}' does not belong to organization '{org.Id}'.");
-            }
-
-            var entity = document.ToObject<EntityBase>();
-
-            if (entity == null)
-                throw new InvalidOperationException($"Could not deserialize entity '{id}' as {nameof(EntityBase)}.");
-
-            return entity;
+            var entity = await GetEntityAsync(id, org, ct).ConfigureAwait(false);
+            if (entity == null) return null;
+            if (entity is EntityBase entityBase) return entityBase;
+            throw new InvalidOperationException($"Entity '{id}' is not derived from {nameof(EntityBase)}.");
         }
 
         public async Task<InvokeResult<List<JObject>>> GetEntityReadinessScorecardCandidatesAsync(IEnumerable<string> entityTypes, string orgId, CancellationToken ct)
