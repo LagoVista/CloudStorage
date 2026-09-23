@@ -26,6 +26,11 @@ namespace LagoVista.CloudStorage.Models
         public string Projection { get; set; }
     }
 
+    public class MongoDocumentWriteRequest
+    {
+        public string Json { get; set; }
+    }
+
     public class MongoPatchRequest
     {
         public string Filter { get; set; } = "{}";
