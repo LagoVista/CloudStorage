@@ -459,7 +459,10 @@ namespace LagoVista.CloudStorage.Repositories
                 }
             };
 
-            await _storageClient.PatchDocumentAsync(entityType, request, ct).ConfigureAwait(false);
+            if (!_entityTypeResolver.TryGetEntityType(entityType, out var entityClrType) || entityClrType == null)
+                return InvokeResult.FromError($"Could not resolve entity type '{entityType}' while updating hash for '{id}'.");
+
+            await _storageClient.PatchDocumentAsync(entityClrType, entityType, request, ct).ConfigureAwait(false);
 
             var key = doc[nameof(EntityBase.Key)]?.Value<string>()?.Trim();
 
