@@ -515,9 +515,6 @@ namespace LagoVista.CloudStorage.Repositories
                 if (String.IsNullOrWhiteSpace(entityTypeName))
                     return InvokeResult.FromError($"Could not patch entity '{documentId}' because EntityType was missing.");
 
-                if (String.IsNullOrWhiteSpace(eTag))
-                    return InvokeResult.FromError($"Could not patch entity '{documentId}' because its ETag was missing.");
-
                 var nameField = fields.FirstOrDefault(field => String.Equals(field.Key, nameof(EntityBase.Name), StringComparison.OrdinalIgnoreCase));
                 var updatedName = nameField.Value?.Type == JTokenType.String ? nameField.Value.Value<string>() : null;
                 var nameChanged = !String.IsNullOrWhiteSpace(updatedName) && !String.Equals(existingName, updatedName, StringComparison.Ordinal);
@@ -614,9 +611,6 @@ namespace LagoVista.CloudStorage.Repositories
 
                 if (String.IsNullOrWhiteSpace(entityType))
                     return InvokeResult.FromError($"Could not update AI entity sessions for '{id}' because EntityType was missing.");
-
-                if (String.IsNullOrWhiteSpace(eTag))
-                    return InvokeResult.FromError($"Could not update AI entity sessions for '{id}' because its ETag was missing.");
 
                 var sessions = ReadAiEntitySessions(doc);
                 var existing = sessions.SingleOrDefault(item => String.Equals(item.SessionType, session.SessionType, StringComparison.OrdinalIgnoreCase) && String.Equals(item.SessionTypeKey, session.SessionTypeKey, StringComparison.OrdinalIgnoreCase));
