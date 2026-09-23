@@ -106,14 +106,6 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             {
                 find = find.Sort(ParseDocument(request.Sort, "sort", allowEmpty: false));
             }
-            else if (!String.IsNullOrWhiteSpace(request.SortField))
-            {
-                var sort = request.SortDescending == true
-                    ? Builders<BsonDocument>.Sort.Descending(request.SortField)
-                    : Builders<BsonDocument>.Sort.Ascending(request.SortField);
-
-                find = find.Sort(sort);
-            }
 
             List<BsonDocument> documents;
             if (!String.IsNullOrWhiteSpace(request.Projection))
