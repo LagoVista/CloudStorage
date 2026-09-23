@@ -56,6 +56,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 }
 
                 BsonSerializer.RegisterSerializer(typeof(LagoVistaKey), new LagoVistaKeyBsonSerializer());
+                BsonSerializer.RegisterSerializer(typeof(LagoVistaIcon), new LagoVistaIconBsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(NormalizedId32), new NormalizedId32BsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(UtcTimestamp), new UtcTimestampBsonSerializer());
                 BsonSerializer.TryRegisterSerializer(typeof(JObject), new JObjectBsonSerializer());
@@ -379,6 +380,52 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         }
 
         public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, LagoVistaKey value)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            if (String.IsNullOrWhiteSpace(value.Value))
+            {
+                context.Writer.WriteNull();
+                return;
+            }
+
+            context.Writer.WriteString(value.Value);
+        }
+    }
+
+    internal sealed class LagoVistaIconBsonSerializer : SerializerBase<LagoVistaIcon>
+    {
+        public override LagoVistaIcon Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            var reader = context.Reader;
+            switch (reader.GetCurrentBsonType())
+            {
+                case BsonType.Null:
+                    reader.ReadNull();
+                    return new LagoVistaIcon("icon-fo-gears-2");
+
+                case BsonType.String:
+                    return new LagoVistaIcon(reader.ReadString());
+
+                case BsonType.Document:
+                    var document = BsonDocumentSerializer.Instance.Deserialize(context);
+                    var value = document.GetValue("Value", BsonNull.Value);
+                    if (value.IsBsonNull)
+                        value = document.GetValue("value", BsonNull.Value);
+
+                    if (value.IsString && !String.IsNullOrWhiteSpace(value.AsString))
+                        return new LagoVistaIcon(value.AsString);
+
+                    return new LagoVistaIcon("icon-fo-gears-2");
+
+                default:
+                    throw new BsonSerializationException($"Cannot deserialize {nameof(LagoVistaIcon)} from BSON type {reader.GetCurrentBsonType()}.");
+            }
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, LagoVistaIcon value)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
 
