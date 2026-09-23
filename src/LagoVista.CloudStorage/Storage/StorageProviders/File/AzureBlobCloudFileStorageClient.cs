@@ -45,6 +45,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
             _accessKey = accessKey;
         }
 
+        public Task<InvokeResult<Uri>> CreateWriteUrlAsync(string containerName, string fileName, string contentType, TimeSpan validFor, CloudStorageUrlScope scope)
+        {
+            return CreateWriteUrlAsync(containerName, fileName, contentType, validFor);
+        }
+
         public async Task<InvokeResult<Uri>> CreateWriteUrlAsync(string containerName, string fileName, string contentType, TimeSpan validFor)
         {
             if (String.IsNullOrWhiteSpace(containerName)) throw new ArgumentNullException(nameof(containerName));
@@ -84,6 +89,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
             {
                 return InvokeResult<Uri>.FromException("[AzureBlobCloudFileStorageClient__CreateWriteUrlAsync]", ex);
             }
+        }
+
+        public Task<InvokeResult<Uri>> CreateReadUrlAsync(string containerName, string fileName, TimeSpan validFor, CloudStorageUrlScope scope)
+        {
+            return CreateReadUrlAsync(containerName, fileName, validFor);
         }
 
         public async Task<InvokeResult<Uri>> CreateReadUrlAsync(string containerName, string fileName, TimeSpan validFor)
