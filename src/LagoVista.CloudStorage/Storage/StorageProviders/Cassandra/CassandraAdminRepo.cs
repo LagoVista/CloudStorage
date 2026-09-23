@@ -53,16 +53,16 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             var rows = await session.ExecuteAsync(statement).ConfigureAwait(false);
             var result = new CassandraQueryResult();
 
+            var columns = rows.Columns.Select(column => column.Name).ToList();
+            result.Columns.AddRange(columns);
+
             foreach (var row in rows.Take(Math.Max(1, Math.Min(request.PageSize, 500))))
             {
-                if (result.Columns.Count == 0)
-                    result.Columns.AddRange(row.Columns.Select(column => column.Name));
-
                 var values = new Dictionary<string, object>(StringComparer.Ordinal);
-                foreach (var column in row.Columns)
+                for (var index = 0; index < columns.Count; index++)
                 {
-                    var value = row.GetValue<object>(column.Name);
-                    values[column.Name] = NormalizeValue(value);
+                    var value = row.GetValue<object>(index);
+                    values[columns[index]] = NormalizeValue(value);
                 }
 
                 result.Rows.Add(JsonConvert.SerializeObject(values));
