@@ -1,28 +1,29 @@
-using System.Collections.Generic;
+using LagoVista.Core.Models.UIMetaData;
 
 namespace LagoVista.CloudStorage.Models
 {
+    public class MongoDatabaseInfo
+    {
+        public string Name { get; set; }
+    }
+
     public class MongoCollectionInfo
     {
         public string Name { get; set; }
         public long EstimatedDocumentCount { get; set; }
     }
 
-    public class MongoQueryRequest
+    public class MongoDocumentInfo
+    {
+        public string Id { get; set; }
+        public string Json { get; set; }
+    }
+
+    public class MongoQueryRequest : ListRequest
     {
         public string Filter { get; set; } = "{}";
         public string Sort { get; set; }
         public string Projection { get; set; }
-        public int Skip { get; set; }
-        public int Limit { get; set; } = 100;
-    }
-
-    public class MongoQueryResult
-    {
-        public long MatchedCount { get; set; }
-        public int ReturnedCount { get; set; }
-        public long ElapsedMilliseconds { get; set; }
-        public List<string> Documents { get; set; } = new List<string>();
     }
 
     public class MongoPatchRequest
