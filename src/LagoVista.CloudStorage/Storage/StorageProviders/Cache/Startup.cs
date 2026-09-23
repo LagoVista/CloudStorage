@@ -9,6 +9,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cache
         public static void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<ICacheProvider, CacheProvider>();
+            services.AddSingleton<IValkeyAdminRepo, ValkeyAdminRepo>();
 
             services.AddScoped<EntityListItemCache>();
             services.AddScoped<IEntityListItemCache>(provider => provider.GetRequiredService<EntityListItemCache>());
