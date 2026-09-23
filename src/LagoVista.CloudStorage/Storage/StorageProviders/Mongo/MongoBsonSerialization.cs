@@ -4,6 +4,7 @@ using LagoVista.Core.Models;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.Conventions;
 using MongoDB.Bson.Serialization.Serializers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -35,6 +36,10 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                     new ObjectSerializer(type =>
                         ObjectSerializer.DefaultAllowedTypes(type) ||
                         typeof(JToken).IsAssignableFrom(type)));
+
+                BsonSerializer.RegisterDiscriminatorConvention(
+                    typeof(EntityHeader),
+                    new EntityHeaderLegacyDiscriminatorConvention());
 
                 if (!BsonClassMap.IsClassMapRegistered(typeof(EntityHeader)))
                 {
@@ -215,6 +220,70 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 return "_id";
 
             return property.Name;
+        }
+    }
+
+    internal sealed class EntityHeaderLegacyDiscriminatorConvention : IDiscriminatorConvention
+    {
+        public string ElementName => "_t";
+
+        public Type GetActualType(MongoDB.Bson.IO.IBsonReader bsonReader, Type nominalType)
+        {
+            if (bsonReader == null) throw new ArgumentNullException(nameof(bsonReader));
+            if (nominalType == null) throw new ArgumentNullException(nameof(nominalType));
+
+            var bookmark = bsonReader.GetBookmark();
+            try
+            {
+                bsonReader.ReadStartDocument();
+
+                while (bsonReader.ReadBsonType() != BsonType.EndOfDocument)
+                {
+                    var elementName = bsonReader.ReadName(MongoDB.Bson.IO.Utf8NameDecoder.Instance);
+                    if (!String.Equals(elementName, ElementName, StringComparison.Ordinal))
+                    {
+                        bsonReader.SkipValue();
+                        continue;
+                    }
+
+                    if (bsonReader.GetCurrentBsonType() != BsonType.String)
+                    {
+                        bsonReader.SkipValue();
+                        return nominalType;
+                    }
+
+                    var discriminator = bsonReader.ReadString();
+                    if (String.Equals(discriminator, "ieh", StringComparison.OrdinalIgnoreCase) &&
+                        nominalType.IsAssignableFrom(typeof(ImageEntityHeader)))
+                        return typeof(ImageEntityHeader);
+
+                    if (String.Equals(discriminator, "chref", StringComparison.OrdinalIgnoreCase) &&
+                        nominalType.IsAssignableFrom(typeof(ChildReference)))
+                        return typeof(ChildReference);
+
+                    // "_t" is a legacy EntityHeader wire marker, not a CLR type discriminator.
+                    // In particular, EntityHeader<T> instances also persist "_t":"eh", so
+                    // resolving "eh" globally to EntityHeader would break typed headers.
+                    return nominalType;
+                }
+
+                return nominalType;
+            }
+            finally
+            {
+                bsonReader.ReturnToBookmark(bookmark);
+            }
+        }
+
+        public BsonValue GetDiscriminator(Type nominalType, Type actualType)
+        {
+            if (actualType == typeof(ImageEntityHeader))
+                return new BsonString("ieh");
+
+            if (actualType == typeof(ChildReference))
+                return new BsonString("chref");
+
+            return new BsonString("eh");
         }
     }
 
