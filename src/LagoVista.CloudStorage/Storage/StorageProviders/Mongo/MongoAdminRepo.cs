@@ -144,17 +144,37 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             if (String.IsNullOrWhiteSpace(id)) throw new ArgumentNullException(nameof(id));
 
             var collection = GetCollection(databaseName, collectionName);
-            FilterDefinition<BsonDocument> filter = Builders<BsonDocument>.Filter.Eq("_id", id.Trim());
-
-            if (ObjectId.TryParse(id.Trim(), out var objectId))
-            {
-                filter = Builders<BsonDocument>.Filter.Or(
-                    filter,
-                    Builders<BsonDocument>.Filter.Eq("_id", objectId));
-            }
-
-            var document = await collection.Find(filter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            var document = await collection.Find(BuildIdFilter(id)).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
             return document == null ? null : ToJson(document);
+        }
+
+        public async Task<string> InsertDocumentAsync(
+            string databaseName,
+            string collectionName,
+            string json,
+            CancellationToken cancellationToken = default)
+        {
+            var document = ParseDocument(json, "document", allowEmpty: false);
+
+            if (!document.Contains("_id"))
+                document["_id"] = ObjectId.GenerateNewId();
+
+            var collection = GetCollection(databaseName, collectionName);
+            await collection.InsertOneAsync(document, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return GetDocumentId(document);
+        }
+
+        public async Task<bool> DeleteDocumentAsync(
+            string databaseName,
+            string collectionName,
+            string id,
+            CancellationToken cancellationToken = default)
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentNullException(nameof(id));
+
+            var collection = GetCollection(databaseName, collectionName);
+            var result = await collection.DeleteOneAsync(BuildIdFilter(id), cancellationToken).ConfigureAwait(false);
+            return result.DeletedCount == 1;
         }
 
         public async Task<MongoPatchResult> PatchManyAsync(
@@ -215,6 +235,21 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             request.PageSize = Math.Min(request.PageSize, 500);
             return request;
+        }
+
+        private static FilterDefinition<BsonDocument> BuildIdFilter(string id)
+        {
+            var trimmed = id.Trim();
+            FilterDefinition<BsonDocument> filter = Builders<BsonDocument>.Filter.Eq("_id", trimmed);
+
+            if (ObjectId.TryParse(trimmed, out var objectId))
+            {
+                filter = Builders<BsonDocument>.Filter.Or(
+                    filter,
+                    Builders<BsonDocument>.Filter.Eq("_id", objectId));
+            }
+
+            return filter;
         }
 
         private static string GetDocumentId(BsonDocument document)
