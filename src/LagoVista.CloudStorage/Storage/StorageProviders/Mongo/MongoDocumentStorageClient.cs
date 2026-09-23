@@ -188,7 +188,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         public async Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            var entity = await GetCollection<TEntity>().Find(item => item.Id == id && item.EntityType == typeof(TEntity).Name).FirstOrDefaultAsync().ConfigureAwait(false);
+            var filter = Builders<TEntity>.Filter.And(
+                Builders<TEntity>.Filter.Eq("_id", id),
+                Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
+
+            var entity = await GetCollection<TEntity>().Find(filter).FirstOrDefaultAsync().ConfigureAwait(false);
             if (entity == null && throwOnNotFound) throw new RecordNotFoundException(typeof(TEntity).Name, id);
             return entity;
         }
@@ -202,7 +206,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         public async Task<OperationResponse<TEntity>> DeleteDocumentAsync<TEntity>(string id, string partitionKey)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
-            var document = await GetCollection<TEntity>().FindOneAndDeleteAsync(item => item.Id == id && item.EntityType == typeof(TEntity).Name).ConfigureAwait(false);
+            var filter = Builders<TEntity>.Filter.And(
+                Builders<TEntity>.Filter.Eq("_id", id),
+                Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
+
+            var document = await GetCollection<TEntity>().FindOneAndDeleteAsync(filter).ConfigureAwait(false);
             if (document == null) throw new RecordNotFoundException(typeof(TEntity).Name, id);
             return new OperationResponse<TEntity>(document);
         }
@@ -227,7 +235,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             {
                 if (!String.IsNullOrWhiteSpace(request.ETag))
                 {
-                    var exists = await collection.Find(item => item.Id == request.Id && item.EntityType == typeof(TEntity).Name).AnyAsync().ConfigureAwait(false);
+                    var existsFilter = Builders<TEntity>.Filter.And(
+                        Builders<TEntity>.Filter.Eq("_id", request.Id),
+                        Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
+
+                    var exists = await collection.Find(existsFilter).AnyAsync().ConfigureAwait(false);
                     if (exists) throw new ContentModifiedException { EntityType = typeof(TEntity).Name, Id = request.Id };
                 }
                 throw new RecordNotFoundException(typeof(TEntity).Name, request.Id);
