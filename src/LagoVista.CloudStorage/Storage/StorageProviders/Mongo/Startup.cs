@@ -11,6 +11,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             services.AddSingleton<IApplicationDataStore, MongoApplicationDataStore>();
             services.AddSingleton<IScratchStore, MongoScratchStore>();
             services.AddScoped<IMongoDocumentStorageClient, MongoDocumentStorageClient>();
+            services.AddScoped<IMongoAdminRepo, MongoAdminRepo>();
         }
     }
 }
