@@ -5,6 +5,7 @@ using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
+using LagoVista.Core;
 using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
@@ -185,11 +186,28 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             }
         }
 
+        private static string NormalizeStoredId<TEntity>(string id)
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Document id is required.", nameof(id));
+
+            if (NormalizedId32.IsNormalizedId32(id))
+                return id;
+
+            if (Attribute.IsDefined(typeof(TEntity), typeof(AllowLegacyGuidDocumentIdAttribute), inherit: true) &&
+                GuidString36.IsStrictLowerD(id))
+                return id;
+
+            if (Guid.TryParse(id, out var guid))
+                return guid.ToString("N").ToUpperInvariant();
+
+            return id;
+        }
+
         public async Task<TEntity> GetDocumentAsync<TEntity>(string id, bool throwOnNotFound = true)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             var filter = Builders<TEntity>.Filter.And(
-                Builders<TEntity>.Filter.Eq("_id", id),
+                Builders<TEntity>.Filter.Eq("_id", NormalizeStoredId<TEntity>(id)),
                 Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
 
             var entity = await GetCollection<TEntity>().Find(filter).FirstOrDefaultAsync().ConfigureAwait(false);
@@ -207,7 +225,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity
         {
             var filter = Builders<TEntity>.Filter.And(
-                Builders<TEntity>.Filter.Eq("_id", id),
+                Builders<TEntity>.Filter.Eq("_id", NormalizeStoredId<TEntity>(id)),
                 Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
 
             var document = await GetCollection<TEntity>().FindOneAndDeleteAsync(filter).ConfigureAwait(false);
@@ -224,7 +242,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             var collection = GetCollection<TEntity>();
             var filter = Builders<TEntity>.Filter.And(
-                Builders<TEntity>.Filter.Eq("_id", request.Id),
+                Builders<TEntity>.Filter.Eq("_id", NormalizeStoredId<TEntity>(request.Id)),
                 Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
             if (!String.IsNullOrWhiteSpace(request.ETag)) filter &= Builders<TEntity>.Filter.Eq(item => item.ETag, request.ETag);
 
@@ -236,7 +254,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 if (!String.IsNullOrWhiteSpace(request.ETag))
                 {
                     var existsFilter = Builders<TEntity>.Filter.And(
-                        Builders<TEntity>.Filter.Eq("_id", request.Id),
+                        Builders<TEntity>.Filter.Eq("_id", NormalizeStoredId<TEntity>(request.Id)),
                         Builders<TEntity>.Filter.Eq(item => item.EntityType, typeof(TEntity).Name));
 
                     var exists = await collection.Find(existsFilter).AnyAsync().ConfigureAwait(false);
