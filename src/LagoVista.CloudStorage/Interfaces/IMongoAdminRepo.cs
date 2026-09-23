@@ -11,6 +11,8 @@ namespace LagoVista.CloudStorage.Interfaces
         Task<ListResponse<MongoCollectionInfo>> GetCollectionsAsync(string databaseName, ListRequest listRequest, CancellationToken cancellationToken = default);
         Task<ListResponse<MongoDocumentInfo>> QueryAsync(string databaseName, string collectionName, MongoQueryRequest request, CancellationToken cancellationToken = default);
         Task<string> GetDocumentAsync(string databaseName, string collectionName, string id, CancellationToken cancellationToken = default);
+        Task<string> InsertDocumentAsync(string databaseName, string collectionName, string json, CancellationToken cancellationToken = default);
+        Task<bool> DeleteDocumentAsync(string databaseName, string collectionName, string id, CancellationToken cancellationToken = default);
         Task<MongoPatchResult> PatchManyAsync(string databaseName, string collectionName, MongoPatchRequest request, CancellationToken cancellationToken = default);
     }
 }
