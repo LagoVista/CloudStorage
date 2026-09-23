@@ -235,6 +235,39 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             return new OperationResponse<TEntity>(entity);
         }
 
+        public async Task<InvokeResult> PatchDocumentAsync(Type entityClrType, string entityType, PatchRequest request, CancellationToken cancellationToken = default)
+        {
+            if (entityClrType == null) throw new ArgumentNullException(nameof(entityClrType));
+            if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
+            if (request == null) throw new ArgumentNullException(nameof(request));
+            if (String.IsNullOrWhiteSpace(request.Id)) throw new ArgumentException("Patch request id is required.", nameof(request));
+            if (request.Steps == null || request.Steps.Count == 0) throw new ArgumentException("Patch request must contain at least one step.", nameof(request));
+            if (!_collectionNameResolver.TryResolve(_settings.DatabaseName, entityType, out var collectionName)) throw new InvalidOperationException($"Could not resolve Mongo collection for entity type '{entityType}'.");
+
+            MongoBsonSerialization.ConfigureForType(entityClrType);
+
+            var collection = GetBsonCollection(collectionName);
+            var filter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", request.Id), Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+            if (!String.IsNullOrWhiteSpace(request.ETag)) filter &= Builders<BsonDocument>.Filter.Eq("ETag", request.ETag);
+
+            var updates = request.Steps.Select(step => CreateRuntimePatchUpdate(entityClrType, step)).ToList();
+            updates.Add(Builders<BsonDocument>.Update.Set("ETag", CreateETag()));
+
+            var result = await collection.UpdateOneAsync(filter, Builders<BsonDocument>.Update.Combine(updates), cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (result.MatchedCount == 0)
+            {
+                if (!String.IsNullOrWhiteSpace(request.ETag))
+                {
+                    var existsFilter = Builders<BsonDocument>.Filter.And(Builders<BsonDocument>.Filter.Eq("_id", request.Id), Builders<BsonDocument>.Filter.Eq("EntityType", entityType));
+                    if (await collection.Find(existsFilter).AnyAsync(cancellationToken).ConfigureAwait(false)) throw new ContentModifiedException { EntityType = entityType, Id = request.Id };
+                }
+
+                throw new RecordNotFoundException(entityType, request.Id);
+            }
+
+            return InvokeResult.Success;
+        }
+
         public async Task<InvokeResult> PatchDocumentAsync(string entityType, PatchRequest request, CancellationToken cancellationToken = default)
         {
             if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
@@ -259,6 +292,68 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 throw new RecordNotFoundException(entityType, request.Id);
             }
             return InvokeResult.Success;
+        }
+
+        private sealed class PatchValueEnvelope<T>
+        {
+            public T Value { get; set; }
+        }
+
+        private static UpdateDefinition<BsonDocument> CreateRuntimePatchUpdate(Type entityClrType, PatchStep step)
+        {
+            if (step == null) throw new ArgumentException("Patch request contains a null step.");
+            var path = ToMongoPath(step);
+
+            switch (step.Op)
+            {
+                case PatchOp.Set:
+                case PatchOp.Add:
+                    return Builders<BsonDocument>.Update.Set(path, ToTypedBsonValue(entityClrType, step));
+                case PatchOp.Remove:
+                    return Builders<BsonDocument>.Update.Unset(path);
+                default:
+                    throw new NotSupportedException($"Patch operation '{step.Op}' is not supported by the Mongo document client.");
+            }
+        }
+
+        private static BsonValue ToTypedBsonValue(Type entityClrType, PatchStep step)
+        {
+            if (step.Value == null || step.Value.Type == JTokenType.Null) return BsonNull.Value;
+
+            var valueType = ResolvePatchValueType(entityClrType, step.LogicalPath);
+            if (valueType == null)
+                throw new InvalidOperationException($"Could not resolve CLR property type for patch path '{step.LogicalPath}' on '{entityClrType.FullName}'.");
+
+            MongoBsonSerialization.ConfigureForType(valueType);
+
+            var serializer = JsonSerializer.CreateDefault();
+            var clrValue = step.Value.ToObject(valueType, serializer);
+
+            var envelopeType = typeof(PatchValueEnvelope<>).MakeGenericType(valueType);
+            var envelope = Activator.CreateInstance(envelopeType);
+            envelopeType.GetProperty(nameof(PatchValueEnvelope<int>.Value)).SetValue(envelope, clrValue);
+
+            var document = envelope.ToBsonDocument(envelopeType);
+            return document[nameof(PatchValueEnvelope<int>.Value)];
+        }
+
+        private static Type ResolvePatchValueType(Type entityClrType, string logicalPath)
+        {
+            if (entityClrType == null || String.IsNullOrWhiteSpace(logicalPath)) return null;
+
+            var currentType = entityClrType;
+            var segments = logicalPath.Trim().TrimStart('/').Replace('/', '.').Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var segment in segments)
+            {
+                var property = currentType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                    .FirstOrDefault(candidate => String.Equals(candidate.Name, segment, StringComparison.OrdinalIgnoreCase));
+
+                if (property == null) return null;
+                currentType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+            }
+
+            return currentType;
         }
 
         private static UpdateDefinition<BsonDocument> CreateRuntimePatchUpdate(PatchStep step)

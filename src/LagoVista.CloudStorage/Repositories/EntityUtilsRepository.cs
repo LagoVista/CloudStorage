@@ -551,7 +551,10 @@ namespace LagoVista.CloudStorage.Repositories
 
                 try
                 {
-                    await _storageClient.PatchDocumentAsync(entityTypeName, request, ct).ConfigureAwait(false);
+                    if (!_entityTypeResolver.TryGetEntityType(entityTypeName, out var entityClrType) || entityClrType == null)
+                        return InvokeResult.FromError($"Could not resolve entity type '{entityTypeName}' while patching entity '{documentId}'.");
+
+                    await _storageClient.PatchDocumentAsync(entityClrType, entityTypeName, request, ct).ConfigureAwait(false);
 
                     _logger.Trace($"{this.Tag()} - Patched fields [{String.Join(", ", fields.Keys)}] for entity '{documentId}' on attempt {attempt}.");
 
@@ -646,7 +649,10 @@ namespace LagoVista.CloudStorage.Repositories
 
                 try
                 {
-                    await _storageClient.PatchDocumentAsync(entityType, request, ct).ConfigureAwait(false);
+                    if (!_entityTypeResolver.TryGetEntityType(entityType, out var entityClrType) || entityClrType == null)
+                        return InvokeResult.FromError($"Could not resolve entity type '{entityType}' while updating AI entity sessions for '{id}'.");
+
+                    await _storageClient.PatchDocumentAsync(entityClrType, entityType, request, ct).ConfigureAwait(false);
 
                     _logger.Trace($"{this.Tag()} - Upserted AI entity session for entity '{id}' on attempt {attempt}.");
 

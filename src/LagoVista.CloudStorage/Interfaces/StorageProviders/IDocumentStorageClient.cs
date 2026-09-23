@@ -68,6 +68,7 @@ namespace LagoVista.CloudStorage.Interfaces
         Task DeleteDocumentAsync(string entityType, string id, string partitionKey = null, CancellationToken cancellationToken = default);
 
         Task<InvokeResult> PatchDocumentAsync(string entityType, PatchRequest request, CancellationToken cancellationToken = default);
+        Task<InvokeResult> PatchDocumentAsync(Type entityClrType, string entityType, PatchRequest request, CancellationToken cancellationToken = default);
 
         Task<IEnumerable<TEntity>> QueryAsync<TEntity>(Expression<Func<TEntity, bool>> query)
             where TEntity : class, IIDEntity, IKeyedEntity, IOwnedEntity, INamedEntity, INoSQLEntity, IAuditableEntity;

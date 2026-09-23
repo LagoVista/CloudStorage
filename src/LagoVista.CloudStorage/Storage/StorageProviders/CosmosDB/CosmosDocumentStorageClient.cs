@@ -90,6 +90,12 @@ namespace LagoVista.CloudStorage.StorageProviders
             }
         }
 
+        public Task<InvokeResult> PatchDocumentAsync(Type entityClrType, string entityType, PatchRequest request, CancellationToken cancellationToken = default)
+        {
+            if (entityClrType == null) throw new ArgumentNullException(nameof(entityClrType));
+            return PatchDocumentAsync(entityType, request, cancellationToken);
+        }
+
         public async Task<InvokeResult> PatchDocumentAsync(string entityType, PatchRequest request, CancellationToken cancellationToken = default)
         {
             if (String.IsNullOrWhiteSpace(entityType)) throw new ArgumentException("Entity type is required.", nameof(entityType));
