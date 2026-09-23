@@ -70,6 +70,10 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             DocumentStorageClientContract.PatchAsync(_client);
 
         [TestMethod]
+        public Task RuntimeTypedPatch_SatisfiesSharedContract() =>
+            DocumentStorageClientContract.RuntimeTypedPatchAsync(_client);
+
+        [TestMethod]
         public Task ProjectionAndKeyLookup_SatisfySharedContract() =>
             DocumentStorageClientContract.ProjectionAndKeyLookupAsync(_client);
 

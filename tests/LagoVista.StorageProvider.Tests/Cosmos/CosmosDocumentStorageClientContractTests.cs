@@ -69,6 +69,9 @@ namespace LagoVista.StorageProvider.Tests.Cosmos
         public Task Patch_SatisfiesSharedContract() => DocumentStorageClientContract.PatchAsync(_client);
 
         [TestMethod]
+        public Task RuntimeTypedPatch_SatisfiesSharedContract() => DocumentStorageClientContract.RuntimeTypedPatchAsync(_client);
+
+        [TestMethod]
         public Task ProjectionAndKeyLookup_SatisfySharedContract() => DocumentStorageClientContract.ProjectionAndKeyLookupAsync(_client);
 
         [TestMethod]

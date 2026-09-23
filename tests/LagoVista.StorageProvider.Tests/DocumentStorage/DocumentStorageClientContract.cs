@@ -173,6 +173,35 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
                 () => client.PatchDocumentAsync<ContractDocumentEntity>(staleRequest));
         }
 
+        public static async Task RuntimeTypedPatchAsync(IDocumentStorageClient client)
+        {
+            var entity = CreateEntity("Typed Patch");
+            await client.CreateDocumentAsync(entity);
+
+            var status = EntityHeader<ContractPatchState>.Create(ContractPatchState.Completed);
+            var statusJson = JObject.FromObject(status);
+            Assert.IsNotNull(statusJson[nameof(EntityHeader<ContractPatchState>.HasValue)]);
+
+            var request = new PatchRequest
+            {
+                Id = entity.Id.Value,
+                EntityType = nameof(ContractDocumentEntity),
+                ETag = entity.ETag,
+                Steps = new[]
+                {
+                    new PatchStep { Op = PatchOp.Set, LogicalPath = nameof(ContractDocumentEntity.Status), Value = statusJson }
+                }
+            };
+
+            var result = await client.PatchDocumentAsync(typeof(ContractDocumentEntity), nameof(ContractDocumentEntity), request);
+            Assert.IsTrue(result.Successful);
+
+            var reloaded = await client.GetDocumentAsync<ContractDocumentEntity>(entity.Id);
+            Assert.IsNotNull(reloaded.Status);
+            Assert.AreEqual(ContractPatchState.Completed, reloaded.Status.Value);
+            Assert.AreEqual(EntityChecklistStatus.Completed, reloaded.Status.Id);
+        }
+
         private static ContractDocumentEntity CreateEntity(string detail, string name = null)
         {
             var id = Guid.NewGuid().ToString("N").ToUpperInvariant();
@@ -188,9 +217,19 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
         }
     }
 
+    internal enum ContractPatchState
+    {
+        [LagoVista.Core.Attributes.EnumLabel(EntityChecklistStatus.NotStarted, LagoVista.Core.Resources.LagoVistaCommonStrings.Names.EntityChecklistStepStatus_NotStarted, typeof(LagoVista.Core.Resources.LagoVistaCommonStrings))]
+        NotStarted,
+
+        [LagoVista.Core.Attributes.EnumLabel(EntityChecklistStatus.Completed, LagoVista.Core.Resources.LagoVistaCommonStrings.Names.EntityChecklistStepStatus_Completed, typeof(LagoVista.Core.Resources.LagoVistaCommonStrings))]
+        Completed
+    }
+
     internal sealed class ContractDocumentEntity : EntityBase
     {
         public string Detail { get; set; }
+        public EntityHeader<ContractPatchState> Status { get; set; }
         public string OptionalDetail { get; set; }
     }
 }
