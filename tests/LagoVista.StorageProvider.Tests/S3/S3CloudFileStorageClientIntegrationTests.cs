@@ -83,14 +83,14 @@ namespace LagoVista.StorageProvider.Tests.S3
         }
 
         [TestMethod]
-        public async Task RejectUpdates_FailsSafelyAndPreservesExistingObject()
+        public async Task RejectUpdates_CreatesOnceThenRejectsReplacementAndPreservesExistingObject()
         {
             var client = new S3CloudFileStorageClient(_settings, _logger);
             var fileName = $"reject/{Guid.NewGuid():N}.txt";
             var original = Encoding.UTF8.GetBytes("original");
             var replacement = Encoding.UTF8.GetBytes("replacement");
 
-            var add = await client.AddFileAsync(ContainerName, fileName, original);
+            var add = await client.AddFileAsync(ContainerName, fileName, original, rejectUpdates: true);
             Assert.IsTrue(add.Successful);
 
             var rejected = await client.AddFileAsync(ContainerName, fileName, replacement, rejectUpdates: true);

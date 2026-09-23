@@ -64,12 +64,6 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
 
             fileName = NormalizeObjectName(fileName);
 
-            if (rejectUpdates)
-            {
-                return InvokeResult<Uri>.FromError(
-                    "Atomic create-only S3 uploads are not yet implemented. rejectUpdates requires an If-None-Match:* conditional PUT and must not be emulated with a check-then-write operation.");
-            }
-
             var sw = Stopwatch.StartNew();
             _logger.Trace($"{this.Tag()} - uploading file to S3 storage", fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
 
@@ -88,13 +82,15 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                             .WithObjectSize(data.LongLength)
                             .WithContentType(contentType);
 
+                        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                         if (!String.IsNullOrWhiteSpace(cacheControl))
-                        {
-                            args = args.WithHeaders(new Dictionary<string, string>
-                            {
-                                ["Cache-Control"] = cacheControl
-                            });
-                        }
+                            headers["Cache-Control"] = cacheControl;
+
+                        if (rejectUpdates)
+                            headers["If-None-Match"] = "*";
+
+                        if (headers.Count > 0)
+                            args = args.WithHeaders(headers);
 
                         await _client.PutObjectAsync(args);
                     }
