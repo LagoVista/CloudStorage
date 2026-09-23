@@ -184,7 +184,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
             return InvokeResult<byte[]>.FromError("Could not retrieve file");
         }
 
-        public async Task<InvokeResult<Uri>> CreateReadUrlAsync(string containerName, string fileName, TimeSpan validFor)
+        public Task<InvokeResult<Uri>> CreateReadUrlAsync(string containerName, string fileName, TimeSpan validFor)
+        {
+            return CreateReadUrlAsync(containerName, fileName, validFor, CloudStorageUrlScope.Public);
+        }
+
+        public async Task<InvokeResult<Uri>> CreateReadUrlAsync(string containerName, string fileName, TimeSpan validFor, CloudStorageUrlScope scope)
         {
             ValidateFileArguments(containerName, fileName);
             fileName = NormalizeObjectName(fileName);
@@ -204,7 +209,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                         .WithBucket(containerName)
                         .WithObject(fileName));
 
-                    var signedUrl = await _readUrlClient.PresignedGetObjectAsync(new PresignedGetObjectArgs()
+                    var urlClient = scope == CloudStorageUrlScope.Internal ? _client : _readUrlClient;
+                    var signedUrl = await urlClient.PresignedGetObjectAsync(new PresignedGetObjectArgs()
                         .WithBucket(containerName)
                         .WithObject(fileName)
                         .WithExpiry((int)expirySeconds));
@@ -234,7 +240,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
         }
 
 
-        public async Task<InvokeResult<Uri>> CreateWriteUrlAsync(string containerName, string fileName, string contentType, TimeSpan validFor)
+        public Task<InvokeResult<Uri>> CreateWriteUrlAsync(string containerName, string fileName, string contentType, TimeSpan validFor)
+        {
+            return CreateWriteUrlAsync(containerName, fileName, contentType, validFor, CloudStorageUrlScope.Public);
+        }
+
+        public async Task<InvokeResult<Uri>> CreateWriteUrlAsync(string containerName, string fileName, string contentType, TimeSpan validFor, CloudStorageUrlScope scope)
         {
             ValidateFileArguments(containerName, fileName);
             fileName = NormalizeObjectName(fileName);
@@ -250,7 +261,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
             {
                 await EnsureBucketExistsAsync(containerName);
 
-                var signedUrl = await _readUrlClient.PresignedPutObjectAsync(new PresignedPutObjectArgs()
+                var urlClient = scope == CloudStorageUrlScope.Internal ? _client : _readUrlClient;
+                var signedUrl = await urlClient.PresignedPutObjectAsync(new PresignedPutObjectArgs()
                     .WithBucket(containerName)
                     .WithObject(fileName)
                     .WithExpiry((int)expirySeconds));
