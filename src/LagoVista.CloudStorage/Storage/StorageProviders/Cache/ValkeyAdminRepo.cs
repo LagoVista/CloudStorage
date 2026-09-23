@@ -63,10 +63,13 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cache
             using (var multiplexer = await ConnectAsync().ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var expiry = request.TtlSeconds.HasValue ? TimeSpan.FromSeconds(request.TtlSeconds.Value) : (TimeSpan?)null;
-                await multiplexer.GetDatabase(request.Database)
-                    .StringSetAsync(request.Key, request.Value ?? String.Empty, expiry)
-                    .ConfigureAwait(false);
+                var database = multiplexer.GetDatabase(request.Database);
+                await database.StringSetAsync(request.Key, request.Value ?? String.Empty).ConfigureAwait(false);
+
+                if (request.TtlSeconds.HasValue)
+                {
+                    await database.KeyExpireAsync(request.Key, TimeSpan.FromSeconds(request.TtlSeconds.Value)).ConfigureAwait(false);
+                }
             }
         }
 
