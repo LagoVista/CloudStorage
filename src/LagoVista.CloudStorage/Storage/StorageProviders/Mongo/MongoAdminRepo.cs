@@ -1,12 +1,12 @@
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
+using LagoVista.Core.Models.UIMetaData;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,47 +31,57 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         }
 
-        public async Task<IReadOnlyList<string>> GetDatabasesAsync(CancellationToken cancellationToken = default)
+        public async Task<ListResponse<MongoDatabaseInfo>> GetDatabasesAsync(
+            ListRequest listRequest,
+            CancellationToken cancellationToken = default)
         {
+            var request = NormalizeListRequest(listRequest);
             var client = GetClient();
+
             using (var cursor = await client.ListDatabaseNamesAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
             {
-                var names = await cursor.ToListAsync(cancellationToken).ConfigureAwait(false);
-                return names
+                var databases = (await cursor.ToListAsync(cancellationToken).ConfigureAwait(false))
                     .Where(name => !SystemDatabases.Contains(name))
                     .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-                    .ToList()
-                    .AsReadOnly();
+                    .Select(name => new MongoDatabaseInfo { Name = name })
+                    .ToList();
+
+                return CreateListResponse(databases, request);
             }
         }
 
-        public async Task<IReadOnlyList<MongoCollectionInfo>> GetCollectionsAsync(
+        public async Task<ListResponse<MongoCollectionInfo>> GetCollectionsAsync(
             string databaseName,
+            ListRequest listRequest,
             CancellationToken cancellationToken = default)
         {
+            var request = NormalizeListRequest(listRequest);
             var database = GetDatabase(databaseName);
+
             using (var cursor = await database.ListCollectionNamesAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
             {
-                var names = await cursor.ToListAsync(cancellationToken).ConfigureAwait(false);
-                var result = new List<MongoCollectionInfo>();
+                var names = (await cursor.ToListAsync(cancellationToken).ConfigureAwait(false))
+                    .Where(name => !name.StartsWith("system.", StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
 
-                foreach (var name in names.Where(name => !name.StartsWith("system.", StringComparison.OrdinalIgnoreCase))
-                                          .OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+                var all = new List<MongoCollectionInfo>();
+                foreach (var name in names)
                 {
                     var collection = database.GetCollection<BsonDocument>(name);
                     var count = await collection.EstimatedDocumentCountAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                    result.Add(new MongoCollectionInfo
+                    all.Add(new MongoCollectionInfo
                     {
                         Name = name,
                         EstimatedDocumentCount = count
                     });
                 }
 
-                return result.AsReadOnly();
+                return CreateListResponse(all, request);
             }
         }
 
-        public async Task<MongoQueryResult> QueryAsync(
+        public async Task<ListResponse<MongoDocumentInfo>> QueryAsync(
             string databaseName,
             string collectionName,
             MongoQueryRequest request,
@@ -79,18 +89,31 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
 
+            NormalizeListRequest(request);
+
             var collection = GetCollection(databaseName, collectionName);
             var filter = ParseDocument(request.Filter, "filter", allowEmpty: true);
-            var limit = request.Limit <= 0 ? 100 : Math.Min(request.Limit, 500);
-            var skip = Math.Max(request.Skip, 0);
+            var pageSize = Math.Min(request.PageSize, 500);
+            var skip = (request.PageIndex - 1) * pageSize;
 
-            var stopwatch = Stopwatch.StartNew();
-            var matchedCount = await collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var matchedCount = await collection.CountDocumentsAsync(
+                filter,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            var find = collection.Find(filter).Skip(skip).Limit(limit);
+            var find = collection.Find(filter).Skip(skip).Limit(pageSize);
 
             if (!String.IsNullOrWhiteSpace(request.Sort))
+            {
                 find = find.Sort(ParseDocument(request.Sort, "sort", allowEmpty: false));
+            }
+            else if (!String.IsNullOrWhiteSpace(request.SortField))
+            {
+                var sort = request.SortDescending == true
+                    ? Builders<BsonDocument>.Sort.Descending(request.SortField)
+                    : Builders<BsonDocument>.Sort.Ascending(request.SortField);
+
+                find = find.Sort(sort);
+            }
 
             List<BsonDocument> documents;
             if (!String.IsNullOrWhiteSpace(request.Projection))
@@ -105,15 +128,19 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 documents = await find.ToListAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            stopwatch.Stop();
-
-            return new MongoQueryResult
+            var items = documents.Select(document => new MongoDocumentInfo
             {
-                MatchedCount = matchedCount,
-                ReturnedCount = documents.Count,
-                ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
-                Documents = documents.Select(ToJson).ToList()
-            };
+                Id = GetDocumentId(document),
+                Json = ToJson(document)
+            }).ToList();
+
+            var response = ListResponse<MongoDocumentInfo>.Create(items, request);
+            response.RecordCount = matchedCount > Int32.MaxValue ? Int32.MaxValue : (int)matchedCount;
+            response.PageSize = pageSize;
+            response.PageIndex = request.PageIndex;
+            response.PageCount = matchedCount == 0 ? 0 : (int)Math.Ceiling(matchedCount / (double)pageSize);
+            response.HasMoreRecords = (long)skip + items.Count < matchedCount;
+            return response;
         }
 
         public async Task<string> GetDocumentAsync(
@@ -169,6 +196,41 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 MatchedCount = result.MatchedCount,
                 ModifiedCount = result.ModifiedCount
             };
+        }
+
+        private static ListResponse<T> CreateListResponse<T>(IReadOnlyList<T> items, ListRequest request)
+            where T : class
+        {
+            var skip = (request.PageIndex - 1) * request.PageSize;
+            var page = items.Skip(skip).Take(request.PageSize).ToList();
+            var response = ListResponse<T>.Create(page, request);
+            response.RecordCount = items.Count;
+            response.PageCount = items.Count == 0 ? 0 : (int)Math.Ceiling(items.Count / (double)request.PageSize);
+            response.HasMoreRecords = skip + page.Count < items.Count;
+            return response;
+        }
+
+        private static ListRequest NormalizeListRequest(ListRequest request)
+        {
+            if (request == null)
+                request = ListRequest.Create(1, 100);
+
+            if (request.PageIndex <= 0)
+                request.PageIndex = 1;
+
+            if (request.PageSize <= 0)
+                request.PageSize = 100;
+
+            request.PageSize = Math.Min(request.PageSize, 500);
+            return request;
+        }
+
+        private static string GetDocumentId(BsonDocument document)
+        {
+            if (!document.TryGetValue("_id", out var id) || id == null || id.IsBsonNull)
+                return null;
+
+            return id.IsString ? id.AsString : id.ToString();
         }
 
         private IMongoClient GetClient()
