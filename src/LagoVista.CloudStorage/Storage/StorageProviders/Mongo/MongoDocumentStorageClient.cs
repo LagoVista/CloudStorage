@@ -131,7 +131,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         private static TProjection ToProjection<TProjection>(BsonDocument document) where TProjection : class
         {
             if (typeof(TProjection) == typeof(JObject)) return (TProjection)(object)ToJObject(document);
-            return Newtonsoft.Json.JsonConvert.DeserializeObject<TProjection>(ToJObject(document).ToString());
+            EnsureProjectionClassMap<TProjection>();
+            return BsonSerializer.Deserialize<TProjection>(document);
         }
 
         public async Task<OperationResponse<TEntity>> CreateDocumentAsync<TEntity>(TEntity item)

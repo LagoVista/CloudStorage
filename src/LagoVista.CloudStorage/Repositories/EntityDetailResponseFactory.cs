@@ -1,4 +1,5 @@
 ﻿using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.AIMetaData;
@@ -15,32 +16,22 @@ namespace LagoVista.CloudStorage.Repositories
     public class EntityDetailResponseFactory : IEntityDetailResponseFactory
     {
         private readonly IEntityTypeResolver _entityTypeResolver;
-        private readonly IStorageUtils _entityJsonLoader;
+        private readonly IDocumentStorageClient _storageClient;
         private readonly ISecurity _security;
 
-        public EntityDetailResponseFactory(IEntityTypeResolver entityTypeResolver, IStorageUtils entityJsonLoader, ISecurity security)
+        public EntityDetailResponseFactory(IEntityTypeResolver entityTypeResolver, IDocumentStorageClientProvider documentStorageClientProvider, ISecurity security)
         {
             _entityTypeResolver = entityTypeResolver ?? throw new ArgumentNullException(nameof(entityTypeResolver));
-            _entityJsonLoader = entityJsonLoader ?? throw new ArgumentNullException(nameof(entityJsonLoader));
-            _security = security ?? throw new ArgumentNullException(nameof(security));  
+            _storageClient = documentStorageClientProvider?.GetClient() ?? throw new ArgumentNullException(nameof(documentStorageClientProvider));
+            _security = security ?? throw new ArgumentNullException(nameof(security));
         }
 
 
-        private static string GetEntityType(JObject json)
+        private static void AuthorizeOwnerOrganization(EntityIdentityProjection identity, EntityHeader org)
         {
-            var entityType = json.SelectToken("EntityType")?.Value<string>();
+            var ownerOrgId = identity?.OwnerOrganization?.Id;
 
-            if (String.IsNullOrWhiteSpace(entityType))
-                throw new InvalidOperationException("EntityType was not found on the stored entity.");
-
-            return entityType;
-        }
-
-        private static void AuthorizeOwnerOrganization(JObject json, EntityHeader org)
-        {
-            var ownerOrgId = json.SelectToken("OwnerOrganization.Id")?.Value<string>();
-
-            if (String.IsNullOrWhiteSpace(ownerOrgId) || ownerOrgId != org.Id)
+            if (String.IsNullOrWhiteSpace(ownerOrgId) || !String.Equals(ownerOrgId, org.Id, StringComparison.OrdinalIgnoreCase))
                 throw new UnauthorizedAccessException();
         }
 
@@ -56,15 +47,17 @@ namespace LagoVista.CloudStorage.Repositories
 
         public async Task<(Type ModelType, object Model)> LoadModelAsync(string id, string requestedEntityType, EntityHeader user, EntityHeader org)
         {
-            var json = await _entityJsonLoader.GetJobjectByIdAsync(id);
+            var identity = await _storageClient.GetDocumentProjectionAsync<EntityIdentityProjection>(id, true).ConfigureAwait(false);
+            AuthorizeOwnerOrganization(identity, org);
 
-            AuthorizeOwnerOrganization(json, org);
+            var actualEntityType = identity.EntityType;
+            if (String.IsNullOrWhiteSpace(actualEntityType))
+                throw new InvalidOperationException("EntityType was not found on the stored entity.");
 
-            var actualEntityType = GetEntityType(json);
             ValidateRequestedEntityType(requestedEntityType, actualEntityType);
 
             var modelType = _entityTypeResolver.GetEntityType(actualEntityType);
-            var model = JsonConvert.DeserializeObject(json.ToString(), modelType);
+            var model = await _storageClient.GetDocumentAsync(modelType, actualEntityType, id, true).ConfigureAwait(false);
 
             await _security.AuthorizeAsync(user, org, modelType, Core.Validation.Actions.Read);
             await _security.LogEntityActionAsync(id, actualEntityType, "Read", user, org);
@@ -74,14 +67,15 @@ namespace LagoVista.CloudStorage.Repositories
 
         public async Task<(Type ModelType, object Model)> LoadModelAsync(string id,  EntityHeader user, EntityHeader org)
         {
-            var json = await _entityJsonLoader.GetJobjectByIdAsync(id);
+            var identity = await _storageClient.GetDocumentProjectionAsync<EntityIdentityProjection>(id, true).ConfigureAwait(false);
+            AuthorizeOwnerOrganization(identity, org);
 
-            AuthorizeOwnerOrganization(json, org);
+            var actualEntityType = identity.EntityType;
+            if (String.IsNullOrWhiteSpace(actualEntityType))
+                throw new InvalidOperationException("EntityType was not found on the stored entity.");
 
-            var actualEntityType = GetEntityType(json);
-            
             var modelType = _entityTypeResolver.GetEntityType(actualEntityType);
-            var model = JsonConvert.DeserializeObject(json.ToString(), modelType);
+            var model = await _storageClient.GetDocumentAsync(modelType, actualEntityType, id, true).ConfigureAwait(false);
 
             await _security.AuthorizeAsync(user, org, modelType, Core.Validation.Actions.Read);
             await _security.LogEntityActionAsync(id, actualEntityType, "Read", user, org);

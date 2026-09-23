@@ -73,29 +73,11 @@ namespace LagoVista.CloudStorage.Repositories
             if (String.IsNullOrWhiteSpace(org.Id))
                 throw new ArgumentException("org.Id is required.", nameof(org));
 
-            var result = await GetEntitiesByTypeAsync(entityType.Trim(), org.Id.Trim(), ct).ConfigureAwait(false);
+            var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByType)
+                .WithParameter("entityType", entityType.Trim())
+                .WithParameter("orgId", org.Id.Trim());
 
-            if (!result.Successful)
-                throw new InvalidOperationException($"Could not retrieve entities of type '{entityType}'.");
-
-            var entities = new List<EntityCoreSummary>();
-
-            foreach (var document in result.Result ?? new List<JObject>())
-            {
-                var entity = document.ToObject<EntityCoreSummary>();
-                if (entity == null)
-                {
-                    var entityId = document["id"]?.Value<string>() ?? "unknown";
-
-                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not deserialize entity '{entityId}' as {nameof(EntityCoreSummary)}.");
-
-                    throw new InvalidOperationException($"Could not deserialize entity '{entityId}' as {nameof(EntityCoreSummary)}.");
-                }
-
-                entities.Add(entity);
-            }
-
-            return entities;
+            return (await _storageClient.QueryKnownAsync<EntityCoreSummary>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
         }
 
         public async Task<List<EntityBaseSummary>> GetEntityBasesAsync(string entityType, EntityHeader org, CancellationToken ct = default)
@@ -109,29 +91,11 @@ namespace LagoVista.CloudStorage.Repositories
             if (String.IsNullOrWhiteSpace(org.Id))
                 throw new ArgumentException("org.Id is required.", nameof(org));
 
-            var result = await GetEntitiesByTypeAsync(entityType.Trim(), org.Id.Trim(), ct).ConfigureAwait(false);
+            var request = new DocumentQueryRequest(DocumentQueryType.EntityUtilsDocumentsByType)
+                .WithParameter("entityType", entityType.Trim())
+                .WithParameter("orgId", org.Id.Trim());
 
-            if (!result.Successful)
-                throw new InvalidOperationException($"Could not retrieve entities of type '{entityType}'.");
-
-            var entities = new List<EntityBaseSummary>();
-
-            foreach (var document in result.Result ?? new List<JObject>())
-            {
-                var entity = document.ToObject<EntityBaseSummary>();
-                if (entity == null)
-                {
-                    var entityId = document["id"]?.Value<string>() ?? "unknown";
-
-                    _logger.AddCustomEvent(LogLevel.Error, this.Tag(), $"Could not deserialize entity '{entityId}' as {nameof(EntityBaseSummary)}.");
-
-                    throw new InvalidOperationException($"Could not deserialize entity '{entityId}' as {nameof(EntityBaseSummary)}.");
-                }
-
-                entities.Add(entity);
-            }
-
-            return entities;
+            return (await _storageClient.QueryKnownAsync<EntityBaseSummary>(entityType.Trim(), request, ct).ConfigureAwait(false)).ToList();
         }
 
         private const string StatusFieldName = "Status";
