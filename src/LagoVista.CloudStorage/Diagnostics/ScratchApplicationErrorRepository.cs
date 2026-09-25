@@ -43,7 +43,6 @@ namespace LagoVista.CloudStorage.Diagnostics
         public async Task<IReadOnlyList<ApplicationErrorSummary>> GetRecentErrorsAsync(
             int take = 100,
             string application = null,
-            string environment = null,
             CancellationToken cancellationToken = default)
         {
             if (take <= 0) take = 100;
@@ -59,10 +58,6 @@ namespace LagoVista.CloudStorage.Diagnostics
                 query.Where(x => x.Record.Application, StorageFilterOperator.Equal, application.Trim());
             }
 
-            if (!String.IsNullOrWhiteSpace(environment))
-            {
-                query.Where(x => x.Record.Environment, StorageFilterOperator.Equal, environment.Trim());
-            }
 
             var page = await _store.QueryAsync(query, cancellationToken).ConfigureAwait(false);
 
