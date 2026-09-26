@@ -11,7 +11,7 @@
     <PackageVersion Include="LagoVista.Core.Configuration" Version="7.0.12" />
     <PackageVersion Include="LagoVista.Core.TestBase" Version="7.0.12" />
     <PackageVersion Include="LagoVista.Crypto" Version="7.0.12" />
-    <PackageVersion Include="LagoVista.IoT.Logging" Version="7.0.4" />
+    <PackageVersion Include="LagoVista.IoT.Logging" Version="7.0.12-ws-c-84165457" />
     <PackageVersion Include="log4net" Version="3.3.1" />
     <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.1" />
