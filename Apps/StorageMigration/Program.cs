@@ -537,7 +537,7 @@ static void PrintUsage()
     Console.Error.WriteLine("  object-inventory <dev|live> [--max-objects N]");
     Console.Error.WriteLine("  object-status <dev|live>");
     Console.Error.WriteLine("  object-reset <dev|live>");
-    Console.Error.WriteLine("  object-migrate <dev|live> [--max-objects N] [--batch-size N] [--parallelism N]");
+    Console.Error.WriteLine("  object-migrate <dev|live> [--max-objects N] [--batch-size N] [--parallelism N] [--catch-up]");
     Console.Error.WriteLine("  object-verify <dev|live>");
     Console.Error.WriteLine("Every environment-aware command requires explicit dev/live selection and matching typed confirmation before connecting.");
 }
