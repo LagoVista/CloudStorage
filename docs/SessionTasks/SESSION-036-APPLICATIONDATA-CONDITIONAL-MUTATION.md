@@ -2,7 +2,7 @@
 
 ## Status
 
-**IN PROGRESS — BUILD PROOF BLOCKED BY PLATFORM ENROLLMENT**
+**COMPLETE — GREEN WORKSTREAM BUILD; READY FOR INTEGRATION REVIEW**
 
 Campaigns Session 033 proved that durable provider-private execution checkpoints cannot be made concurrency-safe on the current `IApplicationDataStore` contract because `UpdateAsync(record)` has no expected version / ETag / compare-and-swap predicate and the Mongo implementation performs an unconditional replacement.
 
@@ -188,7 +188,7 @@ Successful completion unblocks the Campaigns provider-private checkpoint spine f
 ## Completion Report
 
 ### Summary
-Implemented the additive ApplicationData conditional-mutation primitive on `session-036-applicationdata-conditional-mutation`. Mongo now persists a provider-owned opaque revision token and performs conditional replacement with an atomic predicate containing record identity, organization scope, and expected token. Existing unconditional `UpdateAsync` behavior remains available. Final Build Server proof is currently blocked before compilation by platform contract `PLAT005`: `LagoVista/CloudStorage` is not listed in the selected active workstream manifest.
+Implemented the additive ApplicationData conditional-mutation primitive on `session-036-applicationdata-conditional-mutation`. Mongo now persists a provider-owned opaque revision token and performs conditional replacement with an atomic predicate containing record identity, organization scope, and expected token. Existing unconditional `UpdateAsync` behavior remains available. The workstream enrollment/dependency blockers were resolved by enrolling CloudStorage and current Logging in `feature/campaign-execution-foundation`; the authoritative Build Server proof is green.
 
 ### Final contract
 - `GetVersionedAsync<TRecord>(StorageKey)` returns the record plus an opaque `ApplicationDataConcurrencyToken`.
@@ -214,7 +214,7 @@ Integration coverage was added for two readers loading the same version, writer 
 Added Mongo ApplicationData integration coverage for token roundtrip, successful version advancement, stale-writer rejection, accepted-value preservation, missing-record distinction, tenant isolation, and simultaneous writers.
 
 ### Build proof
-Blocked before compilation. Build Server attempt `ac6c2d95ea2c4da4b7651bde04b50c65` failed at `validate-workstream-repository` with `PLAT005`: `LagoVista/CloudStorage` is not listed in the active workstream manifest. A stable-context attempt was also rejected because the session commit is branch-only and not reachable from `master`. No package was published or released.
+Initial Build Server attempt `ac6c2d95ea2c4da4b7651bde04b50c65` failed at `validate-workstream-repository` with `PLAT005` because CloudStorage was not enrolled in the active campaign workstream. After enrolling CloudStorage and the required current Logging dependency, Logging workstream build `c8702c365b4f4478925031d2a8c5fc95` succeeded and supplied `LagoVista.IoT.Logging 7.0.12-ws-c-84165457`. The exact CloudStorage workstream build `ae7c9cdf69334a80a4b3260991c106c3` then succeeded, producing verified workstream packages `7.0.56-ws-c-08dd53b6`. The build compiled the Mongo integration-test assembly; the NuGet build workflow does not execute those integration tests as a separate runtime test phase. No stable package release was performed.
 
 ### Campaigns Session 033 resume impact
 The reusable storage primitive required by Session 033 is implemented in source, but Campaigns should not resume against it until CloudStorage receives an exact green Build Server proof and the resulting package/integration path is intentionally made available.
