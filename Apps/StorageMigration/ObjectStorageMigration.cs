@@ -169,6 +169,66 @@ public sealed class AzureBlobToS3Migration
         return state;
     }
 
+    public async Task<(int ObjectsCopied, long BytesCopied)> CopyMissingAsync(
+        IReadOnlyList<string> missingObjects,
+        int? maxObjects = null,
+        Action<ObjectMigrationProgress>? progress = null,
+        int batchSize = 10,
+        int parallelism = 8,
+        CancellationToken cancellationToken = default)
+    {
+        if (missingObjects == null) throw new ArgumentNullException(nameof(missingObjects));
+        if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize));
+        if (parallelism <= 0) throw new ArgumentOutOfRangeException(nameof(parallelism));
+
+        var selected = maxObjects.HasValue
+            ? missingObjects.Take(maxObjects.Value).ToArray()
+            : missingObjects.ToArray();
+
+        var copied = 0;
+        var bytesCopied = 0L;
+        var stopwatch = Stopwatch.StartNew();
+        var progressState = NewState();
+
+        foreach (var fullKey in selected)
+        {
+            var separator = fullKey.IndexOf('/');
+            if (separator <= 0 || separator == fullKey.Length - 1)
+                throw new InvalidOperationException($"Invalid object key '{fullKey}'.");
+
+            var containerName = fullKey[..separator];
+            var objectName = fullKey[(separator + 1)..];
+            var container = _source.GetBlobContainerClient(containerName);
+            var blob = container.GetBlobClient(objectName);
+            var properties = await blob.GetPropertiesAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            await EnsureBucketAsync(containerName, cancellationToken).ConfigureAwait(false);
+
+            var item = new ObjectCopyItem(
+                objectName,
+                properties.Value.ContentLength,
+                properties.Value.ContentType,
+                properties.Value.CacheControl);
+
+            var result = await CopyBatchAsync(
+                container,
+                containerName,
+                new[] { item },
+                parallelism,
+                cancellationToken).ConfigureAwait(false);
+
+            copied++;
+            bytesCopied += result.Bytes;
+            progressState.RecordsWritten = copied;
+            progressState.BytesWritten = bytesCopied;
+            progressState.CurrentTable = containerName;
+            progressState.HeadRowKey = objectName;
+            ReportProgress(progress, copied, bytesCopied, progressState, stopwatch.Elapsed);
+        }
+
+        return (copied, bytesCopied);
+    }
+
     private async Task<ObjectCopyBatchResult> CopyBatchAsync(
         BlobContainerClient container,
         string containerName,
