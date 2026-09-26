@@ -61,6 +61,17 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                     });
                 }
 
+                if (!BsonClassMap.IsClassMapRegistered(typeof(EntityHeaderRow)))
+                {
+                    BsonClassMap.RegisterClassMap<EntityHeaderRow>(classMap =>
+                    {
+                        classMap.AutoMap();
+                        classMap.SetIgnoreExtraElements(true);
+                        classMap.GetMemberMap(nameof(EntityHeaderRow.Namespace))
+                            .SetSerializer(new LegacyNamespaceStringBsonSerializer());
+                    });
+                }
+
                 BsonSerializer.RegisterSerializer(typeof(LagoVistaKey), new LagoVistaKeyBsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(LagoVistaIcon), new LagoVistaIconBsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(OrgNamespace), new OrgNamespaceBsonSerializer());
@@ -507,6 +518,58 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             }
 
             context.Writer.WriteString(value.Value);
+        }
+    }
+
+    internal sealed class LegacyNamespaceStringBsonSerializer : SerializerBase<string>
+    {
+        public override string Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            var reader = context.Reader;
+            switch (reader.GetCurrentBsonType())
+            {
+                case BsonType.Null:
+                    reader.ReadNull();
+                    return null;
+
+                case BsonType.String:
+                    return reader.ReadString();
+
+                case BsonType.Document:
+                    var document = BsonDocumentSerializer.Instance.Deserialize(context);
+                    var value = document.GetValue("Value", BsonNull.Value);
+
+                    if (value.IsBsonNull)
+                        value = document.GetValue("value", BsonNull.Value);
+
+                    if (value.IsBsonNull)
+                        value = document.GetValue("_value", BsonNull.Value);
+
+                    if (value.IsString)
+                        return value.AsString;
+
+                    throw new BsonSerializationException(
+                        "Cannot deserialize legacy Namespace BSON document because no string value was found.");
+
+                default:
+                    throw new BsonSerializationException(
+                        $"Cannot deserialize Namespace string from BSON type {reader.GetCurrentBsonType()}.");
+            }
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, string value)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            if (value == null)
+            {
+                context.Writer.WriteNull();
+                return;
+            }
+
+            context.Writer.WriteString(value);
         }
     }
 
