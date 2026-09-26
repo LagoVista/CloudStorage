@@ -283,6 +283,53 @@ static async Task ObjectMigrateAsync(int? maxObjects, int batchSize, int paralle
     PrintObjectState(state);
 }
 
+static async Task ObjectCatchUpAsync(int? maxObjects, int batchSize, int parallelism)
+{
+    Console.WriteLine("Azure Blob -> SeaweedFS targeted catch-up");
+    Console.WriteLine($"Environment: {MigrationConnections.EnvironmentName}");
+    Console.WriteLine($"Run limit : {(maxObjects.HasValue ? $"{maxObjects.Value:N0} objects" : "none")}");
+    Console.WriteLine("Mode      : copy Azure objects missing from SeaweedFS");
+    Console.WriteLine("Checkpoint: unchanged");
+    Console.WriteLine();
+
+    var verifier = new AzureBlobToS3Verifier(
+        MigrationConnections.AzureBlobConnectionString(),
+        MigrationConnections.S3ObjectStorage);
+    var verification = await verifier.VerifyAsync();
+
+    Console.WriteLine();
+    Console.WriteLine($"Missing objects     : {verification.MissingObjects.Count:N0}");
+    Console.WriteLine($"Unexpected objects  : {verification.UnexpectedObjects.Count:N0} (preserved)");
+    Console.WriteLine($"Size mismatches     : {verification.SizeMismatches.Count:N0}");
+
+    if (verification.SizeMismatches.Count > 0)
+        throw new InvalidOperationException("Catch-up refuses to continue while existing source/target objects have size mismatches.");
+
+    if (verification.MissingObjects.Count == 0)
+    {
+        Console.WriteLine("PASS: no missing objects require catch-up.");
+        return;
+    }
+
+    var engine = new AzureBlobToS3Migration(
+        MigrationConnections.AzureBlobConnectionString(),
+        MigrationConnections.S3ObjectStorage,
+        StateStore());
+
+    var result = await engine.CopyMissingAsync(
+        verification.MissingObjects,
+        maxObjects,
+        progress: null,
+        batchSize,
+        parallelism);
+
+    Console.WriteLine();
+    Console.WriteLine($"Copied objects      : {result.ObjectsCopied:N0}");
+    Console.WriteLine($"Copied bytes        : {result.BytesCopied:N0} ({FormatBytes(result.BytesCopied)})");
+    Console.WriteLine("PASS: targeted catch-up copy completed.");
+    Console.WriteLine("Run object-verify live for authoritative post-copy verification.");
+}
+
 static async Task ObjectStatusAsync()
 {
     var state = await StateStore().GetAsync(AzureBlobToS3Migration.MigrationKey);
