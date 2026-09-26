@@ -13,10 +13,19 @@ namespace LagoVista.CloudStorage.Storage
         Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
             where TRecord : class, IApplicationDataRecord;
 
+        Task<VersionedApplicationDataRecord<TRecord>> GetVersionedAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
+            where TRecord : class, IApplicationDataRecord;
+
         Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
             where TRecord : class, IApplicationDataRecord;
 
         Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
+            where TRecord : class, IApplicationDataRecord;
+
+        Task<ApplicationDataMutationResult> UpdateIfVersionAsync<TRecord>(
+            TRecord record,
+            ApplicationDataConcurrencyToken expectedVersion,
+            CancellationToken cancellationToken = default)
             where TRecord : class, IApplicationDataRecord;
 
         Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
