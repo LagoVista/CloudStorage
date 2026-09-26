@@ -128,6 +128,73 @@ namespace LagoVista.StorageProvider.Tests.Mongo
         }
 
         [TestMethod]
+        public async Task ConditionalMutation_RejectsStaleWriterAtomically()
+        {
+            var organization = EntityHeader.Create("ORG1", "Organization One");
+            var record = CreateRecord(organization, "Initial");
+            await _store.InsertAsync(record);
+
+            var key = new StorageKey(record.Id.Value, organization.Id);
+            var writerA = await _store.GetVersionedAsync<ApplicationRecord>(key);
+            var writerB = await _store.GetVersionedAsync<ApplicationRecord>(key);
+
+            Assert.IsNotNull(writerA);
+            Assert.IsNotNull(writerB);
+            Assert.AreEqual(writerA.ConcurrencyToken, writerB.ConcurrencyToken);
+
+            writerA.Record.Name = "Writer A";
+            writerB.Record.Name = "Writer B";
+
+            var accepted = await _store.UpdateIfVersionAsync(writerA.Record, writerA.ConcurrencyToken);
+            Assert.AreEqual(ApplicationDataMutationStatus.Updated, accepted.Status);
+            Assert.IsNotNull(accepted.ConcurrencyToken);
+            Assert.AreNotEqual(writerA.ConcurrencyToken, accepted.ConcurrencyToken);
+
+            var stale = await _store.UpdateIfVersionAsync(writerB.Record, writerB.ConcurrencyToken);
+            Assert.AreEqual(ApplicationDataMutationStatus.Conflict, stale.Status);
+            Assert.IsNull(stale.ConcurrencyToken);
+
+            var persisted = await _store.GetVersionedAsync<ApplicationRecord>(key);
+            Assert.IsNotNull(persisted);
+            Assert.AreEqual("Writer A", persisted.Record.Name);
+            Assert.AreEqual(accepted.ConcurrencyToken, persisted.ConcurrencyToken);
+
+            var missing = CreateRecord(organization, "Missing");
+            var missingResult = await _store.UpdateIfVersionAsync(missing, writerA.ConcurrencyToken);
+            Assert.AreEqual(ApplicationDataMutationStatus.NotFound, missingResult.Status);
+
+            var otherOrganization = EntityHeader.Create("ORG2", "Organization Two");
+            var wrongTenantRecord = CreateRecord(otherOrganization, "Wrong Tenant");
+            wrongTenantRecord.Id = record.Id;
+            var wrongTenantResult = await _store.UpdateIfVersionAsync(wrongTenantRecord, accepted.ConcurrencyToken);
+            Assert.AreEqual(ApplicationDataMutationStatus.NotFound, wrongTenantResult.Status);
+        }
+
+        [TestMethod]
+        public async Task ConditionalMutation_ConcurrentWritersAllowOnlyOneAcceptedValue()
+        {
+            var organization = EntityHeader.Create("ORG1", "Organization One");
+            var record = CreateRecord(organization, "Initial");
+            await _store.InsertAsync(record);
+
+            var key = new StorageKey(record.Id.Value, organization.Id);
+            var writerA = await _store.GetVersionedAsync<ApplicationRecord>(key);
+            var writerB = await _store.GetVersionedAsync<ApplicationRecord>(key);
+            writerA.Record.Name = "Writer A";
+            writerB.Record.Name = "Writer B";
+
+            var updates = await Task.WhenAll(
+                _store.UpdateIfVersionAsync(writerA.Record, writerA.ConcurrencyToken),
+                _store.UpdateIfVersionAsync(writerB.Record, writerB.ConcurrencyToken));
+
+            Assert.AreEqual(1, updates.Count(result => result.Status == ApplicationDataMutationStatus.Updated));
+            Assert.AreEqual(1, updates.Count(result => result.Status == ApplicationDataMutationStatus.Conflict));
+
+            var persisted = await _store.GetVersionedAsync<ApplicationRecord>(key);
+            Assert.IsTrue(persisted.Record.Name == "Writer A" || persisted.Record.Name == "Writer B");
+        }
+
+        [TestMethod]
         public async Task Insert_PreservesAuthoritativeSourceTimestamps()
         {
             var organization = EntityHeader.Create("ORG1", "Organization One");
