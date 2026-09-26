@@ -18,6 +18,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
     {
         private const string ScratchExpirationField = "_storageExpiresUtc";
         private const string ScratchExpirationIndexName = "ix_storage_expires_utc";
+        private const string ApplicationDataVersionField = "_storageVersion";
 
         private readonly IMongoDatabase _database;
         private readonly IServiceProvider _serviceProvider;
@@ -46,6 +47,124 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             var collection = await GetCollectionAsync<TRecord>(cancellationToken).ConfigureAwait(false);
             await collection.InsertOneAsync(record, null, cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task InsertApplicationDataAsync<TRecord>(TRecord record, string version, CancellationToken cancellationToken)
+            where TRecord : class, IApplicationDataRecord
+        {
+            if (record == null) throw new ArgumentNullException(nameof(record));
+            if (String.IsNullOrWhiteSpace(version)) throw new ArgumentException("ApplicationData version is required.", nameof(version));
+
+            await GetCollectionAsync<TRecord>(cancellationToken).ConfigureAwait(false);
+            var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
+            var collection = _database.GetCollection<BsonDocument>(collectionName);
+            var document = record.ToBsonDocument();
+            document[ApplicationDataVersionField] = version;
+            await collection.InsertOneAsync(document, null, cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task<(TRecord Record, string Version)> GetVersionedApplicationDataAsync<TRecord>(
+            StorageKey key,
+            CancellationToken cancellationToken)
+            where TRecord : class, IApplicationDataRecord
+        {
+            if (key == null) throw new ArgumentNullException(nameof(key));
+
+            await GetCollectionAsync<TRecord>(cancellationToken).ConfigureAwait(false);
+            var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
+            var collection = _database.GetCollection<BsonDocument>(collectionName);
+
+            while (true)
+            {
+                var document = await collection.Find(BuildBsonKeyFilter(key)).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                if (document == null)
+                    return (null, null);
+
+                if (!document.TryGetValue(ApplicationDataVersionField, out var versionValue) ||
+                    !versionValue.IsString ||
+                    String.IsNullOrWhiteSpace(versionValue.AsString))
+                {
+                    var generatedVersion = Guid.NewGuid().ToString("N");
+                    var legacyFilter = BuildBsonKeyFilter(key);
+                    legacyFilter.Add(ApplicationDataVersionField, new BsonDocument("$exists", false));
+                    var initialize = await collection.UpdateOneAsync(
+                        legacyFilter,
+                        new BsonDocument("$set", new BsonDocument(ApplicationDataVersionField, generatedVersion)),
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                    if (initialize.ModifiedCount == 0)
+                        continue;
+
+                    document[ApplicationDataVersionField] = generatedVersion;
+                    versionValue = generatedVersion;
+                }
+
+                var version = versionValue.AsString;
+                document.Remove(ApplicationDataVersionField);
+                return (BsonSerializer.Deserialize<TRecord>(document), version);
+            }
+        }
+
+        public async Task ReplaceApplicationDataAsync<TRecord>(
+            StorageKey key,
+            TRecord record,
+            string version,
+            CancellationToken cancellationToken)
+            where TRecord : class, IApplicationDataRecord
+        {
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (record == null) throw new ArgumentNullException(nameof(record));
+            if (String.IsNullOrWhiteSpace(version)) throw new ArgumentException("ApplicationData version is required.", nameof(version));
+
+            await GetCollectionAsync<TRecord>(cancellationToken).ConfigureAwait(false);
+            var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
+            var collection = _database.GetCollection<BsonDocument>(collectionName);
+            var document = record.ToBsonDocument();
+            document[ApplicationDataVersionField] = version;
+
+            var result = await collection.ReplaceOneAsync(
+                BuildBsonKeyFilter(key),
+                document,
+                new ReplaceOptions { IsUpsert = false },
+                cancellationToken).ConfigureAwait(false);
+
+            if (result.MatchedCount == 0)
+                throw new KeyNotFoundException($"{typeof(TRecord).Name} record '{key.Id}' was not found.");
+        }
+
+        public async Task<ApplicationDataMutationStatus> ReplaceApplicationDataIfVersionAsync<TRecord>(
+            StorageKey key,
+            TRecord record,
+            string expectedVersion,
+            string newVersion,
+            CancellationToken cancellationToken)
+            where TRecord : class, IApplicationDataRecord
+        {
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (record == null) throw new ArgumentNullException(nameof(record));
+            if (String.IsNullOrWhiteSpace(expectedVersion)) throw new ArgumentException("Expected ApplicationData version is required.", nameof(expectedVersion));
+            if (String.IsNullOrWhiteSpace(newVersion)) throw new ArgumentException("New ApplicationData version is required.", nameof(newVersion));
+
+            await GetCollectionAsync<TRecord>(cancellationToken).ConfigureAwait(false);
+            var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
+            var collection = _database.GetCollection<BsonDocument>(collectionName);
+            var document = record.ToBsonDocument();
+            document[ApplicationDataVersionField] = newVersion;
+
+            var filter = BuildBsonKeyFilter(key);
+            filter.Add(ApplicationDataVersionField, expectedVersion);
+
+            var result = await collection.ReplaceOneAsync(
+                filter,
+                document,
+                new ReplaceOptions { IsUpsert = false },
+                cancellationToken).ConfigureAwait(false);
+
+            if (result.MatchedCount > 0)
+                return ApplicationDataMutationStatus.Updated;
+
+            var exists = await collection.Find(BuildBsonKeyFilter(key)).Limit(1).AnyAsync(cancellationToken).ConfigureAwait(false);
+            return exists ? ApplicationDataMutationStatus.Conflict : ApplicationDataMutationStatus.NotFound;
         }
 
         public async Task ReplaceAsync<TRecord>(StorageKey key, TRecord record, bool upsert, CancellationToken cancellationToken)
@@ -152,7 +271,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         private async Task<IMongoCollection<TRecord>> GetCollectionAsync<TRecord>(CancellationToken cancellationToken)
             where TRecord : class
         {
-            EnsureScratchExtraElementCompatibility<TRecord>();
+            EnsureProviderOwnedExtraElementCompatibility<TRecord>();
             var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
             var initializationKey = $"{typeof(TRecord).AssemblyQualifiedName}|{collectionName}";
             var initializer = _initializers.GetOrAdd(initializationKey, _ => InitializeCollectionAsync<TRecord>(collectionName, CancellationToken.None));
@@ -303,10 +422,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(offset.ToString()));
         }
 
-        private static void EnsureScratchExtraElementCompatibility<TRecord>()
+        private static void EnsureProviderOwnedExtraElementCompatibility<TRecord>()
             where TRecord : class
         {
-            if (!typeof(IScratchDataRecord).IsAssignableFrom(typeof(TRecord)))
+            if (!typeof(IScratchDataRecord).IsAssignableFrom(typeof(TRecord)) &&
+                !typeof(IApplicationDataRecord).IsAssignableFrom(typeof(TRecord)))
                 return;
 
             if (BsonClassMap.IsClassMapRegistered(typeof(TRecord)))

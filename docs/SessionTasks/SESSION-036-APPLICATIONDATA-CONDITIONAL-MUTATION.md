@@ -2,7 +2,7 @@
 
 ## Status
 
-**READY TO START NOW**
+**COMPLETE — GREEN WORKSTREAM BUILD + MONGO INTEGRATION PROOF; READY TO MERGE**
 
 Campaigns Session 033 proved that durable provider-private execution checkpoints cannot be made concurrency-safe on the current `IApplicationDataStore` contract because `UpdateAsync(record)` has no expected version / ETag / compare-and-swap predicate and the Mongo implementation performs an unconditional replacement.
 
@@ -188,31 +188,35 @@ Successful completion unblocks the Campaigns provider-private checkpoint spine f
 ## Completion Report
 
 ### Summary
-_TODO_
+Implemented the additive ApplicationData conditional-mutation primitive on `session-036-applicationdata-conditional-mutation`. Mongo now persists a provider-owned opaque revision token and performs conditional replacement with an atomic predicate containing record identity, organization scope, and expected token. Existing unconditional `UpdateAsync` behavior remains available. The workstream enrollment/dependency blockers were resolved by enrolling CloudStorage and current Logging in `feature/campaign-execution-foundation`; the authoritative Build Server proof is green.
 
 ### Final contract
-_TODO_
+- `GetVersionedAsync<TRecord>(StorageKey)` returns the record plus an opaque `ApplicationDataConcurrencyToken`.
+- `UpdateIfVersionAsync(record, expectedVersion)` returns `Updated`, `Conflict`, or `NotFound` through `ApplicationDataMutationResult`.
+- Successful conditional updates return the replacement token for the next write.
 
 ### Concurrency token/version decision
-_TODO_
+The token is provider-neutral and opaque to consumers. Mongo stores a unique revision value in provider-owned `_storageVersion` metadata rather than requiring a concurrency property on every `IApplicationDataRecord`. Inserts establish a token; successful unconditional and conditional replacements assign a fresh token; legacy records are initialized lazily on first versioned read.
 
 ### Mongo atomic mutation
-_TODO_
+Mongo conditional replacement uses one `ReplaceOneAsync` whose filter combines `_id`, canonical organization scope, and `_storageVersion == expectedVersion`. No read/compare/unconditional-replace sequence is used to accept a conditional write. A post-failure existence read is used only to distinguish `Conflict` from `NotFound`.
 
 ### Other provider behavior
-_TODO_
+Mongo is the current `IApplicationDataStore` implementation in this repository. The documented contract requires future providers to implement equivalent atomic semantics or fail safely; silent fallback to unconditional update is not permitted.
 
 ### Backwards compatibility
-_TODO_
+`UpdateAsync(record)` remains the existing unconditional/last-writer-wins API. It preserves stored `CreationDate`, advances `LastUpdatedDate`, and now refreshes provider-owned version metadata. Existing record POCOs do not need a new property.
 
 ### Stale-writer proof
-_TODO_
+Integration coverage was added for two readers loading the same version, writer A succeeding, writer B receiving `Conflict`, and A's accepted value remaining persisted. A concurrent `Task.WhenAll` proof asserts exactly one `Updated` and one `Conflict` result.
 
 ### Tests added
-_TODO_
+Added Mongo ApplicationData integration coverage for token roundtrip, successful version advancement, stale-writer rejection, accepted-value preservation, missing-record distinction, tenant isolation, and simultaneous writers.
 
 ### Build proof
-_TODO_
+Initial Build Server attempt `ac6c2d95ea2c4da4b7651bde04b50c65` failed at `validate-workstream-repository` with `PLAT005` because CloudStorage was not enrolled in the active campaign workstream. After enrolling CloudStorage and the required current Logging dependency, Logging workstream build `c8702c365b4f4478925031d2a8c5fc95` succeeded and supplied `LagoVista.IoT.Logging 7.0.12-ws-c-84165457`. The exact CloudStorage workstream build `ae7c9cdf69334a80a4b3260991c106c3` then succeeded, producing verified workstream packages `7.0.56-ws-c-08dd53b6`.
+
+A first-class exact-commit .NET integration-test proof was then added to the Build Server. Final authoritative proof `20c43c50973c4bc5adee388ac01ab6d3` ran this exact branch head `9d9a733049ea0ffea197354adc482d4624726ef4` under `feature/campaign-execution-foundation`, started the repository-owned Mongo 8 fixture on `localhost:27018`, ran `TestCategory=ApplicationData`, and tore the fixture down cleanly. Result: **4/4 passed** in 2.4162s, including `ConditionalMutation_RejectsStaleWriterAtomically` and `ConditionalMutation_ConcurrentWritersAllowOnlyOneAcceptedValue`. No stable package release was performed.
 
 ### Campaigns Session 033 resume impact
-_TODO_
+The reusable storage primitive required by Session 033 is now implemented and has exact green Build Server + live Mongo integration proof. The workstream package `7.0.56-ws-c-08dd53b6` is already present in `feature/campaign-execution-foundation`, so Campaigns Session 037 can resume against that workstream dependency truth.
