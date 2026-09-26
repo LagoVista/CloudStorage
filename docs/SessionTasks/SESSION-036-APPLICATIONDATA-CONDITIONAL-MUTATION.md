@@ -2,7 +2,7 @@
 
 ## Status
 
-**READY TO START NOW**
+**IN PROGRESS — BUILD PROOF BLOCKED BY PLATFORM ENROLLMENT**
 
 Campaigns Session 033 proved that durable provider-private execution checkpoints cannot be made concurrency-safe on the current `IApplicationDataStore` contract because `UpdateAsync(record)` has no expected version / ETag / compare-and-swap predicate and the Mongo implementation performs an unconditional replacement.
 
@@ -188,31 +188,33 @@ Successful completion unblocks the Campaigns provider-private checkpoint spine f
 ## Completion Report
 
 ### Summary
-_TODO_
+Implemented the additive ApplicationData conditional-mutation primitive on `session-036-applicationdata-conditional-mutation`. Mongo now persists a provider-owned opaque revision token and performs conditional replacement with an atomic predicate containing record identity, organization scope, and expected token. Existing unconditional `UpdateAsync` behavior remains available. Final Build Server proof is currently blocked before compilation by platform contract `PLAT005`: `LagoVista/CloudStorage` is not listed in the selected active workstream manifest.
 
 ### Final contract
-_TODO_
+- `GetVersionedAsync<TRecord>(StorageKey)` returns the record plus an opaque `ApplicationDataConcurrencyToken`.
+- `UpdateIfVersionAsync(record, expectedVersion)` returns `Updated`, `Conflict`, or `NotFound` through `ApplicationDataMutationResult`.
+- Successful conditional updates return the replacement token for the next write.
 
 ### Concurrency token/version decision
-_TODO_
+The token is provider-neutral and opaque to consumers. Mongo stores a unique revision value in provider-owned `_storageVersion` metadata rather than requiring a concurrency property on every `IApplicationDataRecord`. Inserts establish a token; successful unconditional and conditional replacements assign a fresh token; legacy records are initialized lazily on first versioned read.
 
 ### Mongo atomic mutation
-_TODO_
+Mongo conditional replacement uses one `ReplaceOneAsync` whose filter combines `_id`, canonical organization scope, and `_storageVersion == expectedVersion`. No read/compare/unconditional-replace sequence is used to accept a conditional write. A post-failure existence read is used only to distinguish `Conflict` from `NotFound`.
 
 ### Other provider behavior
-_TODO_
+Mongo is the current `IApplicationDataStore` implementation in this repository. The documented contract requires future providers to implement equivalent atomic semantics or fail safely; silent fallback to unconditional update is not permitted.
 
 ### Backwards compatibility
-_TODO_
+`UpdateAsync(record)` remains the existing unconditional/last-writer-wins API. It preserves stored `CreationDate`, advances `LastUpdatedDate`, and now refreshes provider-owned version metadata. Existing record POCOs do not need a new property.
 
 ### Stale-writer proof
-_TODO_
+Integration coverage was added for two readers loading the same version, writer A succeeding, writer B receiving `Conflict`, and A's accepted value remaining persisted. A concurrent `Task.WhenAll` proof asserts exactly one `Updated` and one `Conflict` result.
 
 ### Tests added
-_TODO_
+Added Mongo ApplicationData integration coverage for token roundtrip, successful version advancement, stale-writer rejection, accepted-value preservation, missing-record distinction, tenant isolation, and simultaneous writers.
 
 ### Build proof
-_TODO_
+Blocked before compilation. Build Server attempt `ac6c2d95ea2c4da4b7651bde04b50c65` failed at `validate-workstream-repository` with `PLAT005`: `LagoVista/CloudStorage` is not listed in the active workstream manifest. A stable-context attempt was also rejected because the session commit is branch-only and not reachable from `master`. No package was published or released.
 
 ### Campaigns Session 033 resume impact
-_TODO_
+The reusable storage primitive required by Session 033 is implemented in source, but Campaigns should not resume against it until CloudStorage receives an exact green Build Server proof and the resulting package/integration path is intentionally made available.
