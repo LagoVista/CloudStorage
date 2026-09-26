@@ -2,7 +2,7 @@
 
 ## Status
 
-**COMPLETE — GREEN WORKSTREAM BUILD; READY FOR INTEGRATION REVIEW**
+**COMPLETE — GREEN WORKSTREAM BUILD + MONGO INTEGRATION PROOF; READY TO MERGE**
 
 Campaigns Session 033 proved that durable provider-private execution checkpoints cannot be made concurrency-safe on the current `IApplicationDataStore` contract because `UpdateAsync(record)` has no expected version / ETag / compare-and-swap predicate and the Mongo implementation performs an unconditional replacement.
 
@@ -214,7 +214,9 @@ Integration coverage was added for two readers loading the same version, writer 
 Added Mongo ApplicationData integration coverage for token roundtrip, successful version advancement, stale-writer rejection, accepted-value preservation, missing-record distinction, tenant isolation, and simultaneous writers.
 
 ### Build proof
-Initial Build Server attempt `ac6c2d95ea2c4da4b7651bde04b50c65` failed at `validate-workstream-repository` with `PLAT005` because CloudStorage was not enrolled in the active campaign workstream. After enrolling CloudStorage and the required current Logging dependency, Logging workstream build `c8702c365b4f4478925031d2a8c5fc95` succeeded and supplied `LagoVista.IoT.Logging 7.0.12-ws-c-84165457`. The exact CloudStorage workstream build `ae7c9cdf69334a80a4b3260991c106c3` then succeeded, producing verified workstream packages `7.0.56-ws-c-08dd53b6`. The build compiled the Mongo integration-test assembly; the NuGet build workflow does not execute those integration tests as a separate runtime test phase. No stable package release was performed.
+Initial Build Server attempt `ac6c2d95ea2c4da4b7651bde04b50c65` failed at `validate-workstream-repository` with `PLAT005` because CloudStorage was not enrolled in the active campaign workstream. After enrolling CloudStorage and the required current Logging dependency, Logging workstream build `c8702c365b4f4478925031d2a8c5fc95` succeeded and supplied `LagoVista.IoT.Logging 7.0.12-ws-c-84165457`. The exact CloudStorage workstream build `ae7c9cdf69334a80a4b3260991c106c3` then succeeded, producing verified workstream packages `7.0.56-ws-c-08dd53b6`.
+
+A first-class exact-commit .NET integration-test proof was then added to the Build Server. Final authoritative proof `20c43c50973c4bc5adee388ac01ab6d3` ran this exact branch head `9d9a733049ea0ffea197354adc482d4624726ef4` under `feature/campaign-execution-foundation`, started the repository-owned Mongo 8 fixture on `localhost:27018`, ran `TestCategory=ApplicationData`, and tore the fixture down cleanly. Result: **4/4 passed** in 2.4162s, including `ConditionalMutation_RejectsStaleWriterAtomically` and `ConditionalMutation_ConcurrentWritersAllowOnlyOneAcceptedValue`. No stable package release was performed.
 
 ### Campaigns Session 033 resume impact
-The reusable storage primitive required by Session 033 is implemented in source, but Campaigns should not resume against it until CloudStorage receives an exact green Build Server proof and the resulting package/integration path is intentionally made available.
+The reusable storage primitive required by Session 033 is now implemented and has exact green Build Server + live Mongo integration proof. The workstream package `7.0.56-ws-c-08dd53b6` is already present in `feature/campaign-execution-foundation`, so Campaigns Session 037 can resume against that workstream dependency truth.
