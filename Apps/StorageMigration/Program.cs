@@ -112,6 +112,12 @@ try
                 GetPositiveIntOption(args, "--batch-size") ?? 10,
                 GetPositiveIntOption(args, "--parallelism") ?? 8);
             break;
+        case "object-catch-up":
+            await ObjectCatchUpAsync(
+                GetPositiveIntOption(args, "--max-objects"),
+                GetPositiveIntOption(args, "--batch-size") ?? 10,
+                GetPositiveIntOption(args, "--parallelism") ?? 8);
+            break;
         case "object-verify":
             await ObjectVerifyAsync();
             break;
