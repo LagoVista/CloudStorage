@@ -37,6 +37,20 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             return _store.GetAsync<TRecord>(key, cancellationToken);
         }
 
+        public async Task<VersionedApplicationDataRecord<TRecord>> GetVersionedAsync<TRecord>(
+            StorageKey key,
+            CancellationToken cancellationToken = default)
+            where TRecord : class, IApplicationDataRecord
+        {
+            var versioned = await _store.GetVersionedApplicationDataAsync<TRecord>(key, cancellationToken).ConfigureAwait(false);
+            if (versioned.Record == null)
+                return null;
+
+            return new VersionedApplicationDataRecord<TRecord>(
+                versioned.Record,
+                new ApplicationDataConcurrencyToken(versioned.Version));
+        }
+
         public async Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
             where TRecord : class, IApplicationDataRecord
         {
@@ -52,7 +66,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             if (record.LastUpdatedDate.IsEmpty)
                 record.LastUpdatedDate = record.CreationDate.IsEmpty ? now : record.CreationDate;
 
-            await _store.InsertAsync(record, cancellationToken).ConfigureAwait(false);
+            await _store.InsertApplicationDataAsync(record, NewVersion(), cancellationToken).ConfigureAwait(false);
         }
 
         public async Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
@@ -66,7 +80,38 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             record.CreationDate = existing.CreationDate;
             record.LastUpdatedDate = UtcTimestamp.Now;
-            await _store.ReplaceAsync(key, record, false, cancellationToken).ConfigureAwait(false);
+            await _store.ReplaceApplicationDataAsync(key, record, NewVersion(), cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task<ApplicationDataMutationResult> UpdateIfVersionAsync<TRecord>(
+            TRecord record,
+            ApplicationDataConcurrencyToken expectedVersion,
+            CancellationToken cancellationToken = default)
+            where TRecord : class, IApplicationDataRecord
+        {
+            ValidateRecord(record);
+            if (expectedVersion == null)
+                throw new ArgumentNullException(nameof(expectedVersion));
+
+            var key = BuildKey(record);
+            var existing = await _store.GetAsync<TRecord>(key, cancellationToken).ConfigureAwait(false);
+            if (existing == null)
+                return new ApplicationDataMutationResult(ApplicationDataMutationStatus.NotFound);
+
+            record.CreationDate = existing.CreationDate;
+            record.LastUpdatedDate = UtcTimestamp.Now;
+
+            var newVersion = NewVersion();
+            var status = await _store.ReplaceApplicationDataIfVersionAsync(
+                key,
+                record,
+                expectedVersion.Value,
+                newVersion,
+                cancellationToken).ConfigureAwait(false);
+
+            return status == ApplicationDataMutationStatus.Updated
+                ? new ApplicationDataMutationResult(status, new ApplicationDataConcurrencyToken(newVersion))
+                : new ApplicationDataMutationResult(status);
         }
 
         public Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
@@ -79,6 +124,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             where TRecord : class, IApplicationDataRecord
         {
             return _store.QueryAsync(query, cancellationToken);
+        }
+
+        private static string NewVersion()
+        {
+            return Guid.NewGuid().ToString("N");
         }
 
         private static StorageKey BuildKey<TRecord>(TRecord record)
