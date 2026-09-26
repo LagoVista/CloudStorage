@@ -4,6 +4,7 @@ using LagoVista.Core.Models;
 using LagoVista.Core.Models.UIMetaData;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -274,6 +275,26 @@ namespace LagoVista.StorageProvider.Tests.Migration
             public string EntityType { get; set; }
             public OrgNamespace Namespace { get; set; }
             public string Note { get; set; }
+        }
+
+        [TestMethod]
+        public void PlainEntityHeaderIgnoresLegacyTypedValueDuringMongoDeserialization()
+        {
+            _ = new DocumentMigrationTransformer(new TestEntityTypeResolver());
+
+            var legacyHeader = new BsonDocument
+            {
+                { "Id", "guide-category" },
+                { "Text", "Guide Category" },
+                { "_t", "eh" },
+                { "Value", new BsonDocument { { "Key", "legacy" } } }
+            };
+
+            var header = BsonSerializer.Deserialize<EntityHeader>(legacyHeader);
+
+            Assert.IsNotNull(header);
+            Assert.AreEqual("guide-category", header.Id);
+            Assert.AreEqual("Guide Category", header.Text);
         }
 
         [TestMethod]

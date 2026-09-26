@@ -48,6 +48,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                         classMap.AutoMap();
                         classMap.SetIdMember(null);
                         classMap.GetMemberMap(nameof(EntityHeader.Id)).SetElementName(nameof(EntityHeader.Id));
+                        classMap.SetIgnoreExtraElements(true);
                     });
                 }
 
