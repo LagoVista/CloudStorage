@@ -252,17 +252,30 @@ Paging uses `StoragePageResult<TRecord>` and an opaque continuation token. Consu
 
 ## Update and concurrency semantics
 
-The initial implementation provides correct single-record insert/update/delete semantics.
+Application Data exposes both unconditional and optimistic-concurrency update paths.
 
-Application Data does **not** automatically imply:
+`UpdateAsync(record)` preserves its original compatibility contract: it is an unconditional replacement for the addressed organization + record id. CloudStorage preserves the stored `CreationDate`, advances `LastUpdatedDate`, and assigns a fresh provider-owned concurrency token. Callers that cannot tolerate lost updates must not use this path.
+
+Concurrency-sensitive callers use:
+
+1. `GetVersionedAsync<TRecord>(key)` to load the record plus an opaque `ApplicationDataConcurrencyToken`;
+2. mutate the loaded record;
+3. `UpdateIfVersionAsync(record, expectedVersion)` to request a conditional replacement.
+
+The token is provider-neutral and opaque to callers. Mongo stores it in provider-owned document metadata rather than on the application POCO, so ordinary domain mutation cannot accidentally change it. Inserts establish an initial token, every successful unconditional or conditional replacement assigns a new unique token, and legacy ApplicationData documents receive a token lazily on the first versioned read.
+
+Mongo enforces conditional replacement atomically with a single replace predicate containing record id, organization scope, and expected token. A successful write returns `Updated` plus the new token. A rejected stale token returns `Conflict`; a missing organization + record identity returns `NotFound`. CloudStorage never silently downgrades a conditional update to an unconditional replacement.
+
+The current provider support is explicit: Mongo implements the complete conditional-mutation contract. Any future `IApplicationDataStore` provider must provide equivalent atomic semantics or fail safely rather than emulating compare-and-swap with an unconditional write.
+
+Application Data still does **not** automatically imply:
 
 - relational transactions;
 - cross-record atomicity;
 - event sourcing;
-- account-ledger semantics;
-- compare-and-swap concurrency.
+- account-ledger semantics.
 
-Workloads that require optimistic concurrency should add that semantic deliberately rather than leaking provider-specific Mongo behavior.
+Use conditional mutation for durable state such as worker checkpoints where concurrent stale writers must not overwrite accepted progress. Use `UpdateAsync` only where last-writer-wins replacement remains acceptable.
 
 ## Configuration
 
