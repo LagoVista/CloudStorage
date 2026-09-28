@@ -27,16 +27,18 @@ public sealed class AzureTableMigrationSource
         foreach (var tableName in await ResolveTablesAsync(definition, cancellationToken).ConfigureAwait(false))
         {
             var table = _serviceClient.GetTableClient(tableName);
-            await foreach (var _ in table.QueryAsync<TableEntity>(select: new[] { "PartitionKey", "RowKey" }, cancellationToken: cancellationToken)) count++;
+            var filter = BuildFilter(definition);
+            await foreach (var _ in table.QueryAsync<TableEntity>(filter: filter, select: new[] { "PartitionKey", "RowKey" }, cancellationToken: cancellationToken)) count++;
         }
         return count;
     }
 
-    public async IAsyncEnumerable<TableEntity> ReadAsync(string tableName, string? afterPartitionKey, string? afterRowKey, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<TableEntity> ReadAsync(MigrationDefinition definition, string tableName, string? afterPartitionKey, string? afterRowKey, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var table = _serviceClient.GetTableClient(tableName);
+        var filter = BuildFilter(definition);
         var passedHead = String.IsNullOrWhiteSpace(afterPartitionKey) && String.IsNullOrWhiteSpace(afterRowKey);
-        await foreach (var row in table.QueryAsync<TableEntity>(cancellationToken: cancellationToken))
+        await foreach (var row in table.QueryAsync<TableEntity>(filter: filter, cancellationToken: cancellationToken))
         {
             if (!passedHead)
             {
@@ -47,6 +49,37 @@ public sealed class AzureTableMigrationSource
             }
             yield return row;
         }
+    }
+
+    private static string? BuildFilter(MigrationDefinition definition)
+    {
+        if (!String.IsNullOrWhiteSpace(definition.Source.RowKeyEquals))
+            return TableClient.CreateQueryFilter($"RowKey eq {definition.Source.RowKeyEquals}");
+
+        if (!String.IsNullOrWhiteSpace(definition.Source.RowKeyPrefix))
+        {
+            var prefix = definition.Source.RowKeyPrefix;
+            var upperBound = PrefixUpperBound(prefix);
+            return TableClient.CreateQueryFilter($"RowKey ge {prefix} and RowKey lt {upperBound}");
+        }
+
+        return null;
+    }
+
+    private static string PrefixUpperBound(string prefix)
+    {
+        if (String.IsNullOrEmpty(prefix))
+            throw new ArgumentNullException(nameof(prefix));
+
+        var chars = prefix.ToCharArray();
+        for (var index = chars.Length - 1; index >= 0; index--)
+        {
+            if (chars[index] == Char.MaxValue) continue;
+            chars[index]++;
+            return new String(chars, 0, index + 1);
+        }
+
+        throw new InvalidOperationException("Row-key prefix cannot be converted to an exclusive upper bound.");
     }
 }
 
