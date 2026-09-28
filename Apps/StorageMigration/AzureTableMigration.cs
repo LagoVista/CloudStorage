@@ -121,6 +121,10 @@ public sealed class AzureTableRecordMapper
             var value = SourceValue(field.Source ?? String.Empty, sourceTable, source)?.ToString();
             return String.IsNullOrWhiteSpace(value) || value == "?" ? "Anonymous" : value;
         }
+        if (String.Equals(field.Transform, "constant", StringComparison.OrdinalIgnoreCase))
+        {
+            return field.Value;
+        }
         if (!String.IsNullOrWhiteSpace(field.Transform)) throw new NotSupportedException($"Migration transform '{field.Transform}' is not supported.");
         return String.IsNullOrWhiteSpace(field.Source) ? null : SourceValue(field.Source, sourceTable, source);
     }
