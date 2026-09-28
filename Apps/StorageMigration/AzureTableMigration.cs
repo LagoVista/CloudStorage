@@ -111,6 +111,7 @@ public sealed class AzureTableRecordMapper
             "int" => Convert.ToInt32(value, CultureInfo.InvariantCulture),
             "bigint" => Convert.ToInt64(value, CultureInfo.InvariantCulture),
             "decimal" => Convert.ToDecimal(value, CultureInfo.InvariantCulture),
+            "double" => Convert.ToDouble(value, CultureInfo.InvariantCulture),
             "timestamp" => RequireDate(value),
             _ => throw new NotSupportedException($"Migration target CQL type '{type}' is not supported by the mapper.")
         };
