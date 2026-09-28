@@ -1,0 +1,36 @@
+{
+  "key": "ai-sample",
+  "displayName": "AI Training Sample",
+  "description": "Migrates LagoVista AI Sample Azure Table rows to Cassandra operational storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-training-samples",
+    "tableName": "Sample"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "sample_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": ["organization_id"],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "source": "RowKey", "required": true },
+    { "name": "organization_id", "type": "text", "source": "PartitionKey", "required": true },
+    { "name": "creation_date", "type": "timestamp", "sources": ["CreationDate", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "last_updated_date", "type": "timestamp", "sources": ["LastUpdatedDate", "CreationDate", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "name", "type": "text", "source": "Name" },
+    { "name": "key", "type": "text", "source": "Key" },
+    { "name": "file_name", "type": "text", "source": "FileName" },
+    { "name": "content_type", "type": "text", "source": "ContentType" },
+    { "name": "content_size", "type": "bigint", "source": "ContentSize" },
+    { "name": "created_by_id", "type": "text", "source": "CreatedById" },
+    { "name": "created_by_name", "type": "text", "source": "CreatedByName" },
+    { "name": "last_updated_by_id", "type": "text", "source": "LastUpdatedById" },
+    { "name": "last_updated_by_name", "type": "text", "source": "LastUpdatedByName" },
+    { "name": "organization_name", "type": "text", "source": "OwnerOrganizationName" }
+  ]
+}
