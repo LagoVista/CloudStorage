@@ -320,7 +320,7 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
                 {
                     await session.ExecuteAsync(new SimpleStatement(
                         $"CREATE INDEX IF NOT EXISTS {indexName} ON {_map.TableName} ({property.ColumnName}) USING 'sai'")).ConfigureAwait(false);
-                    existing = await ReadIndexAsync(session, indexName).ConfigureAwait(false);
+                    existing = await ReadIndexWithRetryAsync(session, indexName).ConfigureAwait(false);
                 }
 
                 if (existing == null)
@@ -359,6 +359,21 @@ WHERE keyspace_name = ?").ConfigureAwait(false);
                     target,
                     row.GetValue<string>("kind"),
                     className);
+            }
+
+            return null;
+        }
+
+        private async Task<ExistingIndex> ReadIndexWithRetryAsync(ISession session, string indexName)
+        {
+            const int attempts = 20;
+            for (var attempt = 0; attempt < attempts; attempt++)
+            {
+                var existing = await ReadIndexAsync(session, indexName).ConfigureAwait(false);
+                if (existing != null) return existing;
+
+                if (attempt + 1 < attempts)
+                    await Task.Delay(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
             }
 
             return null;
