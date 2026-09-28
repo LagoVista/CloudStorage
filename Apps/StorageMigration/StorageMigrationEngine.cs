@@ -42,7 +42,7 @@ public sealed class StorageMigrationEngine
             var resume = String.Equals(table, state.CurrentTable, StringComparison.OrdinalIgnoreCase);
             var batch = new List<IReadOnlyDictionary<string, object?>>(100);
             string? headPartition = null, headRow = null;
-            await foreach (var row in _source.ReadAsync(table, resume ? state.HeadPartitionKey : null, resume ? state.HeadRowKey : null, cancellationToken))
+            await foreach (var row in _source.ReadAsync(definition, table, resume ? state.HeadPartitionKey : null, resume ? state.HeadRowKey : null, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 state.RecordsRead++;
