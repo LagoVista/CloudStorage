@@ -1,0 +1,210 @@
+{
+  "key": "ai-vtm-summary-delta",
+  "displayName": "AI VTM Summary Delta",
+  "description": "Migrates VTM summary delta history from Azure Table Storage to Cassandra history storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "VtmSummaryDeltaEntity"
+  },
+  "target": {
+    "type": "cassandra-activity",
+    "table": "vtm_summary_delta_activity_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [
+      "virtual_team_member_id",
+      "artifact_id"
+    ],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "text",
+      "source": "Id",
+      "required": true
+    },
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "OrganizationId",
+      "required": true
+    },
+    {
+      "name": "organization",
+      "type": "text",
+      "source": "OrganizationName"
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "CreationDate",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "created_by_user_id",
+      "type": "text",
+      "source": "CreatedByUserId"
+    },
+    {
+      "name": "created_by_user",
+      "type": "text",
+      "source": "CreatedByUser"
+    },
+    {
+      "name": "virtual_team_member_id",
+      "type": "text",
+      "source": "VirtualTeamMemberId"
+    },
+    {
+      "name": "virtual_team_member_name",
+      "type": "text",
+      "source": "VirtualTeamMemberName"
+    },
+    {
+      "name": "essential_job_activity_id",
+      "type": "text",
+      "source": "EssentialJobActivityId"
+    },
+    {
+      "name": "essential_job_activity_name",
+      "type": "text",
+      "source": "EssentialJobActivityName"
+    },
+    {
+      "name": "standard_operating_procedure_id",
+      "type": "text",
+      "source": "StandardOperatingProcedureId"
+    },
+    {
+      "name": "standard_operating_procedure_name",
+      "type": "text",
+      "source": "StandardOperatingProcedureName"
+    },
+    {
+      "name": "artifact_id",
+      "type": "text",
+      "source": "ArtifactId"
+    },
+    {
+      "name": "artifact_name",
+      "type": "text",
+      "source": "ArtifactName"
+    },
+    {
+      "name": "artifact_type_id",
+      "type": "text",
+      "source": "ArtifactTypeId"
+    },
+    {
+      "name": "artifact_type_name",
+      "type": "text",
+      "source": "ArtifactTypeName"
+    },
+    {
+      "name": "occurred",
+      "type": "timestamp",
+      "sources": [
+        "Occurred",
+        "CreationDate",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "update_status",
+      "type": "text",
+      "source": "UpdateStatus"
+    },
+    {
+      "name": "attention_level",
+      "type": "text",
+      "source": "AttentionLevel"
+    },
+    {
+      "name": "accomplishment_summary",
+      "type": "text",
+      "source": "AccomplishmentSummary"
+    },
+    {
+      "name": "issue_summaries_json",
+      "type": "text",
+      "source": "IssueSummariesJson"
+    },
+    {
+      "name": "needs_human_attention",
+      "type": "boolean",
+      "source": "NeedsHumanAttention"
+    },
+    {
+      "name": "clears_previous_issues",
+      "type": "boolean",
+      "source": "ClearsPreviousIssues"
+    },
+    {
+      "name": "previous_overall_status",
+      "type": "text",
+      "source": "PreviousOverallStatus"
+    },
+    {
+      "name": "new_overall_status",
+      "type": "text",
+      "source": "NewOverallStatus"
+    },
+    {
+      "name": "changed_overall_status",
+      "type": "boolean",
+      "source": "ChangedOverallStatus"
+    },
+    {
+      "name": "added_active_issue",
+      "type": "boolean",
+      "source": "AddedActiveIssue"
+    },
+    {
+      "name": "resolved_active_issue",
+      "type": "boolean",
+      "source": "ResolvedActiveIssue"
+    },
+    {
+      "name": "snapshot_blob_path",
+      "type": "text",
+      "source": "SnapshotBlobPath"
+    },
+    {
+      "name": "source_update_id",
+      "type": "text",
+      "source": "SourceUpdateId"
+    },
+    {
+      "name": "correlation_id",
+      "type": "text",
+      "source": "CorrelationId"
+    },
+    {
+      "name": "agent_session_id",
+      "type": "text",
+      "source": "AgentSessionId"
+    },
+    {
+      "name": "agent_session_chapter_id",
+      "type": "text",
+      "source": "AgentSessionChapterId"
+    },
+    {
+      "name": "summary_kind",
+      "type": "text",
+      "source": "SummaryKind"
+    }
+  ]
+}
