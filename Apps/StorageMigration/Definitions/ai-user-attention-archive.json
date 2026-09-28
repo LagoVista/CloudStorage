@@ -1,0 +1,294 @@
+{
+  "key": "ai-user-attention-archive",
+  "displayName": "AI User Attention Archive",
+  "description": "Migrates archived AI user-attention projections from Azure Table Storage to Cassandra history storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "UserAttentionArchive"
+  },
+  "target": {
+    "type": "cassandra-activity",
+    "table": "user_attention_archive_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "text",
+      "source": "Id",
+      "required": true
+    },
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "PartitionKey",
+      "required": true
+    },
+    {
+      "name": "organization",
+      "type": "text",
+      "source": "AssignedToUserText"
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "ClosedUtc",
+        "ResolvedUtc",
+        "UpdatedUtc",
+        "CreatedUtc",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "owner_organization_id",
+      "type": "text",
+      "source": "OwnerOrganizationId"
+    },
+    {
+      "name": "assigned_to_user_id",
+      "type": "text",
+      "source": "AssignedToUserId"
+    },
+    {
+      "name": "assigned_to_user_text",
+      "type": "text",
+      "source": "AssignedToUserText"
+    },
+    {
+      "name": "assigned_to_user_key",
+      "type": "text",
+      "source": "AssignedToUserKey"
+    },
+    {
+      "name": "status_key",
+      "type": "text",
+      "source": "StatusKey"
+    },
+    {
+      "name": "kind_key",
+      "type": "text",
+      "source": "KindKey"
+    },
+    {
+      "name": "priority_key",
+      "type": "text",
+      "source": "PriorityKey"
+    },
+    {
+      "name": "vtm_meeting_id",
+      "type": "text",
+      "source": "VtmMeetingId"
+    },
+    {
+      "name": "vtm_meeting_text",
+      "type": "text",
+      "source": "VtmMeetingText"
+    },
+    {
+      "name": "vtm_meeting_key",
+      "type": "text",
+      "source": "VtmMeetingKey"
+    },
+    {
+      "name": "sop_execution_id",
+      "type": "text",
+      "source": "SopExecutionId"
+    },
+    {
+      "name": "sop_execution_text",
+      "type": "text",
+      "source": "SopExecutionText"
+    },
+    {
+      "name": "sop_execution_key",
+      "type": "text",
+      "source": "SopExecutionKey"
+    },
+    {
+      "name": "work_item_id",
+      "type": "text",
+      "source": "WorkItemId"
+    },
+    {
+      "name": "sop_execution_context_id",
+      "type": "text",
+      "source": "SopExecutionContextId"
+    },
+    {
+      "name": "primary_virtual_team_member_id",
+      "type": "text",
+      "source": "PrimaryVirtualTeamMemberId"
+    },
+    {
+      "name": "primary_virtual_team_member_text",
+      "type": "text",
+      "source": "PrimaryVirtualTeamMemberText"
+    },
+    {
+      "name": "primary_virtual_team_member_key",
+      "type": "text",
+      "source": "PrimaryVirtualTeamMemberKey"
+    },
+    {
+      "name": "standard_operating_procedure_id",
+      "type": "text",
+      "source": "StandardOperatingProcedureId"
+    },
+    {
+      "name": "standard_operating_procedure_text",
+      "type": "text",
+      "source": "StandardOperatingProcedureText"
+    },
+    {
+      "name": "standard_operating_procedure_key",
+      "type": "text",
+      "source": "StandardOperatingProcedureKey"
+    },
+    {
+      "name": "artifact_id",
+      "type": "text",
+      "source": "ArtifactId"
+    },
+    {
+      "name": "artifact_text",
+      "type": "text",
+      "source": "ArtifactText"
+    },
+    {
+      "name": "artifact_key",
+      "type": "text",
+      "source": "ArtifactKey"
+    },
+    {
+      "name": "input_id",
+      "type": "text",
+      "source": "InputId"
+    },
+    {
+      "name": "target_entity_id",
+      "type": "text",
+      "source": "TargetEntityId"
+    },
+    {
+      "name": "target_entity_text",
+      "type": "text",
+      "source": "TargetEntityText"
+    },
+    {
+      "name": "target_entity_key",
+      "type": "text",
+      "source": "TargetEntityKey"
+    },
+    {
+      "name": "target_entity_type",
+      "type": "text",
+      "source": "TargetEntityType"
+    },
+    {
+      "name": "target_entity_label",
+      "type": "text",
+      "source": "TargetEntityLabel"
+    },
+    {
+      "name": "context_sentence",
+      "type": "text",
+      "source": "ContextSentence"
+    },
+    {
+      "name": "action_required",
+      "type": "text",
+      "source": "ActionRequired"
+    },
+    {
+      "name": "why_it_matters",
+      "type": "text",
+      "source": "WhyItMatters"
+    },
+    {
+      "name": "destination_label",
+      "type": "text",
+      "source": "DestinationLabel"
+    },
+    {
+      "name": "primary_action_label",
+      "type": "text",
+      "source": "PrimaryActionLabel"
+    },
+    {
+      "name": "route_intent",
+      "type": "text",
+      "source": "RouteIntent"
+    },
+    {
+      "name": "route_path",
+      "type": "text",
+      "source": "RoutePath"
+    },
+    {
+      "name": "created_utc",
+      "type": "text",
+      "source": "CreatedUtc"
+    },
+    {
+      "name": "updated_utc",
+      "type": "text",
+      "source": "UpdatedUtc"
+    },
+    {
+      "name": "snoozed_until_utc",
+      "type": "text",
+      "source": "SnoozedUntilUtc"
+    },
+    {
+      "name": "resolved_utc",
+      "type": "text",
+      "source": "ResolvedUtc"
+    },
+    {
+      "name": "closed_utc",
+      "type": "text",
+      "source": "ClosedUtc"
+    },
+    {
+      "name": "closed_by_user_id",
+      "type": "text",
+      "source": "ClosedByUserId"
+    },
+    {
+      "name": "closed_by_user_text",
+      "type": "text",
+      "source": "ClosedByUserText"
+    },
+    {
+      "name": "closed_by_user_key",
+      "type": "text",
+      "source": "ClosedByUserKey"
+    },
+    {
+      "name": "close_reason",
+      "type": "text",
+      "source": "CloseReason"
+    },
+    {
+      "name": "source_hash",
+      "type": "text",
+      "source": "SourceHash"
+    },
+    {
+      "name": "projection_version",
+      "type": "int",
+      "source": "ProjectionVersion"
+    }
+  ]
+}
