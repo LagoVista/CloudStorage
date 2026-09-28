@@ -125,6 +125,10 @@ public sealed class AzureTableRecordMapper
         {
             return field.Value;
         }
+        if (String.Equals(field.Transform, "lowercase", StringComparison.OrdinalIgnoreCase))
+        {
+            return SourceValue(field.Source ?? String.Empty, sourceTable, source)?.ToString()?.Trim().ToLowerInvariant();
+        }
         if (!String.IsNullOrWhiteSpace(field.Transform)) throw new NotSupportedException($"Migration transform '{field.Transform}' is not supported.");
         return String.IsNullOrWhiteSpace(field.Source) ? null : SourceValue(field.Source, sourceTable, source);
     }
