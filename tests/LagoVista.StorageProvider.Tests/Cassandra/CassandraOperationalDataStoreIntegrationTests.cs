@@ -101,6 +101,128 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
         }
 
         [TestMethod]
+        public async Task ConditionalCreateAsync_AllowsExactlyOneWinner()
+        {
+            var settings = new TestCassandraStorageSettings();
+            using var factory = new CassandraSessionFactory(settings);
+            using var services = CreateConditionalServices<ConditionalOperationalRecord>(factory);
+            var store = services.GetRequiredService<IConditionalOperationalDataStore<ConditionalOperationalRecord>>();
+            var organizationId = Guid.NewGuid().ToString("N").ToUpperInvariant();
+
+            var first = new ConditionalOperationalRecord
+            {
+                Id = "CLAIM",
+                OrganizationId = organizationId,
+                Value = "worker-a"
+            };
+
+            var second = new ConditionalOperationalRecord
+            {
+                Id = "CLAIM",
+                OrganizationId = organizationId,
+                Value = "worker-b"
+            };
+
+            var results = await Task.WhenAll(
+                store.TryCreateAsync(first),
+                store.TryCreateAsync(second));
+
+            Assert.AreEqual(1, results.Count(result => result.Applied));
+
+            var current = await store.GetAsync(organizationId, "CLAIM");
+            Assert.IsNotNull(current);
+            Assert.AreEqual(1L, current.Version);
+            Assert.IsTrue(current.Value == "worker-a" || current.Value == "worker-b");
+        }
+
+        [TestMethod]
+        public async Task ConditionalReplaceAsync_RejectsStaleVersion()
+        {
+            var settings = new TestCassandraStorageSettings();
+            using var factory = new CassandraSessionFactory(settings);
+            using var services = CreateConditionalServices<ConditionalOperationalRecord>(factory);
+            var store = services.GetRequiredService<IConditionalOperationalDataStore<ConditionalOperationalRecord>>();
+            var organizationId = Guid.NewGuid().ToString("N").ToUpperInvariant();
+
+            var record = new ConditionalOperationalRecord
+            {
+                Id = "LEASE",
+                OrganizationId = organizationId,
+                Value = "initial"
+            };
+
+            var created = await store.TryCreateAsync(record);
+            Assert.IsTrue(created.Applied);
+            Assert.AreEqual(1L, created.Current.Version);
+
+            var winner = new ConditionalOperationalRecord
+            {
+                Id = "LEASE",
+                OrganizationId = organizationId,
+                CreationDate = created.Current.CreationDate,
+                Value = "winner"
+            };
+
+            var loser = new ConditionalOperationalRecord
+            {
+                Id = "LEASE",
+                OrganizationId = organizationId,
+                CreationDate = created.Current.CreationDate,
+                Value = "loser"
+            };
+
+            var winnerResult = await store.TryReplaceAsync(winner, 1);
+            Assert.IsTrue(winnerResult.Applied);
+            Assert.AreEqual(2L, winnerResult.Current.Version);
+
+            var staleResult = await store.TryReplaceAsync(loser, 1);
+            Assert.IsFalse(staleResult.Applied);
+            Assert.IsNotNull(staleResult.Current);
+            Assert.AreEqual("winner", staleResult.Current.Value);
+            Assert.AreEqual(2L, staleResult.Current.Version);
+        }
+
+        [TestMethod]
+        public async Task ConditionalDeleteAsync_RejectsStaleVersion()
+        {
+            var settings = new TestCassandraStorageSettings();
+            using var factory = new CassandraSessionFactory(settings);
+            using var services = CreateConditionalServices<ConditionalOperationalRecord>(factory);
+            var store = services.GetRequiredService<IConditionalOperationalDataStore<ConditionalOperationalRecord>>();
+            var organizationId = Guid.NewGuid().ToString("N").ToUpperInvariant();
+
+            var record = new ConditionalOperationalRecord
+            {
+                Id = "OWNERSHIP",
+                OrganizationId = organizationId,
+                Value = "owner-a"
+            };
+
+            var created = await store.TryCreateAsync(record);
+            Assert.IsTrue(created.Applied);
+
+            var replacement = new ConditionalOperationalRecord
+            {
+                Id = "OWNERSHIP",
+                OrganizationId = organizationId,
+                CreationDate = created.Current.CreationDate,
+                Value = "owner-b"
+            };
+
+            var replaced = await store.TryReplaceAsync(replacement, 1);
+            Assert.IsTrue(replaced.Applied);
+
+            var staleDelete = await store.TryDeleteAsync(organizationId, "OWNERSHIP", 1);
+            Assert.IsFalse(staleDelete.Applied);
+            Assert.IsNotNull(staleDelete.Current);
+            Assert.AreEqual("owner-b", staleDelete.Current.Value);
+
+            var currentDelete = await store.TryDeleteAsync(organizationId, "OWNERSHIP", 2);
+            Assert.IsTrue(currentDelete.Applied);
+            Assert.IsNull(await store.GetAsync(organizationId, "OWNERSHIP"));
+        }
+
+        [TestMethod]
         public async Task ScalarTypesAsync_RoundTripEverySupportedCassandraPropertyType()
         {
             var settings = new TestCassandraStorageSettings();
@@ -159,6 +281,14 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
             return services.BuildServiceProvider();
         }
 
+        private static ServiceProvider CreateConditionalServices<TRecord>(ICassandraSessionFactory factory, Action<StorageDefinition<TRecord>> configure = null) where TRecord : class, IConditionalOperationalDataRecord, new()
+        {
+            var services = new ServiceCollection();
+            services.AddSingleton<ICassandraSessionFactory>(factory);
+            services.AddConditionalOperationalDataStore<TRecord>(configure);
+            return services.BuildServiceProvider();
+        }
+
         private static TRecord CreateRecord<TRecord>(string organizationId, string id, string value, DateTime creationDate) where TRecord : TestOperationalRecordBase, new()
         {
             return new TRecord { Id = id, OrganizationId = organizationId, Value = value, CreationDate = creationDate };
@@ -194,6 +324,11 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
         public sealed class IndexedOperationalRecord : TestOperationalRecordBase
         {
             public string Status { get; set; }
+        }
+
+        public sealed class ConditionalOperationalRecord : TestOperationalRecordBase, IConditionalOperationalDataRecord
+        {
+            public long Version { get; set; }
         }
 
         public sealed class ScalarOperationalRecord : TestOperationalRecordBase
