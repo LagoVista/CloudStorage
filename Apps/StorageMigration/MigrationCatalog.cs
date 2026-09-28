@@ -40,6 +40,7 @@ public sealed class MigrationCatalog
         if (String.IsNullOrWhiteSpace(definition.Source.Connection)) errors.Add("source.connection is required.");
         if (String.IsNullOrWhiteSpace(definition.Source.TableName) && String.IsNullOrWhiteSpace(definition.Source.TablePattern)) errors.Add("source.tableName or source.tablePattern is required.");
         if (!String.IsNullOrWhiteSpace(definition.Source.TablePattern)) { try { _ = new Regex(definition.Source.TablePattern); } catch (ArgumentException ex) { errors.Add($"source.tablePattern is invalid: {ex.Message}"); } }
+        if (!String.IsNullOrWhiteSpace(definition.Source.RowKeyEquals) && !String.IsNullOrWhiteSpace(definition.Source.RowKeyPrefix)) errors.Add("source.rowKeyEquals and source.rowKeyPrefix are mutually exclusive.");
         if (String.IsNullOrWhiteSpace(definition.Target.Table)) errors.Add("target.table is required.");
         if (!new[] { "cassandra-activity", "cassandra-operational" }.Contains(definition.Target.Type, StringComparer.OrdinalIgnoreCase)) errors.Add($"target.type '{definition.Target.Type}' is not supported.");
         if (definition.Target.PartitionFields.Count == 0) errors.Add("target.partitionFields requires at least one field.");
