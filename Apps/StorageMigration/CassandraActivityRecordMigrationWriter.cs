@@ -43,7 +43,12 @@ public sealed class CassandraActivityRecordMigrationWriter : IActivityRecordMigr
         var partition = definition.Target.PartitionFields.ToList();
         if (UsesBuckets(definition)) { columns.Add("time_bucket text"); partition.Add("time_bucket"); }
         var ttl = definition.Target.RetentionSeconds ?? 0;
-        var create = $@"CREATE TABLE IF NOT EXISTS {definition.Target.Table} (
+        var create = IsOperational(definition)
+            ? $@"CREATE TABLE IF NOT EXISTS {definition.Target.Table} (
+    {String.Join(",\n    ", columns)},
+    PRIMARY KEY (({String.Join(", ", partition)}), {definition.Target.KeyField})
+) WITH default_time_to_live = {ttl}"
+            : $@"CREATE TABLE IF NOT EXISTS {definition.Target.Table} (
     {String.Join(",\n    ", columns)},
     PRIMARY KEY (({String.Join(", ", partition)}), {definition.Target.TimeField}, {definition.Target.KeyField})
 ) WITH CLUSTERING ORDER BY ({definition.Target.TimeField} DESC, {definition.Target.KeyField} ASC)
@@ -117,9 +122,19 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
         var fields = definition.Fields.ToDictionary(field => field.Name, StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < definition.Target.PartitionFields.Count; index++) { var name = definition.Target.PartitionFields[index]; expected.Add(new ExpectedColumn(name, NormalizeType(fields[name].Type), "partition_key", index)); }
         if (UsesBuckets(definition)) expected.Add(new ExpectedColumn("time_bucket", "text", "partition_key", definition.Target.PartitionFields.Count));
-        expected.Add(new ExpectedColumn(definition.Target.TimeField, NormalizeType(fields[definition.Target.TimeField].Type), "clustering", 0));
-        expected.Add(new ExpectedColumn(definition.Target.KeyField, NormalizeType(fields[definition.Target.KeyField].Type), "clustering", 1));
-        var keyFields = new HashSet<string>(definition.Target.PartitionFields, StringComparer.OrdinalIgnoreCase) { definition.Target.TimeField, definition.Target.KeyField };
+        var keyFields = new HashSet<string>(definition.Target.PartitionFields, StringComparer.OrdinalIgnoreCase);
+        if (IsOperational(definition))
+        {
+            expected.Add(new ExpectedColumn(definition.Target.KeyField, NormalizeType(fields[definition.Target.KeyField].Type), "clustering", 0));
+            keyFields.Add(definition.Target.KeyField);
+        }
+        else
+        {
+            expected.Add(new ExpectedColumn(definition.Target.TimeField, NormalizeType(fields[definition.Target.TimeField].Type), "clustering", 0));
+            expected.Add(new ExpectedColumn(definition.Target.KeyField, NormalizeType(fields[definition.Target.KeyField].Type), "clustering", 1));
+            keyFields.Add(definition.Target.TimeField);
+            keyFields.Add(definition.Target.KeyField);
+        }
         foreach (var field in definition.Fields) if (!keyFields.Contains(field.Name)) expected.Add(new ExpectedColumn(field.Name, NormalizeType(field.Type), "regular", -1));
         return expected;
     }
@@ -128,7 +143,8 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
     private static string CreateKeyspaceCql(CassandraMigrationConnection connection) => !String.IsNullOrWhiteSpace(connection.LocalDataCenter)
         ? $"CREATE KEYSPACE IF NOT EXISTS {connection.Keyspace} WITH replication = {{'class':'NetworkTopologyStrategy','{connection.LocalDataCenter.Replace("'", "''")}':{connection.ReplicationFactor}}}"
         : $"CREATE KEYSPACE IF NOT EXISTS {connection.Keyspace} WITH replication = {{'class':'SimpleStrategy','replication_factor':{connection.ReplicationFactor}}}";
-    private static bool UsesBuckets(MigrationDefinition definition) => !String.Equals(definition.Target.Bucket, "All", StringComparison.OrdinalIgnoreCase);
+    private static bool IsOperational(MigrationDefinition definition) => String.Equals(definition.Target.Type, "cassandra-operational", StringComparison.OrdinalIgnoreCase);
+    private static bool UsesBuckets(MigrationDefinition definition) => !IsOperational(definition) && !String.Equals(definition.Target.Bucket, "All", StringComparison.OrdinalIgnoreCase);
     private static string IndexName(string table, string field) => $"{table}_{field}_sai_idx";
     private static string NormalizeType(string type) => type.ToLowerInvariant() switch { "text" or "boolean" or "int" or "bigint" or "decimal" or "timestamp" => type.ToLowerInvariant(), _ => throw new NotSupportedException($"Migration target CQL type '{type}' is not supported.") };
     private static string NormalizeCqlType(string type) => String.IsNullOrWhiteSpace(type) ? String.Empty : type.Replace(" ", String.Empty).ToLowerInvariant();
