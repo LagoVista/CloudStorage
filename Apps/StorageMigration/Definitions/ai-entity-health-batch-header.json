@@ -1,0 +1,48 @@
+{
+  "key": "ai-entity-health-batch-header",
+  "displayName": "AI Entity Health Batch Header",
+  "description": "Migrates batch header rows from the mixed entityhealthbatches Azure table into the Cassandra conditional batch header store.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "entityhealthbatches",
+    "rowKeyEquals": "batch"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "entity_health_batch_header_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": ["organization_id"],
+    "indexes": ["is_terminal"],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "source": "PartitionKey", "required": true },
+    { "name": "organization_id", "type": "text", "source": "OwnerOrganizationId", "transform": "lowercase", "required": true },
+    { "name": "creation_date", "type": "timestamp", "sources": ["CreatedUtc", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "last_updated_date", "type": "timestamp", "sources": ["$timestamp", "CompletedUtc", "ResultsReceivedUtc", "SubmittedUtc", "CreatedUtc"], "transform": "first-date", "required": true },
+    { "name": "version", "type": "bigint", "transform": "constant", "value": 1, "required": true },
+    { "name": "job_execution_id", "type": "text", "source": "JobExecutionId" },
+    { "name": "owner_organization_id", "type": "text", "source": "OwnerOrganizationId" },
+    { "name": "status", "type": "text", "source": "Status" },
+    { "name": "is_terminal", "type": "boolean", "source": "IsTerminal" },
+    { "name": "provider_input_file_id", "type": "text", "source": "ProviderInputFileId" },
+    { "name": "provider_batch_id", "type": "text", "source": "ProviderBatchId" },
+    { "name": "provider_output_file_id", "type": "text", "source": "ProviderOutputFileId" },
+    { "name": "provider_error_file_id", "type": "text", "source": "ProviderErrorFileId" },
+    { "name": "provider_status", "type": "text", "source": "ProviderStatus" },
+    { "name": "error_message", "type": "text", "source": "ErrorMessage" },
+    { "name": "created_utc", "type": "text", "source": "CreatedUtc" },
+    { "name": "submitted_utc", "type": "text", "source": "SubmittedUtc" },
+    { "name": "results_received_utc", "type": "text", "source": "ResultsReceivedUtc" },
+    { "name": "completed_utc", "type": "text", "source": "CompletedUtc" },
+    { "name": "candidate_count", "type": "int", "source": "CandidateCount" },
+    { "name": "provider_completed_count", "type": "int", "source": "ProviderCompletedCount" },
+    { "name": "provider_failed_count", "type": "int", "source": "ProviderFailedCount" },
+    { "name": "applied_count", "type": "int", "source": "AppliedCount" },
+    { "name": "retry_pending_count", "type": "int", "source": "RetryPendingCount" },
+    { "name": "failed_count", "type": "int", "source": "FailedCount" }
+  ]
+}
