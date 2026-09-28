@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Text.Json;
 
 namespace LagoVista.StorageMigration;
 
@@ -123,7 +124,7 @@ public sealed class AzureTableRecordMapper
         }
         if (String.Equals(field.Transform, "constant", StringComparison.OrdinalIgnoreCase))
         {
-            return field.Value;
+            return NormalizeConstant(field.Value);
         }
         if (String.Equals(field.Transform, "lowercase", StringComparison.OrdinalIgnoreCase))
         {
@@ -140,6 +141,22 @@ public sealed class AzureTableRecordMapper
         if (String.Equals(name, "PartitionKey", StringComparison.OrdinalIgnoreCase)) return source.PartitionKey;
         if (String.Equals(name, "RowKey", StringComparison.OrdinalIgnoreCase)) return source.RowKey;
         return source.TryGetValue(name, out var value) ? value : null;
+    }
+
+    private static object? NormalizeConstant(object? value)
+    {
+        if (value is not JsonElement json) return value;
+
+        return json.ValueKind switch
+        {
+            JsonValueKind.String => json.GetString(),
+            JsonValueKind.Number when json.TryGetInt64(out var integer) => integer,
+            JsonValueKind.Number => json.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => json.ToString()
+        };
     }
 
     private static object? ConvertTargetValue(string type, object? value)
