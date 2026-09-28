@@ -14,11 +14,11 @@
     "timeField": "creation_date",
     "bucket": "All",
     "partitionFields": ["organization_id"],
-    "indexes": ["sample_id"],
+    "indexes": [],
     "retentionSeconds": null
   },
   "fields": [
-    { "name": "id", "type": "text", "sources": ["PartitionKey", "LabelId"], "transform": "stable-id", "required": true },
+    { "name": "id", "type": "text", "source": "RowKey", "required": true },
     { "name": "organization_id", "type": "text", "source": "PartitionKey", "required": true },
     { "name": "creation_date", "type": "timestamp", "source": "$timestamp", "required": true },
     { "name": "last_updated_date", "type": "timestamp", "source": "$timestamp", "required": true },
