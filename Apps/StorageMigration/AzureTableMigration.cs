@@ -61,7 +61,8 @@ public sealed class AzureTableRecordMapper
             if (field.Required && IsMissing(value)) throw new InvalidOperationException($"Source {sourceTable}/{source.PartitionKey}/{source.RowKey} did not produce required target field {field.Name}.");
             target[field.Name] = ConvertTargetValue(field.Type, value);
         }
-        target["time_bucket"] = CreateBucket(definition.Target.Bucket, RequireDate(target[definition.Target.TimeField]));
+        if (String.Equals(definition.Target.Type, "cassandra-activity", StringComparison.OrdinalIgnoreCase))
+            target["time_bucket"] = CreateBucket(definition.Target.Bucket, RequireDate(target[definition.Target.TimeField]));
         return target;
     }
 
