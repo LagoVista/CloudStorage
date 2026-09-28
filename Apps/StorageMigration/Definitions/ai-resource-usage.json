@@ -1,0 +1,47 @@
+{
+  "key": "ai-resource-usage",
+  "displayName": "AI Resource Usage",
+  "description": "Migrates resource-usage map rows from Azure Table Storage to Cassandra operational storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tablePattern": "(?i)^resourceusage(entity)?$"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "resource_usage_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": ["organization_id"],
+    "indexes": ["relative_path"],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "source": "RowKey", "required": true },
+    { "name": "organization_id", "type": "text", "source": "PartitionKey", "required": true },
+    { "name": "creation_date", "type": "timestamp", "sources": ["$timestamp"], "transform": "first-date", "required": true },
+    { "name": "last_updated_date", "type": "timestamp", "sources": ["$timestamp"], "transform": "first-date", "required": true },
+    { "name": "owner_organization_id", "type": "text", "source": "OrgId" },
+    { "name": "project_id", "type": "text", "source": "ProjectId" },
+    { "name": "repo_id", "type": "text", "source": "RepoId" },
+    { "name": "resource_container_full_name", "type": "text", "source": "ResourceContainerFullName" },
+    { "name": "resource_container_short_name", "type": "text", "source": "ResourceContainerShortName" },
+    { "name": "resource_key", "type": "text", "source": "ResourceKey" },
+    { "name": "culture", "type": "text", "source": "Culture" },
+    { "name": "target_model_full_name", "type": "text", "source": "TargetModelFullName" },
+    { "name": "target_model_property_name", "type": "text", "source": "TargetModelPropertyName" },
+    { "name": "attribute_type_name", "type": "text", "source": "AttributeTypeName" },
+    { "name": "attribute_property_name", "type": "text", "source": "AttributePropertyName" },
+    { "name": "relative_path", "type": "text", "source": "RelativePath" },
+    { "name": "symbol_name", "type": "text", "source": "SymbolName" },
+    { "name": "symbol_full_name", "type": "text", "source": "SymbolFullName" },
+    { "name": "symbol_kind", "type": "text", "source": "SymbolKind" },
+    { "name": "sub_kind", "type": "text", "source": "SubKind" },
+    { "name": "usage_kind", "type": "int", "source": "UsageKind" },
+    { "name": "is_test_code", "type": "boolean", "source": "IsTestCode" },
+    { "name": "is_name_constant", "type": "boolean", "source": "IsNameConstant" },
+    { "name": "usage_context_snippet", "type": "text", "source": "UsageContextSnippet" },
+    { "name": "usage_pattern", "type": "text", "source": "UsagePattern" }
+  ]
+}
