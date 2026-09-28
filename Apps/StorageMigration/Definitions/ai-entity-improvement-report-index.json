@@ -1,0 +1,50 @@
+{
+  "key": "ai-entity-improvement-report-index",
+  "displayName": "AI Entity Improvement Report Index",
+  "description": "Migrates AI entity improvement report index rows from Azure Table Storage to Cassandra operational storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "AiEntityImprovementReportIndexDto"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "ai_entity_improvement_report_index_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [
+      "entity_id"
+    ],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "source": "ReviewId", "required": true },
+    { "name": "organization_id", "type": "text", "source": "OrgId", "required": true },
+    { "name": "creation_date", "type": "timestamp", "sources": ["CreatedUtc", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "last_updated_date", "type": "timestamp", "sources": ["$timestamp", "CreatedUtc"], "transform": "first-date", "required": true },
+    { "name": "review_id", "type": "text", "source": "ReviewId", "required": true },
+    { "name": "entity_id", "type": "text", "source": "EntityId", "required": true },
+    { "name": "entity_type", "type": "text", "source": "EntityType" },
+    { "name": "entity_name", "type": "text", "source": "EntityName" },
+    { "name": "report_type", "type": "text", "source": "ReportType" },
+    { "name": "status", "type": "text", "source": "Status" },
+    { "name": "alignment_score", "type": "double", "source": "AlignmentScore" },
+    { "name": "alignment_score_summary", "type": "text", "source": "AlignmentScoreSummary" },
+    { "name": "issue_count", "type": "int", "source": "IssueCount" },
+    { "name": "field_update_count", "type": "int", "source": "FieldUpdateCount" },
+    { "name": "pending_update_count", "type": "int", "source": "PendingUpdateCount" },
+    { "name": "applied_update_count", "type": "int", "source": "AppliedUpdateCount" },
+    { "name": "session_id", "type": "text", "source": "SessionId" },
+    { "name": "turn_id", "type": "text", "source": "TurnId" },
+    { "name": "blob_container", "type": "text", "source": "BlobContainer" },
+    { "name": "blob_path", "type": "text", "source": "BlobPath" },
+    { "name": "blob_uri", "type": "text", "source": "BlobUri" },
+    { "name": "created_utc", "type": "text", "source": "CreatedUtc" },
+    { "name": "created_by_id", "type": "text", "source": "CreatedById" },
+    { "name": "created_by_text", "type": "text", "source": "CreatedByText" }
+  ]
+}
