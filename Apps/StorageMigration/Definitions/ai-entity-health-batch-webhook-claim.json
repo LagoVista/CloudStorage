@@ -1,0 +1,30 @@
+{
+  "key": "ai-entity-health-batch-webhook-claim",
+  "displayName": "AI Entity Health Batch Webhook Claim",
+  "description": "Migrates webhook apply claim rows from the mixed entityhealthbatches Azure table into the Cassandra conditional webhook claim store.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "entityhealthbatches",
+    "rowKeyEquals": "webhook-apply-claim"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "entity_health_batch_webhook_claim_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": ["organization_id"],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "transform": "constant", "value": "webhook-apply-claim", "required": true },
+    { "name": "organization_id", "type": "text", "source": "PartitionKey", "transform": "lowercase", "required": true },
+    { "name": "creation_date", "type": "timestamp", "sources": ["$timestamp"], "transform": "first-date", "required": true },
+    { "name": "last_updated_date", "type": "timestamp", "sources": ["$timestamp"], "transform": "first-date", "required": true },
+    { "name": "version", "type": "bigint", "transform": "constant", "value": 1, "required": true },
+    { "name": "lease_id", "type": "text", "source": "LeaseId" },
+    { "name": "lease_expires_utc", "type": "text", "source": "LeaseExpiresUtc" }
+  ]
+}
