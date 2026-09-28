@@ -1,0 +1,205 @@
+{
+  "key": "ai-vtm-catalog-deficiency",
+  "displayName": "AI VTM Catalog Deficiency",
+  "description": "Migrates VTM catalog deficiencies from Azure Table Storage to Cassandra operational storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "VtmCatalogDeficiencyDto"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "vtm_catalog_deficiency_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [
+      "stable_key",
+      "status"
+    ],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "text",
+      "source": "Id",
+      "required": true
+    },
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "OrgId",
+      "required": true
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "FirstSeenUtc",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "last_updated_date",
+      "type": "timestamp",
+      "sources": [
+        "LastSeenUtc",
+        "FirstSeenUtc",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "stable_key",
+      "type": "text",
+      "source": "StableKey"
+    },
+    {
+      "name": "review_run_id",
+      "type": "text",
+      "source": "ReviewRunId"
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "source": "Status"
+    },
+    {
+      "name": "deficiency_type",
+      "type": "text",
+      "source": "DeficiencyType"
+    },
+    {
+      "name": "severity",
+      "type": "text",
+      "source": "Severity"
+    },
+    {
+      "name": "primary_entity_type",
+      "type": "text",
+      "source": "PrimaryEntityType"
+    },
+    {
+      "name": "primary_entity_tla",
+      "type": "text",
+      "source": "PrimaryEntityTla"
+    },
+    {
+      "name": "primary_entity_id",
+      "type": "text",
+      "source": "PrimaryEntityId"
+    },
+    {
+      "name": "primary_entity_text",
+      "type": "text",
+      "source": "PrimaryEntityText"
+    },
+    {
+      "name": "related_entities_json",
+      "type": "text",
+      "source": "RelatedEntitiesJson"
+    },
+    {
+      "name": "summary",
+      "type": "text",
+      "source": "Summary"
+    },
+    {
+      "name": "evidence",
+      "type": "text",
+      "source": "Evidence"
+    },
+    {
+      "name": "recommended_action",
+      "type": "text",
+      "source": "RecommendedAction"
+    },
+    {
+      "name": "confidence",
+      "type": "double",
+      "source": "Confidence"
+    },
+    {
+      "name": "first_seen_run_id",
+      "type": "text",
+      "source": "FirstSeenRunId"
+    },
+    {
+      "name": "last_seen_run_id",
+      "type": "text",
+      "source": "LastSeenRunId"
+    },
+    {
+      "name": "first_seen_utc",
+      "type": "text",
+      "source": "FirstSeenUtc"
+    },
+    {
+      "name": "last_seen_utc",
+      "type": "text",
+      "source": "LastSeenUtc"
+    },
+    {
+      "name": "seen_count",
+      "type": "int",
+      "source": "SeenCount"
+    },
+    {
+      "name": "closed_utc",
+      "type": "text",
+      "source": "ClosedUtc"
+    },
+    {
+      "name": "closed_by_id",
+      "type": "text",
+      "source": "ClosedById"
+    },
+    {
+      "name": "closed_by_text",
+      "type": "text",
+      "source": "ClosedByText"
+    },
+    {
+      "name": "closed_reason",
+      "type": "text",
+      "source": "ClosedReason"
+    },
+    {
+      "name": "issue_severity",
+      "type": "text",
+      "source": "IssueSeverity"
+    },
+    {
+      "name": "asset_importance",
+      "type": "text",
+      "source": "AssetImportance"
+    },
+    {
+      "name": "priority",
+      "type": "text",
+      "source": "Priority"
+    },
+    {
+      "name": "action_type",
+      "type": "text",
+      "source": "ActionType"
+    },
+    {
+      "name": "primary_entity_token",
+      "type": "text",
+      "source": "PrimaryEntityToken"
+    },
+    {
+      "name": "relationship_name",
+      "type": "text",
+      "source": "RelationshipName"
+    }
+  ]
+}
