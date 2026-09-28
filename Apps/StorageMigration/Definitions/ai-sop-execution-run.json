@@ -1,0 +1,136 @@
+{
+  "key": "ai-sop-execution-run",
+  "displayName": "AI SOP Execution Run",
+  "description": "Migrates SOP execution run receipts from Azure Table Storage to Cassandra operational storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "SopExecutionRuns"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "sop_execution_run_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [
+      "meeting_id",
+      "work_item_id"
+    ],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "text",
+      "source": "SopExecutionRunId",
+      "required": true
+    },
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "PartitionKey",
+      "required": true
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "CreationDate",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "last_updated_date",
+      "type": "timestamp",
+      "sources": [
+        "LastUpdatedDate",
+        "CreationDate",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "owner_organization_id",
+      "type": "text",
+      "source": "OwnerOrganizationId",
+      "required": true
+    },
+    {
+      "name": "meeting_id",
+      "type": "text",
+      "source": "MeetingId"
+    },
+    {
+      "name": "work_item_id",
+      "type": "text",
+      "source": "WorkItemId"
+    },
+    {
+      "name": "agent_session_id",
+      "type": "text",
+      "source": "AgentSessionId"
+    },
+    {
+      "name": "agent_session_turn_id",
+      "type": "text",
+      "source": "AgentSessionTurnId"
+    },
+    {
+      "name": "standard_operating_procedure_id",
+      "type": "text",
+      "source": "StandardOperatingProcedureId"
+    },
+    {
+      "name": "output_artifact_specification_id",
+      "type": "text",
+      "source": "OutputArtifactSpecificationId"
+    },
+    {
+      "name": "output_artifact_id",
+      "type": "text",
+      "source": "OutputArtifactId"
+    },
+    {
+      "name": "context_mode_id",
+      "type": "text",
+      "source": "ContextModeId"
+    },
+    {
+      "name": "status_id",
+      "type": "text",
+      "source": "StatusId"
+    },
+    {
+      "name": "started_date",
+      "type": "text",
+      "source": "StartedDate"
+    },
+    {
+      "name": "completed_date",
+      "type": "text",
+      "source": "CompletedDate"
+    },
+    {
+      "name": "failure_reason",
+      "type": "text",
+      "source": "FailureReason"
+    },
+    {
+      "name": "block_reason",
+      "type": "text",
+      "source": "BlockReason"
+    },
+    {
+      "name": "payload_json",
+      "type": "text",
+      "source": "PayloadJson"
+    }
+  ]
+}
