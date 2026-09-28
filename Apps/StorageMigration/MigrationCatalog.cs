@@ -41,12 +41,16 @@ public sealed class MigrationCatalog
         if (String.IsNullOrWhiteSpace(definition.Source.TableName) && String.IsNullOrWhiteSpace(definition.Source.TablePattern)) errors.Add("source.tableName or source.tablePattern is required.");
         if (!String.IsNullOrWhiteSpace(definition.Source.TablePattern)) { try { _ = new Regex(definition.Source.TablePattern); } catch (ArgumentException ex) { errors.Add($"source.tablePattern is invalid: {ex.Message}"); } }
         if (String.IsNullOrWhiteSpace(definition.Target.Table)) errors.Add("target.table is required.");
+        if (!new[] { "cassandra-activity", "cassandra-operational" }.Contains(definition.Target.Type, StringComparer.OrdinalIgnoreCase)) errors.Add($"target.type '{definition.Target.Type}' is not supported.");
         if (definition.Target.PartitionFields.Count == 0) errors.Add("target.partitionFields requires at least one field.");
-        if (!new[] { "All", "Month", "Quarter", "Year" }.Contains(definition.Target.Bucket, StringComparer.OrdinalIgnoreCase)) errors.Add($"target.bucket '{definition.Target.Bucket}' is not supported.");
+        if (String.Equals(definition.Target.Type, "cassandra-activity", StringComparison.OrdinalIgnoreCase) &&
+            !new[] { "All", "Month", "Quarter", "Year" }.Contains(definition.Target.Bucket, StringComparer.OrdinalIgnoreCase)) errors.Add($"target.bucket '{definition.Target.Bucket}' is not supported.");
         if (definition.Target.RetentionSeconds.HasValue && definition.Target.RetentionSeconds.Value <= 0) errors.Add("target.retentionSeconds must be greater than zero when supplied.");
 
         var fieldNames = new HashSet<string>(definition.Fields.Select(x => x.Name), StringComparer.OrdinalIgnoreCase);
-        foreach (var required in definition.Target.PartitionFields.Append(definition.Target.KeyField).Append(definition.Target.TimeField)) if (!fieldNames.Contains(required)) errors.Add($"target field '{required}' is not declared in fields.");
+        var requiredFields = definition.Target.PartitionFields.Append(definition.Target.KeyField);
+        if (String.Equals(definition.Target.Type, "cassandra-activity", StringComparison.OrdinalIgnoreCase)) requiredFields = requiredFields.Append(definition.Target.TimeField);
+        foreach (var required in requiredFields) if (!fieldNames.Contains(required)) errors.Add($"target field '{required}' is not declared in fields.");
         foreach (var index in definition.Target.Indexes) if (!fieldNames.Contains(index)) errors.Add($"target index field '{index}' is not declared in fields.");
         foreach (var duplicate in definition.Fields.GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase).Where(x => x.Count() > 1)) errors.Add($"field '{duplicate.Key}' is declared more than once.");
         return errors.AsReadOnly();
