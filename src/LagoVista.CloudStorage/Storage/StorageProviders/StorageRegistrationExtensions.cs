@@ -98,6 +98,18 @@ namespace LagoVista.CloudStorage.Storage
             return services;
         }
 
+        public static IServiceCollection AddConditionalOperationalDataStore<TRecord>(
+            this IServiceCollection services,
+            Action<StorageDefinition<TRecord>> configure = null)
+            where TRecord : class, IConditionalOperationalDataRecord, new()
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            services.AddSingleton(new OperationalDataStoreOptions<TRecord>(configure));
+            services.AddScoped<IConditionalOperationalDataStore<TRecord>, StorageProviders.Cassandra.CassandraConditionalOperationalDataStore<TRecord>>();
+            return services;
+        }
+
         public static IServiceCollection AddScratchStore<TStore>(this IServiceCollection services)
             where TStore : class, IScratchStore
         {
