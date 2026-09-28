@@ -39,6 +39,7 @@ public sealed class MigrationFieldDefinition
     public string? Source { get; set; }
     public List<string>? Sources { get; set; }
     public string? Transform { get; set; }
+    public object? Value { get; set; }
     public bool Required { get; set; }
 }
 
