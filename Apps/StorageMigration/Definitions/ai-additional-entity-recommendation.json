@@ -1,0 +1,37 @@
+{
+  "key": "ai-additional-entity-recommendation",
+  "displayName": "AI Additional Entity Recommendation",
+  "description": "Migrates LagoVista AI AdditionalEntityRecommendation Azure Table rows to Cassandra operational storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "AdditionalEntityRecommendation"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "additional_entity_recommendation_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": ["organization_id"],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "source": "RowKey", "required": true },
+    { "name": "organization_id", "type": "text", "source": "PartitionKey", "required": true },
+    { "name": "creation_date", "type": "timestamp", "sources": ["CreationDate", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "last_updated_date", "type": "timestamp", "sources": ["CreationDate", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "recommended_entity_type", "type": "text", "source": "RecommendedEntityType" },
+    { "name": "proposed_name", "type": "text", "source": "ProposedName" },
+    { "name": "proposed_description", "type": "text", "source": "ProposedDescription" },
+    { "name": "proposed_purpose", "type": "text", "source": "ProposedPurpose" },
+    { "name": "proposed_purpose_summary", "type": "text", "source": "ProposedPurposeSummary" },
+    { "name": "source_entity_type", "type": "text", "source": "SourceEntityType" },
+    { "name": "source_entity_id", "type": "text", "source": "SourceEntityId" },
+    { "name": "source_entity_name", "type": "text", "source": "SourceEntityName" },
+    { "name": "source_relationship_field", "type": "text", "source": "SourceRelationshipField" },
+    { "name": "recommendation_reason", "type": "text", "source": "RecommendationReason" },
+    { "name": "confidence", "type": "double", "source": "Confidence" }
+  ]
+}
