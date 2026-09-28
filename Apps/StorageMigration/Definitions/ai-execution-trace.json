@@ -1,0 +1,29 @@
+{
+  "key": "ai-execution-trace",
+  "displayName": "AI Execution Trace",
+  "description": "Migrates AI execution trace rows from Azure Table Storage to Cassandra history storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "ExecutionTraceTableDto"
+  },
+  "target": {
+    "type": "cassandra-activity",
+    "table": "execution_trace_activity_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": ["organization_id"],
+    "indexes": ["entity_id"],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "source": "RowKey", "required": true },
+    { "name": "organization_id", "type": "text", "source": "OrganizationId", "required": true },
+    { "name": "organization", "type": "text", "source": "OrganizationId" },
+    { "name": "creation_date", "type": "timestamp", "sources": ["TimestampUtc", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "entity_id", "type": "text", "source": "PartitionKey", "required": true },
+    { "name": "timestamp_utc", "type": "text", "source": "TimestampUtc" },
+    { "name": "trace_json", "type": "text", "source": "TraceJson", "required": true }
+  ]
+}
