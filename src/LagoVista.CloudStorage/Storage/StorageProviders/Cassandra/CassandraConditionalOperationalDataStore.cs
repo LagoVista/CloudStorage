@@ -39,6 +39,13 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             return _baseStore.GetAsync(organizationId, id, cancellationToken);
         }
 
+        public Task<StoragePageResult<TRecord>> QueryAsync(
+            StorageQuery<TRecord> query,
+            CancellationToken cancellationToken = default)
+        {
+            return _baseStore.QueryAsync(query, cancellationToken);
+        }
+
         public async Task<ConditionalMutationResult<TRecord>> TryCreateAsync(
             TRecord record,
             CancellationToken cancellationToken = default)
