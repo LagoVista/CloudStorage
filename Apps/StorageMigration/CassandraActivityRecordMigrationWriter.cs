@@ -146,7 +146,7 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
     private static bool IsOperational(MigrationDefinition definition) => String.Equals(definition.Target.Type, "cassandra-operational", StringComparison.OrdinalIgnoreCase);
     private static bool UsesBuckets(MigrationDefinition definition) => !IsOperational(definition) && !String.Equals(definition.Target.Bucket, "All", StringComparison.OrdinalIgnoreCase);
     private static string IndexName(string table, string field) => $"{table}_{field}_sai_idx";
-    private static string NormalizeType(string type) => type.ToLowerInvariant() switch { "text" or "boolean" or "int" or "bigint" or "decimal" or "timestamp" => type.ToLowerInvariant(), _ => throw new NotSupportedException($"Migration target CQL type '{type}' is not supported.") };
+    private static string NormalizeType(string type) => type.ToLowerInvariant() switch { "text" or "boolean" or "int" or "bigint" or "decimal" or "double" or "timestamp" => type.ToLowerInvariant(), _ => throw new NotSupportedException($"Migration target CQL type '{type}' is not supported.") };
     private static string NormalizeCqlType(string type) => String.IsNullOrWhiteSpace(type) ? String.Empty : type.Replace(" ", String.Empty).ToLowerInvariant();
 
     public void Dispose() { _session.Dispose(); _cluster.Dispose(); }
