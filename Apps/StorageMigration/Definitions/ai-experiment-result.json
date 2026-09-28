@@ -1,0 +1,39 @@
+{
+  "key": "ai-experiment-result",
+  "displayName": "AI Experiment Result",
+  "description": "Migrates LagoVista AI ExperimentResultDTO Azure Table rows to Cassandra history storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "ExperimentResultDTO"
+  },
+  "target": {
+    "type": "cassandra-activity",
+    "table": "experiment_result_dto",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": ["organization_id"],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "source": "Id", "required": true },
+    { "name": "organization_id", "type": "text", "source": "PartitionKey", "required": true },
+    { "name": "organization", "type": "text", "source": "ModelName" },
+    { "name": "creation_date", "type": "timestamp", "sources": ["Datestamp", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "model_name", "type": "text", "source": "ModelName" },
+    { "name": "revision", "type": "text", "source": "Revision" },
+    { "name": "revision_id", "type": "text", "source": "RevisionId" },
+    { "name": "version_number", "type": "int", "source": "VersionNumber" },
+    { "name": "experiment_id", "type": "text", "source": "ExperimentId" },
+    { "name": "experiment_name", "type": "text", "source": "ExperimentName" },
+    { "name": "performed_by", "type": "text", "source": "PerformedBy" },
+    { "name": "performed_by_id", "type": "text", "source": "PerformedById" },
+    { "name": "datestamp", "type": "text", "source": "Datestamp" },
+    { "name": "success", "type": "boolean", "source": "Success" },
+    { "name": "success_percent", "type": "int", "source": "SuccessPercent" },
+    { "name": "accuracy", "type": "int", "source": "Accuracy" },
+    { "name": "subjective", "type": "boolean", "source": "Subjective" }
+  ]
+}
