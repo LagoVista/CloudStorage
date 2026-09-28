@@ -1,0 +1,30 @@
+{
+  "key": "ai-session-code-file-activity",
+  "displayName": "AI Session Code File Activity",
+  "description": "Migrates LagoVista AI SessionCodeFileActivityTSEntity Azure Table rows to Cassandra history storage.",
+  "source": {
+    "type": "azure-table",
+    "connection": "ai-ml-table-storage",
+    "tableName": "SessionCodeFileActivityTSEntity"
+  },
+  "target": {
+    "type": "cassandra-activity",
+    "table": "session_code_file_activity_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": ["organization_id"],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    { "name": "id", "type": "text", "source": "RowKey", "required": true },
+    { "name": "organization_id", "type": "text", "source": "PartitionKey", "required": true },
+    { "name": "organization", "type": "text", "source": "PartitionKey" },
+    { "name": "creation_date", "type": "timestamp", "sources": ["Timestamp", "$timestamp"], "transform": "first-date", "required": true },
+    { "name": "session_id", "type": "text", "source": "SessionId", "required": true },
+    { "name": "timestamp", "type": "text", "source": "Timestamp" },
+    { "name": "file_path", "type": "text", "source": "FilePath" },
+    { "name": "reason", "type": "text", "source": "Reason" }
+  ]
+}
