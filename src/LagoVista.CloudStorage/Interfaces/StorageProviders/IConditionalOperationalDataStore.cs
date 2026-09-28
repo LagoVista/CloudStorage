@@ -38,6 +38,7 @@ namespace LagoVista.CloudStorage.Storage
         where TRecord : class, IConditionalOperationalDataRecord
     {
         Task<TRecord> GetAsync(string organizationId, string id, CancellationToken cancellationToken = default);
+        Task<StoragePageResult<TRecord>> QueryAsync(StorageQuery<TRecord> query, CancellationToken cancellationToken = default);
         Task<ConditionalMutationResult<TRecord>> TryCreateAsync(TRecord record, CancellationToken cancellationToken = default);
         Task<ConditionalMutationResult<TRecord>> TryReplaceAsync(TRecord record, long expectedVersion, CancellationToken cancellationToken = default);
         Task<ConditionalMutationResult<TRecord>> TryDeleteAsync(string organizationId, string id, long expectedVersion, CancellationToken cancellationToken = default);
