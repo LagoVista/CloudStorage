@@ -7,6 +7,7 @@ using System.Collections.Generic;
 namespace LagoVista.StorageProvider.Tests.Cassandra
 {
     [TestClass]
+    [TestCategory("Integration")]
     [TestCategory("CassandraInfrastructure")]
     public class CassandraStorageSettingsTests
     {
