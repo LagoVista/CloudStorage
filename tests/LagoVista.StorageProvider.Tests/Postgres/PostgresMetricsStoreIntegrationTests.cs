@@ -69,6 +69,8 @@ namespace LagoVista.StorageProvider.Tests.Postgres
             Assert.AreEqual(14d / 3d, await QuerySingleValueAsync(store, "ORG1", definition.Key, start, end, MetricAggregate.Average), 0.0001);
             Assert.AreEqual(2d, await QuerySingleValueAsync(store, "ORG1", definition.Key, start, end, MetricAggregate.Minimum), 0.0001);
             Assert.AreEqual(8d, await QuerySingleValueAsync(store, "ORG1", definition.Key, start, end, MetricAggregate.Maximum), 0.0001);
+            Assert.AreEqual(4d, await QuerySingleValueAsync(store, "ORG1", definition.Key, start, end, MetricAggregate.Percentile50), 0.0001);
+            Assert.AreEqual(7.6d, await QuerySingleValueAsync(store, "ORG1", definition.Key, start, end, MetricAggregate.Percentile95), 0.0001);
 
             var narrow = await store.QueryAsync(new MetricQuery("ORG1", definition.Key, start.AddMinutes(1), start.AddMinutes(2), MetricAggregate.Sum));
             Assert.AreEqual(12d, narrow.Values.Single().Value, 0.0001);
