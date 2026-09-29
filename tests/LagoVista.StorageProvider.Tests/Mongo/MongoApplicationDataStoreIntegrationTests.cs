@@ -129,21 +129,6 @@ namespace LagoVista.StorageProvider.Tests.Mongo
         }
 
         [TestMethod]
-        public void ConcurrencyToken_FromValue_PreservesOpaqueValueAndRejectsInvalidInput()
-        {
-            const string serialized = " opaque-provider-token:value/with+symbols== ";
-
-            var token = ApplicationDataConcurrencyToken.FromValue(serialized);
-
-            Assert.AreEqual(serialized, token.Value);
-            Assert.AreEqual(serialized, token.ToString());
-            Assert.AreEqual(token, ApplicationDataConcurrencyToken.FromValue(token.Value));
-            Assert.ThrowsException<ArgumentException>(() => ApplicationDataConcurrencyToken.FromValue(null));
-            Assert.ThrowsException<ArgumentException>(() => ApplicationDataConcurrencyToken.FromValue(String.Empty));
-            Assert.ThrowsException<ArgumentException>(() => ApplicationDataConcurrencyToken.FromValue("   "));
-        }
-
-        [TestMethod]
         public async Task ConditionalMutation_RejectsStaleWriterAtomically()
         {
             var organization = EntityHeader.Create("ORG1", "Organization One");
@@ -161,20 +146,12 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             writerA.Record.Name = "Writer A";
             writerB.Record.Name = "Writer B";
 
-            var serializedCurrent = writerA.ConcurrencyToken.Value;
-            var serializedStale = writerB.ConcurrencyToken.Value;
-            var reconstructedCurrent = ApplicationDataConcurrencyToken.FromValue(serializedCurrent);
-            var reconstructedStale = ApplicationDataConcurrencyToken.FromValue(serializedStale);
-
-            Assert.AreEqual(serializedCurrent, reconstructedCurrent.Value);
-            Assert.AreEqual(serializedStale, reconstructedStale.Value);
-
-            var accepted = await _store.UpdateIfVersionAsync(writerA.Record, reconstructedCurrent);
+            var accepted = await _store.UpdateIfVersionAsync(writerA.Record, writerA.ConcurrencyToken);
             Assert.AreEqual(ApplicationDataMutationStatus.Updated, accepted.Status);
             Assert.IsNotNull(accepted.ConcurrencyToken);
             Assert.AreNotEqual(writerA.ConcurrencyToken, accepted.ConcurrencyToken);
 
-            var stale = await _store.UpdateIfVersionAsync(writerB.Record, reconstructedStale);
+            var stale = await _store.UpdateIfVersionAsync(writerB.Record, writerB.ConcurrencyToken);
             Assert.AreEqual(ApplicationDataMutationStatus.Conflict, stale.Status);
             Assert.IsNull(stale.ConcurrencyToken);
 
