@@ -141,6 +141,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
 
                 // Serialize through the exact Mongo serializer contract used at runtime.
                 target = model.ToBsonDocument(modelType);
+                NormalizeBsonObjectPayloadEnvelopes(target);
 
                 if (!target.TryGetValue("_id", out var bsonId))
                 {
@@ -651,6 +652,54 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 else
                 {
                     NormalizeObjectPayloads(value, property.PropertyType, visited);
+                }
+            }
+        }
+
+        private static void NormalizeBsonObjectPayloadEnvelopes(BsonValue value)
+        {
+            if (value == null || value.IsBsonNull) return;
+
+            if (value is BsonDocument document)
+            {
+                foreach (var name in document.Names.ToList())
+                {
+                    var child = document[name];
+                    if (child is BsonDocument childDocument &&
+                        childDocument.ElementCount == 2 &&
+                        childDocument.TryGetValue("_t", out var discriminator) && discriminator.IsString &&
+                        childDocument.TryGetValue("_v", out var payload) &&
+                        discriminator.AsString.StartsWith("MongoDB.Bson.Bson", StringComparison.Ordinal))
+                    {
+                        document[name] = payload.DeepClone();
+                        NormalizeBsonObjectPayloadEnvelopes(document[name]);
+                    }
+                    else
+                    {
+                        NormalizeBsonObjectPayloadEnvelopes(child);
+                    }
+                }
+                return;
+            }
+
+            if (value is BsonArray array)
+            {
+                for (var index = 0; index < array.Count; index++)
+                {
+                    var child = array[index];
+                    if (child is BsonDocument childDocument &&
+                        childDocument.ElementCount == 2 &&
+                        childDocument.TryGetValue("_t", out var discriminator) && discriminator.IsString &&
+                        childDocument.TryGetValue("_v", out var payload) &&
+                        discriminator.AsString.StartsWith("MongoDB.Bson.Bson", StringComparison.Ordinal))
+                    {
+                        array[index] = payload.DeepClone();
+                        NormalizeBsonObjectPayloadEnvelopes(array[index]);
+                    }
+                    else
+                    {
+                        NormalizeBsonObjectPayloadEnvelopes(child);
+                    }
                 }
             }
         }
