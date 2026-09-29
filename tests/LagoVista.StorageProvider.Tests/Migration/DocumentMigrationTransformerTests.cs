@@ -548,14 +548,14 @@ namespace LagoVista.StorageProvider.Tests.Migration
             var firstItems = first["Items"].AsBsonArray;
             var secondItems = second["Items"].AsBsonArray;
 
-            var firstId0 = firstItems[0].AsBsonDocument["Id"].AsString;
-            var firstId1 = firstItems[1].AsBsonDocument["Id"].AsString;
+            var firstId0 = firstItems[0].AsBsonDocument["_id"].AsString;
+            var firstId1 = firstItems[1].AsBsonDocument["_id"].AsString;
 
             Assert.IsTrue(NormalizedId32.IsNormalizedId32(firstId0));
             Assert.IsTrue(NormalizedId32.IsNormalizedId32(firstId1));
             Assert.AreNotEqual(firstId0, firstId1);
-            Assert.AreEqual(firstId0, secondItems[0].AsBsonDocument["Id"].AsString);
-            Assert.AreEqual(firstId1, secondItems[1].AsBsonDocument["Id"].AsString);
+            Assert.AreEqual(firstId0, secondItems[0].AsBsonDocument["_id"].AsString);
+            Assert.AreEqual(firstId1, secondItems[1].AsBsonDocument["_id"].AsString);
 
             Assert.IsTrue(firstItems[0].AsBsonDocument["OptionalId"].IsBsonNull);
             Assert.IsTrue(firstItems[1].AsBsonDocument["OptionalId"].IsBsonNull);

@@ -89,6 +89,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 NormalizeLegacyUtcTimestamps(copy, modelType);
                 NormalizeLegacyOrgNamespaces(copy, modelType);
                 NormalizeEmbeddedStateSetKeys(copy, modelType);
+                NormalizeEnumEntityHeaderIds(copy, modelType);
                 NormalizeLegacyLagoVistaKeys(copy, modelType, id, "$");
                 NormalizeMissingNestedNormalizedIds(copy, modelType, id, "$", true);
 
@@ -171,9 +172,17 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 }
 
                 // Prove the generated BSON can be materialized by the runtime Mongo serializer
-                // before allowing it to be written.
+                // before allowing it to be written. Legacy GUID ids are a deliberate wire-only
+                // exception: validate the normalized CLR id shape, then restore the historical _id.
                 var serializer = BsonSerializer.LookupSerializer(modelType);
-                using (var reader = new MongoDB.Bson.IO.BsonDocumentReader(target))
+                var roundTripDocument = target;
+                if (AllowsLegacyGuidDocumentId(modelType) && GuidString36.IsStrictLowerD(expectedSerializedId))
+                {
+                    roundTripDocument = target.DeepClone().AsBsonDocument;
+                    roundTripDocument["_id"] = Guid.Parse(expectedSerializedId).ToString("N").ToUpperInvariant();
+                }
+
+                using (var reader = new MongoDB.Bson.IO.BsonDocumentReader(roundTripDocument))
                 {
                     var context = BsonDeserializationContext.CreateRoot(reader);
                     var args = new BsonDeserializationArgs { NominalType = modelType };
@@ -405,6 +414,49 @@ namespace LagoVista.CloudStorage.Storage.Migration
             return normalized;
         }
 
+        private static void NormalizeEnumEntityHeaderIds(JToken token, Type declaredType)
+        {
+            if (token == null || declaredType == null) return;
+
+            var targetType = Nullable.GetUnderlyingType(declaredType) ?? declaredType;
+            if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(EntityHeader<>))
+            {
+                var valueType = targetType.GetGenericArguments()[0];
+                if (valueType.IsEnum && token is JObject header)
+                {
+                    var idProperty = header.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, "Id", StringComparison.OrdinalIgnoreCase));
+                    if (idProperty?.Value?.Type == JTokenType.String)
+                    {
+                        var source = idProperty.Value.ToString();
+                        var match = Enum.GetNames(valueType)
+                            .FirstOrDefault(name => String.Equals(name, source, StringComparison.OrdinalIgnoreCase));
+                        if (!String.IsNullOrWhiteSpace(match))
+                            idProperty.Value = match;
+                    }
+                }
+            }
+
+            var contract = _contractResolver.ResolveContract(targetType);
+            if (token is JObject document && contract is JsonObjectContract objectContract)
+            {
+                foreach (var property in objectContract.Properties)
+                {
+                    if (property.PropertyType == null || property.Ignored) continue;
+                    var jsonProperty = document.Properties().FirstOrDefault(item =>
+                        String.Equals(item.Name, property.PropertyName, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(item.Name, property.UnderlyingName, StringComparison.OrdinalIgnoreCase));
+                    if (jsonProperty != null)
+                        NormalizeEnumEntityHeaderIds(jsonProperty.Value, property.PropertyType);
+                }
+                return;
+            }
+
+            if (token is JArray array && contract is JsonArrayContract arrayContract && arrayContract.CollectionItemType != null)
+                foreach (var item in array)
+                    NormalizeEnumEntityHeaderIds(item, arrayContract.CollectionItemType);
+        }
+
         private static void NormalizeLegacyLagoVistaKeys(JToken token, Type declaredType, string documentId, string path)
         {
             if (token == null || declaredType == null) return;
@@ -553,14 +605,34 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 return;
             }
 
+            if (instance is IList list)
+            {
+                for (var index = 0; index < list.Count; index++)
+                {
+                    var item = list[index];
+                    if (item == null) continue;
+
+                    var itemType = item.GetType();
+                    if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+                    {
+                        var key = itemType.GetProperty("Key")?.GetValue(item);
+                        var value = itemType.GetProperty("Value")?.GetValue(item);
+                        if (value is JToken token)
+                            list[index] = Activator.CreateInstance(itemType, key, ConvertJTokenPayload(token));
+                    }
+                    else
+                    {
+                        NormalizeObjectPayloads(item, itemType, visited);
+                    }
+                }
+                return;
+            }
+
             if (instance is IEnumerable enumerable && !(instance is string))
             {
                 foreach (var item in enumerable)
-                {
                     if (item != null)
                         NormalizeObjectPayloads(item, item.GetType(), visited);
-                }
-
                 return;
             }
 
@@ -590,11 +662,10 @@ namespace LagoVista.CloudStorage.Storage.Migration
             switch (token.Type)
             {
                 case JTokenType.Object:
-                    return ((JObject)token).Properties()
-                        .ToDictionary(property => property.Name, property => ConvertJTokenPayload(property.Value), StringComparer.Ordinal);
+                    return BsonDocument.Parse(token.ToString(Formatting.None));
 
                 case JTokenType.Array:
-                    return ((JArray)token).Select(item => ConvertJTokenPayload(item)).ToList();
+                    return BsonArray.Parse(token.ToString(Formatting.None));
 
                 case JTokenType.Null:
                 case JTokenType.Undefined:
