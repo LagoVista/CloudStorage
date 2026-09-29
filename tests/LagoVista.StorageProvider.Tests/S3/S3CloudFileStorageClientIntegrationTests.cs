@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 namespace LagoVista.StorageProvider.Tests.S3
 {
     [TestClass]
+    [TestCategory("Integration")]
     [DoNotParallelize]
     [TestCategory("S3CloudFileStorage")]
     public sealed class S3CloudFileStorageClientIntegrationTests

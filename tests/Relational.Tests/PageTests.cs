@@ -20,7 +20,7 @@ namespace Relational.Tests
 {
     [CriticalCoverage]
     [TestFixture]
-    public class KeysetPagingTests
+     public class KeysetPagingTests
     {
         private SimpleDataContext _ctx;
         private LagoVistaAutoMapper _mapper;

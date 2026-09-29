@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 namespace LagoVista.StorageProvider.Tests.Redis
 {
     [TestClass]
+    [TestCategory("Integration")]
     [DoNotParallelize]
     [TestCategory("Redis")]
     [TestCategory("RedisCacheProvider")]

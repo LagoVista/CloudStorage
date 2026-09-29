@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 namespace LagoVista.StorageProvider.Tests.Mongo
 {
     [TestClass]
+    [TestCategory("Integration")]
     [DoNotParallelize]
     [TestCategory("Mongo")]
     [TestCategory("MongoDocumentStorageDepth")]

@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 namespace LagoVista.StorageProvider.Tests.Postgres
 {
     [TestClass]
+    [TestCategory("Integration")]
     [DoNotParallelize]
     [TestCategory("PostgresMetrics")]
     public class PostgresMetricsStoreIntegrationTests
