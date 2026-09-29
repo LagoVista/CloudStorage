@@ -205,7 +205,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             // the canonical representation, then attach the provider-owned TTL field before
             // a single replacement/upsert. This avoids a crash window between persistence and TTL.
             var document = record.ToBsonDocument();
-            document[ScratchExpirationField] = new BsonDateTime(DateTime.UtcNow.Add(retention.Value));
+            MaterializeExpiration(document, retention, DateTime.UtcNow);
 
             var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
             var collection = _database.GetCollection<BsonDocument>(collectionName);
@@ -277,8 +277,15 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var decision = GetDefinition<TRecord>(typeof(ApplicationDataStoreOptions<>))?.ResolveRetention(scope)
                 ?? StorageRetentionDecision.DurableDefault();
 
-            if (decision.EffectiveTtl.HasValue)
-                document[ScratchExpirationField] = new BsonDateTime(DateTime.UtcNow.Add(decision.EffectiveTtl.Value));
+            MaterializeExpiration(document, decision.EffectiveTtl, DateTime.UtcNow);
+        }
+
+        internal static void MaterializeExpiration(BsonDocument document, TimeSpan? retention, DateTime utcNow)
+        {
+            if (document == null) throw new ArgumentNullException(nameof(document));
+
+            if (retention.HasValue)
+                document[ScratchExpirationField] = new BsonDateTime(utcNow.Add(retention.Value));
             else
                 document.Remove(ScratchExpirationField);
         }
