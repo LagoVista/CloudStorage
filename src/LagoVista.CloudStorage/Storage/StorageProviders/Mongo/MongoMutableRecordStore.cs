@@ -60,6 +60,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var collection = _database.GetCollection<BsonDocument>(collectionName);
             var document = record.ToBsonDocument();
             document[ApplicationDataVersionField] = version;
+            ApplyApplicationDataExpiration<TRecord>(document, record.Organization.Id);
             await collection.InsertOneAsync(document, null, cancellationToken).ConfigureAwait(false);
         }
 
@@ -121,6 +122,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var collection = _database.GetCollection<BsonDocument>(collectionName);
             var document = record.ToBsonDocument();
             document[ApplicationDataVersionField] = version;
+            ApplyApplicationDataExpiration<TRecord>(document, record.Organization.Id);
 
             var result = await collection.ReplaceOneAsync(
                 BuildBsonKeyFilter(key),
@@ -150,6 +152,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var collection = _database.GetCollection<BsonDocument>(collectionName);
             var document = record.ToBsonDocument();
             document[ApplicationDataVersionField] = newVersion;
+            ApplyApplicationDataExpiration<TRecord>(document, record.Organization.Id);
 
             var filter = BuildBsonKeyFilter(key);
             filter.Add(ApplicationDataVersionField, expectedVersion);
@@ -262,10 +265,22 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             return new StoragePageResult<TRecord>(records, hasMore ? EncodeOffset(offset + pageSize) : null);
         }
 
-        public TimeSpan? GetScratchRetention<TRecord>()
+        public TimeSpan? GetScratchRetention<TRecord>(string scope)
             where TRecord : class, IScratchDataRecord
         {
-            return GetDefinition<TRecord>(typeof(ScratchStoreOptions<>))?.Retention;
+            return GetDefinition<TRecord>(typeof(ScratchStoreOptions<>))?.ResolveRetention(scope).EffectiveTtl;
+        }
+
+        private void ApplyApplicationDataExpiration<TRecord>(BsonDocument document, string scope)
+            where TRecord : class, IApplicationDataRecord
+        {
+            var decision = GetDefinition<TRecord>(typeof(ApplicationDataStoreOptions<>))?.ResolveRetention(scope)
+                ?? StorageRetentionDecision.DurableDefault();
+
+            if (decision.EffectiveTtl.HasValue)
+                document[ScratchExpirationField] = new BsonDateTime(DateTime.UtcNow.Add(decision.EffectiveTtl.Value));
+            else
+                document.Remove(ScratchExpirationField);
         }
 
         private async Task<IMongoCollection<TRecord>> GetCollectionAsync<TRecord>(CancellationToken cancellationToken)
@@ -294,7 +309,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             AddCommonAndConfiguredIndexes(indexes, definition);
 
-            if (typeof(IScratchDataRecord).IsAssignableFrom(typeof(TRecord)) && definition?.Retention != null)
+            if ((typeof(IScratchDataRecord).IsAssignableFrom(typeof(TRecord)) || typeof(IApplicationDataRecord).IsAssignableFrom(typeof(TRecord))) && definition?.HasExpiringRetention == true)
             {
                 indexes.Add(new CreateIndexModel<TRecord>(
                     Builders<TRecord>.IndexKeys.Ascending(ScratchExpirationField),

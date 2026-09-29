@@ -140,6 +140,7 @@ namespace LagoVista.CloudStorage.Storage
             return services;
         }
 
+
         public static IServiceCollection ConfigureApplicationData<TRecord>(
             this IServiceCollection services,
             Action<StorageDefinition<TRecord>> configure)

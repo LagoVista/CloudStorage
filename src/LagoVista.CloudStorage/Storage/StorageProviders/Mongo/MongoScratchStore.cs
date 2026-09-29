@@ -38,7 +38,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         {
             ValidateRecord(record);
             var key = new StorageKey(record.Id.Value, record.Organization.Id);
-            var retention = _store.GetScratchRetention<TRecord>();
+            var retention = _store.GetScratchRetention<TRecord>(record.Organization.Id);
             return _store.ReplaceScratchAsync(key, record, retention, cancellationToken);
         }
 

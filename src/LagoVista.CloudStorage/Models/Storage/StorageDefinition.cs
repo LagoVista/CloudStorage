@@ -30,6 +30,30 @@ namespace LagoVista.CloudStorage.Storage
 
         public TimeSpan? Retention { get; private set; }
 
+        public StorageRetentionPolicy RetentionPolicy { get; private set; }
+        public StorageRecordClass? RetentionRecordClass { get; private set; }
+
+        public StorageDefinition<TEntity> UseRetentionPolicy(StorageRecordClass recordClass, StorageRetentionPolicy policy)
+        {
+            RetentionRecordClass = recordClass;
+            RetentionPolicy = policy ?? throw new ArgumentNullException(nameof(policy));
+            return this;
+        }
+
+        public StorageRetentionDecision ResolveRetention(string scope = null)
+        {
+            if (RetentionPolicy != null && RetentionRecordClass.HasValue)
+                return RetentionPolicy.Resolve(RetentionRecordClass.Value, scope);
+
+            return Retention.HasValue
+                ? new StorageRetentionDecision(Retention, false, false, true, "legacy-retention")
+                : StorageRetentionDecision.DurableDefault();
+        }
+
+        public bool HasExpiringRetention =>
+            Retention.HasValue ||
+            (RetentionPolicy != null && RetentionRecordClass.HasValue && RetentionPolicy.CanExpire(RetentionRecordClass.Value));
+
         public StorageDefinition<TEntity> KeyBy<TValue>(Expression<Func<TEntity, TValue>> selector)
         {
             KeyField = GetPropertyPath(selector);
