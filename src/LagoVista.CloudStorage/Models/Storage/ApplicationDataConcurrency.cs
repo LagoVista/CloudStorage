@@ -14,6 +14,15 @@ namespace LagoVista.CloudStorage.Storage
 
         public string Value { get; }
 
+        /// <summary>
+        /// Reconstructs an opaque application-data concurrency token from its serialized value.
+        /// The value is preserved exactly; null, empty, or whitespace-only values are rejected.
+        /// </summary>
+        public static ApplicationDataConcurrencyToken FromValue(string value)
+        {
+            return new ApplicationDataConcurrencyToken(value);
+        }
+
         public bool Equals(ApplicationDataConcurrencyToken other)
         {
             return other != null && String.Equals(Value, other.Value, StringComparison.Ordinal);
