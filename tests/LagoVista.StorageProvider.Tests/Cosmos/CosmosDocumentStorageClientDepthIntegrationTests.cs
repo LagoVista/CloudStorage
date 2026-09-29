@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 namespace LagoVista.StorageProvider.Tests.Cosmos
 {
     [TestClass]
+    [TestCategory("Integration")]
     [DoNotParallelize]
     [TestCategory("Cosmos")]
     [TestCategory("CosmosDocumentStorageDepth")]

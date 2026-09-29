@@ -13,6 +13,7 @@ namespace LagoVista.StorageProvider.Tests.Mongo
     [TestClass]
     [DoNotParallelize]
     [TestCategory("Mongo")]
+    [TestCategory("Integration")]
     [TestCategory("DocumentStorageContract")]
     public class MongoDocumentStorageClientContractTests
     {
