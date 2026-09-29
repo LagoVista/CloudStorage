@@ -665,7 +665,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                     return BsonDocument.Parse(token.ToString(Formatting.None));
 
                 case JTokenType.Array:
-                    return BsonArray.Parse(token.ToString(Formatting.None));
+                    return BsonDocument.Parse("{ \"value\": " + token.ToString(Formatting.None) + " }")["value"].AsBsonArray;
 
                 case JTokenType.Null:
                 case JTokenType.Undefined:
