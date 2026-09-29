@@ -87,6 +87,24 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
         public int RetentionSeconds => Definition.Retention.HasValue
             ? (int)Math.Ceiling(Definition.Retention.Value.TotalSeconds)
             : 0;
+        public bool UsesRetentionPolicy =>
+            Definition.RetentionPolicy != null &&
+            Definition.RetentionRecordClass == StorageRecordClass.ActivityRecord;
+
+        public int? ResolveRetentionSeconds(string scope)
+        {
+            if (!UsesRetentionPolicy)
+                return null;
+
+            var ttl = Definition.ResolveRetention(scope).EffectiveTtl;
+            if (!ttl.HasValue)
+                return null;
+
+            if (ttl.Value.TotalSeconds > Int32.MaxValue)
+                throw new InvalidOperationException($"Cassandra activity retention for {typeof(TRecord).Name} cannot exceed {Int32.MaxValue} seconds.");
+
+            return (int)Math.Ceiling(ttl.Value.TotalSeconds);
+        }
 
         public string CreateTableCql()
         {
@@ -111,12 +129,13 @@ AND default_time_to_live = {RetentionSeconds}";
             return $"ALTER TABLE {TableName} WITH default_time_to_live = {RetentionSeconds}";
         }
 
-        public string InsertCql()
+        public string InsertCql(bool perWriteTtl = false)
         {
             var columns = Properties.Select(property => property.ColumnName).ToList();
             if (UsesTimeBuckets) columns.Add(BucketColumnName);
             var markers = String.Join(", ", columns.Select(_ => "?"));
-            return $"INSERT INTO {TableName} ({String.Join(", ", columns)}) VALUES ({markers})";
+            var cql = $"INSERT INTO {TableName} ({String.Join(", ", columns)}) VALUES ({markers})";
+            return perWriteTtl ? cql + " USING TTL ?" : cql;
         }
 
         public object[] Values(TRecord record)

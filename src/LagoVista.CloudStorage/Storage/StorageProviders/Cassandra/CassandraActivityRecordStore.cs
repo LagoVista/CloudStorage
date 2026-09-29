@@ -26,6 +26,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
         private readonly SemaphoreSlim _schemaLock = new SemaphoreSlim(1, 1);
         private volatile bool _schemaReady;
         private PreparedStatement _insert;
+        private PreparedStatement _insertWithTtl;
 
         public CassandraActivityRecordStore(
             ICassandraSessionFactory sessionFactory,
@@ -41,8 +42,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             cancellationToken.ThrowIfCancellationRequested();
 
             var session = await GetReadySessionAsync().ConfigureAwait(false);
-            var insert = await GetInsertAsync(session).ConfigureAwait(false);
-            await session.ExecuteAsync(insert.Bind(_map.Values(record))).ConfigureAwait(false);
+            var ttl = _map.ResolveRetentionSeconds(record.OrganizationId);
+            var insert = await GetInsertAsync(session, ttl.HasValue).ConfigureAwait(false);
+            var values = _map.Values(record).ToList();
+            if (ttl.HasValue) values.Add(ttl.Value);
+            await session.ExecuteAsync(insert.Bind(values.ToArray())).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
         }
@@ -57,7 +61,6 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             if (materialized.Any(record => record == null)) throw new ArgumentException("Activity record batches cannot contain null records.", nameof(records));
 
             var session = await GetReadySessionAsync().ConfigureAwait(false);
-            var insert = await GetInsertAsync(session).ConfigureAwait(false);
 
             for (var offset = 0; offset < materialized.Count; offset += BatchInsertConcurrency)
             {
@@ -68,7 +71,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
                 for (var index = 0; index < count; index++)
                 {
                     var record = materialized[offset + index];
-                    writes[index] = session.ExecuteAsync(insert.Bind(_map.Values(record)));
+                    var ttl = _map.ResolveRetentionSeconds(record.OrganizationId);
+                    var insert = await GetInsertAsync(session, ttl.HasValue).ConfigureAwait(false);
+                    var values = _map.Values(record).ToList();
+                    if (ttl.HasValue) values.Add(ttl.Value);
+                    writes[index] = session.ExecuteAsync(insert.Bind(values.ToArray()));
                 }
 
                 await Task.WhenAll(writes).ConfigureAwait(false);
@@ -417,8 +424,15 @@ WHERE keyspace_name = ?").ConfigureAwait(false);
             return expected;
         }
 
-        private async Task<PreparedStatement> GetInsertAsync(ISession session)
+        private async Task<PreparedStatement> GetInsertAsync(ISession session, bool perWriteTtl)
         {
+            if (perWriteTtl)
+            {
+                if (_insertWithTtl != null) return _insertWithTtl;
+                _insertWithTtl = await session.PrepareAsync(_map.InsertCql(true)).ConfigureAwait(false);
+                return _insertWithTtl;
+            }
+
             if (_insert != null) return _insert;
             _insert = await session.PrepareAsync(_map.InsertCql()).ConfigureAwait(false);
             return _insert;

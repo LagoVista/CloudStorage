@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 namespace LagoVista.StorageProvider.Tests.Cassandra
 {
     [TestClass]
+    [TestCategory("Integration")]
     [DoNotParallelize]
     [TestCategory("Cassandra")]
     [TestCategory("CassandraActivityRecord")]

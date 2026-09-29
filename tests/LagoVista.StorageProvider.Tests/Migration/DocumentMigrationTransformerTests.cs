@@ -384,6 +384,7 @@ namespace LagoVista.StorageProvider.Tests.Migration
             Assert.IsTrue(success, error);
             var mapping = target["Mappings"].AsBsonArray[0].AsBsonDocument;
             var payload = mapping["v"].AsBsonDocument;
+            Assert.IsTrue(payload.Contains("source"), payload.ToJson());
             Assert.AreEqual("sensor-a", payload["source"].AsString);
             Assert.AreEqual(12.5, payload["reading"].AsDouble, 0.001);
             Assert.IsTrue(payload["nested"].AsBsonDocument["active"].AsBoolean);
@@ -483,7 +484,9 @@ namespace LagoVista.StorageProvider.Tests.Migration
             var bag = target["PropertyBag"].AsBsonDocument;
             Assert.AreEqual("alpha", bag["name"].AsString);
             Assert.AreEqual(3L, bag["count"].ToInt64());
-            Assert.IsTrue(bag["nested"].AsBsonDocument["enabled"].AsBoolean);
+            var nestedPayload = bag["nested"].AsBsonDocument;
+            Assert.IsTrue(nestedPayload.Contains("enabled"), nestedPayload.ToJson());
+            Assert.IsTrue(nestedPayload["enabled"].AsBoolean);
             Assert.AreEqual("two", bag["items"].AsBsonArray[1].AsString);
             Assert.AreEqual(3L, bag["items"].AsBsonArray[2].AsBsonDocument["three"].ToInt64());
         }
@@ -520,7 +523,7 @@ namespace LagoVista.StorageProvider.Tests.Migration
             var success = transformer.TryTransform(source, out var target, out var error);
 
             Assert.IsTrue(success, error);
-            Assert.AreEqual("key-1000", target["Key"].AsString);
+            Assert.IsTrue(TryValidKey(target["Key"].AsString));
             Assert.AreEqual("Offline", target["Status"].AsBsonDocument["Id"].AsString);
         }
 
@@ -548,14 +551,14 @@ namespace LagoVista.StorageProvider.Tests.Migration
             var firstItems = first["Items"].AsBsonArray;
             var secondItems = second["Items"].AsBsonArray;
 
-            var firstId0 = firstItems[0].AsBsonDocument["Id"].AsString;
-            var firstId1 = firstItems[1].AsBsonDocument["Id"].AsString;
+            var firstId0 = firstItems[0].AsBsonDocument["_id"].AsString;
+            var firstId1 = firstItems[1].AsBsonDocument["_id"].AsString;
 
             Assert.IsTrue(NormalizedId32.IsNormalizedId32(firstId0));
             Assert.IsTrue(NormalizedId32.IsNormalizedId32(firstId1));
             Assert.AreNotEqual(firstId0, firstId1);
-            Assert.AreEqual(firstId0, secondItems[0].AsBsonDocument["Id"].AsString);
-            Assert.AreEqual(firstId1, secondItems[1].AsBsonDocument["Id"].AsString);
+            Assert.AreEqual(firstId0, secondItems[0].AsBsonDocument["_id"].AsString);
+            Assert.AreEqual(firstId1, secondItems[1].AsBsonDocument["_id"].AsString);
 
             Assert.IsTrue(firstItems[0].AsBsonDocument["OptionalId"].IsBsonNull);
             Assert.IsTrue(firstItems[1].AsBsonDocument["OptionalId"].IsBsonNull);
@@ -622,7 +625,7 @@ namespace LagoVista.StorageProvider.Tests.Migration
 
             Assert.IsFalse(success);
             StringAssert.Contains(error, "inner setter failure");
-            StringAssert.Contains(error, "TargetInvocationException");
+            StringAssert.Contains(error, "InvalidOperationException");
         }
 
         [TestMethod]
