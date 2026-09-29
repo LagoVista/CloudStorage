@@ -51,7 +51,7 @@ namespace LagoVista.StorageProvider.Tests
         [TestMethod]
         public void PolicyRejectsProtectedRuleWithTtl()
         {
-            Assert.ThrowsException<InvalidOperationException>(() =>
+            Assert.ThrowsExactly<InvalidOperationException>(() =>
                 new StorageRetentionPolicy().AddDefault(
                     StorageRecordClass.ActivityRecord,
                     TimeSpan.FromDays(1),
