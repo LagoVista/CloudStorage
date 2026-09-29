@@ -622,7 +622,7 @@ namespace LagoVista.StorageProvider.Tests.Migration
 
             Assert.IsFalse(success);
             StringAssert.Contains(error, "inner setter failure");
-            StringAssert.Contains(error, "TargetInvocationException");
+            StringAssert.Contains(error, "InvalidOperationException");
         }
 
         [TestMethod]

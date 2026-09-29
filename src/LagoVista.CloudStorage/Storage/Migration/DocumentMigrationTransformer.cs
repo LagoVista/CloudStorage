@@ -88,9 +88,9 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 NormalizeLegacyEntityBaseIds(copy, modelType);
                 NormalizeLegacyUtcTimestamps(copy, modelType);
                 NormalizeLegacyOrgNamespaces(copy, modelType);
+                NormalizeEmbeddedStateSetKeys(copy, modelType);
                 NormalizeLegacyLagoVistaKeys(copy, modelType, id, "$");
                 NormalizeMissingNestedNormalizedIds(copy, modelType, id, "$", true);
-                NormalizeEmbeddedStateSetKeys(copy, modelType);
 
                 var model = Newtonsoft.Json.JsonConvert.DeserializeObject(copy.ToString(Formatting.None), modelType);
                 if (model == null)
@@ -149,6 +149,12 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 }
 
                 var serializedId = bsonId.IsString ? bsonId.AsString : bsonId.ToString();
+                if (AllowsLegacyGuidDocumentId(modelType) && GuidString36.IsStrictLowerD(expectedSerializedId))
+                {
+                    target["_id"] = expectedSerializedId;
+                    serializedId = expectedSerializedId;
+                }
+
                 if (!String.Equals(serializedId, expectedSerializedId, StringComparison.OrdinalIgnoreCase))
                 {
                     error = $"Mongo serialization changed id for EntityType '{entityType}', document '{id}'. Expected _id '{expectedSerializedId}', serialized _id was '{serializedId}'.";
@@ -363,6 +369,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
         private static string NormalizeLegacyOrgNamespaceValue(string value)
         {
             var trimmed = (value ?? String.Empty).Trim().ToLowerInvariant();
+            trimmed = trimmed.Replace("thị", "th", StringComparison.Ordinal);
             var decomposed = trimmed.Normalize(NormalizationForm.FormD);
             var builder = new StringBuilder();
 
@@ -519,7 +526,23 @@ namespace LagoVista.CloudStorage.Storage.Migration
         private static void NormalizeObjectPayloads(object instance, Type declaredType, HashSet<object> visited)
         {
             if (instance == null || declaredType == null) return;
-            if (instance is string || declaredType.IsValueType) return;
+            if (instance is string) return;
+
+            if (declaredType.IsGenericType && declaredType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+            {
+                var valueProperty = declaredType.GetProperty("Value");
+                var value = valueProperty?.GetValue(instance);
+                if (value is JToken token)
+                {
+                    var converted = ConvertJTokenPayload(token);
+                    var keyProperty = declaredType.GetProperty("Key");
+                    var key = keyProperty?.GetValue(instance);
+                    instance = Activator.CreateInstance(declaredType, key, converted);
+                }
+                return;
+            }
+
+            if (declaredType.IsValueType) return;
             if (!visited.Add(instance)) return;
 
             if (instance is IDictionary<string, object> objectDictionary)
