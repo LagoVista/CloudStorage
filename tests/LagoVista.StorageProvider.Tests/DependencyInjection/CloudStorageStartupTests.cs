@@ -38,6 +38,22 @@ namespace LagoVista.StorageProvider.Tests.DependencyInjection
         }
 
         [TestMethod]
+        public void ConfigureServices_RegistersProcessRepositories()
+        {
+            var services = new ServiceCollection();
+
+            LagoVista.CloudStorage.Storage.StorageProviders.Startup.ConfigureServices(services);
+
+            var definition = services.Single(descriptor => descriptor.ServiceType == typeof(IProcessDefinitionRepository));
+            var instance = services.Single(descriptor => descriptor.ServiceType == typeof(IProcessInstanceRepository));
+
+            Assert.AreEqual(typeof(LagoVista.CloudStorage.Repositories.ProcessDefinitionRepository), definition.ImplementationType);
+            Assert.AreEqual(typeof(LagoVista.CloudStorage.Repositories.ProcessInstanceRepository), instance.ImplementationType);
+            Assert.AreEqual(ServiceLifetime.Scoped, definition.Lifetime);
+            Assert.AreEqual(ServiceLifetime.Scoped, instance.Lifetime);
+        }
+
+        [TestMethod]
         public void ConfigureServices_RegistersAllPlatformSmokeTestsOnce()
         {
             var services = new ServiceCollection();
