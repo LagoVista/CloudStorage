@@ -33,6 +33,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
             services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
             services.AddScoped<IDocumentCollectionNameResolver, DocumentCollectionNameResolver>();
             services.AddScoped<IDocumentStorageClientProvider, DocumentStorageClientProvider>();
+            services.AddScoped<LagoVista.Core.Interfaces.IProcessDefinitionRepository, LagoVista.CloudStorage.Repositories.ProcessDefinitionRepository>();
+            services.AddScoped<LagoVista.Core.Interfaces.IProcessInstanceRepository, LagoVista.CloudStorage.Repositories.ProcessInstanceRepository>();
         }
     }
 }
