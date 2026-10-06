@@ -17,6 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CassandraCSharpDriver" />
+    <PackageReference Include="LagoVista.Core" />
     <PackageReference Include="LagoVista.IoT.Logging" />
     <PackageReference Include="log4net" />
     <PackageReference Include="Microsoft.Azure.Cosmos" />
