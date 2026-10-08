@@ -88,9 +88,10 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 NormalizeLegacyEntityBaseIds(copy, modelType);
                 NormalizeLegacyUtcTimestamps(copy, modelType);
                 NormalizeLegacyOrgNamespaces(copy, modelType);
+                NormalizeLegacyEnumEntityHeaders(copy, modelType);
+                NormalizeEmbeddedStateSetKeys(copy, modelType);
                 NormalizeLegacyLagoVistaKeys(copy, modelType, id, "$");
                 NormalizeMissingNestedNormalizedIds(copy, modelType, id, "$", true);
-                NormalizeEmbeddedStateSetKeys(copy, modelType);
 
                 var model = Newtonsoft.Json.JsonConvert.DeserializeObject(copy.ToString(Formatting.None), modelType);
                 if (model == null)
@@ -140,6 +141,9 @@ namespace LagoVista.CloudStorage.Storage.Migration
 
                 // Serialize through the exact Mongo serializer contract used at runtime.
                 target = model.ToBsonDocument(modelType);
+
+                if (AllowsLegacyGuidDocumentId(modelType) && GuidString36.IsStrictLowerD(id))
+                    target["_id"] = id;
 
                 if (!target.TryGetValue("_id", out var bsonId))
                 {
@@ -530,6 +534,31 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 return;
             }
 
+            if (instance is IList list)
+            {
+                for (var index = 0; index < list.Count; index++)
+                {
+                    var item = list[index];
+                    if (item == null) continue;
+
+                    var itemType = item.GetType();
+                    if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>) &&
+                        itemType.GetGenericArguments()[0] == typeof(string) &&
+                        itemType.GetGenericArguments()[1] == typeof(object))
+                    {
+                        var key = (string)itemType.GetProperty("Key")!.GetValue(item);
+                        var value = itemType.GetProperty("Value")!.GetValue(item);
+                        list[index] = new KeyValuePair<string, object>(key, ConvertJTokenPayload(value));
+                    }
+                    else
+                    {
+                        NormalizeObjectPayloads(item, itemType, visited);
+                    }
+                }
+
+                return;
+            }
+
             if (instance is IEnumerable enumerable && !(instance is string))
             {
                 foreach (var item in enumerable)
@@ -562,16 +591,19 @@ namespace LagoVista.CloudStorage.Storage.Migration
 
         private static object ConvertJTokenPayload(object value)
         {
+
             if (!(value is JToken token)) return value;
 
             switch (token.Type)
             {
                 case JTokenType.Object:
-                    return ((JObject)token).Properties()
-                        .ToDictionary(property => property.Name, property => ConvertJTokenPayload(property.Value), StringComparer.Ordinal);
+                    var document = new BsonDocument();
+                    foreach (var property in ((JObject)token).Properties())
+                        document[property.Name] = ToBsonValue(ConvertJTokenPayload(property.Value));
+                    return document;
 
                 case JTokenType.Array:
-                    return ((JArray)token).Select(item => ConvertJTokenPayload(item)).ToList();
+                    return new BsonArray(((JArray)token).Select(item => ToBsonValue(ConvertJTokenPayload(item))));
 
                 case JTokenType.Null:
                 case JTokenType.Undefined:
@@ -580,6 +612,13 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 default:
                     return token is JValue scalar ? scalar.Value : token.ToString(Formatting.None);
             }
+        }
+
+        private static BsonValue ToBsonValue(object value)
+        {
+            if (value == null) return BsonNull.Value;
+            if (value is BsonValue bson) return bson;
+            return BsonValue.Create(value);
         }
 
         private sealed class ReferenceEqualityComparer : IEqualityComparer<object>

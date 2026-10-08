@@ -548,14 +548,14 @@ namespace LagoVista.StorageProvider.Tests.Migration
             var firstItems = first["Items"].AsBsonArray;
             var secondItems = second["Items"].AsBsonArray;
 
-            var firstId0 = firstItems[0].AsBsonDocument["Id"].AsString;
-            var firstId1 = firstItems[1].AsBsonDocument["Id"].AsString;
+            var firstId0 = firstItems[0].AsBsonDocument["_id"].AsString;
+            var firstId1 = firstItems[1].AsBsonDocument["_id"].AsString;
 
             Assert.IsTrue(NormalizedId32.IsNormalizedId32(firstId0));
             Assert.IsTrue(NormalizedId32.IsNormalizedId32(firstId1));
             Assert.AreNotEqual(firstId0, firstId1);
-            Assert.AreEqual(firstId0, secondItems[0].AsBsonDocument["Id"].AsString);
-            Assert.AreEqual(firstId1, secondItems[1].AsBsonDocument["Id"].AsString);
+            Assert.AreEqual(firstId0, secondItems[0].AsBsonDocument["_id"].AsString);
+            Assert.AreEqual(firstId1, secondItems[1].AsBsonDocument["_id"].AsString);
 
             Assert.IsTrue(firstItems[0].AsBsonDocument["OptionalId"].IsBsonNull);
             Assert.IsTrue(firstItems[1].AsBsonDocument["OptionalId"].IsBsonNull);
@@ -622,7 +622,8 @@ namespace LagoVista.StorageProvider.Tests.Migration
 
             Assert.IsFalse(success);
             StringAssert.Contains(error, "inner setter failure");
-            StringAssert.Contains(error, "TargetInvocationException");
+            StringAssert.Contains(error, "JsonSerializationException");
+            StringAssert.Contains(error, "InvalidOperationException");
         }
 
         [TestMethod]
@@ -749,7 +750,7 @@ namespace LagoVista.StorageProvider.Tests.Migration
         [DataRow("plant_monitor", "plantmonitor")]
         [DataRow("ADMATECH ", "admatech")]
         [DataRow("Heer parmar", "heerparmar")]
-        [DataRow("nguyễnthịngọc", "nguyenthngoc")]
+        [DataRow("nguyễnthịngọc", "nguyenthingoc")]
         public void TransformNormalizesCommonLegacyOrgNamespaceShapes(string sourceNamespace, string expectedNamespace)
         {
             var source = JObject.Parse(
