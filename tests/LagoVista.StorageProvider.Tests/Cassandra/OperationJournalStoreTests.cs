@@ -115,6 +115,41 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
                 }));
         }
 
+
+        [TestMethod]
+        public async Task OwnerHistoryRequiresBoundedUtcRangeBeforeConnecting()
+        {
+            await Assert.ThrowsExceptionAsync<ArgumentException>(() =>
+                CreateStore().ListAsync(new OperationJournalScope
+                {
+                    OrganizationId = "org", ScopeType = "all"
+                }, 20));
+        }
+
+        [TestMethod]
+        public async Task OwnerHistoryRejectsMoreThanTwelveMonths()
+        {
+            await Assert.ThrowsExceptionAsync<ArgumentException>(() =>
+                CreateStore().ListAsync(new OperationJournalScope
+                {
+                    OrganizationId = "org", ScopeType = "all",
+                    StartUtc = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                    EndUtc = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero)
+                }, 20));
+        }
+
+        [TestMethod]
+        public async Task OwnerHistoryRejectsNonUtcIntervals()
+        {
+            await Assert.ThrowsExceptionAsync<ArgumentException>(() =>
+                CreateStore().ListAsync(new OperationJournalScope
+                {
+                    OrganizationId = "org", ScopeType = "all",
+                    StartUtc = new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.FromHours(-4)),
+                    EndUtc = new DateTimeOffset(2026, 10, 5, 0, 0, 0, TimeSpan.Zero)
+                }, 20));
+        }
+
         private sealed class NoConnectSessionFactory : ICassandraSessionFactory
         {
             public Task<global::Cassandra.ISession> GetSessionAsync() =>
