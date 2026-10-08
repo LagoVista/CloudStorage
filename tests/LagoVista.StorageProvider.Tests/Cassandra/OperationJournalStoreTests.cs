@@ -80,6 +80,41 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
                 && d.Lifetime == ServiceLifetime.Scoped));
         }
 
+
+        [TestMethod]
+        public async Task StartRejectsModelActivityAsNonBoundary()
+        {
+            await Assert.ThrowsExceptionAsync<ArgumentException>(() =>
+                CreateStore().StartAsync(new OperationJournalRecord
+                {
+                    OrganizationId = "org", OperationId = "op", OwnerType = "fix-workspace",
+                    OwnerId = "fix-1", BoundaryType = "model-action", CommandId = "cmd"
+                }));
+        }
+
+        [TestMethod]
+        public async Task StartRejectsMissingStableCommandId()
+        {
+            await Assert.ThrowsExceptionAsync<ArgumentException>(() =>
+                CreateStore().StartAsync(new OperationJournalRecord
+                {
+                    OrganizationId = "org", OperationId = "op", OwnerType = "fix-workspace",
+                    OwnerId = "fix-1", BoundaryType = "build"
+                }));
+        }
+
+        [TestMethod]
+        public async Task AppendRejectsUnboundedEvidencePayload()
+        {
+            await Assert.ThrowsExceptionAsync<ArgumentOutOfRangeException>(() =>
+                CreateStore().AppendAsync(new OperationJournalDetail
+                {
+                    OrganizationId = "org", OperationId = "op", DetailId = "step", Sequence = 1,
+                    Phase = "publish", Kind = "verified", EvidenceId = "evidence",
+                    BeforeState = new string('x', 2049)
+                }));
+        }
+
         private sealed class NoConnectSessionFactory : ICassandraSessionFactory
         {
             public Task<global::Cassandra.ISession> GetSessionAsync() =>
