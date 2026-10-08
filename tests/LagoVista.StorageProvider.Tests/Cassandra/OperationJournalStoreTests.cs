@@ -82,7 +82,7 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
 
         private sealed class NoConnectSessionFactory : ICassandraSessionFactory
         {
-            public Task<Cassandra.ISession> GetSessionAsync() =>
+            public Task<global::Cassandra.ISession> GetSessionAsync() =>
                 throw new InvalidOperationException("Validation must run before opening Cassandra.");
         }
     }
