@@ -26,6 +26,8 @@ namespace LagoVista.CloudStorage.Storage
     {
         public string OrganizationId { get; set; }
         public string ScopeType { get; set; }
+        public DateTimeOffset? StartUtc { get; set; }
+        public DateTimeOffset? EndUtc { get; set; }
         public string WorkstreamId { get; set; }
         public string WorkspaceId { get; set; }
         public string FixWorkspaceId { get; set; }

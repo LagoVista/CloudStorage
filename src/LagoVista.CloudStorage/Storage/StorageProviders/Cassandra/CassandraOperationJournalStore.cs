@@ -202,19 +202,67 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             Required(scope.OrganizationId, nameof(scope.OrganizationId));
             var owner = ScopeKey(scope);
             ValidatePage(pageSize);
+            if (!scope.StartUtc.HasValue || !scope.EndUtc.HasValue ||
+                scope.StartUtc.Value.Offset != TimeSpan.Zero || scope.EndUtc.Value.Offset != TimeSpan.Zero ||
+                scope.EndUtc.Value < scope.StartUtc.Value ||
+                scope.EndUtc.Value > scope.StartUtc.Value.AddMonths(12))
+                throw new ArgumentException("Owner-history queries require a UTC range of at most 12 months.", nameof(scope));
             cancellationToken.ThrowIfCancellationRequested();
+            var buckets = new List<string>();
+            var month = new DateTime(scope.EndUtc.Value.Year, scope.EndUtc.Value.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var first = new DateTime(scope.StartUtc.Value.Year, scope.StartUtc.Value.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            for (; month >= first; month = month.AddMonths(-1))
+                buckets.Add(month.ToString("yyyyMM", CultureInfo.InvariantCulture));
+
+            int bucketIndex = 0;
+            byte[] pagingState = null;
+            if (!String.IsNullOrEmpty(continuationToken))
+            {
+                try
+                {
+                    var parts = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(continuationToken)).Split(':');
+                    if (parts.Length != 2 || !Int32.TryParse(parts[0], out bucketIndex) ||
+                        bucketIndex < 0 || bucketIndex >= buckets.Count)
+                        throw new FormatException("Invalid bucket pointer.");
+                    pagingState = String.IsNullOrEmpty(parts[1]) ? null : Convert.FromBase64String(parts[1]);
+                }
+                catch (FormatException ex)
+                {
+                    throw new ArgumentException("Invalid owner-history continuation token.", nameof(continuationToken), ex);
+                }
+            }
+
             var session = await ReadyAsync().ConfigureAwait(false);
             var statement = await session.PrepareAsync(@"SELECT * FROM operation_journal_by_owner
-                WHERE organization_id = ? AND scope_type = ? AND scope_id = ?").ConfigureAwait(false);
-            var bound = statement.Bind(scope.OrganizationId, owner.Type, owner.Id).SetPageSize(pageSize).SetAutoPage(false);
-            ApplyCursor(bound, continuationToken);
-            var rows = await session.ExecuteAsync(bound).ConfigureAwait(false);
-            return new OperationJournalPage<OperationJournalRecord>
+                WHERE organization_id = ? AND scope_type = ? AND scope_id = ? AND bucket = ?
+                AND started_at >= ? AND started_at <= ?").ConfigureAwait(false);
+            var items = new List<OperationJournalRecord>();
+            for (var index = bucketIndex; index < buckets.Count && items.Count < pageSize; index++)
             {
-                Items = rows.Select(ReadOperation).ToList(),
-                ContinuationToken = Cursor(rows)
-            };
+                cancellationToken.ThrowIfCancellationRequested();
+                var bound = statement.Bind(scope.OrganizationId, owner.Type, owner.Id, buckets[index],
+                    scope.StartUtc.Value, scope.EndUtc.Value).SetPageSize(pageSize - items.Count).SetAutoPage(false);
+                if (index == bucketIndex && pagingState != null) bound.SetPagingState(pagingState);
+                var rows = await session.ExecuteAsync(bound).ConfigureAwait(false);
+                items.AddRange(rows.Select(ReadOperation));
+                if (rows.PagingState != null && rows.PagingState.Length > 0)
+                    return new OperationJournalPage<OperationJournalRecord>
+                    {
+                        Items = items, ContinuationToken = EncodeBucketCursor(index, rows.PagingState)
+                    };
+                if (items.Count == pageSize && index + 1 < buckets.Count)
+                    return new OperationJournalPage<OperationJournalRecord>
+                    {
+                        Items = items, ContinuationToken = EncodeBucketCursor(index + 1, null)
+                    };
+            }
+            return new OperationJournalPage<OperationJournalRecord> { Items = items };
         }
+
+        private static string EncodeBucketCursor(int index, byte[] state) =>
+            Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(
+                index.ToString(CultureInfo.InvariantCulture) + ":" +
+                (state == null ? "" : Convert.ToBase64String(state))));
 
         public async Task<OperationJournalPage<OperationJournalDetail>> GetDetailsAsync(string organizationId,
             string operationId, int pageSize, string continuationToken = null, CancellationToken cancellationToken = default)
@@ -246,12 +294,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
         private async Task UpsertProjectionAsync(ISession session, OperationJournalRecord operation, string scopeType, string scopeId)
         {
             var insert = await session.PrepareAsync(@"INSERT INTO operation_journal_by_owner
-                (organization_id, scope_type, scope_id, started_at, operation_id, command_id,
+                (organization_id, scope_type, scope_id, bucket, started_at, operation_id, command_id,
                  boundary_type, owner_type, owner_id, workstream_id, workspace_id,
                  fix_workspace_id, status, summary, updated_at, completed_at, recovery_count, evidence_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").ConfigureAwait(false);
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").ConfigureAwait(false);
             await session.ExecuteAsync(insert.Bind(operation.OrganizationId, scopeType, scopeId,
-                operation.StartedAtUtc, operation.OperationId, operation.CommandId, operation.BoundaryType,
+                operation.StartedAtUtc.ToString("yyyyMM", CultureInfo.InvariantCulture), operation.StartedAtUtc, operation.OperationId, operation.CommandId, operation.BoundaryType,
                 operation.OwnerType, operation.OwnerId, operation.WorkstreamId, operation.WorkspaceId,
                 operation.FixWorkspaceId, operation.Status, operation.Summary, operation.UpdatedAtUtc,
                 operation.CompletedAtUtc, operation.RecoveryCount, operation.EvidenceId)).ConfigureAwait(false);
@@ -294,12 +342,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
                         updated_at timestamp, completed_at timestamp, recovery_count int,
                         evidence_id text, PRIMARY KEY ((organization_id), operation_id))")).ConfigureAwait(false);
                     await session.ExecuteAsync(new SimpleStatement(@"CREATE TABLE IF NOT EXISTS operation_journal_by_owner (
-                        organization_id text, scope_type text, scope_id text, started_at timestamp,
+                        organization_id text, scope_type text, scope_id text, bucket text, started_at timestamp,
                         operation_id text, command_id text, boundary_type text, owner_type text,
                         owner_id text, workstream_id text, workspace_id text, fix_workspace_id text,
                         status text, summary text, updated_at timestamp, completed_at timestamp,
                         recovery_count int, evidence_id text,
-                        PRIMARY KEY ((organization_id, scope_type, scope_id), started_at, operation_id))
+                        PRIMARY KEY ((organization_id, scope_type, scope_id, bucket), started_at, operation_id))
                         WITH CLUSTERING ORDER BY (started_at DESC, operation_id ASC)")).ConfigureAwait(false);
                     await session.ExecuteAsync(new SimpleStatement(@"CREATE TABLE IF NOT EXISTS operation_journal_details (
                         organization_id text, operation_id text, sequence bigint, detail_id text,
