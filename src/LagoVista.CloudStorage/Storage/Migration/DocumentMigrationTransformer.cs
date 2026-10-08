@@ -142,6 +142,8 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 // Serialize through the exact Mongo serializer contract used at runtime.
                 target = model.ToBsonDocument(modelType);
 
+                NormalizeDynamicObjectPayloads(target);
+
                 if (AllowsLegacyGuidDocumentId(modelType) && GuidString36.IsStrictLowerD(id))
                     target["_id"] = id;
 
@@ -551,6 +553,48 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 {
                     NormalizeObjectPayloads(value, property.PropertyType, visited);
                 }
+            }
+        }
+
+        private static void NormalizeDynamicObjectPayloads(BsonValue value)
+        {
+            if (value == null || value.IsBsonNull) return;
+
+            if (value is BsonArray array)
+            {
+                for (var index = 0; index < array.Count; index++)
+                {
+                    var item = array[index];
+                    if (item is BsonDocument wrapper &&
+                        wrapper.ElementCount == 2 &&
+                        wrapper.Contains("_t") &&
+                        wrapper.TryGetValue("_v", out var wrappedValue))
+                    {
+                        array[index] = wrappedValue.DeepClone().AsBsonValue;
+                        item = array[index];
+                    }
+
+                    NormalizeDynamicObjectPayloads(item);
+                }
+
+                return;
+            }
+
+            if (value is not BsonDocument document) return;
+
+            foreach (var name in document.Names.ToList())
+            {
+                var child = document[name];
+                if (child is BsonDocument wrapper &&
+                    wrapper.ElementCount == 2 &&
+                    wrapper.Contains("_t") &&
+                    wrapper.TryGetValue("_v", out var wrappedValue))
+                {
+                    document[name] = wrappedValue.DeepClone().AsBsonValue;
+                    child = document[name];
+                }
+
+                NormalizeDynamicObjectPayloads(child);
             }
         }
 

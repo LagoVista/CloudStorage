@@ -120,7 +120,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 // Mongo's built-in class mapper handles virtual overrides correctly. We only
                 // need the compatibility serializer for true CLR member hiding ("new").
                 if (!IsEntityHeaderType(type) &&
-                    HasShadowedSerializableProperty(type) &&
+                    (HasShadowedSerializableProperty(type) || AllowsLegacyGuidDocumentId(type)) &&
                     _preparedTypes.TryAdd(type, 0))
                 {
                     var serializerType = typeof(ShadowedMemberBsonSerializer<>).MakeGenericType(type);
@@ -159,6 +159,10 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             return false;
         }
+
+        private static bool AllowsLegacyGuidDocumentId(Type type) =>
+            typeof(EntityBase).IsAssignableFrom(type) &&
+            Attribute.IsDefined(type, typeof(AllowLegacyGuidDocumentIdAttribute), inherit: true);
 
         private static bool HasShadowedSerializableProperty(Type type)
         {
@@ -312,6 +316,9 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         private readonly IReadOnlyList<Member> _members;
         private readonly IReadOnlyDictionary<string, Member> _membersByElement;
         private readonly IReadOnlyDictionary<string, Member> _membersByName;
+        private readonly bool _allowsLegacyGuidDocumentId =
+            typeof(EntityBase).IsAssignableFrom(typeof(T)) &&
+            Attribute.IsDefined(typeof(T), typeof(AllowLegacyGuidDocumentIdAttribute), inherit: true);
 
         public ShadowedMemberBsonSerializer()
         {
@@ -360,6 +367,22 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                     continue;
                 }
 
+                if (_allowsLegacyGuidDocumentId &&
+                    member.Property.Name == nameof(EntityBase.Id) &&
+                    member.Property.DeclaringType == typeof(EntityBase) &&
+                    context.Reader.GetCurrentBsonType() == BsonType.String)
+                {
+                    var rawId = context.Reader.ReadString();
+                    if (GuidString36.IsStrictLowerD(rawId) && instance is EntityBase legacyEntity)
+                    {
+                        legacyEntity.StoredId = rawId;
+                        continue;
+                    }
+
+                    member.Property.SetValue(instance, NormalizedId32.Parse(rawId));
+                    continue;
+                }
+
                 var serializer = BsonSerializer.LookupSerializer(member.Property.PropertyType);
                 var value = serializer.Deserialize(
                     context,
@@ -386,6 +409,15 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             foreach (var member in _members)
             {
                 context.Writer.WriteName(member.ElementName);
+                if (_allowsLegacyGuidDocumentId &&
+                    member.Property.Name == nameof(EntityBase.Id) &&
+                    member.Property.DeclaringType == typeof(EntityBase) &&
+                    value is EntityBase legacyEntity &&
+                    GuidString36.IsStrictLowerD(legacyEntity.StoredId))
+                {
+                    context.Writer.WriteString(legacyEntity.StoredId);
+                    continue;
+                }
                 var serializer = BsonSerializer.LookupSerializer(member.Property.PropertyType);
                 serializer.Serialize(
                     context,
