@@ -570,7 +570,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                         wrapper.Contains("_t") &&
                         wrapper.TryGetValue("_v", out var wrappedValue))
                     {
-                        array[index] = wrappedValue.DeepClone().AsBsonValue;
+                        array[index] = wrappedValue.DeepClone();
                         item = array[index];
                     }
 
@@ -590,7 +590,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
                     wrapper.Contains("_t") &&
                     wrapper.TryGetValue("_v", out var wrappedValue))
                 {
-                    document[name] = wrappedValue.DeepClone().AsBsonValue;
+                    document[name] = wrappedValue.DeepClone();
                     child = document[name];
                 }
 
