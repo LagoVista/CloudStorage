@@ -31,6 +31,17 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             Required(operation.OwnerType, nameof(operation.OwnerType));
             Required(operation.OwnerId, nameof(operation.OwnerId));
             Required(operation.BoundaryType, nameof(operation.BoundaryType));
+            ValidateBoundary(operation.BoundaryType);
+            if (String.IsNullOrWhiteSpace(operation.CommandId))
+                throw new ArgumentException("A stable boundary command id is required.", nameof(operation.CommandId));
+            ValidateBounded(operation.OperationId, nameof(operation.OperationId), 256);
+            ValidateBounded(operation.CommandId, nameof(operation.CommandId), 256);
+            ValidateBounded(operation.Summary, nameof(operation.Summary), 2048);
+            if (!String.Equals(operation.OwnerType, "workstream", StringComparison.OrdinalIgnoreCase) &&
+                !String.Equals(operation.OwnerType, "workspace", StringComparison.OrdinalIgnoreCase) &&
+                !String.Equals(operation.OwnerType, "fix-workspace", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Only Workstream, Workspace, and Fix Workspace owners are journalable.", nameof(operation.OwnerType));
+            operation.OwnerType = operation.OwnerType.ToLowerInvariant();
             cancellationToken.ThrowIfCancellationRequested();
 
             var now = DateTimeOffset.UtcNow;
@@ -139,6 +150,15 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             Required(detail.OperationId, nameof(detail.OperationId));
             Required(detail.DetailId, nameof(detail.DetailId));
             if (detail.Sequence < 1) throw new ArgumentOutOfRangeException(nameof(detail.Sequence));
+            Required(detail.Phase, nameof(detail.Phase));
+            Required(detail.Kind, nameof(detail.Kind));
+            Required(detail.EvidenceId, nameof(detail.EvidenceId));
+            ValidateBounded(detail.Phase, nameof(detail.Phase), 128);
+            ValidateBounded(detail.Kind, nameof(detail.Kind), 128);
+            ValidateBounded(detail.Target, nameof(detail.Target), 512);
+            ValidateBounded(detail.BeforeState, nameof(detail.BeforeState), 2048);
+            ValidateBounded(detail.AfterState, nameof(detail.AfterState), 2048);
+            ValidateBounded(detail.EvidenceId, nameof(detail.EvidenceId), 256);
             cancellationToken.ThrowIfCancellationRequested();
             if (await GetAsync(detail.OrganizationId, detail.OperationId, cancellationToken).ConfigureAwait(false) == null)
                 throw new KeyNotFoundException("Cannot append evidence for an unknown tenant operation.");
@@ -295,6 +315,25 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
         }
 
         private static bool Applied(RowSet rows) => rows.FirstOrDefault()?.GetValue<bool>("[applied]") == true;
+        private static void ValidateBoundary(string boundary)
+        {
+            switch (boundary.Trim().ToLowerInvariant())
+            {
+                case "reconcile":
+                case "build":
+                case "finalization":
+                case "deployment":
+                    return;
+                default:
+                    throw new ArgumentException("Only registered deterministic C# boundary categories are journaled.", nameof(boundary));
+            }
+        }
+
+        private static void ValidateBounded(string value, string field, int limit)
+        {
+            if (value != null && value.Length > limit)
+                throw new ArgumentOutOfRangeException(field, "Journal payload exceeds the allowed field size.");
+        }
         private static void Required(string value, string name)
         {
             if (String.IsNullOrWhiteSpace(value)) throw new ArgumentException("Required journal identity is missing.", name);
