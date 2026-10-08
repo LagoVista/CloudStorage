@@ -64,6 +64,41 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
         }
 
         public async Task<OperationJournalRecord> TransitionAsync(string organizationId, string operationId,
+        public async Task<OperationJournalRecord> RecoverAsync(string organizationId, string operationId,
+            string expectedStatus, string summary, DateTimeOffset recoveredAtUtc, CancellationToken cancellationToken = default)
+        {
+            Required(organizationId, nameof(organizationId));
+            Required(operationId, nameof(operationId));
+            Required(expectedStatus, nameof(expectedStatus));
+            cancellationToken.ThrowIfCancellationRequested();
+            var existing = await GetAsync(organizationId, operationId, cancellationToken).ConfigureAwait(false);
+            if (existing == null) throw new KeyNotFoundException("Operation not found in the tenant.");
+            if (existing.Status != expectedStatus)
+                throw new InvalidOperationException("Operation recovery requires the current expected status.");
+            if (existing.Status == "succeeded" || existing.Status == "failed")
+                throw new InvalidOperationException("Terminal operations cannot be recovered.");
+            if (recoveredAtUtc.Offset != TimeSpan.Zero || recoveredAtUtc < existing.UpdatedAtUtc)
+                throw new ArgumentException("Recovery time must be UTC and monotonic.", nameof(recoveredAtUtc));
+            var session = await ReadyAsync().ConfigureAwait(false);
+            var nextCount = checked(existing.RecoveryCount + 1);
+            var statement = await session.PrepareAsync(@"UPDATE operation_journal
+                SET recovery_count = ?, status = ?, summary = ?, updated_at = ?
+                WHERE organization_id = ? AND operation_id = ?
+                IF status = ? AND recovery_count = ?").ConfigureAwait(false);
+            var rows = await session.ExecuteAsync(statement.Bind(nextCount, "recovering", summary,
+                recoveredAtUtc, organizationId, operationId, expectedStatus, existing.RecoveryCount)).ConfigureAwait(false);
+            if (!Applied(rows)) throw new InvalidOperationException("Concurrent operation recovery rejected by Cassandra.");
+            existing.Status = "recovering";
+            existing.Summary = summary;
+            existing.UpdatedAtUtc = recoveredAtUtc;
+            existing.RecoveryCount = nextCount;
+            foreach (var scope in Scopes(existing))
+                await UpsertProjectionAsync(session, existing, scope.Type, scope.Id).ConfigureAwait(false);
+            return existing;
+        }
+
+        // Transition invoked below through the journal state machine.
+
             string expectedStatus, string nextStatus, string summary, DateTimeOffset changedAtUtc,
             CancellationToken cancellationToken = default)
         {
