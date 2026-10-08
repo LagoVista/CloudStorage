@@ -251,6 +251,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             var statement = await session.PrepareAsync(@"SELECT * FROM operation_journal_by_owner
                 WHERE organization_id = ? AND scope_type = ? AND scope_id = ? AND bucket = ?
                 AND started_at >= ? AND started_at <= ?").ConfigureAwait(false);
+            var canonical = await session.PrepareAsync(
+                "SELECT * FROM operation_journal WHERE organization_id = ? AND operation_id = ?").ConfigureAwait(false);
             var items = new List<OperationJournalRecord>();
             for (var index = bucketIndex; index < buckets.Count && items.Count < pageSize; index++)
             {
@@ -259,7 +261,15 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
                     scope.StartUtc.Value, scope.EndUtc.Value).SetPageSize(pageSize - items.Count).SetAutoPage(false);
                 if (index == bucketIndex && pagingState != null) bound.SetPagingState(pagingState);
                 var rows = await session.ExecuteAsync(bound).ConfigureAwait(false);
-                items.AddRange(rows.Select(ReadOperation));
+                // The projection is an owner/time index, not the authority for mutable status.
+                // A retry or overlapping transition may refresh that index out of order.
+                foreach (var indexedRow in rows)
+                {
+                    var canonicalRows = await session.ExecuteAsync(canonical.Bind(
+                        scope.OrganizationId, indexedRow.GetValue<string>("operation_id"))).ConfigureAwait(false);
+                    var canonicalRow = canonicalRows.FirstOrDefault();
+                    if (canonicalRow != null) items.Add(ReadOperation(canonicalRow));
+                }
                 if (rows.PagingState != null && rows.PagingState.Length > 0)
                     return new OperationJournalPage<OperationJournalRecord>
                     {
