@@ -270,7 +270,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
         {
             if (size < 1 || size > 200) throw new ArgumentOutOfRangeException(nameof(size), "Page size must be 1-200.");
         }
-        private static void ApplyCursor(BoundStatement statement, string cursor)
+        private static void ApplyCursor(IStatement statement, string cursor)
         {
             if (String.IsNullOrEmpty(cursor)) return;
             try { statement.SetPagingState(Convert.FromBase64String(cursor)); }
