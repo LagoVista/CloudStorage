@@ -63,7 +63,6 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             return operation;
         }
 
-        public async Task<OperationJournalRecord> TransitionAsync(string organizationId, string operationId,
         public async Task<OperationJournalRecord> RecoverAsync(string organizationId, string operationId,
             string expectedStatus, string summary, DateTimeOffset recoveredAtUtc, CancellationToken cancellationToken = default)
         {
@@ -97,8 +96,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             return existing;
         }
 
-        // Transition invoked below through the journal state machine.
-
+        public async Task<OperationJournalRecord> TransitionAsync(string organizationId, string operationId,
             string expectedStatus, string nextStatus, string summary, DateTimeOffset changedAtUtc,
             CancellationToken cancellationToken = default)
         {
