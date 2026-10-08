@@ -201,7 +201,7 @@ namespace LagoVista.CloudStorage.Storage.Migration
             var targetType = Nullable.GetUnderlyingType(declaredType) ?? declaredType;
             if (token is JObject document)
             {
-                if (typeof(EntityBase).IsAssignableFrom(targetType) && !AllowsLegacyGuidDocumentId(targetType))
+                if (typeof(EntityBase).IsAssignableFrom(targetType))
                 {
                     var idProperty = document.Properties().FirstOrDefault(item =>
                         String.Equals(item.Name, "id", StringComparison.OrdinalIgnoreCase));
@@ -472,52 +472,17 @@ namespace LagoVista.CloudStorage.Storage.Migration
 
         private static string CreateDeterministicLegacyKey(string value, string documentId, string path)
         {
+            var candidate = NormalizeLegacyLagoVistaKeyValue(value);
+            if (TryParseLagoVistaKey(candidate, out _))
+                return candidate;
+
             var raw = (value ?? String.Empty).Trim().ToLowerInvariant();
-            var builder = new StringBuilder();
-            var lastWasDash = false;
-
-            foreach (var ch in raw.Normalize(NormalizationForm.FormD))
-            {
-                if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark)
-                    continue;
-
-                if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9'))
-                {
-                    builder.Append(ch);
-                    lastWasDash = false;
-                }
-                else if (!lastWasDash && builder.Length > 0)
-                {
-                    builder.Append('-');
-                    lastWasDash = true;
-                }
-            }
-
-            var candidate = builder.ToString().Trim('-');
-            if (String.IsNullOrWhiteSpace(candidate))
-                candidate = "key";
-
-            if (candidate[0] < 'a' || candidate[0] > 'z')
-                candidate = "k-" + candidate;
-
-            while (candidate.Length < 3)
-                candidate += "k";
-
             using (var sha = SHA256.Create())
             {
                 var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes((documentId ?? String.Empty) + "|" + (path ?? String.Empty) + "|" + raw));
                 var suffix = BitConverter.ToString(hashBytes, 0, 4).Replace("-", String.Empty).ToLowerInvariant();
-
-                // If the source was invalid, include a short deterministic suffix so normalization
-                // cannot silently collapse distinct historical keys to the same value.
-                var maxBaseLength = 128 - suffix.Length - 1;
-                if (candidate.Length > maxBaseLength)
-                    candidate = candidate.Substring(0, maxBaseLength).TrimEnd('-');
-
-                candidate = candidate + "-" + suffix;
+                return "legacy-key-" + suffix;
             }
-
-            return candidate;
         }
 
         private static void NormalizeObjectPayloads(object instance, Type declaredType, HashSet<object> visited)
@@ -597,13 +562,11 @@ namespace LagoVista.CloudStorage.Storage.Migration
             switch (token.Type)
             {
                 case JTokenType.Object:
-                    var document = new BsonDocument();
-                    foreach (var property in ((JObject)token).Properties())
-                        document[property.Name] = ToBsonValue(ConvertJTokenPayload(property.Value));
-                    return document;
+                    return ((JObject)token).Properties()
+                        .ToDictionary(property => property.Name, property => ConvertJTokenPayload(property.Value), StringComparer.Ordinal);
 
                 case JTokenType.Array:
-                    return new BsonArray(((JArray)token).Select(item => ToBsonValue(ConvertJTokenPayload(item))));
+                    return ((JArray)token).Select(item => ConvertJTokenPayload(item)).ToList();
 
                 case JTokenType.Null:
                 case JTokenType.Undefined:
@@ -612,13 +575,6 @@ namespace LagoVista.CloudStorage.Storage.Migration
                 default:
                     return token is JValue scalar ? scalar.Value : token.ToString(Formatting.None);
             }
-        }
-
-        private static BsonValue ToBsonValue(object value)
-        {
-            if (value == null) return BsonNull.Value;
-            if (value is BsonValue bson) return bson;
-            return BsonValue.Create(value);
         }
 
         private sealed class ReferenceEqualityComparer : IEqualityComparer<object>
