@@ -65,7 +65,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
                 var existing = await GetAsync(operation.OrganizationId, operation.OperationId, cancellationToken).ConfigureAwait(false);
                 if (existing != null && existing.CommandId == operation.CommandId && existing.BoundaryType == operation.BoundaryType &&
                     existing.OwnerType == operation.OwnerType && existing.OwnerId == operation.OwnerId)
+                {
+                    // Repair any owner projection missed if the first attempt stopped after the LWT.
+                    foreach (var scope in Scopes(existing))
+                        await UpsertProjectionAsync(session, existing, scope.Type, scope.Id).ConfigureAwait(false);
                     return existing;
+                }
                 throw new InvalidOperationException("Operation id already belongs to a different boundary invocation.");
             }
 
@@ -118,7 +123,14 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             cancellationToken.ThrowIfCancellationRequested();
             var current = await GetAsync(organizationId, operationId, cancellationToken).ConfigureAwait(false);
             if (current == null) throw new KeyNotFoundException("Operation not found in the tenant.");
-            if (current.Status == nextStatus && current.Summary == summary) return current;
+            if (current.Status == nextStatus && current.Summary == summary)
+            {
+                // The canonical row may have committed before projection refresh on the first attempt.
+                var retrySession = await ReadyAsync().ConfigureAwait(false);
+                foreach (var scope in Scopes(current))
+                    await UpsertProjectionAsync(retrySession, current, scope.Type, scope.Id).ConfigureAwait(false);
+                return current;
+            }
             if (current.Status != expectedStatus)
                 throw new InvalidOperationException("Operation status changed concurrently; re-read operation before retry.");
             if (changedAtUtc.Offset != TimeSpan.Zero || changedAtUtc < current.UpdatedAtUtc)
@@ -160,8 +172,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             ValidateBounded(detail.AfterState, nameof(detail.AfterState), 2048);
             ValidateBounded(detail.EvidenceId, nameof(detail.EvidenceId), 256);
             cancellationToken.ThrowIfCancellationRequested();
-            if (await GetAsync(detail.OrganizationId, detail.OperationId, cancellationToken).ConfigureAwait(false) == null)
+            var parent = await GetAsync(detail.OrganizationId, detail.OperationId, cancellationToken).ConfigureAwait(false);
+            if (parent == null)
                 throw new KeyNotFoundException("Cannot append evidence for an unknown tenant operation.");
+            if (parent.Status == "succeeded" || parent.Status == "failed")
+                throw new InvalidOperationException("Cannot append new evidence after a terminal operation.");
             if (detail.RecordedAtUtc == default) detail.RecordedAtUtc = DateTimeOffset.UtcNow;
             var session = await ReadyAsync().ConfigureAwait(false);
             var statement = await session.PrepareAsync(@"INSERT INTO operation_journal_details
