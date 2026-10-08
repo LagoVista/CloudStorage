@@ -9,6 +9,8 @@ namespace LagoVista.CloudStorage.Storage
     public interface IOperationJournalStore
     {
         Task<OperationJournalRecord> StartAsync(OperationJournalRecord operation, CancellationToken cancellationToken = default);
+        Task<OperationJournalRecord> RecoverAsync(string organizationId, string operationId, string expectedStatus,
+            string summary, DateTimeOffset recoveredAtUtc, CancellationToken cancellationToken = default);
         Task<OperationJournalRecord> TransitionAsync(string organizationId, string operationId, string expectedStatus, string nextStatus,
             string summary, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default);
         Task<OperationJournalDetail> AppendAsync(OperationJournalDetail detail, CancellationToken cancellationToken = default);
