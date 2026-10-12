@@ -19,6 +19,8 @@ namespace LagoVista.CloudStorage.Storage
         Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
             where TRecord : class, IScratchDataRecord;
 
+        Task<long> ClearCollectionAsync(string collectionName, CancellationToken cancellationToken = default);
+
         Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default)
             where TRecord : class, IScratchDataRecord;
     }
