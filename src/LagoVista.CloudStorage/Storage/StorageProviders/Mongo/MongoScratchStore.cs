@@ -1,5 +1,7 @@
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.Core.Models;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,6 +15,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
     [CriticalCoverage]
     public sealed class MongoScratchStore : IScratchStore
     {
+        private readonly IMongoDatabase _database;
         private readonly MongoMutableRecordStore _store;
 
         public MongoScratchStore(
@@ -23,8 +26,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             if (settings == null) throw new ArgumentNullException(nameof(settings));
             if (clientFactory == null) throw new ArgumentNullException(nameof(clientFactory));
 
-            var database = clientFactory.GetDatabase(settings.BuildConnectionString(), settings.DatabaseName);
-            _store = new MongoMutableRecordStore(database, serviceProvider);
+            _database = clientFactory.GetDatabase(settings.BuildConnectionString(), settings.DatabaseName);
+            _store = new MongoMutableRecordStore(_database, serviceProvider);
         }
 
         public Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
@@ -46,6 +49,17 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             where TRecord : class, IScratchDataRecord
         {
             return _store.DeleteAsync<TRecord>(key, cancellationToken);
+        }
+
+        public async Task<long> ClearCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
+        {
+            if (String.IsNullOrWhiteSpace(collectionName)) throw new ArgumentNullException(nameof(collectionName));
+            if (collectionName.StartsWith("system.", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("System collections cannot be cleared through scratch storage.");
+
+            var collection = _database.GetCollection<BsonDocument>(collectionName.Trim());
+            var result = await collection.DeleteManyAsync(FilterDefinition<BsonDocument>.Empty, cancellationToken).ConfigureAwait(false);
+            return result.DeletedCount;
         }
 
         public Task<StoragePageResult<TRecord>> QueryAsync<TRecord>(StorageQuery<TRecord> query, CancellationToken cancellationToken = default)

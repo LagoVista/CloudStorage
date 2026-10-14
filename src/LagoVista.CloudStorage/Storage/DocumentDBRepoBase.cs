@@ -270,9 +270,9 @@ namespace LagoVista.CloudStorage.DocumentDB
 
             if (_dependencyManager != null)
             {
-                var existing = await GetDocumentAsync(documentId);
+                var existing = await GetDocumentAsync(documentId, throwOnNotFound: false);
 
-                nameChanged = !String.Equals(existing.Name, item.Name, StringComparison.Ordinal);
+                nameChanged = existing != null && !String.Equals(existing.Name, item.Name, StringComparison.Ordinal);
 
                 if (nameChanged)
                 {
