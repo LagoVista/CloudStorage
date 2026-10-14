@@ -85,6 +85,18 @@ namespace LagoVista.CloudStorage.Storage
             return services;
         }
 
+        /// <summary>
+        /// Register the platform-default activity provider without exposing provider-specific
+        /// implementation types to domain repositories.
+        /// </summary>
+        public static IServiceCollection AddActivityRecordStore<TRecord>(
+            this IServiceCollection services,
+            Action<StorageDefinition<TRecord>> configure = null)
+            where TRecord : IActivityRecord, new()
+        {
+            return services.AddActivityRecordStore<TRecord, StorageProviders.Cassandra.CassandraActivityRecordStore<TRecord>>(configure);
+        }
+
         public static IServiceCollection AddOperationalDataStore<TRecord, TStore>(
             this IServiceCollection services,
             Action<StorageDefinition<TRecord>> configure = null)
