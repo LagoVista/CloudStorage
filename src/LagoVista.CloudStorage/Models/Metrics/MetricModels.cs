@@ -10,7 +10,9 @@ namespace LagoVista.CloudStorage.Storage
         Sum,
         Average,
         Minimum,
-        Maximum
+        Maximum,
+        Percentile50,
+        Percentile95
     }
 
     public sealed class MetricDimensionDefinition

@@ -300,6 +300,8 @@ VALUES (@id, @organization_id, @organization, @metric, @timestamp, @value, CAST(
                 case MetricAggregate.Average: return "AVG(value)";
                 case MetricAggregate.Minimum: return "MIN(value)";
                 case MetricAggregate.Maximum: return "MAX(value)";
+                case MetricAggregate.Percentile50: return "percentile_cont(0.50) WITHIN GROUP (ORDER BY value)";
+                case MetricAggregate.Percentile95: return "percentile_cont(0.95) WITHIN GROUP (ORDER BY value)";
                 default: throw new ArgumentOutOfRangeException(nameof(aggregate), aggregate, "Unsupported metric aggregate.");
             }
         }

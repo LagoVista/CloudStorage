@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Relational.Tests
 {
-    [NUnit.Framework.Category("Integration")]
+    [Category("Integration")]
     public sealed class SchemaValidator : SchemaContractTestBase {
         private static readonly ImmutableHashSet<string> IgnoredTables = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase,
         "__EFMigrationsHistory", "sysdiagrams" // add others if you have them

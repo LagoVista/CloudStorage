@@ -128,6 +128,14 @@ namespace LagoVista.CloudStorage.Storage
             return services;
         }
 
+        public static IServiceCollection AddStorageRetentionPolicyStore(this IServiceCollection services)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            services.AddScoped<IStorageRetentionPolicyStore, StorageRetentionPolicyStore>();
+            return services;
+        }
+
         public static IServiceCollection ConfigureScratchData<TRecord>(
             this IServiceCollection services,
             Action<StorageDefinition<TRecord>> configure)
@@ -139,6 +147,7 @@ namespace LagoVista.CloudStorage.Storage
             services.AddSingleton(new ScratchStoreOptions<TRecord>(configure));
             return services;
         }
+
 
         public static IServiceCollection ConfigureApplicationData<TRecord>(
             this IServiceCollection services,
