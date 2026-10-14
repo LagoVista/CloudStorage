@@ -17,8 +17,8 @@
     <dependencies>
       <group targetFramework="net9.0">
         <dependency id="LagoVista.CloudStorage" version="7.0.75" />
-        <dependency id="LagoVista.Core" version="7.0.15" />
-        <dependency id="LagoVista.Core.Configuration" version="7.0.15" />
+        <dependency id="LagoVista.Core" version="7.0.35" />
+        <dependency id="LagoVista.Core.Configuration" version="7.0.35" />
         <dependency id="Microsoft.EntityFrameworkCore.Design" version="9.0.13" />
         <dependency id="Microsoft.EntityFrameworkCore.SqlServer" version="9.0.13" />
         <dependency id="Microsoft.Extensions.Logging.Console" version="9.0.13" />
