@@ -22,7 +22,7 @@ namespace LagoVista.CloudStorage.Storage
         Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
             where TRecord : class, IApplicationDataRecord;
 
-        Task<ApplicationDataMutationResult> UpdateIfVersionAsync<TRecord>(
+        Task<ApplicationDataConcurrencyToken> UpdateIfVersionAsync<TRecord>(
             TRecord record,
             ApplicationDataConcurrencyToken expectedVersion,
             CancellationToken cancellationToken = default)

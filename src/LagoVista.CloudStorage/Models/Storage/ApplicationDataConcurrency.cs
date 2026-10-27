@@ -57,22 +57,4 @@ namespace LagoVista.CloudStorage.Storage
         public ApplicationDataConcurrencyToken ConcurrencyToken { get; }
     }
 
-    public enum ApplicationDataMutationStatus
-    {
-        Updated,
-        Conflict,
-        NotFound
-    }
-
-    public sealed class ApplicationDataMutationResult
-    {
-        internal ApplicationDataMutationResult(ApplicationDataMutationStatus status, ApplicationDataConcurrencyToken concurrencyToken = null)
-        {
-            Status = status;
-            ConcurrencyToken = concurrencyToken;
-        }
-
-        public ApplicationDataMutationStatus Status { get; }
-        public ApplicationDataConcurrencyToken ConcurrencyToken { get; }
-    }
 }

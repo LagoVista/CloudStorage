@@ -1,6 +1,7 @@
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.StorageProviders.Cassandra;
 using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
+using LagoVista.Core.Exceptions;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -93,17 +94,13 @@ namespace LagoVista.StorageProvider.Tests
             var applicationData = new Mock<IApplicationDataStore>(MockBehavior.Strict);
             var record = new StorageRetentionPolicyRecord();
             var stale = new ApplicationDataConcurrencyToken("stale-version");
-            var conflict = new ApplicationDataMutationResult(ApplicationDataMutationStatus.Conflict);
-
             applicationData
                 .Setup(store => store.UpdateIfVersionAsync(record, stale, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(conflict);
+                .ThrowsAsync(new RecordConflictException(nameof(StorageRetentionPolicyRecord), record.Id.Value, stale.Value));
 
             var store = new StorageRetentionPolicyStore(applicationData.Object);
-            var result = await store.UpdateIfVersionAsync(record, stale);
-
-            Assert.AreEqual(ApplicationDataMutationStatus.Conflict, result.Status);
-            Assert.IsNull(result.ConcurrencyToken);
+            await Assert.ThrowsExceptionAsync<RecordConflictException>(
+                async () => await store.UpdateIfVersionAsync(record, stale));
             applicationData.VerifyAll();
         }
 

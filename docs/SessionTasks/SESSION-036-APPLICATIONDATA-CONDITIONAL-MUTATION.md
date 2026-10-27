@@ -191,9 +191,10 @@ Successful completion unblocks the Campaigns provider-private checkpoint spine f
 Implemented the additive ApplicationData conditional-mutation primitive on `session-036-applicationdata-conditional-mutation`. Mongo now persists a provider-owned opaque revision token and performs conditional replacement with an atomic predicate containing record identity, organization scope, and expected token. Existing unconditional `UpdateAsync` behavior remains available. The workstream enrollment/dependency blockers were resolved by enrolling CloudStorage and current Logging in `feature/campaign-execution-foundation`; the authoritative Build Server proof is green.
 
 ### Final contract
-- `GetVersionedAsync<TRecord>(StorageKey)` returns the record plus an opaque `ApplicationDataConcurrencyToken`.
-- `UpdateIfVersionAsync(record, expectedVersion)` returns `Updated`, `Conflict`, or `NotFound` through `ApplicationDataMutationResult`.
-- Successful conditional updates return the replacement token for the next write.
+- `GetVersionedAsync<TRecord>(StorageKey)` returns the record plus an opaque `ApplicationDataConcurrencyToken`, or null when the record is absent.
+- `UpdateIfVersionAsync(record, expectedVersion)` returns the replacement `ApplicationDataConcurrencyToken` on success.
+- A missing record throws `RecordNotFoundException`; a stale expected version throws `RecordConflictException`.
+- The MongoDB version comparison remains part of the atomic conditional replacement.
 
 ### Concurrency token/version decision
 The token is provider-neutral and opaque to consumers. Mongo stores a unique revision value in provider-owned `_storageVersion` metadata rather than requiring a concurrency property on every `IApplicationDataRecord`. Inserts establish a token; successful unconditional and conditional replacements assign a fresh token; legacy records are initialized lazily on first versioned read.

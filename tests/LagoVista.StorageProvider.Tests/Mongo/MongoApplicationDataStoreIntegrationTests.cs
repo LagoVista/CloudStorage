@@ -3,6 +3,7 @@ using LagoVista.CloudStorage.Storage.ConnectionSettings;
 using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using LagoVista.CloudStorage.StorageProviders;
 using LagoVista.Core;
+using LagoVista.Core.Exceptions;
 using LagoVista.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -147,28 +148,26 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             writerB.Record.Name = "Writer B";
 
             var accepted = await _store.UpdateIfVersionAsync(writerA.Record, writerA.ConcurrencyToken);
-            Assert.AreEqual(ApplicationDataMutationStatus.Updated, accepted.Status);
-            Assert.IsNotNull(accepted.ConcurrencyToken);
-            Assert.AreNotEqual(writerA.ConcurrencyToken, accepted.ConcurrencyToken);
+            Assert.IsNotNull(accepted);
+            Assert.AreNotEqual(writerA.ConcurrencyToken, accepted);
 
-            var stale = await _store.UpdateIfVersionAsync(writerB.Record, writerB.ConcurrencyToken);
-            Assert.AreEqual(ApplicationDataMutationStatus.Conflict, stale.Status);
-            Assert.IsNull(stale.ConcurrencyToken);
+            await Assert.ThrowsExceptionAsync<RecordConflictException>(
+                async () => await _store.UpdateIfVersionAsync(writerB.Record, writerB.ConcurrencyToken));
 
             var persisted = await _store.GetVersionedAsync<ApplicationRecord>(key);
             Assert.IsNotNull(persisted);
             Assert.AreEqual("Writer A", persisted.Record.Name);
-            Assert.AreEqual(accepted.ConcurrencyToken, persisted.ConcurrencyToken);
+            Assert.AreEqual(accepted, persisted.ConcurrencyToken);
 
             var missing = CreateRecord(organization, "Missing");
-            var missingResult = await _store.UpdateIfVersionAsync(missing, writerA.ConcurrencyToken);
-            Assert.AreEqual(ApplicationDataMutationStatus.NotFound, missingResult.Status);
+            await Assert.ThrowsExceptionAsync<RecordNotFoundException>(
+                async () => await _store.UpdateIfVersionAsync(missing, writerA.ConcurrencyToken));
 
             var otherOrganization = EntityHeader.Create("ORG2", "Organization Two");
             var wrongTenantRecord = CreateRecord(otherOrganization, "Wrong Tenant");
             wrongTenantRecord.Id = record.Id;
-            var wrongTenantResult = await _store.UpdateIfVersionAsync(wrongTenantRecord, accepted.ConcurrencyToken);
-            Assert.AreEqual(ApplicationDataMutationStatus.NotFound, wrongTenantResult.Status);
+            await Assert.ThrowsExceptionAsync<RecordNotFoundException>(
+                async () => await _store.UpdateIfVersionAsync(wrongTenantRecord, accepted));
         }
 
         [TestMethod]
@@ -185,11 +184,11 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             writerB.Record.Name = "Writer B";
 
             var updates = await Task.WhenAll(
-                _store.UpdateIfVersionAsync(writerA.Record, writerA.ConcurrencyToken),
-                _store.UpdateIfVersionAsync(writerB.Record, writerB.ConcurrencyToken));
+                TryUpdateAsync(writerA.Record, writerA.ConcurrencyToken),
+                TryUpdateAsync(writerB.Record, writerB.ConcurrencyToken));
 
-            Assert.AreEqual(1, updates.Count(result => result.Status == ApplicationDataMutationStatus.Updated));
-            Assert.AreEqual(1, updates.Count(result => result.Status == ApplicationDataMutationStatus.Conflict));
+            Assert.AreEqual(1, updates.Count(succeeded => succeeded));
+            Assert.AreEqual(1, updates.Count(succeeded => !succeeded));
 
             var persisted = await _store.GetVersionedAsync<ApplicationRecord>(key);
             Assert.IsTrue(persisted.Record.Name == "Writer A" || persisted.Record.Name == "Writer B");
@@ -211,6 +210,19 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             Assert.IsNotNull(loaded);
             Assert.AreEqual(created.ToString(), loaded.CreationDate.ToString());
             Assert.AreEqual(updated.ToString(), loaded.LastUpdatedDate.ToString());
+        }
+
+        private async Task<bool> TryUpdateAsync(ApplicationRecord record, ApplicationDataConcurrencyToken token)
+        {
+            try
+            {
+                await _store.UpdateIfVersionAsync(record, token);
+                return true;
+            }
+            catch (RecordConflictException)
+            {
+                return false;
+            }
         }
 
         private static ApplicationRecord CreateRecord(EntityHeader organization, string name)

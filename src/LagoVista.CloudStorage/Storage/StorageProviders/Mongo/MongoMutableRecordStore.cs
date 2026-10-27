@@ -10,6 +10,7 @@ using System.Text;
 using LagoVista.Core;
 using System.Threading;
 using System.Threading.Tasks;
+using LagoVista.Core.Exceptions;
 
 namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 {
@@ -131,10 +132,10 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 cancellationToken).ConfigureAwait(false);
 
             if (result.MatchedCount == 0)
-                throw new KeyNotFoundException($"{typeof(TRecord).Name} record '{key.Id}' was not found.");
+                throw new RecordNotFoundException(typeof(TRecord).Name, key.Id);
         }
 
-        public async Task<ApplicationDataMutationStatus> ReplaceApplicationDataIfVersionAsync<TRecord>(
+        public async Task ReplaceApplicationDataIfVersionAsync<TRecord>(
             StorageKey key,
             TRecord record,
             string expectedVersion,
@@ -164,10 +165,25 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 cancellationToken).ConfigureAwait(false);
 
             if (result.MatchedCount > 0)
-                return ApplicationDataMutationStatus.Updated;
+                return;
 
-            var exists = await collection.Find(BuildBsonKeyFilter(key)).Limit(1).AnyAsync(cancellationToken).ConfigureAwait(false);
-            return exists ? ApplicationDataMutationStatus.Conflict : ApplicationDataMutationStatus.NotFound;
+            // Keep the version comparison in the atomic ReplaceOne filter. This follow-up
+            // read only classifies a failed match as missing versus stale; it does not decide
+            // whether the replacement is allowed.
+            var current = await collection.Find(BuildBsonKeyFilter(key))
+                .Limit(1)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (current == null)
+                throw new RecordNotFoundException(typeof(TRecord).Name, key.Id);
+
+            var actualVersion = current.TryGetValue(ApplicationDataVersionField, out var versionValue) &&
+                versionValue.IsString
+                    ? versionValue.AsString
+                    : null;
+
+            throw new RecordConflictException(typeof(TRecord).Name, key.Id, expectedVersion, actualVersion);
         }
 
         public async Task ReplaceAsync<TRecord>(StorageKey key, TRecord record, bool upsert, CancellationToken cancellationToken)

@@ -136,7 +136,7 @@ namespace LagoVista.CloudStorage.Storage
     {
         Task<VersionedApplicationDataRecord<StorageRetentionPolicyRecord>> GetVersionedAsync(StorageKey key, CancellationToken cancellationToken = default);
         Task InsertAsync(StorageRetentionPolicyRecord record, CancellationToken cancellationToken = default);
-        Task<ApplicationDataMutationResult> UpdateIfVersionAsync(StorageRetentionPolicyRecord record, ApplicationDataConcurrencyToken expectedVersion, CancellationToken cancellationToken = default);
+        Task<ApplicationDataConcurrencyToken> UpdateIfVersionAsync(StorageRetentionPolicyRecord record, ApplicationDataConcurrencyToken expectedVersion, CancellationToken cancellationToken = default);
     }
 
     public sealed class StorageRetentionPolicyStore : IStorageRetentionPolicyStore
@@ -154,7 +154,7 @@ namespace LagoVista.CloudStorage.Storage
         public Task InsertAsync(StorageRetentionPolicyRecord record, CancellationToken cancellationToken = default)
             => _applicationData.InsertAsync(record, cancellationToken);
 
-        public Task<ApplicationDataMutationResult> UpdateIfVersionAsync(StorageRetentionPolicyRecord record, ApplicationDataConcurrencyToken expectedVersion, CancellationToken cancellationToken = default)
+        public Task<ApplicationDataConcurrencyToken> UpdateIfVersionAsync(StorageRetentionPolicyRecord record, ApplicationDataConcurrencyToken expectedVersion, CancellationToken cancellationToken = default)
             => _applicationData.UpdateIfVersionAsync(record, expectedVersion, cancellationToken);
     }
 }

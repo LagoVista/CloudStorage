@@ -1,9 +1,9 @@
 using LagoVista;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.ConnectionSettings;
+using LagoVista.Core.Exceptions;
 using LagoVista.Core.Models;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using LagoVista.Core;
@@ -76,14 +76,14 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var key = BuildKey(record);
             var existing = await _store.GetAsync<TRecord>(key, cancellationToken).ConfigureAwait(false);
             if (existing == null)
-                throw new KeyNotFoundException($"{typeof(TRecord).Name} record '{record.Id.Value}' was not found.");
+                throw new RecordNotFoundException(typeof(TRecord).Name, record.Id.Value);
 
             record.CreationDate = existing.CreationDate;
             record.LastUpdatedDate = UtcTimestamp.Now;
             await _store.ReplaceApplicationDataAsync(key, record, NewVersion(), cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task<ApplicationDataMutationResult> UpdateIfVersionAsync<TRecord>(
+        public async Task<ApplicationDataConcurrencyToken> UpdateIfVersionAsync<TRecord>(
             TRecord record,
             ApplicationDataConcurrencyToken expectedVersion,
             CancellationToken cancellationToken = default)
@@ -96,22 +96,20 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var key = BuildKey(record);
             var existing = await _store.GetAsync<TRecord>(key, cancellationToken).ConfigureAwait(false);
             if (existing == null)
-                return new ApplicationDataMutationResult(ApplicationDataMutationStatus.NotFound);
+                throw new RecordNotFoundException(typeof(TRecord).Name, record.Id.Value);
 
             record.CreationDate = existing.CreationDate;
             record.LastUpdatedDate = UtcTimestamp.Now;
 
             var newVersion = NewVersion();
-            var status = await _store.ReplaceApplicationDataIfVersionAsync(
+            await _store.ReplaceApplicationDataIfVersionAsync(
                 key,
                 record,
                 expectedVersion.Value,
                 newVersion,
                 cancellationToken).ConfigureAwait(false);
 
-            return status == ApplicationDataMutationStatus.Updated
-                ? new ApplicationDataMutationResult(status, new ApplicationDataConcurrencyToken(newVersion))
-                : new ApplicationDataMutationResult(status);
+            return new ApplicationDataConcurrencyToken(newVersion);
         }
 
         public Task DeleteAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
