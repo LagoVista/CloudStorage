@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <package>
   <metadata>
     <id>LagoVista.Relational</id>
@@ -17,8 +17,8 @@
     <dependencies>
       <group targetFramework="net9.0">
         <dependency id="LagoVista.CloudStorage" version="7.0.79" />
-        <dependency id="LagoVista.Core" version="7.0.51" />
-        <dependency id="LagoVista.Core.Configuration" version="7.0.51" />
+        <dependency id="LagoVista.Core" version="7.0.53" />
+        <dependency id="LagoVista.Core.Configuration" version="7.0.53" />
         <dependency id="Microsoft.EntityFrameworkCore.Design" version="9.0.13" />
         <dependency id="Microsoft.EntityFrameworkCore.SqlServer" version="9.0.13" />
         <dependency id="Microsoft.Extensions.Logging.Console" version="9.0.13" />
