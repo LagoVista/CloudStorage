@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Storage;
+using LagoVista.Core.Exceptions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
@@ -29,10 +30,14 @@ namespace LagoVista.StorageProvider.Tests
             var gate = new ConditionalVersionGate(ApplicationDataConcurrencyToken.FromValue(serializedCurrent));
 
             var reconstructedCurrent = ApplicationDataConcurrencyToken.FromValue(serializedCurrent);
-            Assert.AreEqual(ApplicationDataMutationStatus.Updated, gate.UpdateIfVersion(reconstructedCurrent));
+            var replacement = gate.UpdateIfVersion(reconstructedCurrent);
+            Assert.AreEqual("revision-2", replacement.Value);
 
             var reconstructedStale = ApplicationDataConcurrencyToken.FromValue(serializedCurrent);
-            Assert.AreEqual(ApplicationDataMutationStatus.Conflict, gate.UpdateIfVersion(reconstructedStale));
+            var conflict = Assert.ThrowsExactly<RecordConflictException>(
+                () => gate.UpdateIfVersion(reconstructedStale));
+            Assert.AreEqual("revision-1", conflict.ExpectedVersion);
+            Assert.AreEqual("revision-2", conflict.ActualVersion);
         }
 
         private sealed class ConditionalVersionGate
@@ -44,13 +49,13 @@ namespace LagoVista.StorageProvider.Tests
                 _current = current;
             }
 
-            public ApplicationDataMutationStatus UpdateIfVersion(ApplicationDataConcurrencyToken expected)
+            public ApplicationDataConcurrencyToken UpdateIfVersion(ApplicationDataConcurrencyToken expected)
             {
                 if (!_current.Equals(expected))
-                    return ApplicationDataMutationStatus.Conflict;
+                    throw new RecordConflictException("TestRecord", "record-1", expected.Value, _current.Value);
 
                 _current = ApplicationDataConcurrencyToken.FromValue("revision-2");
-                return ApplicationDataMutationStatus.Updated;
+                return _current;
             }
         }
     }
