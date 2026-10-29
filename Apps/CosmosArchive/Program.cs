@@ -18,11 +18,11 @@ internal static class Program
 
     public static async Task<int> Main(string[] args)
     {
-        if (args.Length < 3 || !new[] { "probe", "archive", "verify", "restore" }.Contains(args[0], StringComparer.OrdinalIgnoreCase)
+        if (args.Length < 3 || !new[] { "probe", "archive", "verify", "restore", "capture-config" }.Contains(args[0], StringComparer.OrdinalIgnoreCase)
             || !new[] { "dev", "prod" }.Contains(args[1], StringComparer.OrdinalIgnoreCase)
             || String.IsNullOrWhiteSpace(args[2]))
         {
-            Console.Error.WriteLine("Usage: CosmosArchive <probe|archive|verify|restore> <dev|prod> <snapshot-id> [max-pages|new-restore-database] [page-size]");
+            Console.Error.WriteLine("Usage: CosmosArchive <probe|archive|verify|restore|capture-config> <dev|prod> <snapshot-id> [max-pages|new-restore-database] [page-size]");
             Console.Error.WriteLine("Example: CosmosArchive probe dev 2026-10-final 5 200");
             return 2;
         }
@@ -72,6 +72,27 @@ internal static class Program
             if (state.SnapshotId != snapshot || state.Environment != environment || state.SourceDatabase != source.ResourceName ||
                 !state.Containers.Select(x => x.Name).SequenceEqual(containers))
                 throw new InvalidOperationException("Existing checkpoint does not match selected Cosmos source or containers.");
+
+            if (mode == "capture-config")
+            {
+                var definitions = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var name in containers)
+                {
+                    var properties = (await cosmos.GetContainer(source.ResourceName, name)
+                        .ReadContainerAsync(cancellationToken: ct)).Resource;
+                    if (String.IsNullOrWhiteSpace(properties.PartitionKeyPath))
+                        throw new InvalidOperationException($"Missing partition-key path for {name}");
+                    definitions.Add(name, properties.PartitionKeyPath);
+                    Console.WriteLine($"Captured {name}: partition key {properties.PartitionKeyPath}");
+                }
+                var configKey = $"{prefix}/container-config.json";
+                var bytes = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(definitions, StateJson);
+                using var buffer = new MemoryStream(bytes, writable: false);
+                await client.PutObjectAsync(new PutObjectArgs().WithBucket(bucket).WithObject(configKey)
+                    .WithStreamData(buffer).WithObjectSize(bytes.Length).WithContentType("application/json"), ct);
+                Console.WriteLine($"Uploaded archived container configuration: {configKey}");
+                return 0;
+            }
 
             if (mode == "probe")
             {
