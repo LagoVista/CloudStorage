@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using LagoVista.CloudStorage.Utils;
@@ -35,8 +36,25 @@ internal static class ArchiveRestore
             || manifest.CompletedUtc == null || manifest.Containers.Any(x => !x.Completed))
             throw new InvalidOperationException("Manifest does not represent a complete matching archive.");
 
-        using var cosmos = new CosmosClient(source.Uri, source.AccessKey);
-        var sourceDb = cosmos.GetDatabase(source.ResourceName);
+        // Recovery must never write to the source Cosmos endpoint. Explicit destination configuration is mandatory.
+        var destinationEndpoint = Required("COSMOS_ARCHIVE_RESTORE_ENDPOINT");
+        var destinationKey = Required("COSMOS_ARCHIVE_RESTORE_KEY");
+        if (new Uri(destinationEndpoint).Host.Equals(new Uri(source.Uri).Host, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Restore destination cannot be the historical source Cosmos endpoint.");
+        var options = new CosmosClientOptions { ConnectionMode = ConnectionMode.Gateway };
+        using var cosmos = new CosmosClient(destinationEndpoint, destinationKey, options);
+        // Partition-key definitions are captured in the archive configuration object.
+        var configurationKey = $"{prefix}/container-config.json";
+        byte[] configurationBytes;
+        using (var buffer = new MemoryStream())
+        {
+            await minio.GetObjectAsync(new GetObjectArgs().WithBucket(bucket).WithObject(configurationKey)
+                .WithCallbackStream(async (stream, token) => await stream.CopyToAsync(buffer, token)), ct);
+            configurationBytes = buffer.ToArray();
+        }
+        var definitions = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+            configurationBytes, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            ?? throw new InvalidOperationException("Invalid archived container configuration.");
         // To test recovery without creating another paid Cosmos account, restore to a new database in the same account.
         // A missing database is required: an accidental rerun cannot overwrite a recovered database.
         try
@@ -51,11 +69,8 @@ internal static class ArchiveRestore
         var destination = (await cosmos.CreateDatabaseAsync(destinationDatabase, cancellationToken: ct)).Database;
         foreach (var sourceContainer in manifest.Containers)
         {
-            var definition = (await sourceDb.GetContainer(sourceContainer.Name).ReadContainerAsync(cancellationToken: ct)).Resource;
-            // Create from source partition key, but do not copy throughput or policies tied to billing.
-            var partitionPath = definition.PartitionKeyPath;
-            if (String.IsNullOrWhiteSpace(partitionPath))
-                throw new InvalidOperationException($"Could not resolve partition key for {sourceContainer.Name}");
+            if (!definitions.TryGetValue(sourceContainer.Name, out var partitionPath) || String.IsNullOrWhiteSpace(partitionPath))
+                throw new InvalidOperationException($"Missing archived partition key for {sourceContainer.Name}");
             var targetContainer = (await destination.CreateContainerAsync(
                 new ContainerProperties(sourceContainer.Name, partitionPath), cancellationToken: ct)).Container;
             long restored = 0;
