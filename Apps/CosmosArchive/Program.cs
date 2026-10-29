@@ -122,8 +122,13 @@ internal static class Program
                             }
 
                             var hash = await Sha256Async(temp, ct);
-                            await client.PutObjectAsync(new PutObjectArgs().WithBucket(bucket).WithObject(objectKey)
-                                .WithFileName(temp).WithContentType("application/gzip"), ct);
+                            // Supply and dispose the upload stream ourselves. WithFileName can retain
+                            // a Windows file handle beyond PutObjectAsync completion.
+                            await using (var upload = new FileStream(temp, FileMode.Open, FileAccess.Read, FileShare.Read))
+                            {
+                                await client.PutObjectAsync(new PutObjectArgs().WithBucket(bucket).WithObject(objectKey)
+                                    .WithStreamData(upload).WithObjectSize(upload.Length).WithContentType("application/gzip"), ct);
+                            }
                             // Verify remote bytes before committing the Cosmos continuation token.
                             var remoteHash = await RemoteSha256Async(client, bucket, objectKey, ct);
                             if (!String.Equals(hash, remoteHash, StringComparison.OrdinalIgnoreCase))
@@ -140,7 +145,14 @@ internal static class Program
                             pages++;
                             Console.WriteLine($"{containerState.Name}: part={partIndex:D8}; records={response.Count}; total={containerState.Parts.Sum(x => x.Records)}; completed={containerState.Completed}");
                         }
-                        finally { File.Delete(temp); }
+                        finally
+                        {
+                            // A temporary-file cleanup problem must never invalidate an already
+                            // verified upload and committed continuation checkpoint.
+                            try { File.Delete(temp); }
+                            catch (IOException ex) { Console.Error.WriteLine($"Temporary file cleanup deferred: {temp}; {ex.Message}"); }
+                            catch (UnauthorizedAccessException ex) { Console.Error.WriteLine($"Temporary file cleanup deferred: {temp}; {ex.Message}"); }
+                        }
                     }
                 }
                 if (state.Containers.All(x => x.Completed))
