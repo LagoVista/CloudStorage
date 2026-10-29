@@ -18,11 +18,11 @@ internal static class Program
 
     public static async Task<int> Main(string[] args)
     {
-        if (args.Length < 3 || !new[] { "probe", "archive", "verify" }.Contains(args[0], StringComparer.OrdinalIgnoreCase)
+        if (args.Length < 3 || !new[] { "probe", "archive", "verify", "restore" }.Contains(args[0], StringComparer.OrdinalIgnoreCase)
             || !new[] { "dev", "prod" }.Contains(args[1], StringComparer.OrdinalIgnoreCase)
             || String.IsNullOrWhiteSpace(args[2]))
         {
-            Console.Error.WriteLine("Usage: CosmosArchive <probe|archive|verify> <dev|prod> <snapshot-id> [max-pages] [page-size]");
+            Console.Error.WriteLine("Usage: CosmosArchive <probe|archive|verify|restore> <dev|prod> <snapshot-id> [max-pages|new-restore-database] [page-size]");
             Console.Error.WriteLine("Example: CosmosArchive probe dev 2026-10-final 5 200");
             return 2;
         }
@@ -32,6 +32,12 @@ internal static class Program
         var snapshot = args[2].Trim();
         if (snapshot.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || snapshot.Contains('/') || snapshot.Contains('\\') || snapshot.Contains(".."))
             throw new ArgumentException("Snapshot id must be one safe path segment.");
+
+        if (mode == "restore")
+        {
+            if (args.Length < 4) throw new ArgumentException("restore requires an explicit NEW destination database name");
+            return await RestoreEntryAsync(environment, snapshot, args[3]);
+        }
 
         var maxPages = args.Length > 3 ? Int32.Parse(args[3]) : 5;
         var pageSize = args.Length > 4 ? Int32.Parse(args[4]) : 200;
@@ -170,6 +176,12 @@ internal static class Program
             Console.Error.WriteLine($"{mode} failed: {ex.GetType().Name}: {ex.Message}");
             return 1;
         }
+    }
+
+    private static async Task<int> RestoreEntryAsync(string environment, string snapshot, string database)
+    {
+        try { await ArchiveRestore.RunAsync(environment, snapshot, database, CancellationToken.None); return 0; }
+        catch (Exception ex) { Console.Error.WriteLine($"Restore failed: {ex.Message}"); return 1; }
     }
 
     private static string RequiredEnv(string name) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } value
