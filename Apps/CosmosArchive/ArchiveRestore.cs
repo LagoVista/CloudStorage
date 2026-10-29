@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Net;
@@ -67,6 +68,7 @@ internal static class ArchiveRestore
         Console.WriteLine($"Restoring archive {snapshot}/{environment} into NEW Cosmos database {destinationDatabase}. Type RESTORE:");
         if (Console.ReadLine() != "RESTORE") throw new OperationCanceledException("Restore not confirmed.");
         var destination = (await cosmos.CreateDatabaseAsync(destinationDatabase, cancellationToken: ct)).Database;
+        var overallTimer = Stopwatch.StartNew();
         foreach (var sourceContainer in manifest.Containers)
         {
             if (!definitions.TryGetValue(sourceContainer.Name, out var partitionPath) || String.IsNullOrWhiteSpace(partitionPath))
@@ -74,8 +76,15 @@ internal static class ArchiveRestore
             var targetContainer = (await destination.CreateContainerAsync(
                 new ContainerProperties(sourceContainer.Name, partitionPath), cancellationToken: ct)).Container;
             long restored = 0;
+            var expected = sourceContainer.Parts.Sum(x => x.Records);
+            var containerTimer = Stopwatch.StartNew();
+            var lastProgress = Stopwatch.StartNew();
+            Console.WriteLine($"[{sourceContainer.Name}] Starting {expected:N0} documents in {sourceContainer.Parts.Count} parts.");
+            var partNumber = 0;
             foreach (var part in sourceContainer.Parts)
             {
+                partNumber++;
+                Console.WriteLine($"[{sourceContainer.Name}] Downloading/verifying part {partNumber}/{sourceContainer.Parts.Count} ({part.Records:N0} documents). Elapsed {containerTimer.Elapsed:hh\\:mm\\:ss}.");
                 using var compressed = new MemoryStream();
                 await minio.GetObjectAsync(new GetObjectArgs().WithBucket(bucket).WithObject(part.Key)
                     .WithCallbackStream(async (s, token) => await s.CopyToAsync(compressed, token)), ct);
@@ -94,16 +103,24 @@ internal static class ArchiveRestore
                     foreach (var name in new[] { "_rid", "_self", "_etag", "_attachments", "_ts" }) doc.Remove(name);
                     await targetContainer.CreateItemAsync(doc, cancellationToken: ct);
                     partRestored++;
+                    if (lastProgress.Elapsed >= TimeSpan.FromSeconds(10))
+                    {
+                        var completed = restored + partRestored;
+                        Console.WriteLine($"[{sourceContainer.Name}] Restored {completed:N0}/{expected:N0} ({(expected == 0 ? 100 : completed * 100.0 / expected):F1}%), part {partNumber}/{sourceContainer.Parts.Count}, elapsed {containerTimer.Elapsed:hh\\:mm\\:ss}.");
+                        lastProgress.Restart();
+                    }
                 }
                 if (partRestored != part.Records)
                     throw new InvalidOperationException($"Part {part.Key} had {partRestored} records, manifest expected {part.Records}.");
                 restored += partRestored;
+                Console.WriteLine($"[{sourceContainer.Name}] Completed part {partNumber}/{sourceContainer.Parts.Count}: {restored:N0}/{expected:N0} documents ({(expected == 0 ? 100 : restored * 100.0 / expected):F1}%), elapsed {containerTimer.Elapsed:hh\\:mm\\:ss}.");
+                lastProgress.Restart();
             }
             Console.WriteLine($"{sourceContainer.Name}: restored {restored} documents (expected {sourceContainer.Parts.Sum(x=>x.Records)})");
             if (restored != sourceContainer.Parts.Sum(x => x.Records))
                 throw new InvalidOperationException("Restored counts differ from archive.");
         }
-        Console.WriteLine($"Restore completed to {destinationDatabase}. Inspect representative records before approval.");
+        Console.WriteLine($"Restore completed to {destinationDatabase} in {overallTimer.Elapsed:hh\\:mm\\:ss}. Inspect representative records before approval.");
     }
 
     private static string Required(string name) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } v
