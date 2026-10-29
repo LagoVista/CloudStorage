@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using LagoVista.CloudStorage.Utils;
@@ -63,6 +64,9 @@ internal static class ArchiveRestore
                 using var compressed = new MemoryStream();
                 await minio.GetObjectAsync(new GetObjectArgs().WithBucket(bucket).WithObject(part.Key)
                     .WithCallbackStream(async (s, token) => await s.CopyToAsync(compressed, token)), ct);
+                var actualHash = Convert.ToHexString(SHA256.HashData(compressed.ToArray()));
+                if (!actualHash.Equals(part.Sha256, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"Archive SHA-256 mismatch: {part.Key}");
                 compressed.Position = 0;
                 using var gzip = new GZipStream(compressed, CompressionMode.Decompress);
                 using var reader = new StreamReader(gzip, Encoding.UTF8);
