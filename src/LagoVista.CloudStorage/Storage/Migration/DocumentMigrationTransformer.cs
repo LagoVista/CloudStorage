@@ -337,20 +337,6 @@ namespace LagoVista.CloudStorage.Storage.Migration
             var targetType = Nullable.GetUnderlyingType(declaredType) ?? declaredType;
             if (targetType == typeof(OrgNamespace))
             {
-                if (token is JObject namespaceDocument)
-                {
-                    var namespaceValue =
-                        namespaceDocument.GetValue("Value", StringComparison.OrdinalIgnoreCase) ??
-                        namespaceDocument.GetValue("_value", StringComparison.OrdinalIgnoreCase);
-
-                    if (namespaceValue != null && namespaceValue.Type == JTokenType.String)
-                    {
-                        var replacementValue = new JValue(namespaceValue.Value<string>());
-                        token.Replace(replacementValue);
-                        token = replacementValue;
-                    }
-                }
-
                 if (token is JValue value && value.Type == JTokenType.String)
                 {
                     var text = value.Value?.ToString();
