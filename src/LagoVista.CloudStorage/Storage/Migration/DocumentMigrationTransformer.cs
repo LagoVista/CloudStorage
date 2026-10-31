@@ -345,8 +345,9 @@ namespace LagoVista.CloudStorage.Storage.Migration
 
                     if (namespaceValue != null && namespaceValue.Type == JTokenType.String)
                     {
-                        token.Replace(new JValue(namespaceValue.Value<string>()));
-                        token = token.Parent;
+                        var replacementValue = new JValue(namespaceValue.Value<string>());
+                        token.Replace(replacementValue);
+                        token = replacementValue;
                     }
                 }
 
