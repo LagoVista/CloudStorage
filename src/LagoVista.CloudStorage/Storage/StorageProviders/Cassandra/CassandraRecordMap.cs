@@ -263,7 +263,7 @@ AND default_time_to_live = {RetentionSeconds}";
             var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
             string cqlType;
 
-            if (type == typeof(string)) cqlType = "text";
+            if (type == typeof(string) || type.IsEnum) cqlType = "text";
             else if (type == typeof(DateTime) || type == typeof(DateTimeOffset)) cqlType = "timestamp";
             else if (type == typeof(Guid)) cqlType = "uuid";
             else if (type == typeof(bool)) cqlType = "boolean";
@@ -288,6 +288,10 @@ AND default_time_to_live = {RetentionSeconds}";
             if (value == null) return null;
 
             var type = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
+            // Store enum names as text so activity history remains stable when
+            // enum declarations grow or their numeric values change.
+            if (type.IsEnum) return value.ToString();
+
             if (type == typeof(DateTime))
             {
                 var date = (DateTime)value;
@@ -308,6 +312,8 @@ AND default_time_to_live = {RetentionSeconds}";
             if (targetType == typeof(DateTime)) return row.GetValue<DateTimeOffset>(property.ColumnName).UtcDateTime;
             if (targetType == typeof(DateTimeOffset)) return row.GetValue<DateTimeOffset>(property.ColumnName);
             if (targetType == typeof(string)) return row.GetValue<string>(property.ColumnName);
+            if (targetType.IsEnum)
+                return Enum.Parse(targetType, row.GetValue<string>(property.ColumnName), ignoreCase: false);
             if (targetType == typeof(Guid)) return row.GetValue<Guid>(property.ColumnName);
             if (targetType == typeof(bool)) return row.GetValue<bool>(property.ColumnName);
             if (targetType == typeof(int)) return row.GetValue<int>(property.ColumnName);
