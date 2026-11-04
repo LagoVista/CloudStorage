@@ -38,7 +38,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             var collection = await GetCollectionAsync<TRecord>(cancellationToken).ConfigureAwait(false);
-            return await collection.Find(BuildKeyFilter<TRecord>(key)).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            var find = collection.Find(BuildKeyFilter<TRecord>(key));
+            if (typeof(IApplicationDataRecord).IsAssignableFrom(typeof(TRecord)))
+                return await find.Project<TRecord>(ApplicationDataReadProjection<TRecord>())
+                    .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+
+            return await find.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         }
 
         public async Task InsertAsync<TRecord>(TRecord record, CancellationToken cancellationToken)
@@ -272,7 +277,14 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             var offset = DecodeOffset(query.Page.ContinuationToken);
             var pageSize = query.Page.PageSize;
-            var records = await find.Skip(offset).Limit(pageSize + 1).ToListAsync(cancellationToken).ConfigureAwait(false);
+            // Mongo adds provider-owned metadata that is not part of application models.
+            // Exclude it before typed deserialization, regardless of BSON map registration order.
+            var records = typeof(IApplicationDataRecord).IsAssignableFrom(typeof(TRecord))
+                ? await find.Skip(offset).Limit(pageSize + 1)
+                    .Project<TRecord>(ApplicationDataReadProjection<TRecord>())
+                    .ToListAsync(cancellationToken).ConfigureAwait(false)
+                : await find.Skip(offset).Limit(pageSize + 1)
+                    .ToListAsync(cancellationToken).ConfigureAwait(false);
 
             var hasMore = records.Count > pageSize;
             if (hasMore)
@@ -458,6 +470,16 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         private static string EncodeOffset(int offset)
         {
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(offset.ToString()));
+        }
+
+        // Exclude provider-owned metadata before the normal typed BSON deserializer runs.
+        // Unlike class-map compatibility registration, this is independent of initialization order.
+        internal static ProjectionDefinition<TRecord> ApplicationDataReadProjection<TRecord>()
+            where TRecord : class
+        {
+            return Builders<TRecord>.Projection
+                .Exclude(ApplicationDataVersionField)
+                .Exclude(ScratchExpirationField);
         }
 
         private static void EnsureProviderOwnedExtraElementCompatibility<TRecord>()
