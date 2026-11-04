@@ -42,7 +42,12 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             // same CLR type is first used as a standalone ApplicationData record.
             new PersonaEnvelope
             {
-                ResolvedState = new NestedFirstState { Key = "welcome" }
+                ResolvedState = new NestedFirstState
+                {
+                    Id = NormalizedId32.Factory(),
+                    Organization = EntityHeader.Create("ORG1", "Test Org"),
+                    Key = "welcome"
+                }
             }.ToBsonDocument();
 
             Assert.IsTrue(BsonClassMap.IsClassMapRegistered(typeof(NestedFirstState)),
