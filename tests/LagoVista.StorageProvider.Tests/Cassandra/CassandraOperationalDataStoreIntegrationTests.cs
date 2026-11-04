@@ -86,6 +86,34 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
         }
 
         [TestMethod]
+        public async Task IndexedDateRangeQueryAsync_SelectsOnlyDueRows()
+        {
+            var settings = new TestCassandraStorageSettings();
+            using var factory = new CassandraSessionFactory(settings);
+            using var services = CreateServices<IndexedOperationalRecord>(factory, definition =>
+            {
+                definition.Index(record => record.Status);
+                definition.Index(record => record.DueAt);
+            });
+            var store = services.GetRequiredService<IOperationalDataStore<IndexedOperationalRecord>>();
+            var organizationId = Guid.NewGuid().ToString("N").ToUpperInvariant();
+            var now = new DateTime(2026, 11, 4, 13, 0, 0, DateTimeKind.Utc);
+            await store.UpsertBatchAsync(new[]
+            {
+                new IndexedOperationalRecord { Id = "DUE", OrganizationId = organizationId, Value = "due", Status = "Scheduled", DueAt = now.AddMinutes(-2) },
+                new IndexedOperationalRecord { Id = "FUTURE", OrganizationId = organizationId, Value = "future", Status = "Scheduled", DueAt = now.AddMinutes(2) },
+                new IndexedOperationalRecord { Id = "RUNNING", OrganizationId = organizationId, Value = "running", Status = "Running", DueAt = now.AddMinutes(-4) }
+            });
+
+            var result = await store.QueryAsync(new StorageQuery<IndexedOperationalRecord>()
+                .Where(record => record.OrganizationId, StorageFilterOperator.Equal, organizationId)
+                .Where(record => record.Status, StorageFilterOperator.Equal, "Scheduled")
+                .Where(record => record.DueAt, StorageFilterOperator.LessThan, (DateTime?)now)
+                .WithPage(new StoragePageRequest(pageSize: 10)));
+            CollectionAssert.AreEqual(new[] { "DUE" }, result.Items.Select(record => record.Id).ToArray());
+        }
+
+        [TestMethod]
         public async Task RetentionAsync_ExpiresOperationalRecords()
         {
             var settings = new TestCassandraStorageSettings();
@@ -325,6 +353,7 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
         public sealed class IndexedOperationalRecord : TestOperationalRecordBase
         {
             public string Status { get; set; }
+            public DateTime? DueAt { get; set; }
         }
 
         public sealed class ConditionalOperationalRecord : TestOperationalRecordBase, IConditionalOperationalDataRecord
