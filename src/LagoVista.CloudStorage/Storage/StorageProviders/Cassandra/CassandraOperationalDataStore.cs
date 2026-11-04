@@ -143,7 +143,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 
             foreach (var filter in indexedFilters)
             {
-                clauses.Add($"{filter.Property.ColumnName} = ?");
+                clauses.Add($"{filter.Property.ColumnName} {ToCqlOperator(filter.Operator)} ?");
                 values.Add(_map.DriverValue(filter.Property, filter.Value));
             }
 
@@ -405,13 +405,13 @@ WHERE keyspace_name = ?").ConfigureAwait(false);
                         $"Filter {filter.Field} is not declared as an indexed Cassandra operational field. Register it with Index(...) before querying it.");
                 }
 
-                if (filter.Operator != StorageFilterOperator.Equal)
+                if (filter.Operator == StorageFilterOperator.NotEqual)
                 {
                     throw new NotSupportedException(
-                        $"Indexed Cassandra operational filter {filter.Field} currently supports equality only.");
+                        $"Indexed Cassandra operational filter {filter.Field} does not support NotEqual.");
                 }
 
-                result.Add(new IndexedFilter(property, filter.Value));
+                result.Add(new IndexedFilter(property, filter.Operator, filter.Value));
             }
 
             return result.AsReadOnly();
@@ -499,15 +499,30 @@ WHERE keyspace_name = ?").ConfigureAwait(false);
                  (!String.IsNullOrWhiteSpace(ClassName) && ClassName.EndsWith(".StorageAttachedIndex", StringComparison.OrdinalIgnoreCase)));
         }
 
+        private static string ToCqlOperator(StorageFilterOperator operation)
+        {
+            return operation switch
+            {
+                StorageFilterOperator.Equal => "=",
+                StorageFilterOperator.LessThan => "<",
+                StorageFilterOperator.LessThanOrEqual => "<=",
+                StorageFilterOperator.GreaterThan => ">",
+                StorageFilterOperator.GreaterThanOrEqual => ">=",
+                _ => throw new NotSupportedException($"Cassandra indexed query operation {operation} is not supported.")
+            };
+        }
+
         private sealed class IndexedFilter
         {
-            public IndexedFilter(CassandraRecordProperty property, object value)
+            public IndexedFilter(CassandraRecordProperty property, StorageFilterOperator operation, object value)
             {
                 Property = property;
+                Operator = operation;
                 Value = value;
             }
 
             public CassandraRecordProperty Property { get; }
+            public StorageFilterOperator Operator { get; }
             public object Value { get; }
         }
     }
