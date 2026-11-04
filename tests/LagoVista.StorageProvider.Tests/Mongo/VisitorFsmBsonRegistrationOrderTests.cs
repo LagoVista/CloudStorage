@@ -5,6 +5,7 @@ using LagoVista.Core.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
+using MongoDB.Driver;
 using System;
 using System.Reflection;
 
@@ -60,6 +61,40 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             Assert.ThrowsException<FormatException>(() =>
                 BsonSerializer.Deserialize<NestedFirstState>(
                     new BsonDocument { { "Key", "welcome" }, { "_storageVersion", "version-1" } }));
+        }
+
+        [TestMethod]
+        public void NestedPersonaFirst_ApplicationDataReadProjectionExcludesProviderMetadata()
+        {
+            new PersonaEnvelope
+            {
+                ResolvedState = new NestedFirstState
+                {
+                    Id = NormalizedId32.Factory(),
+                    Organization = EntityHeader.Create("ORG1", "Test Org"),
+                    Key = "welcome"
+                }
+            }.ToBsonDocument();
+            InvokeProviderCompatibility<NestedFirstState>();
+
+            var storeType = typeof(MongoApplicationDataStore).Assembly.GetType(
+                "LagoVista.CloudStorage.Storage.StorageProviders.Mongo.MongoMutableRecordStore", true);
+            var method = storeType.GetMethod("ApplicationDataReadProjection",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(method, "ApplicationData must define a provider-owned field read projection.");
+
+            var projection = (ProjectionDefinition<NestedFirstState>)method
+                .MakeGenericMethod(typeof(NestedFirstState)).Invoke(null, null);
+            var rendered = projection.Render(new RenderArgs<NestedFirstState>(
+                BsonSerializer.LookupSerializer<NestedFirstState>(), BsonSerializer.SerializerRegistry));
+            Assert.AreEqual(0, rendered["_storageVersion"].AsInt32);
+            Assert.AreEqual(0, rendered["_storageExpiresUtc"].AsInt32);
+
+            // Simulate Mongo applying the exclusion projection before typed deserialization.
+            var document = new BsonDocument { { "Key", "welcome" }, { "_storageVersion", "version-1" } };
+            document.Remove("_storageVersion");
+            var record = BsonSerializer.Deserialize<NestedFirstState>(document);
+            Assert.AreEqual("welcome", record.Key);
         }
 
         private static void InvokeProviderCompatibility<TRecord>() where TRecord : class
