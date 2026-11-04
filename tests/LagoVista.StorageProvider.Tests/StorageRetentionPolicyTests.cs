@@ -139,6 +139,40 @@ namespace LagoVista.StorageProvider.Tests
         }
 
         [TestMethod]
+        public void CassandraActivityEnumFields_AreMappedToTextAndNamedValues()
+        {
+            var definition = new StorageDefinition<EnumActivityRecord>()
+                .KeyBy(record => record.Id)
+                .TimeBy(record => record.CreationDate)
+                .PartitionBy(record => record.OrganizationId);
+            var map = new CassandraRecordMap<EnumActivityRecord>(
+                new ActivityRecordStoreOptions<EnumActivityRecord>(definition));
+            var record = new EnumActivityRecord
+            {
+                Id = "ACT-1",
+                OrganizationId = "ORG-A",
+                Organization = "Organization A",
+                CreationDate = new DateTime(2026, 11, 4, 18, 0, 0, DateTimeKind.Utc),
+                Action = TestActivityAction.Publish,
+                AcceptanceState = TestActivityAcceptance.Uncertain,
+                OptionalAction = null
+            };
+
+            var actionProperty = map.GetRequired(nameof(EnumActivityRecord.Action));
+            var acceptanceProperty = map.GetRequired(nameof(EnumActivityRecord.AcceptanceState));
+            var optionalProperty = map.GetRequired(nameof(EnumActivityRecord.OptionalAction));
+            Assert.AreEqual("text", actionProperty.CqlType);
+            Assert.AreEqual("text", acceptanceProperty.CqlType);
+            Assert.AreEqual("text", optionalProperty.CqlType);
+            Assert.AreEqual("Publish", map.DriverValue(actionProperty, record.Action));
+            Assert.AreEqual("Uncertain", map.DriverValue(acceptanceProperty, record.AcceptanceState));
+            Assert.IsNull(map.DriverValue(optionalProperty, record.OptionalAction));
+            StringAssert.Contains(map.CreateTableCql(), "action text");
+            StringAssert.Contains(map.CreateTableCql(), "acceptance_state text");
+            StringAssert.Contains(map.CreateTableCql(), "optional_action text");
+        }
+
+        [TestMethod]
         public void MongoExpirationMaterialization_AddsExpirationForGovernedTtl()
         {
             var now = new DateTime(2026, 9, 29, 12, 0, 0, DateTimeKind.Utc);
@@ -163,6 +197,29 @@ namespace LagoVista.StorageProvider.Tests
             MongoMutableRecordStore.MaterializeExpiration(document, null, now);
 
             Assert.IsFalse(document.Contains("_storageExpiresUtc"));
+        }
+
+        public enum TestActivityAction
+        {
+            Publish,
+            Pause
+        }
+
+        public enum TestActivityAcceptance
+        {
+            Accepted,
+            Uncertain
+        }
+
+        public sealed class EnumActivityRecord : IActivityRecord
+        {
+            public string Id { get; set; }
+            public string OrganizationId { get; set; }
+            public string Organization { get; set; }
+            public DateTime CreationDate { get; set; }
+            public TestActivityAction Action { get; set; }
+            public TestActivityAcceptance AcceptanceState { get; set; }
+            public TestActivityAction? OptionalAction { get; set; }
         }
 
         public sealed class TestActivityRecord : IActivityRecord
