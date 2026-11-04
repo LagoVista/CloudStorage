@@ -74,6 +74,38 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
         }
 
         [TestMethod]
+        public async Task EnumFields_RoundTripAsNamesThroughCassandra()
+        {
+            var settings = new TestCassandraStorageSettings();
+            using var factory = new CassandraSessionFactory(settings);
+            using var services = CreateServices<CassandraEnumRecord>(factory,
+                definition => definition.PartitionBy(record => record.OrganizationId));
+            var store = services.GetRequiredService<IActivityRecordStore<CassandraEnumRecord>>();
+            var record = new CassandraEnumRecord
+            {
+                Id = Guid.NewGuid().ToString("N").ToUpperInvariant(),
+                OrganizationId = Guid.NewGuid().ToString("N").ToUpperInvariant(),
+                Organization = "Enum Record Test",
+                CreationDate = new DateTime(2026, 11, 4, 18, 30, 0, DateTimeKind.Utc),
+                Action = TestAction.Publish,
+                AcceptanceState = TestAcceptance.Uncertain,
+                NullableAction = null
+            };
+
+            await store.InsertAsync(record);
+
+            var page = await store.QueryAsync(new HistoryQuery<CassandraEnumRecord>()
+                .Between(record.CreationDate.AddMinutes(-1), record.CreationDate.AddMinutes(1))
+                .Where(item => item.OrganizationId, StorageFilterOperator.Equal, record.OrganizationId)
+                .WithPage(new StoragePageRequest(pageSize: 10)));
+            var loaded = page.Items.Single();
+
+            Assert.AreEqual(record.Action, loaded.Action);
+            Assert.AreEqual(record.AcceptanceState, loaded.AcceptanceState);
+            Assert.IsNull(loaded.NullableAction);
+        }
+
+        [TestMethod]
         public void UnsupportedPropertyType_FailsDuringStoreConstruction()
         {
             var settings = new TestCassandraStorageSettings();
@@ -122,6 +154,29 @@ namespace LagoVista.StorageProvider.Tests.Cassandra
             public decimal DecimalValue { get; set; }
             public byte[] BlobValue { get; set; }
             public int? NullableIntValue { get; set; }
+        }
+
+        public enum TestAction
+        {
+            Publish,
+            Pause
+        }
+
+        public enum TestAcceptance
+        {
+            Accepted,
+            Uncertain
+        }
+
+        public sealed class CassandraEnumRecord : IActivityRecord
+        {
+            public string Id { get; set; }
+            public string OrganizationId { get; set; }
+            public string Organization { get; set; }
+            public DateTime CreationDate { get; set; }
+            public TestAction Action { get; set; }
+            public TestAcceptance AcceptanceState { get; set; }
+            public TestAction? NullableAction { get; set; }
         }
 
         public sealed class UnsupportedTypeActivityRecord : IActivityRecord
