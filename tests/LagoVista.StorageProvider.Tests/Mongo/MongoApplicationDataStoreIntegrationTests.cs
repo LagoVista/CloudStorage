@@ -8,6 +8,7 @@ using LagoVista.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using System;
 using System.Linq;
@@ -127,6 +128,40 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             await _store.DeleteAsync<ApplicationRecord>(new StorageKey(first.Id.Value, organization.Id));
             var deleted = await _store.GetAsync<ApplicationRecord>(new StorageKey(first.Id.Value, organization.Id));
             Assert.IsNull(deleted);
+        }
+
+        [TestMethod]
+        public async Task NestedStateClassMapFirst_ApplicationDataGetAndQueryIgnoreProviderMetadata()
+        {
+            var organization = EntityHeader.Create("ORG1", "Organization One");
+            var state = new NestedStateRecord
+            {
+                Id = NormalizedId32.Factory(),
+                Organization = organization,
+                Key = "welcome"
+            };
+
+            // Match a persona document initializing the nested state BSON map first.
+            new PersonaStateEnvelope { State = state }.ToBsonDocument();
+            Assert.IsTrue(BsonClassMap.IsClassMapRegistered(typeof(NestedStateRecord)));
+
+            await _store.InsertAsync(state);
+
+            var raw = _mongoClient.GetDatabase(_databaseName)
+                .GetCollection<BsonDocument>(StorageRecordIdentity.GetCollectionName<NestedStateRecord>());
+            var document = await raw.Find(Builders<BsonDocument>.Filter.Empty).FirstOrDefaultAsync();
+            Assert.IsTrue(document.Contains("_storageVersion"), "Concurrency metadata must be preserved in Mongo.");
+
+            var loaded = await _store.GetAsync<NestedStateRecord>(new StorageKey(state.Id.Value, organization.Id));
+            Assert.IsNotNull(loaded);
+            Assert.AreEqual("welcome", loaded.Key);
+
+            var results = await _store.QueryAsync(new StorageQuery<NestedStateRecord>()
+                .Where(x => x.Organization.Id, StorageFilterOperator.Equal, organization.Id)
+                .Where(x => x.Key, StorageFilterOperator.Equal, "welcome")
+                .WithPage(new StoragePageRequest(3)));
+            Assert.AreEqual(1, results.Items.Count);
+            Assert.AreEqual(state.Id, results.Items.Single().Id);
         }
 
         [TestMethod]
@@ -259,6 +294,20 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             {
                 return $"mongodb://{Uri.EscapeDataString(UserName)}:{Uri.EscapeDataString(Password)}@localhost:{Port}/?authSource=admin";
             }
+        }
+
+        private sealed class PersonaStateEnvelope
+        {
+            public NestedStateRecord State { get; set; }
+        }
+
+        private sealed class NestedStateRecord : IApplicationDataRecord
+        {
+            public NormalizedId32 Id { get; set; }
+            public EntityHeader Organization { get; set; }
+            public UtcTimestamp CreationDate { get; set; }
+            public UtcTimestamp LastUpdatedDate { get; set; }
+            public string Key { get; set; }
         }
 
         private sealed class ApplicationRecord : IApplicationDataRecord
