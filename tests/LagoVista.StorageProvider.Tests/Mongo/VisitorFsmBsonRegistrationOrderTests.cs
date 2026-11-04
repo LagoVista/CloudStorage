@@ -41,7 +41,7 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             // when that class map already exists.
             InvokeProviderCompatibility<NestedFirstState>();
 
-            Assert.ThrowsException<MongoDB.Bson.Serialization.BsonSerializationException>(() =>
+            Assert.ThrowsException<MongoDB.Bson.BsonSerializationException>(() =>
                 BsonSerializer.Deserialize<NestedFirstState>(
                     new BsonDocument { { "Key", "welcome" }, { "_storageVersion", "version-1" } }));
         }
