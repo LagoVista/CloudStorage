@@ -14,6 +14,17 @@ namespace LagoVista.StorageProvider.Tests.Mongo
     [DoNotParallelize]
     public sealed class VisitorFsmBsonRegistrationOrderTests
     {
+        [TestInitialize]
+        public void InitializeCloudStorageBsonSerializers()
+        {
+            // Match MongoMutableRecordStore constructor initialization before either test path.
+            var serializationType = typeof(MongoApplicationDataStore).Assembly.GetType(
+                "LagoVista.CloudStorage.Storage.StorageProviders.Mongo.MongoBsonSerialization", true);
+            var configure = serializationType.GetMethod("Configure", BindingFlags.Public | BindingFlags.Static);
+            Assert.IsNotNull(configure, "Expected actual CloudStorage Mongo BSON initialization.");
+            configure.Invoke(null, null);
+        }
+
         [TestMethod]
         public void ApplicationDataFirst_AllowsProviderOwnedVersionMetadata()
         {
