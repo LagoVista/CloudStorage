@@ -41,7 +41,9 @@ namespace LagoVista.StorageProvider.Tests.Redis
             using var redis = await ConnectionMultiplexer.ConnectAsync("127.0.0.1:19079,abortConnect=false");
             await redis.GetDatabase().StringSetAsync(key, "redis-is-back", TimeSpan.FromMinutes(1));
 
-            using var relay = new RedisRelay(listener);
+            // Port zero is only a reservation; after Stop(), bind a NEW listener to
+            // the selected concrete port so the multiplexer sees the endpoint it was given.
+            using var relay = new RedisRelay(new TcpListener(IPAddress.Loopback, proxyPort));
             relay.Start();
 
             var timeout = DateTime.UtcNow.AddSeconds(35);
