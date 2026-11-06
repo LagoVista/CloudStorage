@@ -31,6 +31,7 @@ namespace LagoVista.CloudStorage.RuntimeControls
     {
         public const string Diagnostics = "CloudStorage.Diagnostics.Enabled";
         public const string MongoQueries = "CloudStorage.Diagnostics.LogQueries";
+        public const string CacheProviderDiagnostics = "CloudStorage.Diagnostics.CacheProvider";
         public const string SlowQueryThreshold = "CloudStorage.Diagnostics.SlowQueryThresholdMs";
         public const string Prefix = "nuviot:runtime-controls:v1:";
 
@@ -39,6 +40,7 @@ namespace LagoVista.CloudStorage.RuntimeControls
             {
                 new RuntimeControlDefinition { Key = Diagnostics, Group = "Cloud Storage", Description = "Log routine document operations.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = MongoQueries, Group = "Cloud Storage", Description = "Log MongoDB query details.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = CacheProviderDiagnostics, Group = "Cloud Storage", Description = "Log routine CacheProvider reads, writes, hits, misses and invalidations.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = SlowQueryThreshold, Group = "Cloud Storage", Description = "Slow query threshold in milliseconds.", DefaultValue = "500", IsBoolean = false }
             }.AsReadOnly();
 

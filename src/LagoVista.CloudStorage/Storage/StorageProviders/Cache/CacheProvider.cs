@@ -1,4 +1,5 @@
 using LagoVista.Core.Interfaces;
+using LagoVista.CloudStorage.RuntimeControls;
 using LagoVista.IoT.Logging.Loggers;
 using Newtonsoft.Json;
 using StackExchange.Redis;
@@ -15,6 +16,8 @@ namespace LagoVista.CloudStorage.Storage
         private const string DependentsSuffix = ":dependents";
 
         private readonly IAdminLogger _logger;
+        private readonly IRuntimeControlService _runtimeControls;
+        private bool DiagnosticsEnabled => _runtimeControls?.IsEnabled(RuntimeControlCatalog.CacheProviderDiagnostics) == true;
         private readonly ConnectionMultiplexer _multiplexer = null;
 
         private readonly bool _useCache;
@@ -22,9 +25,10 @@ namespace LagoVista.CloudStorage.Storage
         private static readonly Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); 
         private static readonly Dictionary<string, Dictionary<string, string>> _inMemoryCollections = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
-        public CacheProvider(ICacheProviderSettings settings, IAdminLogger adminlogger, IAppConfig appConfig)
+        public CacheProvider(ICacheProviderSettings settings, IAdminLogger adminlogger, IAppConfig appConfig, IRuntimeControlService runtimeControls = null)
         {
             _logger = adminlogger ?? throw new ArgumentNullException(nameof(adminlogger));
+            _runtimeControls = runtimeControls;
 
 
 
@@ -48,9 +52,9 @@ namespace LagoVista.CloudStorage.Storage
                         configuration.Password = settings.Password;
                     }
 
-                    _logger.Trace($"{this.Tag()} - Initializing cache provider with settings: {uri} - Slot Title {appConfig.Environment}, {appConfig.AppId} ");
+                    if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Initializing cache provider with settings: {uri} - Slot Title {appConfig.Environment}, {appConfig.AppId} ");
                     _multiplexer = ConnectionMultiplexer.Connect(configuration);
-                    _logger.Trace($"{this.Tag()} - Established connection to REDIS-compatible cache: {uri}");
+                    if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Established connection to REDIS-compatible cache: {uri}");
                 }
                 catch (Exception ex)
                 {
@@ -185,7 +189,7 @@ namespace LagoVista.CloudStorage.Storage
         {
             if (!_useCache)
             {
-                Console.WriteLine($"{this.Tag()} - Cache Not Enabled - Get {key}.");
+                if (DiagnosticsEnabled) Console.WriteLine($"{this.Tag()} - Cache Not Enabled - Get {key}.");
                 return null;
             }
 
@@ -197,7 +201,7 @@ namespace LagoVista.CloudStorage.Storage
                 var result = await db.StringGetAsync(normalizedKey);
                 var str = (string)result;
 
-                _logger.Trace($"{this.Tag()} - Getting cache item: {normalizedKey} found in cache: {!String.IsNullOrEmpty(str)}");
+                if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Getting cache item: {normalizedKey} found in cache: {!String.IsNullOrEmpty(str)}");
                 return str;
             }
 
@@ -205,12 +209,12 @@ namespace LagoVista.CloudStorage.Storage
             {
                 if (_inMemoryCache.TryGetValue(normalizedKey, out var value))
                 {
-                    Console.WriteLine($"[InMemoryCache__GetAsync (in memory)] - Cache Hit - {normalizedKey}.");
+                    if (DiagnosticsEnabled) Console.WriteLine($"[InMemoryCache__GetAsync (in memory)] - Cache Hit - {normalizedKey}.");
                     return value;
                 }
             }
 
-            Console.WriteLine("[InMemoryCache__GetAsync (in memory)] - Cache Miss.");
+            if (DiagnosticsEnabled) Console.WriteLine("[InMemoryCache__GetAsync (in memory)] - Cache Miss.");
             return null;
         }
 
@@ -294,7 +298,7 @@ namespace LagoVista.CloudStorage.Storage
             {
                 var db = _multiplexer.GetDatabase();
 
-                _logger.Trace($"{this.Tag()} - Getting item with key: {normalizedKey} from collection: {normalizedCollectionKey}");
+                if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Getting item with key: {normalizedKey} from collection: {normalizedCollectionKey}");
 
                 var value = await db.HashGetAsync(normalizedCollectionKey, normalizedKey);
                 return (string)value;
@@ -327,7 +331,7 @@ namespace LagoVista.CloudStorage.Storage
             {
                 var db = _multiplexer.GetDatabase();
 
-                _logger.Trace($"{this.Tag()} - Removing item with key: {normalizedKey} from collection: {normalizedCollectionKey}");
+                if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Removing item with key: {normalizedKey} from collection: {normalizedCollectionKey}");
                 return db.HashDeleteAsync(normalizedCollectionKey, normalizedKey);
             }
 
@@ -398,11 +402,11 @@ return v
 
             if (String.IsNullOrEmpty(json))
             {
-                _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {normalizedKey} not found in cache.");
+                if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {normalizedKey} not found in cache.");
                 return null;
             }
 
-            _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {normalizedKey} found and removed from cache.");
+            if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - GetAndDeleteAsync Key: {normalizedKey} found and removed from cache.");
             return JsonConvert.DeserializeObject<T>(json);
         }
 
@@ -477,7 +481,7 @@ return v
             {
                 var db = _multiplexer.GetDatabase();
 
-                _logger.Trace($"{this.Tag()} - Added Key: {normalizedKey}");
+                if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Added Key: {normalizedKey}");
                 return db.StringSetAsync(normalizedKey, value, ttl, When.Always);
             }
 
@@ -578,7 +582,7 @@ return v
                     throw new ArgumentNullException("Database for cache provider is null.");
                 }
 
-                _logger.Trace($"{this.Tag()} - Removing item with key: {normalizedKey}");
+                if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Removing item with key: {normalizedKey}");
                 return db.KeyDeleteAsync(normalizedKey);
             }
 
