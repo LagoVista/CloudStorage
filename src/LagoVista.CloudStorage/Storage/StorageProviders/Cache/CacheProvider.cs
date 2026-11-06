@@ -7,11 +7,12 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LagoVista.CloudStorage.Storage
 {
-    public class CacheProvider : ICacheProvider
+    public class CacheProvider : ICacheProvider, IDisposable
     {
         private const string DependentsSuffix = ":dependents";
 
@@ -21,6 +22,7 @@ namespace LagoVista.CloudStorage.Storage
         private readonly ConnectionMultiplexer _multiplexer = null;
 
         private readonly bool _useCache;
+        private int _unavailableReadReported;
 
         private static readonly Dictionary<string, string> _inMemoryCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); 
         private static readonly Dictionary<string, Dictionary<string, string>> _inMemoryCollections = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
@@ -42,6 +44,9 @@ namespace LagoVista.CloudStorage.Storage
                 try
                 {
                     var configuration = ConfigurationOptions.Parse(uri);
+                    // A temporarily unavailable Redis server must not prevent DI from creating the cache.
+                    // The singleton multiplexer will reconnect in the background when Redis returns.
+                    configuration.AbortOnConnectFail = false;
                     if (settings.UseAuthentication)
                     {
                         if (String.IsNullOrWhiteSpace(settings.Password))
@@ -54,12 +59,60 @@ namespace LagoVista.CloudStorage.Storage
 
                     if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Initializing cache provider with settings: {uri} - Slot Title {appConfig.Environment}, {appConfig.AppId} ");
                     _multiplexer = ConnectionMultiplexer.Connect(configuration);
-                    if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Established connection to REDIS-compatible cache: {uri}");
+                    if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Cache multiplexer created; currently connected: {_multiplexer.IsConnected}");
                 }
                 catch (Exception ex)
                 {
                     _logger.AddError(this.Tag(), $"Failed to connect to REDIS-compatible cache with settings: {uri}. Exception: {ex}. You can disable remote cache by setting UseCache = false in AppSettings.");
                     throw;
+                }
+            }
+        }
+
+        public void Dispose() => _multiplexer?.Dispose();
+
+        // Cache lookups are optional: an unavailable server is a miss, not a controller failure.
+        // Do not use this helper for writes, removals, counters, locks, or get-and-delete.
+        // Those operations must fail rather than silently losing invalidation or coordination.
+        private async Task<T> ReadCacheOrDefaultAsync<T>(string operation, Func<Task<T>> read, T unavailableValue)
+        {
+            if (!_multiplexer.IsConnected)
+            {
+                ReportUnavailableRead(operation, null);
+                return unavailableValue;
+            }
+
+            try
+            {
+                var result = await read().ConfigureAwait(false);
+                Interlocked.Exchange(ref _unavailableReadReported, 0);
+                return result;
+            }
+            catch (RedisConnectionException ex)
+            {
+                ReportUnavailableRead(operation, ex);
+                return unavailableValue;
+            }
+            catch (RedisTimeoutException ex)
+            {
+                ReportUnavailableRead(operation, ex);
+                return unavailableValue;
+            }
+        }
+
+        private void ReportUnavailableRead(string operation, Exception exception)
+        {
+            // One diagnostic per outage; do not print cache keys, endpoints, or credentials.
+            if (Interlocked.Exchange(ref _unavailableReadReported, 1) == 0)
+            {
+                try
+                {
+                    _logger.AddError(this.Tag(),
+                        $"Redis unavailable for optional cache read '{operation}' ({exception?.GetType().Name ?? "Disconnected"}); returning a cache miss until reconnect.");
+                }
+                catch
+                {
+                    // Logging must never turn an optional cache miss into a failed request.
                 }
             }
         }
@@ -198,7 +251,7 @@ namespace LagoVista.CloudStorage.Storage
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-                var result = await db.StringGetAsync(normalizedKey);
+                var result = await ReadCacheOrDefaultAsync("GetAsync", () => db.StringGetAsync(normalizedKey), RedisValue.Null);
                 var str = (string)result;
 
                 if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Getting cache item: {normalizedKey} found in cache: {!String.IsNullOrEmpty(str)}");
@@ -240,7 +293,8 @@ namespace LagoVista.CloudStorage.Storage
             {
                 var db = _multiplexer.GetDatabase();
                 var redisKeys = keyList.Select(k => (RedisKey)k).ToArray();
-                var values = await db.StringGetAsync(redisKeys);
+                var values = await ReadCacheOrDefaultAsync("GetManyAsync",
+                    () => db.StringGetAsync(redisKeys), new RedisValue[redisKeys.Length]);
 
                 var result = new Dictionary<string, string>(keyList.Count, StringComparer.Ordinal);
 
@@ -274,7 +328,8 @@ namespace LagoVista.CloudStorage.Storage
             if (_multiplexer != null)
             {
                 var db = _multiplexer.GetDatabase();
-                var result = await db.HashGetAllAsync(normalizedCollectionKey);
+                var result = await ReadCacheOrDefaultAsync("GetCollection",
+                    () => db.HashGetAllAsync(normalizedCollectionKey), Array.Empty<HashEntry>());
                 return result.Cast<object>();
             }
 
@@ -300,7 +355,8 @@ namespace LagoVista.CloudStorage.Storage
 
                 if (DiagnosticsEnabled) _logger.Trace($"{this.Tag()} - Getting item with key: {normalizedKey} from collection: {normalizedCollectionKey}");
 
-                var value = await db.HashGetAsync(normalizedCollectionKey, normalizedKey);
+                var value = await ReadCacheOrDefaultAsync("GetFromCollection",
+                    () => db.HashGetAsync(normalizedCollectionKey, normalizedKey), RedisValue.Null);
                 return (string)value;
             }
 
