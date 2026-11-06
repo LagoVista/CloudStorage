@@ -4,6 +4,7 @@
 // --- END CODE INDEX META ---
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.RuntimeControls;
 using LagoVista.CloudStorage.Storage.StorageProviders;
 using LagoVista.Core;
 using LagoVista.Core.AI.Interfaces;
@@ -34,6 +35,8 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly string _dbName;
         private readonly IDocumentStorageClient _storageClient;
         private readonly IAdminLogger _logger;
+        private readonly IRuntimeControlService _runtimeControls;
+        private bool DiagnosticsEnabled => _runtimeControls?.IsEnabled(RuntimeControlCatalog.Diagnostics) == true;
         private readonly ICacheProvider _cacheProvider;
         private readonly ICacheAborter _cacheAborter;
         private readonly IDependencyManager _dependencyManager;
@@ -104,6 +107,7 @@ namespace LagoVista.CloudStorage.DocumentDB
         public DocumentDBRepoBase(IDocumentCloudCachedServices cloudServices) :
             this(cloudServices.AdminLogger, cloudServices.CacheProvider, cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter, documentStorageClientProvider: cloudServices.DocumentStorageClientProvider)
         {
+            _runtimeControls = cloudServices.RuntimeControls;
             _ragIndexingServices = cloudServices.RagIndexingServices;
             _cacheAborter = cloudServices.CacheAborter;
             _producedArtifactService = cloudServices.ProducedArtifactService;
@@ -114,6 +118,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             this(cloudServices.AdminLogger, dependencyManager: cloudServices.DependencyManager, fkWriter: cloudServices.FkIndexTableWriter, documentStorageClientProvider: cloudServices.DocumentStorageClientProvider)
         {
             _fkeyIndexWriter = cloudServices.FkIndexTableWriter;
+            _runtimeControls = cloudServices.RuntimeControls;
             _producedArtifactService = cloudServices.ProducedArtifactService;
         }
 
@@ -148,7 +153,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 await _producedArtifactService.CreateProducedArtifactsAsync(item);
 
             DocumentInsert.WithLabels(typeof(TEntity).Name).Observe(sw.Elapsed.TotalSeconds);
-            _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(CreateDocumentAsync)}] Stored document in {sw.Elapsed.TotalMilliseconds}ms");
+            if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(CreateDocumentAsync)}] Stored document in {sw.Elapsed.TotalMilliseconds}ms");
 
             if (_cacheProvider != null && (_cacheAborter != null && !_cacheAborter.AbortCache))
             {
@@ -176,12 +181,12 @@ namespace LagoVista.CloudStorage.DocumentDB
                             var hash = System.Convert.ToBase64String(hashBytes);
                             if (!discussion.Handled || discussion.NoteHash != hash)
                             {
-                                Console.WriteLine($"===> 1) Discussion {discussion.Id} Handled {discussion.Handled}, Note Hash {discussion.NoteHash}, Hash {hash}");
+                                if (DiagnosticsEnabled) Console.WriteLine($"===> 1) Discussion {discussion.Id} Handled {discussion.Handled}, Note Hash {discussion.NoteHash}, Hash {hash}");
                                 await UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(match.Groups["mentionId"].Value, entity, discussion);
                                 discussion.Handled = true;
                                 discussion.NoteHash = hash;
-                                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Discussion] - {entity.Name}");
-                                Console.WriteLine($"===> 2) Discussion {discussion.Id} Handled {discussion.Handled}, Note Hash {discussion.NoteHash}, Hash {hash}");
+                                if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Discussion] - {entity.Name}");
+                                if (DiagnosticsEnabled) Console.WriteLine($"===> 2) Discussion {discussion.Id} Handled {discussion.Handled}, Note Hash {discussion.NoteHash}, Hash {hash}");
                             }
                         }
 
@@ -194,12 +199,12 @@ namespace LagoVista.CloudStorage.DocumentDB
                                 var hash = System.Convert.ToBase64String(hashBytes);
                                 if (!response.Handled || response.NoteHash != hash)
                                 {
-                                    Console.WriteLine($"===> 1) Response {response.Id} Handled {response.Handled}, Note Hash {response.NoteHash}, Hash {hash}");
+                                    if (DiagnosticsEnabled) Console.WriteLine($"===> 1) Response {response.Id} Handled {response.Handled}, Note Hash {response.NoteHash}, Hash {hash}");
                                     await UserNotificationServiceProvider.Instance.QueueDiscussionNotificationAsync(responseMatch.Groups["mentionId"].Value, entity, discussion, response);
                                     response.Handled = true;
                                     response.NoteHash = hash;
-                                    _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Response] - {entity.Name}");
-                                    Console.WriteLine($"===> 2) Response {response.Id} Handled {response.Handled}, Note Hash {response.NoteHash}, Hash {hash}");
+                                    if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__{nameof(PostDiscussionUpdates)}_Response] - {entity.Name}");
+                                    if (DiagnosticsEnabled) Console.WriteLine($"===> 2) Response {response.Id} Handled {response.Handled}, Note Hash {response.NoteHash}, Hash {hash}");
                                 }
                             }
                         }
@@ -293,17 +298,17 @@ namespace LagoVista.CloudStorage.DocumentDB
                 }
                 else if (_verboseLogging)
                 {
-                    _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Object {item.Name} name not changed");
+                    if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Object {item.Name} name not changed");
                 }
             }
             else if (_verboseLogging)
             {
-                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Dependency Manager is null");
+                if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Dependency Manager is null");
             }
 
             if (item is IDiscussableEntity discussable)
             {
-                Console.WriteLine("===================> Checking it is discussable <========================================");
+                if (DiagnosticsEnabled) Console.WriteLine("===================> Checking it is discussable <========================================");
                 await PostDiscussionUpdates(discussable);
             }
 
@@ -313,13 +318,13 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (upsertResult?.Resource != null && !String.IsNullOrWhiteSpace(upsertResult.Resource.ETag))
                 item.ETag = upsertResult.Resource.ETag;
 
-            _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Document Update {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
+            if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Document Update {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
 
             if (nameChanged && _dependencyManager != null)
             {
                 if (dependencyResult?.IsInUse == true)
                 {
-                    _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Object {item.Name} has {dependencyResult.DependentObjects.Count} legacy dependencies.");
+                    if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] - Object {item.Name} has {dependencyResult.DependentObjects.Count} legacy dependencies.");
 
                     foreach (var dependentObject in dependencyResult.DependentObjects)
                         await _dependencyManager.RenameDependentObjectsAsync(item.LastUpdatedBy, documentId, typeof(TEntity).Name, dependentObject.Id, dependentObject.RecordType, item.Name);
@@ -338,7 +343,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 await _cacheProvider.RemoveAsync(GetCacheKey(documentId));
                 await _cacheProvider.AddAsync(GetCacheKey(documentId), JsonConvert.SerializeObject(item));
 
-                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Added {typeof(TEntity).Name} back to cache after update in {sw.Elapsed.TotalMilliseconds}ms");
+                if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__UpsertDocumentAsync] Added {typeof(TEntity).Name} back to cache after update in {sw.Elapsed.TotalMilliseconds}ms");
             }
 
             if (_ragIndexingServices != null && item.ShouldVectorIndex)
@@ -380,26 +385,26 @@ namespace LagoVista.CloudStorage.DocumentDB
                         else
                         {
                             DocumentCacheHit.WithLabels(typeof(TEntity).Name).Inc();
-                            _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Get document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
+                            if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Get document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} From Cache {typeof(TEntity).Name} in {sw.Elapsed.TotalMilliseconds}ms");
                             return entity;
                         }
                     }
                     catch (Exception ex)
                     {
                         DocumentErrors.Inc();
-                        _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Exception Deserializing Object: {typeof(TEntity).Name} {GetCacheKey(id)} - {ex.Message}");
+                        _logger.AddException($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Exception Deserializing Object: {typeof(TEntity).Name} {GetCacheKey(id)}", ex);
                         await _cacheProvider.RemoveAsync(GetCacheKey(id));
                     }
                 }
                 else
                 {
                     DocumentCacheMiss.WithLabels(typeof(TEntity).Name).Inc();
-                    _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Cache Miss {typeof(TEntity).Name} {GetCacheKey(id)}");
+                    if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Cache Miss {typeof(TEntity).Name} {GetCacheKey(id)}");
                 }
             }
             else
             {
-                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Skip cache attempt Provider Is Null: {_cacheProvider != null}, AbortCache Flag: {_cacheAborter?.AbortCache} {GetCacheKey(id)}");
+                if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Skip cache attempt Provider Is Null: {_cacheProvider != null}, AbortCache Flag: {_cacheAborter?.AbortCache} {GetCacheKey(id)}");
                 DocumentNotCached.WithLabels(typeof(TEntity).Name).Inc();
             }
 
@@ -409,7 +414,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             {
                 sw = Stopwatch.StartNew();
                 await _cacheProvider.AddAsync(GetCacheKey(id), JsonConvert.SerializeObject(doc));
-                _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Added To Cache {typeof(TEntity).Name} {GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
+                if (DiagnosticsEnabled) _logger.Trace($"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync] Added To Cache {typeof(TEntity).Name} {GetCacheKey(id)} - {sw.ElapsedMilliseconds}ms");
             }
 
             return doc;
@@ -437,7 +442,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                     return null;
                 }
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Load document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} from storage in {sw.Elapsed.TotalMilliseconds}ms",
+                if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__GetDocumentAsync]", $"Load document [{entity.Name}], Org: {entity.OwnerOrganization?.Text} from storage in {sw.Elapsed.TotalMilliseconds}ms",
                     sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"), id.ToKVP("recordId"), entity.Name.ToKVP("entityName"));
 
                 return entity;
@@ -502,7 +507,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             }
             timer.Dispose();
 
-            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id} in {sw.Elapsed.TotalMilliseconds} ms",
+            if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id} in {sw.Elapsed.TotalMilliseconds} ms",
                 new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("recordId", id));
 
             await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
@@ -538,7 +543,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             var result = await _storageClient.UpsertDocumentAsync(doc).ConfigureAwait(false);
             timer.Dispose();
 
-            _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id}, partition key {partitionKey} in {sw.Elapsed.TotalMilliseconds} ms",
+            if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DeleteDocumentAsync]", $"Deleted Document {id}, partition key {partitionKey} in {sw.Elapsed.TotalMilliseconds} ms",
                 new KeyValuePair<string, string>("Record Type", typeof(TEntity).Name), new KeyValuePair<string, string>("recordId", id));
 
             await InvalidateEntityListCacheAsync(doc.OwnerOrganization?.Id);
@@ -554,7 +559,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             var items = await _storageClient.QueryAsync(query).ConfigureAwait(false);
             var result = items?.ToList() ?? new List<TEntity>();
 
-            _logger.AddCustomEvent(LogLevel.Message,
+            if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message,
                 $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync]",
                 $"Query returned {result.Count} {typeof(TEntity).Name} documents from {_storageClient.GetType().Name} database '{_dbName}' in {sw.Elapsed.TotalMilliseconds} ms",
                 typeof(TEntity).Name.ToKVP("recordType"),
@@ -577,7 +582,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var listResponse = await _storageClient.QueryAsync(query, listRequest).ConfigureAwait(false);
                 var count = listResponse?.Model?.Count() ?? 0;
 
-                _logger.AddCustomEvent(LogLevel.Message,
+                if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message,
                     $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest]",
                     $"Paged query returned {count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms",
                     typeof(TEntity).Name.ToKVP("recordType"),
@@ -609,7 +614,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var listResponse = await _storageClient.QueryAsync(query, sort, listRequest).ConfigureAwait(false);
                 var count = listResponse?.Model?.Count() ?? 0;
 
-                _logger.AddCustomEvent(LogLevel.Message,
+                if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message,
                     $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAsync__ListRequest__Sorted]",
                     $"Sorted paged query returned {count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms",
                     typeof(TEntity).Name.ToKVP("recordType"),
@@ -691,7 +696,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 listResponse.Categories = groupedCategories.Select(item => item.First()).ToList();
                 listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync]", $"Summary query returned {items.Count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", items.Count.ToString().ToKVP("recordCount"), typeof(TEntity).Name.ToKVP("recordType"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
+                if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryAsync]", $"Summary query returned {items.Count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", items.Count.ToString().ToKVP("recordCount"), typeof(TEntity).Name.ToKVP("recordType"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
                 return listResponse;
             }
@@ -724,7 +729,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 if (listResponse.Categories.Any())
                     listResponse.Categories.Insert(0, EnumDescription.CreateSelect("-select category-"));
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync]", $"Descending summary query returned {items.Count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", items.Count.ToString().ToKVP("recordCount"), typeof(TEntity).Name.ToKVP("recordType"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
+                if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QuerySummaryDescendingAsync]", $"Descending summary query returned {items.Count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", items.Count.ToString().ToKVP("recordCount"), typeof(TEntity).Name.ToKVP("recordType"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
                 return listResponse;
             }
@@ -752,7 +757,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var listResponse = await _storageClient.QueryAsync(query, sort, listRequest, true).ConfigureAwait(false);
                 var count = listResponse?.Model?.Count() ?? 0;
 
-                _logger.AddCustomEvent(LogLevel.Message,
+                if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message,
                     $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryDescendingAsync]",
                     $"Descending paged query returned {count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms",
                     typeof(TEntity).Name.ToKVP("recordType"),
@@ -784,7 +789,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var listResponse = await _storageClient.QueryAllAsync(query, listRequest).ConfigureAwait(false);
                 var count = listResponse?.Model?.Count() ?? 0;
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAllAsync]", $"Paged query returned {count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", typeof(TEntity).Name.ToKVP("recordType"), count.ToString().ToKVP("recordCount"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
+                if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__QueryAllAsync]", $"Paged query returned {count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", typeof(TEntity).Name.ToKVP("recordType"), count.ToString().ToKVP("recordCount"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
                 return listResponse;
             }
@@ -811,7 +816,7 @@ namespace LagoVista.CloudStorage.DocumentDB
                 var listResponse = await _storageClient.QueryAllAsync(query, orderBy, listRequest, true).ConfigureAwait(false);
                 var count = listResponse?.Model?.Count() ?? 0;
 
-                _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DescOrderQueryAsync<TKey>]", $"Descending query returned {count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", typeof(TEntity).Name.ToKVP("recordType"), count.ToString().ToKVP("recordCount"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
+                if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Message, $"[DocumentDBBase<{typeof(TEntity).Name}>__DescOrderQueryAsync<TKey>]", $"Descending query returned {count} {typeof(TEntity).Name} documents in {sw.Elapsed.TotalMilliseconds} ms", typeof(TEntity).Name.ToKVP("recordType"), count.ToString().ToKVP("recordCount"), sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"));
 
                 return listResponse;
             }

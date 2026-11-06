@@ -1,4 +1,5 @@
 ﻿using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.RuntimeControls;
 using LagoVista.Core.AI.Interfaces;
 using LagoVista.Core.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
@@ -13,7 +14,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
         {
         }
 
-        public DocumentCloudServices(IAdminLogger adminLogger, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkIndexTableWriter, IProducedArtifactService producedArtifactService, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, IDocumentStorageClientProvider documentStorageClientProvider, ISystemUsers systemUsers)
+        public DocumentCloudServices(IAdminLogger adminLogger, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkIndexTableWriter, IProducedArtifactService producedArtifactService, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, IDocumentStorageClientProvider documentStorageClientProvider, ISystemUsers systemUsers, IRuntimeControlService runtimeControls = null)
         {
             AdminLogger = adminLogger;
             CosmosClientProvider = cosmosClientProvider ?? throw new ArgumentNullException(nameof(cosmosClientProvider));
@@ -24,9 +25,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
             FkIndexTableWriter = fkIndexTableWriter;
             ProducedArtifactService = producedArtifactService;
             SystemUsers = systemUsers;
+            RuntimeControls = runtimeControls;
         }
 
         public IAdminLogger AdminLogger { get; }
+        public IRuntimeControlService RuntimeControls { get; }
 
         public ICosmosClientProvider CosmosClientProvider { get; }
 
@@ -51,8 +54,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
         {
         }
 
-        public DocumentCloudCachedServices(IAdminLogger adminLogger, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkIndexTableWriter, IProducedArtifactService producedArtifactService, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, ICacheAborter aborter, ICacheProvider cacheProvider, IEntityListCacheInvalidator entityListCacheInvalidator, ISystemUsers systemUsers, IDocumentStorageClientProvider documentStorageClientProvider)
-            : base(adminLogger, cosmosClientProvider, fkIndexTableWriter, producedArtifactService, dependencyManager, userNotificationService, ragServices, documentStorageClientProvider, systemUsers)
+        public DocumentCloudCachedServices(IAdminLogger adminLogger, ICosmosClientProvider cosmosClientProvider, IFkIndexTableWriterBatched fkIndexTableWriter, IProducedArtifactService producedArtifactService, IDependencyManager dependencyManager, IUserNotificationService userNotificationService, IRagIndexingServices ragServices, ICacheAborter aborter, ICacheProvider cacheProvider, IEntityListCacheInvalidator entityListCacheInvalidator, ISystemUsers systemUsers, IDocumentStorageClientProvider documentStorageClientProvider, IRuntimeControlService runtimeControls = null)
+            : base(adminLogger, cosmosClientProvider, fkIndexTableWriter, producedArtifactService, dependencyManager, userNotificationService, ragServices, documentStorageClientProvider, systemUsers, runtimeControls)
         {
             CacheProvider = cacheProvider;
             CacheAborter = aborter;

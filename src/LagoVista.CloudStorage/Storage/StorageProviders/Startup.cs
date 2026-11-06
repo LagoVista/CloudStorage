@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Diagnostics;
+using LagoVista.CloudStorage.RuntimeControls;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.IoT.Logging.Loggers;
 using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
@@ -27,6 +28,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
             });
 
             services.AddSingleton<IApplicationErrorRepository, ScratchApplicationErrorRepository>();
+            services.AddSingleton<IRuntimeControlService, RuntimeControlService>();
 
             services.AddScoped<ICloudFileStorageClient, S3CloudFileStorageClient>();
             services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();

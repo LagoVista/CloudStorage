@@ -1,6 +1,7 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Exceptions;
 using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.RuntimeControls;
 using LagoVista.CloudStorage.Models;
 using LagoVista.CloudStorage.Models.Storage;
 using LagoVista.CloudStorage.Storage;
@@ -39,23 +40,27 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         private readonly IDocumentCollectionNameResolver _collectionNameResolver;
         private readonly IMongoStorageClientFactory _clientFactory;
         private readonly IAdminLogger _logger;
+        private readonly IRuntimeControlService _runtimeControls;
         public string DatabaseName => _settings.DatabaseName;
 
         public MongoDocumentStorageClient(
             IMongoDocumentStorageConnectionSettings settings,
             IDocumentCollectionNameResolver collectionNameResolver,
             IMongoStorageClientFactory clientFactory,
-            IAdminLogger logger = null)
+            IAdminLogger logger = null,
+            IRuntimeControlService runtimeControls = null)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _collectionNameResolver = collectionNameResolver ?? throw new ArgumentNullException(nameof(collectionNameResolver));
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _logger = logger;
+            _runtimeControls = runtimeControls;
             MongoBsonSerialization.Configure();
         }
 
         private void LogQuery(string operation, string entityType, string collectionName, string query)
         {
+            if (_runtimeControls?.IsEnabled(RuntimeControlCatalog.MongoQueries) != true) return;
             var message = $"Mongo query: Database={_settings.DatabaseName}; Collection={collectionName}; EntityType={entityType}; Query={query}";
             Console.WriteLine($"[MongoDocumentStorageClient__{operation}] {message}");
 
