@@ -1,3 +1,4 @@
+using LagoVista.CloudStorage;
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core.AI.Interfaces;
@@ -16,12 +17,12 @@ namespace LagoVista.StorageProvider.Tests.DocumentStorage
     [TestClass]
     public class ProducedArtifactGenerationOptOutTests
     {
-        private sealed class StandardEntity : EntityBase { }
+        private sealed class StandardEntity : EntityBase { public StandardEntity() { } }
 
         [SkipProducedArtifactGeneration]
-        private class ExcludedEntity : EntityBase { }
+        private class ExcludedEntity : EntityBase { public ExcludedEntity() { } }
 
-        private sealed class DerivedExcludedEntity : ExcludedEntity { }
+        private sealed class DerivedExcludedEntity : ExcludedEntity { public DerivedExcludedEntity() { } }
 
         private sealed class TestRepo<TEntity> : DocumentDBRepoBase<TEntity>
             where TEntity : class, IEntityBase
