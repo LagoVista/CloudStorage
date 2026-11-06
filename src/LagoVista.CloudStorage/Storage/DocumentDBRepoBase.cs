@@ -42,6 +42,8 @@ namespace LagoVista.CloudStorage.DocumentDB
         private readonly IDependencyManager _dependencyManager;
         private readonly IRagIndexingServices _ragIndexingServices;
         private readonly IProducedArtifactService _producedArtifactService;
+        private static readonly bool ShouldCreateProducedArtifacts =
+            !Attribute.IsDefined(typeof(TEntity), typeof(SkipProducedArtifactGenerationAttribute), inherit: true);
         private readonly IFkIndexTableWriterBatched _fkeyIndexWriter;
         private readonly IEntityListCacheInvalidator _entityListCacheInvalidator;
 
@@ -149,7 +151,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (_ragIndexingServices != null && (item is IRagableEntity || item.ShouldVectorIndex))
                 await _ragIndexingServices.IndexAsync(item);
 
-            if (_producedArtifactService != null)
+            if (_producedArtifactService != null && ShouldCreateProducedArtifacts)
                 await _producedArtifactService.CreateProducedArtifactsAsync(item);
 
             DocumentInsert.WithLabels(typeof(TEntity).Name).Observe(sw.Elapsed.TotalSeconds);
@@ -349,7 +351,7 @@ namespace LagoVista.CloudStorage.DocumentDB
             if (_ragIndexingServices != null && item.ShouldVectorIndex)
                 await _ragIndexingServices.IndexAsync(item);
 
-            if (_producedArtifactService != null)
+            if (_producedArtifactService != null && ShouldCreateProducedArtifacts)
                 await _producedArtifactService.CreateProducedArtifactsAsync(item);
 
             await InvalidateEntityListCacheAsync(ownerOrgId);
