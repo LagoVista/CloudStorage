@@ -135,7 +135,7 @@ namespace LagoVista.StorageProvider.Tests.Mongo
         public async Task ActualVisitorFlowState_NestedPersonaFirst_QueryRemovesVersionMetadata()
         {
             var organization = EntityHeader.Create("ORG1", "Organization One");
-            var state = new VisitorConversationFlowState
+            var state = new ConversationFlowState
             {
                 Id = NormalizedId32.Factory(),
                 Organization = organization,
@@ -146,28 +146,28 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             };
 
             // The production persona can register this exact class map as a nested value.
-            new VisitorConversationFlowDefinition
+            new ConversationFlowDefinition
             {
                 InitialNodeKey = "welcome",
-                Nodes = new System.Collections.Generic.List<VisitorConversationFlowNode>
+                Nodes = new System.Collections.Generic.List<ConversationFlowNode>
                 {
-                    new VisitorConversationFlowNode
+                    new ConversationFlowNode
                     {
                         Key = "welcome", StateKey = state.Key, ResolvedState = state
                     }
                 }
             }.ToBsonDocument();
 
-            Assert.IsTrue(BsonClassMap.IsClassMapRegistered(typeof(VisitorConversationFlowState)));
+            Assert.IsTrue(BsonClassMap.IsClassMapRegistered(typeof(ConversationFlowState)));
             await _store.InsertAsync(state);
 
             var raw = _mongoClient.GetDatabase(_databaseName)
-                .GetCollection<BsonDocument>(StorageRecordIdentity.GetCollectionName<VisitorConversationFlowState>());
+                .GetCollection<BsonDocument>(StorageRecordIdentity.GetCollectionName<ConversationFlowState>());
             var document = await raw.Find(Builders<BsonDocument>.Filter.Empty).FirstOrDefaultAsync();
             Assert.IsNotNull(document);
             Assert.IsTrue(document.Contains("_storageVersion"));
 
-            var query = new StorageQuery<VisitorConversationFlowState>()
+            var query = new StorageQuery<ConversationFlowState>()
                 .Where(x => x.Organization.Id, StorageFilterOperator.Equal, organization.Id)
                 .Where(x => x.Key, StorageFilterOperator.Equal, state.Key)
                 .WithPage(new StoragePageRequest(3));
@@ -176,7 +176,7 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             Assert.AreEqual(1, page.Items.Count);
             Assert.AreEqual(state.Key, page.Items.Single().Key);
 
-            var loaded = await _store.GetAsync<VisitorConversationFlowState>(
+            var loaded = await _store.GetAsync<ConversationFlowState>(
                 new StorageKey(state.Id.Value, organization.Id));
             Assert.IsNotNull(loaded);
             Assert.AreEqual(state.Key, loaded.Key);
