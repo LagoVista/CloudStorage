@@ -17,6 +17,13 @@ namespace LagoVista.CloudStorage.Diagnostics
             _store = store ?? throw new ArgumentNullException(nameof(store));
         }
 
+        private static DateTime NormalizeUtc(DateTime value)
+        {
+            if (value.Kind == DateTimeKind.Utc) return value;
+            if (value.Kind == DateTimeKind.Unspecified) return DateTime.SpecifyKind(value, DateTimeKind.Utc);
+            return value.ToUniversalTime();
+        }
+
         public async Task<DiagnosticLogPage> QueryAsync(DiagnosticLogQuery request, CancellationToken cancellationToken = default)
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
@@ -25,8 +32,8 @@ namespace LagoVista.CloudStorage.Diagnostics
             if (request.StartUtc == default(DateTime) || request.EndUtc == default(DateTime))
                 throw new ArgumentException("StartUtc and EndUtc are required.", nameof(request));
 
-            var start = request.StartUtc.ToUniversalTime();
-            var end = request.EndUtc.ToUniversalTime();
+            var start = NormalizeUtc(request.StartUtc);
+            var end = NormalizeUtc(request.EndUtc);
             if (end < start || end - start > TimeSpan.FromHours(48))
                 throw new ArgumentException("Diagnostic queries must have a valid window of at most 48 hours.", nameof(request));
             if (request.PageSize < 1 || request.PageSize > 500)

@@ -1,4 +1,5 @@
 using LagoVista.Core.Interfaces;
+using LagoVista;
 using LagoVista.IoT.Logging.Models;
 using Newtonsoft.Json;
 using System;
