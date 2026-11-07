@@ -29,7 +29,13 @@ public sealed class AzureTableMigrationSource
         {
             var table = _serviceClient.GetTableClient(tableName);
             var filter = BuildFilter(definition);
-            await foreach (var _ in table.QueryAsync<TableEntity>(filter: filter, select: new[] { "PartitionKey", "RowKey" }, cancellationToken: cancellationToken)) count++;
+            var fields = String.IsNullOrWhiteSpace(definition.Source.RequiredNonEmptyField)
+                ? new[] { "PartitionKey", "RowKey" }
+                : new[] { "PartitionKey", "RowKey", definition.Source.RequiredNonEmptyField };
+            await foreach (var row in table.QueryAsync<TableEntity>(filter: filter, select: fields, cancellationToken: cancellationToken))
+            {
+                if (MatchesRequiredField(definition, row)) count++;
+            }
         }
         return count;
     }
@@ -51,6 +57,11 @@ public sealed class AzureTableMigrationSource
             yield return row;
         }
     }
+
+    public static bool MatchesRequiredField(MigrationDefinition definition, TableEntity row) =>
+        String.IsNullOrWhiteSpace(definition.Source.RequiredNonEmptyField) ||
+        (row.TryGetValue(definition.Source.RequiredNonEmptyField, out var value) &&
+         !String.IsNullOrWhiteSpace(value?.ToString()));
 
     private static string? BuildFilter(MigrationDefinition definition)
     {
@@ -121,6 +132,17 @@ public sealed class AzureTableRecordMapper
         {
             var value = SourceValue(field.Source ?? String.Empty, sourceTable, source)?.ToString();
             return String.IsNullOrWhiteSpace(value) || value == "?" ? "Anonymous" : value;
+        }
+        if (String.Equals(field.Transform, "join-colon", StringComparison.OrdinalIgnoreCase))
+            return String.Join(":", (field.Sources ?? new List<string>())
+                .Select(name => SourceValue(name, sourceTable, source)?.ToString() ?? String.Empty));
+
+        if (String.Equals(field.Transform, "normalize-phone", StringComparison.OrdinalIgnoreCase))
+        {
+            var value = SourceValue(field.Source ?? String.Empty, sourceTable, source)?.ToString();
+            return value?.Replace("(", String.Empty).Replace(")", String.Empty)
+                .Replace(" ", String.Empty).Replace("-", String.Empty)
+                .Replace("+", String.Empty).Trim();
         }
         if (String.Equals(field.Transform, "constant", StringComparison.OrdinalIgnoreCase))
         {
