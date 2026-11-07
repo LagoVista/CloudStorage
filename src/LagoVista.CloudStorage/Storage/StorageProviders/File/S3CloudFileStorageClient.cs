@@ -1,7 +1,9 @@
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
+using LagoVista.CloudStorage.RuntimeControls;
 using LagoVista.Core;
 using LagoVista.Core.Validation;
+using LagoVista.Core.PlatformSupport;
 using LagoVista.IoT.Logging.Loggers;
 using Minio;
 using Minio.DataModel.Args;
@@ -45,14 +47,17 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
         };
 
         private readonly IAdminLogger _logger;
+        private readonly IRuntimeControlService _runtimeControls;
+        private bool DiagnosticsEnabled => _runtimeControls?.IsEnabled(RuntimeControlCatalog.S3FileStorageDiagnostics) == true;
         private readonly IS3ObjectStorageConnectionSettings _settings;
         private readonly IMinioClient _client;
         private readonly IMinioClient _readUrlClient;
 
-        public S3CloudFileStorageClient(IS3ObjectStorageConnectionSettings settings, IAdminLogger adminLogger)
+        public S3CloudFileStorageClient(IS3ObjectStorageConnectionSettings settings, IAdminLogger adminLogger, IRuntimeControlService runtimeControls = null)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _logger = adminLogger ?? throw new ArgumentNullException(nameof(adminLogger));
+            _runtimeControls = runtimeControls;
             _client = BuildClient(_settings.Host, _settings.Port, _settings.UseTls);
             _readUrlClient = BuildClient(_settings.PublicHost, _settings.PublicPort, _settings.PublicUseTls);
         }
@@ -65,7 +70,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
             fileName = NormalizeObjectName(fileName);
 
             var sw = Stopwatch.StartNew();
-            _logger.Trace($"{this.Tag()} - uploading file to S3 storage", fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
+            if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Verbose, RuntimeControlCatalog.S3FileStorageDiagnostics, $"{this.Tag()} - uploading file to S3 storage", fileName.ToKVP("fileName"), containerName.ToKVP("containerName"));
 
             for (var retryCount = 1; retryCount <= NumberRetries; retryCount++)
             {
@@ -95,7 +100,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                         await _client.PutObjectAsync(args);
                     }
 
-                    _logger.Trace($"{this.Tag()} - uploaded file to S3 storage",
+                    if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Verbose, RuntimeControlCatalog.S3FileStorageDiagnostics, $"{this.Tag()} - uploaded file to S3 storage",
                         sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"),
                         containerName.ToKVP("containerName"),
                         fileName.ToKVP("fileName"));
@@ -143,7 +148,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                 try
                 {
                     await EnsureBucketExistsAsync(containerName);
-                    _logger.Trace($"{this.Tag()} - getting S3 object", containerName.ToKVP("containerName"), fileName.ToKVP("fileName"));
+                    if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Verbose, RuntimeControlCatalog.S3FileStorageDiagnostics, $"{this.Tag()} - getting S3 object", containerName.ToKVP("containerName"), fileName.ToKVP("fileName"));
 
                     using (var output = new MemoryStream())
                     {
@@ -157,7 +162,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
 
                         await _client.GetObjectAsync(args);
 
-                        _logger.Trace($"{this.Tag()} - got S3 object", containerName.ToKVP("containerName"), fileName.ToKVP("fileName"));
+                        if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Verbose, RuntimeControlCatalog.S3FileStorageDiagnostics, $"{this.Tag()} - got S3 object", containerName.ToKVP("containerName"), fileName.ToKVP("fileName"));
                         return InvokeResult<byte[]>.Create(output.ToArray());
                     }
                 }
@@ -291,7 +296,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
                 {
                     await EnsureBucketExistsAsync(containerName);
                     var sw = Stopwatch.StartNew();
-                    _logger.Trace($"{this.Tag()} - deleting S3 object", containerName.ToKVP("containerName"), fileName.ToKVP("fileName"));
+                    if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Verbose, RuntimeControlCatalog.S3FileStorageDiagnostics, $"{this.Tag()} - deleting S3 object", containerName.ToKVP("containerName"), fileName.ToKVP("fileName"));
 
                     var args = new RemoveObjectArgs()
                         .WithBucket(containerName)
@@ -299,7 +304,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.File
 
                     await _client.RemoveObjectAsync(args);
 
-                    _logger.Trace($"{this.Tag()} - deleted S3 object",
+                    if (DiagnosticsEnabled) _logger.AddCustomEvent(LogLevel.Verbose, RuntimeControlCatalog.S3FileStorageDiagnostics, $"{this.Tag()} - deleted S3 object",
                         sw.Elapsed.TotalMilliseconds.ToString().ToKVP("ms"),
                         containerName.ToKVP("containerName"),
                         fileName.ToKVP("fileName"));
