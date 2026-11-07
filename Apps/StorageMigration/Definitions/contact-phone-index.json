@@ -1,0 +1,74 @@
+{
+  "key": "marketing-contact-phone-index",
+  "displayName": "marketing contact phone index",
+  "description": "Build the global phone lookup from historical contacts with nonempty phone values.",
+  "source": {
+    "type": "azure-table",
+    "connection": "marketing-storage",
+    "tableName": "ContactDTO",
+    "requiredNonEmptyField": "Phone"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "contact_phone_index_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "text",
+      "sources": [
+        "PartitionKey",
+        "RowKey"
+      ],
+      "transform": "join-colon",
+      "required": true
+    },
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "Phone",
+      "transform": "normalize-phone",
+      "required": true
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "DateAdded",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "last_updated_date",
+      "type": "timestamp",
+      "sources": [
+        "$timestamp",
+        "DateAdded"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "contact_organization_id",
+      "type": "text",
+      "source": "PartitionKey",
+      "required": true
+    },
+    {
+      "name": "contact_id",
+      "type": "text",
+      "source": "RowKey",
+      "required": true
+    }
+  ]
+}
