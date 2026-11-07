@@ -45,6 +45,7 @@ public sealed class StorageMigrationEngine
             await foreach (var row in _source.ReadAsync(definition, table, resume ? state.HeadPartitionKey : null, resume ? state.HeadRowKey : null, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (!AzureTableMigrationSource.MatchesRequiredField(definition, row)) continue;
                 state.RecordsRead++;
                 processedThisRun++;
                 try { batch.Add(_mapper.Map(definition, table, row)); headPartition = row.PartitionKey; headRow = row.RowKey; }
