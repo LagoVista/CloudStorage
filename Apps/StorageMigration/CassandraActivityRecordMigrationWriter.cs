@@ -111,7 +111,9 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
     {
         if (_inserts.TryGetValue(definition.Key, out var prepared)) return prepared;
         var columns = OrderedColumns(definition);
-        prepared = await _session.PrepareAsync($"INSERT INTO {definition.Target.Table} ({String.Join(", ", columns)}) VALUES ({String.Join(", ", columns.Select(_ => "?"))})").ConfigureAwait(false);
+        var cql = $"INSERT INTO {definition.Target.Table} ({String.Join(", ", columns)}) VALUES ({String.Join(", ", columns.Select(_ => "?"))})" +
+            (IsOperational(definition) ? " IF NOT EXISTS" : String.Empty);
+        prepared = await _session.PrepareAsync(cql).ConfigureAwait(false);
         _inserts[definition.Key] = prepared;
         return prepared;
     }
