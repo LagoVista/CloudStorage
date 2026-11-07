@@ -1,0 +1,144 @@
+{
+  "key": "marketing-contact-dto",
+  "displayName": "marketing contact dto",
+  "description": "Durable ContactDTO projection; preserve existing contact IDs and email/phone opt-out flags.",
+  "source": {
+    "type": "azure-table",
+    "connection": "marketing-storage",
+    "tableName": "ContactDTO"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "contact_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [
+      "email",
+      "phone"
+    ],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "text",
+      "source": "RowKey",
+      "required": true
+    },
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "PartitionKey",
+      "required": true
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "DateAdded",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "last_updated_date",
+      "type": "timestamp",
+      "sources": [
+        "$timestamp",
+        "DateAdded"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "date_added",
+      "type": "text",
+      "source": "DateAdded"
+    },
+    {
+      "name": "owner_organization_id",
+      "type": "text",
+      "source": "OwnerOrganizationId"
+    },
+    {
+      "name": "owner_organization",
+      "type": "text",
+      "source": "OwnerOrganization"
+    },
+    {
+      "name": "first_name",
+      "type": "text",
+      "source": "FirstName"
+    },
+    {
+      "name": "last_name",
+      "type": "text",
+      "source": "LastName"
+    },
+    {
+      "name": "industry",
+      "type": "text",
+      "source": "Industry"
+    },
+    {
+      "name": "industry_id",
+      "type": "text",
+      "source": "IndustryId"
+    },
+    {
+      "name": "industry_niche",
+      "type": "text",
+      "source": "IndustryNiche"
+    },
+    {
+      "name": "industry_niche_id",
+      "type": "text",
+      "source": "IndustryNicheId"
+    },
+    {
+      "name": "persona",
+      "type": "text",
+      "source": "Persona"
+    },
+    {
+      "name": "persona_id",
+      "type": "text",
+      "source": "PersonaId"
+    },
+    {
+      "name": "company",
+      "type": "text",
+      "source": "Company"
+    },
+    {
+      "name": "company_id",
+      "type": "text",
+      "source": "CompanyId"
+    },
+    {
+      "name": "email",
+      "type": "text",
+      "source": "Email"
+    },
+    {
+      "name": "phone",
+      "type": "text",
+      "source": "Phone"
+    },
+    {
+      "name": "do_not_contact",
+      "type": "boolean",
+      "source": "DoNotContact"
+    },
+    {
+      "name": "do_not_email",
+      "type": "boolean",
+      "source": "DoNotEmail"
+    }
+  ]
+}
