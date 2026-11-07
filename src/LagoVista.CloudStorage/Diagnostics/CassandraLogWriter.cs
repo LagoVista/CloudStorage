@@ -60,15 +60,16 @@ namespace LagoVista.CloudStorage.Diagnostics
                 }
             }
 
-            // Scoped JobManager diagnostics are independent of the global verbose switch.
+            // Scoped diagnostics are independent of the global verbose switch.
             // Errors and non-verbose events are never gated here.
             if (!isError && IsVerbose(record.LogLevel))
             {
-                var isJobManagerDiagnostic = String.Equals(
-                    record.Tag, RuntimeControlCatalog.JobManagerDiagnostics, StringComparison.OrdinalIgnoreCase);
-                var controlKey = isJobManagerDiagnostic
-                    ? RuntimeControlCatalog.JobManagerDiagnostics
-                    : RuntimeControlCatalog.LoggingVerbose;
+                var controlKey = RuntimeControlCatalog.LoggingVerbose;
+                if (String.Equals(record.Tag, RuntimeControlCatalog.JobManagerDiagnostics, StringComparison.OrdinalIgnoreCase))
+                    controlKey = RuntimeControlCatalog.JobManagerDiagnostics;
+                else if (String.Equals(record.Tag, RuntimeControlCatalog.S3FileStorageDiagnostics, StringComparison.OrdinalIgnoreCase))
+                    controlKey = RuntimeControlCatalog.S3FileStorageDiagnostics;
+
                 if (_controls?.IsEnabled(controlKey) != true)
                     return;
             }
