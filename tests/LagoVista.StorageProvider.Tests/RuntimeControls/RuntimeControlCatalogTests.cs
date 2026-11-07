@@ -23,17 +23,17 @@ namespace LagoVista.StorageProvider.Tests.RuntimeControls
         }
 
         [TestMethod]
-        public void McpInstanceHealthChecks_IsRegisteredAsDefaultOffBoolean()
+        public void McpDiagnostics_IsRegisteredAsDefaultOffBoolean()
         {
-            var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.McpInstanceHealthChecks);
+            var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.McpDiagnostics);
 
-            Assert.AreEqual("MCP.Diagnostics.InstanceHealthChecks", definition.Key);
+            Assert.AreEqual("Mcp.Diagnostics", definition.Key);
             Assert.AreEqual("MCP Diagnostics", definition.Group);
             Assert.AreEqual("false", definition.DefaultValue);
             Assert.IsTrue(definition.IsBoolean);
             Assert.AreEqual(
-                "nuviot:runtime-controls:v1:mcp.diagnostics.instancehealthchecks",
-                RuntimeControlCatalog.StorageKey(RuntimeControlCatalog.McpInstanceHealthChecks));
+                "nuviot:runtime-controls:v1:mcp.diagnostics",
+                RuntimeControlCatalog.StorageKey(RuntimeControlCatalog.McpDiagnostics));
         }
 
         [TestMethod]
