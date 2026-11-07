@@ -32,6 +32,25 @@ public class HistoricalOperationalMigrationTests
     }
 
     [TestMethod]
+    public void OptionalFilterDoesNotChangeExistingMigrationDefinitionHash()
+    {
+        // Legacy completed passes rely on the SHA of the previously serialized definition.
+        // New optional fields must be omitted when absent.
+        var catalog = Catalog();
+        var legacy = catalog.LoadByKey("useradmin-access-log");
+        var filtered = catalog.LoadByKey("marketing-contact-phone-index");
+        var options = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)
+        {
+            PropertyNameCaseInsensitive = true,
+            WriteIndented = true
+        };
+        var legacyJson = System.Text.Json.JsonSerializer.Serialize(legacy, options);
+        var filteredJson = System.Text.Json.JsonSerializer.Serialize(filtered, options);
+        Assert.IsFalse(legacyJson.Contains("requiredNonEmptyField", StringComparison.OrdinalIgnoreCase));
+        Assert.IsTrue(filteredJson.Contains("requiredNonEmptyField", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [TestMethod]
     public void ContactProjectionPreservesIdentityAndOptOuts()
     {
         var definition = Catalog().LoadByKey("marketing-contact-dto");
