@@ -18,7 +18,8 @@ public sealed class AzureTableSourceDefinition
     public string TablePattern { get; set; } = String.Empty;
     public string RowKeyEquals { get; set; } = String.Empty;
     public string RowKeyPrefix { get; set; } = String.Empty;
-    public string RequiredNonEmptyField { get; set; } = String.Empty;
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public string? RequiredNonEmptyField { get; set; }
 }
 
 public sealed class CassandraTargetDefinition
