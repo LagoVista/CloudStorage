@@ -7,7 +7,7 @@ The operator app intentionally does not reference downstream business model asse
 Current migration paths and tooling:
 
 ```text
-Azure Table Storage -> Cassandra Activity Records
+Azure Table Storage -> Cassandra Activity and Operational Records
 Azure Blob Storage  -> SeaweedFS/S3
 ```
 
@@ -33,6 +33,33 @@ dotnet run -- migrate useradmin-access-log --catch-up
 ```
 
 `--catch-up` is accepted only after the current pass has completed.
+
+### Historical ContactDTO and sent-email lookup backfill
+
+The Cassandra runtime is already active in DEV. Azure retains the older records; there is no dual-write or cutover step in the backfill. Import contacts first, then the phone index, then sent-email cross-references:
+
+```powershell
+$env:MIGRATION_ENVIRONMENT = "dev"
+dotnet run -- catalog
+dotnet run -- validate marketing-contact-dto
+dotnet run -- probe marketing-contact-dto
+dotnet run -- migrate marketing-contact-dto --max-records 100
+dotnet run -- migrate marketing-contact-dto
+dotnet run -- verify marketing-contact-dto
+
+dotnet run -- probe marketing-contact-phone-index
+dotnet run -- migrate marketing-contact-phone-index
+dotnet run -- verify marketing-contact-phone-index
+
+dotnet run -- probe useradmin-sent-email-xref
+dotnet run -- migrate useradmin-sent-email-xref
+dotnet run -- verify useradmin-sent-email-xref
+```
+
+`probe` opens the Azure source and ensures/validates the Cassandra target schema (it may create missing tables or indexes, but does not copy rows). `--max-records` commits a bounded number of eligible records then keeps the checkpoint Running; invoke `migrate` again without a limit to finish. `verify` checks completed migration accounting against Azure source counts and no failed records; it does not independently count Cassandra rows. Check representative target records separately.
+
+Operational inserts use Cassandra `IF NOT EXISTS` to preserve any post-cutover rows already written by the live service. For these imports, "Records written" means source rows successfully processed/attempted, including rows that already exist at the target. Contact phone-index import only includes contacts with a nonempty `Phone` field. The historical `SentEmailHistoryDTO` event stream is not part of these three definitions.
+
 
 ## Azure Blob -> S3
 
@@ -83,7 +110,7 @@ Object migration behavior:
 
 ## Azure source connections
 
-Definitions keep a logical `source.connection` label to describe the workload, but Azure Storage credentials come from the standard CloudStorage `TestConnections` settings.
+Definitions select the Azure Storage account by `source.connection`, using the standard CloudStorage `TestConnections` DEV/PROD settings as defaults. No separate `MIGRATION_AZURE_*` credential namespace is required.
 
 Set `MIGRATION_ENVIRONMENT=dev` to use:
 
@@ -101,9 +128,16 @@ PROD_TS_STORAGE_ACCOUNT_ID
 PROD_TS_STORAGE_ACCOUNT_ACCESS_KEY
 ```
 
-The same Azure Storage account credentials are currently used by the object migration path for Blob service access. If historical blobs are found in additional Azure Storage accounts, add those as explicit migration source connections rather than embedding credentials in migration definitions.
+The `access-log` and default Azure source still use that DEV/PROD table account. When Marketing or UserAdmin data lives in another Azure Storage account, set **both** source-specific variables for the selected environment:
 
-The migration utility does not maintain a separate `MIGRATION_AZURE_*` credential namespace.
+```text
+DEV_MARKETING_TS_STORAGE_ACCOUNT_ID
+DEV_MARKETING_TS_STORAGE_ACCOUNT_ACCESS_KEY
+DEV_USER_TS_STORAGE_ACCOUNT_ID
+DEV_USER_TS_STORAGE_ACCOUNT_ACCESS_KEY
+```
+
+Use the same names with `PROD_` for production. `marketing-storage` resolves the `MARKETING` pair, and `user-storage` resolves the `USER` pair. An absent pair falls back to `TestConnections.DevTableStorageDB` / `ProductionTableStorageDB`; a half-configured pair fails with a clear error instead of silently mixing credentials. The Azure Blob migration continues to use the default table account. No source credentials or connection strings belong in the JSON definitions.
 
 ## SeaweedFS / S3 target
 
@@ -171,11 +205,14 @@ Because this operator app normally runs outside Kubernetes while only one Mongo 
 
 ## Definitions
 
-The first migrated structured definitions are:
+Structured definitions include:
 
 ```text
 useradmin-access-log
 useradmin-authentication-log
+marketing-contact-dto
+marketing-contact-phone-index
+useradmin-sent-email-xref
 ```
 
 A structured definition contains the source table/table pattern, target table, partition fields, time bucket, indexes, TTL, field mappings, target field types, and mapping transforms. The engine and writer do not require the downstream CLR record type.
