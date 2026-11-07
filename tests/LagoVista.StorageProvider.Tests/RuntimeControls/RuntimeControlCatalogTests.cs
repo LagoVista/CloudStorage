@@ -51,6 +51,21 @@ namespace LagoVista.StorageProvider.Tests.RuntimeControls
         }
 
         [TestMethod]
+        public void S3FileStorageDiagnostics_IsRegisteredAsDefaultOffBoolean()
+        {
+            var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.S3FileStorageDiagnostics);
+
+            Assert.AreEqual("CloudStorage.Diagnostics.S3FileStorage", definition.Key);
+            Assert.AreEqual("Cloud Storage", definition.Group);
+            Assert.AreEqual("false", definition.DefaultValue);
+            Assert.IsTrue(definition.IsBoolean);
+            Assert.AreEqual("true", RuntimeControlCatalog.NormalizeValue(definition, "TRUE"));
+            Assert.AreEqual(
+                "nuviot:runtime-controls:v1:cloudstorage.diagnostics.s3filestorage",
+                RuntimeControlCatalog.StorageKey(RuntimeControlCatalog.S3FileStorageDiagnostics));
+        }
+
+        [TestMethod]
         public void WebRequestTiming_RejectsInvalidBooleanValues()
         {
             var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.WebRequestTiming);
