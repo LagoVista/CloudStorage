@@ -1,4 +1,5 @@
 using LagoVista.CloudStorage.Interfaces.ConnectionSettings;
+using LagoVista.CloudStorage.RuntimeControls;
 using LagoVista.CloudStorage.Storage;
 using LagoVista.CloudStorage.Storage.StorageProviders.File;
 using LagoVista.IoT.Logging.Loggers;
@@ -26,6 +27,42 @@ namespace LagoVista.StorageProvider.Tests.S3
         {
             _settings = new TestS3Settings();
             _logger = Mock.Of<IAdminLogger>();
+        }
+
+        [TestMethod]
+        public async Task RoutineS3Logs_FollowRuntimeControlWithoutGlobalVerbose()
+        {
+            var enabled = false;
+            var controls = new Mock<IRuntimeControlService>();
+            controls.Setup(control => control.IsEnabled(RuntimeControlCatalog.S3FileStorageDiagnostics))
+                .Returns(() => enabled);
+            var logger = new Mock<IAdminLogger>();
+            var client = new S3CloudFileStorageClient(_settings, logger.Object, controls.Object);
+            var fileName = $"diagnostics/{Guid.NewGuid():N}.txt";
+            var expected = Encoding.UTF8.GetBytes("S3 diagnostics");
+
+            var added = await client.AddFileAsync(ContainerName, fileName, expected);
+            Assert.IsTrue(added.Successful);
+            Assert.AreEqual(0, RoutineLogCount(logger));
+
+            enabled = true;
+            var read = await client.GetFileAsync(ContainerName, fileName);
+            Assert.IsTrue(read.Successful);
+            CollectionAssert.AreEqual(expected, read.Result);
+            Assert.AreEqual(2, RoutineLogCount(logger));
+
+            enabled = false;
+            var deleted = await client.DeleteFileAsync(ContainerName, fileName);
+            Assert.IsTrue(deleted.Successful);
+            Assert.AreEqual(2, RoutineLogCount(logger));
+        }
+
+        private static int RoutineLogCount(Mock<IAdminLogger> logger)
+        {
+            return logger.Invocations.Count(invocation =>
+                invocation.Method.Name == nameof(IAdminLogger.AddCustomEvent) &&
+                Equals(invocation.Arguments[0], LagoVista.Core.PlatformSupport.LogLevel.Verbose) &&
+                Equals(invocation.Arguments[1], RuntimeControlCatalog.S3FileStorageDiagnostics));
         }
 
         [TestMethod]
