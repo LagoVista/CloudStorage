@@ -32,6 +32,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageMigration", "Apps\St
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LagoVista.StorageProvider.Tests", "tests\LagoVista.StorageProvider.Tests\LagoVista.StorageProvider.Tests.csproj", "{F38FC923-9105-3C5A-CF02-E1D980D56DA7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StorageMigration.Tests", "tests\StorageMigration.Tests\StorageMigration.Tests.csproj", "{B093F1D6-9D11-4BF6-9B2F-6EA039A0FCD4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,6 +76,10 @@ Global
 		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F38FC923-9105-3C5A-CF02-E1D980D56DA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B093F1D6-9D11-4BF6-9B2F-6EA039A0FCD4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B093F1D6-9D11-4BF6-9B2F-6EA039A0FCD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B093F1D6-9D11-4BF6-9B2F-6EA039A0FCD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B093F1D6-9D11-4BF6-9B2F-6EA039A0FCD4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -86,6 +92,7 @@ Global
 		{5E560BF7-DDB9-43C3-A184-376ED402AA43} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 		{611832C7-3E25-EF1E-7A3B-29E133F3B90E} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 		{F38FC923-9105-3C5A-CF02-E1D980D56DA7} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
+		{B093F1D6-9D11-4BF6-9B2F-6EA039A0FCD4} = {D84552C4-16AC-44EC-B822-7C55B8561B66}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BA819EEE-F150-4AD6-94DD-8B2FE92A86EE}
