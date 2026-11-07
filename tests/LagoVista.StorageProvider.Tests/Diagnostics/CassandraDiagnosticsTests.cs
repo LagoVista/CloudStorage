@@ -239,6 +239,37 @@ namespace LagoVista.StorageProvider.Tests.Diagnostics
         }
 
         [TestMethod]
+        public async Task Writer_AgentPipelineDiagnosticsUseOnlyTheirScopedFlag_AndPreserveWarningsAndErrors()
+        {
+            var store = new Mock<IActivityRecordStore<DiagnosticLogActivityRecord>>();
+            store.Setup(x => x.InsertAsync(It.IsAny<DiagnosticLogActivityRecord>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            var enabled = false;
+            var controls = new Mock<IRuntimeControlService>();
+            controls.Setup(x => x.IsEnabled(RuntimeControlCatalog.AgentPipelineDiagnostics)).Returns(() => enabled);
+            controls.Setup(x => x.IsEnabled(RuntimeControlCatalog.LoggingVerbose)).Returns(true);
+            var writer = new CassandraLogWriter(store.Object, controls.Object, "api-host", "DEV", writeConsole: false);
+
+            await writer.WriteEvent(new LogRecord { LogLevel = "Verbose", Tag = RuntimeControlCatalog.AgentPipelineDiagnostics, Message = "Started" });
+            store.Verify(x => x.InsertAsync(It.IsAny<DiagnosticLogActivityRecord>(), It.IsAny<CancellationToken>()), Times.Never);
+
+            enabled = true;
+            await writer.WriteEvent(new LogRecord { LogLevel = "Verbose", Tag = RuntimeControlCatalog.AgentPipelineDiagnostics, Message = "Started" });
+            enabled = false;
+            await writer.WriteEvent(new LogRecord { LogLevel = "Verbose", Tag = RuntimeControlCatalog.AgentPipelineDiagnostics, Message = "Started" });
+
+            store.Verify(x => x.InsertAsync(It.Is<DiagnosticLogActivityRecord>(r =>
+                r.Tag == RuntimeControlCatalog.AgentPipelineDiagnostics && r.LogLevel == "Verbose"),
+                It.IsAny<CancellationToken>()), Times.Once);
+            controls.Verify(x => x.IsEnabled(RuntimeControlCatalog.LoggingVerbose), Times.Never);
+
+            await writer.WriteEvent(new LogRecord { LogLevel = "Warning", Tag = RuntimeControlCatalog.AgentPipelineDiagnostics, Message = "Retry" });
+            await writer.WriteError(new LogRecord { LogLevel = "Error", Tag = RuntimeControlCatalog.AgentPipelineDiagnostics, Message = "Failure" });
+            store.Verify(x => x.InsertAsync(It.Is<DiagnosticLogActivityRecord>(r => r.LogLevel == "Warning"), It.IsAny<CancellationToken>()), Times.Once);
+            store.Verify(x => x.InsertAsync(It.Is<DiagnosticLogActivityRecord>(r => r.LogLevel == "Error"), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [TestMethod]
         public async Task Reader_RejectsMissingScopeAndUnboundedQueries()
         {
             var store = new Mock<IActivityRecordStore<DiagnosticLogActivityRecord>>();

@@ -67,6 +67,19 @@ namespace LagoVista.StorageProvider.Tests.RuntimeControls
         }
 
         [TestMethod]
+        public void AgentPipelineDiagnostics_IsRegisteredAsDefaultOffBoolean()
+        {
+            var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.AgentPipelineDiagnostics);
+            Assert.AreEqual("AI.Diagnostics.AgentPipeline", definition.Key);
+            Assert.AreEqual("AI", definition.Group);
+            Assert.AreEqual("false", definition.DefaultValue);
+            Assert.IsTrue(definition.IsBoolean);
+            Assert.IsTrue(definition.VisibleInAdmin);
+            Assert.AreEqual("nuviot:runtime-controls:v1:ai.diagnostics.agentpipeline",
+                RuntimeControlCatalog.StorageKey(RuntimeControlCatalog.AgentPipelineDiagnostics));
+        }
+
+        [TestMethod]
         public void S3FileStorageDiagnostics_IsRegisteredAsDefaultOffBoolean()
         {
             var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.S3FileStorageDiagnostics);
