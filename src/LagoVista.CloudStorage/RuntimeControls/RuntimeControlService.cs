@@ -35,6 +35,7 @@ namespace LagoVista.CloudStorage.RuntimeControls
         public const string SlowQueryThreshold = "CloudStorage.Diagnostics.SlowQueryThresholdMs";
         public const string LoggingVerbose = "Logging.Diagnostics.Verbose";
         public const string WebRequestTiming = "Web.Diagnostics.RequestTiming";
+        public const string McpInstanceHealthChecks = "MCP.Diagnostics.InstanceHealthChecks";
         public const string Prefix = "nuviot:runtime-controls:v1:";
 
         public static readonly IReadOnlyList<RuntimeControlDefinition> Definitions =
@@ -45,7 +46,8 @@ namespace LagoVista.CloudStorage.RuntimeControls
                 new RuntimeControlDefinition { Key = CacheProviderDiagnostics, Group = "Cloud Storage", Description = "Log routine CacheProvider reads, writes, hits, misses and invalidations.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = SlowQueryThreshold, Group = "Cloud Storage", Description = "Slow query threshold in milliseconds.", DefaultValue = "500", IsBoolean = false },
                 new RuntimeControlDefinition { Key = LoggingVerbose, Group = "Logging", Description = "Persist verbose trace, debug, and JSON diagnostic events to Cassandra.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = WebRequestTiming, Group = "Web Server", Description = "Log routine Portal HTTP request timings. Exceptions and slow requests remain logged.", DefaultValue = "false" }
+                new RuntimeControlDefinition { Key = WebRequestTiming, Group = "Web Server", Description = "Log routine Portal HTTP request timings. Exceptions and slow requests remain logged.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = McpInstanceHealthChecks, Group = "MCP Diagnostics", Description = "Log routine completed MCP instance health checks. Failures are always logged.", DefaultValue = "false" }
             }.AsReadOnly();
 
         public static RuntimeControlDefinition Find(string key)
