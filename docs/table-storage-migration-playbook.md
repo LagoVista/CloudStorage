@@ -6,7 +6,7 @@ This document is intended to be the starting point for future migration sessions
 
 ## Starting prompt for a future session
 
-> Read `docs/table-storage-migration-playbook.md` in `LagoVista/CloudStorage` and follow it for this migration. Convert the requested Table Storage repository to the appropriate semantic store, keep the storage definition beside the repository, preserve only supported query semantics, and produce/update the AppSupport migration catalog definition for historical data.
+> Read `docs/table-storage-migration-playbook.md` in `LagoVista/CloudStorage` and follow it for this migration. Convert the requested Table Storage repository to the appropriate semantic store, keep the storage definition beside the repository, preserve only supported query semantics, and produce/update the CloudStorage migration catalog definition for historical data.
 
 ## Core rule
 
@@ -319,12 +319,14 @@ Runtime conversion and historical-data migration are separate concerns.
 
 The application should switch to the semantic store without containing Azure-to-Cassandra migration logic.
 
-Historical migration lives downstream in:
+Historical migration is owned by:
 
 ```text
-nuviot/appsupport
-src/LagoVista.StorageMigration
+LagoVista/CloudStorage
+Apps/StorageMigration
 ```
+
+The older `nuviot/appsupport/src/LagoVista.StorageMigration` tool is retained only for legacy uses, not as the authority for new migration definitions.
 
 ### Migration is definition-driven
 
@@ -419,7 +421,7 @@ The runtime writer and migration definition must agree on this convention.
 
 Migration progress must be durable and resumable.
 
-The intended state store is the semantic Scratch mechanism.
+The CloudStorage operator stores migration checkpoints through `ApplicationDataMigrationStateStore` (Application Data MongoDB).
 
 Migration state should include at least:
 
@@ -468,6 +470,8 @@ For activity records the cutover can be intentionally simple:
 7. preserve Azure source until migration verification/rollback window is complete
 
 If historical completeness from the exact switchover instant matters, run a final delta/head pass before or immediately around cutover.
+
+For mutable Cassandra operational records where a temporary historical-read gap is acceptable, **cutover-first** is also supported: deploy the Cassandra writer, leave Azure as the untouched historical source, then import later with Cassandra `IF NOT EXISTS` so legacy rows cannot overwrite newer data. Preserve the original Azure tables and verify a representative sample. The contact and sent-email cross-reference migrations use this variant.
 
 Do not build dual-write behavior by default. It adds complexity and creates reconciliation problems unless the migration specifically requires it.
 
@@ -551,10 +555,10 @@ LagoVista/UserAdmin
     AccessLog / AccessLogRepo
     AuthenticationLog / AuthenticationLogRepo
 
-nuviot/appsupport
-    LagoVista.StorageMigration
-    access-log.json
-    authentication-log.json
+LagoVista/CloudStorage
+    Apps/StorageMigration
+    access-log.json / authentication-log.json
+    contact-dto.json / contact-phone-index.json / sent-email-xref.json
 ```
 
 Use these as reference implementations, but inspect current master before copying code because storage infrastructure may evolve.
