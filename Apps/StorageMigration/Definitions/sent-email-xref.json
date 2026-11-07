@@ -1,0 +1,66 @@
+{
+  "key": "useradmin-sent-email-xref",
+  "displayName": "useradmin sent email xref",
+  "description": "Preserve external SendGrid message to organization/sent email row-key resolution.",
+  "source": {
+    "type": "azure-table",
+    "connection": "user-storage",
+    "tableName": "SentEmailXRefDTO"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "sent_email_x_ref_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "text",
+      "source": "RowKey",
+      "required": true
+    },
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "RowKey",
+      "required": true
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "last_updated_date",
+      "type": "timestamp",
+      "sources": [
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "sent_email_organization_id",
+      "type": "text",
+      "source": "PartitionKey",
+      "required": true
+    },
+    {
+      "name": "sent_email_row_key",
+      "type": "text",
+      "source": "SentEmailRowKey",
+      "required": true
+    }
+  ]
+}
