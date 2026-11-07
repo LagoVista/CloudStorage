@@ -37,6 +37,20 @@ namespace LagoVista.StorageProvider.Tests.RuntimeControls
         }
 
         [TestMethod]
+        public void JobManagerDiagnostics_IsRegisteredAsDefaultOffBoolean()
+        {
+            var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.JobManagerDiagnostics);
+
+            Assert.AreEqual("JobManager.Diagnostics", definition.Key);
+            Assert.AreEqual("Job Manager", definition.Group);
+            Assert.AreEqual("false", definition.DefaultValue);
+            Assert.IsTrue(definition.IsBoolean);
+            Assert.AreEqual(
+                "nuviot:runtime-controls:v1:jobmanager.diagnostics",
+                RuntimeControlCatalog.StorageKey(RuntimeControlCatalog.JobManagerDiagnostics));
+        }
+
+        [TestMethod]
         public void WebRequestTiming_RejectsInvalidBooleanValues()
         {
             var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.WebRequestTiming);

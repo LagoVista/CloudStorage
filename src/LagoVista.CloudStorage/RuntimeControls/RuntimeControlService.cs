@@ -36,6 +36,7 @@ namespace LagoVista.CloudStorage.RuntimeControls
         public const string LoggingVerbose = "Logging.Diagnostics.Verbose";
         public const string WebRequestTiming = "Web.Diagnostics.RequestTiming";
         public const string McpDiagnostics = "Mcp.Diagnostics";
+        public const string JobManagerDiagnostics = "JobManager.Diagnostics";
         public const string Prefix = "nuviot:runtime-controls:v1:";
 
         public static readonly IReadOnlyList<RuntimeControlDefinition> Definitions =
@@ -47,7 +48,8 @@ namespace LagoVista.CloudStorage.RuntimeControls
                 new RuntimeControlDefinition { Key = SlowQueryThreshold, Group = "Cloud Storage", Description = "Slow query threshold in milliseconds.", DefaultValue = "500", IsBoolean = false },
                 new RuntimeControlDefinition { Key = LoggingVerbose, Group = "Logging", Description = "Persist verbose trace, debug, and JSON diagnostic events to Cassandra.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = WebRequestTiming, Group = "Web Server", Description = "Log routine Portal HTTP request timings. Exceptions and slow requests remain logged.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = McpDiagnostics, Group = "MCP Diagnostics", Description = "Enable detailed MCP health monitor cycles and cAdvisor retry diagnostics. Final failures are always logged.", DefaultValue = "false" }
+                new RuntimeControlDefinition { Key = McpDiagnostics, Group = "MCP Diagnostics", Description = "Enable detailed MCP health monitor cycles and cAdvisor retry diagnostics. Final failures are always logged.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = JobManagerDiagnostics, Group = "Job Manager", Description = "Log routine job scheduling, polling, dispatch, and lifecycle traces. Warnings, errors, and exceptions remain enabled.", DefaultValue = "false" }
             }.AsReadOnly();
 
         public static RuntimeControlDefinition Find(string key)
