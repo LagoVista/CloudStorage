@@ -5,6 +5,7 @@ using LagoVista.IoT.Logging.Models;
 using LagoVista.IoT.Logging.Utils;
 using System;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace LagoVista.CloudStorage.Diagnostics
 {
@@ -17,6 +18,9 @@ namespace LagoVista.CloudStorage.Diagnostics
         private readonly IActivityRecordStore<DiagnosticLogActivityRecord> _store;
         private readonly IRuntimeControlService _controls;
         private readonly ConsoleLogWriter _console = new ConsoleLogWriter();
+        private readonly bool _writeConsole;
+        private int _firstPersisted;
+        private int _reportedPersistenceFailure;
         private readonly string _application;
         private readonly string _environment;
         private readonly string _version;
@@ -26,13 +30,15 @@ namespace LagoVista.CloudStorage.Diagnostics
             IRuntimeControlService controls,
             string application,
             string environment,
-            string version = null)
+            string version = null,
+            bool writeConsole = true)
         {
             _store = store ?? throw new ArgumentNullException(nameof(store));
             _controls = controls;
             _application = !String.IsNullOrWhiteSpace(application) ? application : throw new ArgumentNullException(nameof(application));
             _environment = !String.IsNullOrWhiteSpace(environment) ? environment : throw new ArgumentNullException(nameof(environment));
             _version = version;
+            _writeConsole = writeConsole;
         }
 
         public Task WriteError(LogRecord record) => WriteAsync(record, isError: true);
@@ -41,14 +47,17 @@ namespace LagoVista.CloudStorage.Diagnostics
         private async Task WriteAsync(LogRecord record, bool isError)
         {
             if (record == null) throw new ArgumentNullException(nameof(record));
-            try
+            if (_writeConsole)
             {
-                if (isError) await _console.WriteError(record).ConfigureAwait(false);
-                else await _console.WriteEvent(record).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine($"[CassandraLogWriter__Console] {ex.GetType().Name}: {ex.Message}");
+                try
+                {
+                    if (isError) await _console.WriteError(record).ConfigureAwait(false);
+                    else await _console.WriteEvent(record).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[CassandraLogWriter__Console] {ex.GetType().Name}: {ex.Message}");
+                }
             }
 
             // Routine verbose diagnostics are opt-in; never gate errors or ordinary events.
@@ -60,10 +69,15 @@ namespace LagoVista.CloudStorage.Diagnostics
             {
                 var activity = DiagnosticLogActivityRecord.FromLogRecord(record, _application, _environment, _version);
                 await _store.InsertAsync(activity).ConfigureAwait(false);
+                Interlocked.Exchange(ref _reportedPersistenceFailure, 0);
+                if (Interlocked.Exchange(ref _firstPersisted, 1) == 0)
+                    Console.WriteLine($"[CassandraLogWriter__Persist] First Cassandra record accepted; Application={_application}; Environment={_environment}; RetentionHours=48");
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[CassandraLogWriter__Persist] Id={record.Id}; {ex.GetType().Name}: {ex.Message}");
+                // Log one failure per outage; the sink must never trigger recursive logging.
+                if (Interlocked.Exchange(ref _reportedPersistenceFailure, 1) == 0)
+                    Console.Error.WriteLine($"[CassandraLogWriter__Persist] {ex.GetType().Name}: {ex.Message}");
             }
         }
 

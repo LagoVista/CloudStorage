@@ -13,7 +13,7 @@ namespace LagoVista.CloudStorage.Diagnostics
     public static class CassandraDiagnosticsRegistration
     {
         public static IServiceCollection AddCassandraDiagnostics(
-            this IServiceCollection services, string application, string environment, string version = null)
+            this IServiceCollection services, string application, string environment, string version = null, bool writeConsole = true)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
             if (String.IsNullOrWhiteSpace(application)) throw new ArgumentNullException(nameof(application));
@@ -28,10 +28,11 @@ namespace LagoVista.CloudStorage.Diagnostics
                 .RetainFor(TimeSpan.FromHours(48)));
 
             services.AddScoped<IDiagnosticLogReader, CassandraDiagnosticLogReader>();
-            services.AddScoped<ILogWriter>(provider => new CassandraLogWriter(
+            services.AddScoped<CassandraLogWriter>(provider => new CassandraLogWriter(
                 provider.GetRequiredService<IActivityRecordStore<DiagnosticLogActivityRecord>>(),
                 provider.GetService<IRuntimeControlService>(),
-                application, environment, version));
+                application, environment, version, writeConsole));
+            services.AddScoped<ILogWriter>(provider => provider.GetRequiredService<CassandraLogWriter>());
 
             return services;
         }
