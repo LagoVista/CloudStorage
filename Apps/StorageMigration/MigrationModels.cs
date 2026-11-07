@@ -18,6 +18,7 @@ public sealed class AzureTableSourceDefinition
     public string TablePattern { get; set; } = String.Empty;
     public string RowKeyEquals { get; set; } = String.Empty;
     public string RowKeyPrefix { get; set; } = String.Empty;
+    public string RequiredNonEmptyField { get; set; } = String.Empty;
 }
 
 public sealed class CassandraTargetDefinition
