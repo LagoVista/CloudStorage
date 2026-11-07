@@ -40,6 +40,7 @@ namespace LagoVista.CloudStorage.RuntimeControls
         public const string WebRequestTiming = "Web.Diagnostics.RequestTiming";
         public const string McpDiagnostics = "Mcp.Diagnostics";
         public const string JobManagerDiagnostics = "JobManager.Diagnostics";
+        public const string NotificationSenderDiagnostics = "Deployments.Diagnostics.NotificationSender";
         public const string Prefix = "nuviot:runtime-controls:v1:";
 
         public static readonly IReadOnlyList<RuntimeControlDefinition> Definitions =
@@ -53,7 +54,8 @@ namespace LagoVista.CloudStorage.RuntimeControls
                 new RuntimeControlDefinition { Key = LoggingVerbose, Title = "Verbose Cassandra diagnostics", Group = "Logging", Description = "Store Trace, Debug, and JSON diagnostic events in Cassandra for 48 hours. Errors and ordinary events remain enabled.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = WebRequestTiming, Title = "Portal request timing", Group = "Web Server", Description = "Log routine HTTP request timing events for the Portal. Exceptions and slow-request diagnostics always remain enabled.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = McpDiagnostics, Title = "MCP diagnostics", Group = "MCP Diagnostics", Description = "Enable detailed MCP health monitor cycles and cAdvisor retry diagnostics. Final failures are always logged.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = JobManagerDiagnostics, Title = "JobManager diagnostics", Group = "Job Manager", Description = "Capture detailed JobManager activity in Cassandra without global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" }
+                new RuntimeControlDefinition { Key = JobManagerDiagnostics, Title = "JobManager diagnostics", Group = "Job Manager", Description = "Capture detailed JobManager activity in Cassandra without global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = NotificationSenderDiagnostics, Title = "Notification sender diagnostics", Group = "Deployments", Description = "Trace recipient selection, distribution lists, notification routing and sending independently of global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" }
             }.AsReadOnly();
 
         public static RuntimeControlDefinition Find(string key)
