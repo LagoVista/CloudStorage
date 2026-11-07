@@ -60,10 +60,6 @@ public static class MigrationConnections
 
     private static LagoVista.Core.Models.ConnectionSettings AzureStorageSettings(string? logicalConnection = null)
     {
-        var baseline = String.Equals(EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase)
-            ? TestConnections.ProductionTableStorageDB
-            : TestConnections.DevTableStorageDB;
-
         // Existing CloudStorage DEV/PROD table credentials remain the default.
         // Source-specific overrides are optional when Marketing or UserAdmin used a distinct account.
         var sourcePrefix = logicalConnection?.Trim().ToLowerInvariant() switch
@@ -72,23 +68,27 @@ public static class MigrationConnections
             "user-storage" => "USER",
             _ => null
         };
-        if (sourcePrefix == null) return baseline;
-
         var prefix = EnvironmentName.ToUpperInvariant();
         var accountName = prefix + "_" + sourcePrefix + "_TS_STORAGE_ACCOUNT_ID";
         var accessKeyName = prefix + "_" + sourcePrefix + "_TS_STORAGE_ACCOUNT_ACCESS_KEY";
         var accountId = Optional(accountName);
         var accessKey = Optional(accessKeyName);
 
-        if (accountId == null && accessKey == null) return baseline;
-        if (accountId == null || accessKey == null)
-            throw new InvalidOperationException($"Azure source '{logicalConnection}' must provide both {accountName} and {accessKeyName} when overriding the default table storage account.");
-
-        return new LagoVista.Core.Models.ConnectionSettings
+        if (accountId != null || accessKey != null)
         {
-            AccountId = accountId,
-            AccessKey = accessKey
-        };
+            if (accountId == null || accessKey == null)
+                throw new InvalidOperationException($"Azure source '{logicalConnection}' must provide both {accountName} and {accessKeyName} when overriding the default table storage account.");
+
+            return new LagoVista.Core.Models.ConnectionSettings
+            {
+                AccountId = accountId,
+                AccessKey = accessKey
+            };
+        }
+
+        return String.Equals(EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase)
+            ? TestConnections.ProductionTableStorageDB
+            : TestConnections.DevTableStorageDB;
     }
 
     private static string? Optional(string name)
