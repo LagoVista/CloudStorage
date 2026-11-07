@@ -13,10 +13,12 @@ namespace LagoVista.CloudStorage.RuntimeControls
     public sealed class RuntimeControlDefinition
     {
         public string Key { get; set; }
+        public string Title { get; set; }
         public string Group { get; set; }
         public string Description { get; set; }
         public string DefaultValue { get; set; }
         public bool IsBoolean { get; set; } = true;
+        public bool VisibleInAdmin { get; set; } = true;
     }
 
     public sealed class RuntimeControlState
@@ -43,15 +45,15 @@ namespace LagoVista.CloudStorage.RuntimeControls
         public static readonly IReadOnlyList<RuntimeControlDefinition> Definitions =
             new List<RuntimeControlDefinition>
             {
-                new RuntimeControlDefinition { Key = Diagnostics, Group = "Cloud Storage", Description = "Log routine document operations.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = MongoQueries, Group = "Cloud Storage", Description = "Log MongoDB query details.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = CacheProviderDiagnostics, Group = "Cloud Storage", Description = "Log routine CacheProvider reads, writes, hits, misses and invalidations.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = S3FileStorageDiagnostics, Group = "Cloud Storage", Description = "Log routine S3 file uploads, reads and deletes. Retries, warnings, errors and exceptions remain logged.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = SlowQueryThreshold, Group = "Cloud Storage", Description = "Slow query threshold in milliseconds.", DefaultValue = "500", IsBoolean = false },
-                new RuntimeControlDefinition { Key = LoggingVerbose, Group = "Logging", Description = "Persist verbose trace, debug, and JSON diagnostic events to Cassandra.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = WebRequestTiming, Group = "Web Server", Description = "Log routine Portal HTTP request timings. Exceptions and slow requests remain logged.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = McpDiagnostics, Group = "MCP Diagnostics", Description = "Enable detailed MCP health monitor cycles and cAdvisor retry diagnostics. Final failures are always logged.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = JobManagerDiagnostics, Group = "Job Manager", Description = "Log routine job scheduling, polling, dispatch, and lifecycle traces. Warnings, errors, and exceptions remain enabled.", DefaultValue = "false" }
+                new RuntimeControlDefinition { Key = Diagnostics, Title = "Document diagnostics", Group = "Cloud Storage", Description = "Trace routine document reads, writes, deletes, and queries. Errors are always logged.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = MongoQueries, Title = "Mongo query diagnostics", Group = "Cloud Storage", Description = "Include detailed MongoDB queries in storage diagnostics.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = CacheProviderDiagnostics, Title = "CacheProvider diagnostics", Group = "Cloud Storage", Description = "Trace routine cache lookups, misses, writes, and invalidations. Errors stay enabled.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = S3FileStorageDiagnostics, Title = "S3 file storage diagnostics", Group = "Cloud Storage", Description = "Trace S3 uploads, downloads and deletes. Retry warnings, errors and exceptions stay enabled.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = SlowQueryThreshold, Title = "Slow query threshold", Group = "Cloud Storage", Description = "Slow query threshold in milliseconds (not yet wired).", DefaultValue = "500", IsBoolean = false, VisibleInAdmin = false },
+                new RuntimeControlDefinition { Key = LoggingVerbose, Title = "Verbose Cassandra diagnostics", Group = "Logging", Description = "Store Trace, Debug, and JSON diagnostic events in Cassandra for 48 hours. Errors and ordinary events remain enabled.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = WebRequestTiming, Title = "Portal request timing", Group = "Web Server", Description = "Log routine HTTP request timing events for the Portal. Exceptions and slow-request diagnostics always remain enabled.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = McpDiagnostics, Title = "MCP diagnostics", Group = "MCP Diagnostics", Description = "Enable detailed MCP health monitor cycles and cAdvisor retry diagnostics. Final failures are always logged.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = JobManagerDiagnostics, Title = "JobManager diagnostics", Group = "Job Manager", Description = "Capture detailed JobManager activity in Cassandra without global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" }
             }.AsReadOnly();
 
         public static RuntimeControlDefinition Find(string key)
