@@ -52,6 +52,21 @@ namespace LagoVista.StorageProvider.Tests.RuntimeControls
         }
 
         [TestMethod]
+        public void NotificationSenderDiagnostics_IsRegisteredAsDefaultOffBoolean()
+        {
+            var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.NotificationSenderDiagnostics);
+
+            Assert.AreEqual("Deployments.Diagnostics.NotificationSender", definition.Key);
+            Assert.AreEqual("Deployments", definition.Group);
+            Assert.AreEqual("false", definition.DefaultValue);
+            Assert.IsTrue(definition.IsBoolean);
+            Assert.IsTrue(definition.VisibleInAdmin);
+            Assert.AreEqual(
+                "nuviot:runtime-controls:v1:deployments.diagnostics.notificationsender",
+                RuntimeControlCatalog.StorageKey(RuntimeControlCatalog.NotificationSenderDiagnostics));
+        }
+
+        [TestMethod]
         public void S3FileStorageDiagnostics_IsRegisteredAsDefaultOffBoolean()
         {
             var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.S3FileStorageDiagnostics);
