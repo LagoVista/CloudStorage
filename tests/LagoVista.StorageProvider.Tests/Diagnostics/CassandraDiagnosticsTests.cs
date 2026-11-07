@@ -86,6 +86,62 @@ namespace LagoVista.StorageProvider.Tests.Diagnostics
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
+        [DataTestMethod]
+        [DataRow("Verbose")]
+        [DataRow("Trace")]
+        public async Task Writer_PersistsJobManagerDiagnosticsWithoutGlobalVerbose(string level)
+        {
+            var store = new Mock<IActivityRecordStore<DiagnosticLogActivityRecord>>();
+            store.Setup(x => x.InsertAsync(It.IsAny<DiagnosticLogActivityRecord>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            var controls = new Mock<IRuntimeControlService>();
+            controls.Setup(x => x.IsEnabled(RuntimeControlCatalog.JobManagerDiagnostics)).Returns(true);
+            controls.Setup(x => x.IsEnabled(RuntimeControlCatalog.LoggingVerbose)).Returns(false);
+            var writer = new CassandraLogWriter(store.Object, controls.Object, "api-host", "DEV", writeConsole: false);
+
+            await writer.WriteEvent(new LogRecord
+            {
+                LogLevel = level,
+                Tag = RuntimeControlCatalog.JobManagerDiagnostics,
+                Message = "Job invocation claimed"
+            });
+            await writer.WriteEvent(new LogRecord { LogLevel = level, Tag = "Other.Diagnostics", Message = "Other trace" });
+
+            store.Verify(x => x.InsertAsync(It.Is<DiagnosticLogActivityRecord>(r =>
+                r.Tag == RuntimeControlCatalog.JobManagerDiagnostics && r.LogLevel == level),
+                It.IsAny<CancellationToken>()), Times.Once);
+            store.Verify(x => x.InsertAsync(It.IsAny<DiagnosticLogActivityRecord>(), It.IsAny<CancellationToken>()), Times.Once);
+            controls.Verify(x => x.IsEnabled(RuntimeControlCatalog.LoggingVerbose), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task Writer_JobManagerDiagnosticsStayOffWhenGlobalVerboseIsOn()
+        {
+            var store = new Mock<IActivityRecordStore<DiagnosticLogActivityRecord>>();
+            store.Setup(x => x.InsertAsync(It.IsAny<DiagnosticLogActivityRecord>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            var controls = new Mock<IRuntimeControlService>();
+            controls.Setup(x => x.IsEnabled(RuntimeControlCatalog.JobManagerDiagnostics)).Returns(false);
+            controls.Setup(x => x.IsEnabled(RuntimeControlCatalog.LoggingVerbose)).Returns(true);
+            var writer = new CassandraLogWriter(store.Object, controls.Object, "api-host", "DEV", writeConsole: false);
+
+            await writer.WriteEvent(new LogRecord
+            {
+                LogLevel = "Verbose",
+                Tag = RuntimeControlCatalog.JobManagerDiagnostics,
+                Message = "Job invocation claimed"
+            });
+            await writer.WriteEvent(new LogRecord { LogLevel = "Trace", Tag = "Other.Diagnostics", Message = "Other trace" });
+            await writer.WriteError(new LogRecord { LogLevel = "Error", Tag = "JobManager", Message = "Job failed" });
+
+            store.Verify(x => x.InsertAsync(It.Is<DiagnosticLogActivityRecord>(r =>
+                r.Tag == RuntimeControlCatalog.JobManagerDiagnostics), It.IsAny<CancellationToken>()), Times.Never);
+            store.Verify(x => x.InsertAsync(It.Is<DiagnosticLogActivityRecord>(r =>
+                r.Tag == "Other.Diagnostics" && r.LogLevel == "Trace"), It.IsAny<CancellationToken>()), Times.Once);
+            store.Verify(x => x.InsertAsync(It.Is<DiagnosticLogActivityRecord>(r =>
+                r.Tag == "JobManager" && r.LogLevel == "Error"), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         [TestMethod]
         public async Task Reader_RejectsMissingScopeAndUnboundedQueries()
         {

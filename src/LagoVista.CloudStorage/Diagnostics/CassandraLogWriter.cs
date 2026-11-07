@@ -60,10 +60,18 @@ namespace LagoVista.CloudStorage.Diagnostics
                 }
             }
 
-            // Routine verbose diagnostics are opt-in; never gate errors or ordinary events.
-            if (!isError && IsVerbose(record.LogLevel) &&
-                _controls?.IsEnabled(RuntimeControlCatalog.LoggingVerbose) != true)
-                return;
+            // Scoped JobManager diagnostics are independent of the global verbose switch.
+            // Errors and non-verbose events are never gated here.
+            if (!isError && IsVerbose(record.LogLevel))
+            {
+                var isJobManagerDiagnostic = String.Equals(
+                    record.Tag, RuntimeControlCatalog.JobManagerDiagnostics, StringComparison.OrdinalIgnoreCase);
+                var controlKey = isJobManagerDiagnostic
+                    ? RuntimeControlCatalog.JobManagerDiagnostics
+                    : RuntimeControlCatalog.LoggingVerbose;
+                if (_controls?.IsEnabled(controlKey) != true)
+                    return;
+            }
 
             try
             {
