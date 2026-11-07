@@ -69,6 +69,8 @@ namespace LagoVista.CloudStorage.Diagnostics
                     controlKey = RuntimeControlCatalog.JobManagerDiagnostics;
                 else if (String.Equals(record.Tag, RuntimeControlCatalog.S3FileStorageDiagnostics, StringComparison.OrdinalIgnoreCase))
                     controlKey = RuntimeControlCatalog.S3FileStorageDiagnostics;
+                else if (String.Equals(record.Tag, RuntimeControlCatalog.NotificationSenderDiagnostics, StringComparison.OrdinalIgnoreCase))
+                    controlKey = RuntimeControlCatalog.NotificationSenderDiagnostics;
 
                 if (_controls?.IsEnabled(controlKey) != true)
                     return;
