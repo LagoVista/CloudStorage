@@ -68,6 +68,7 @@ public static class MigrationConnections
             "user-storage" => "USER",
             _ => null
         };
+        if (sourcePrefix == null) return DefaultAzureStorageSettings();
         var prefix = EnvironmentName.ToUpperInvariant();
         var accountName = prefix + "_" + sourcePrefix + "_TS_STORAGE_ACCOUNT_ID";
         var accessKeyName = prefix + "_" + sourcePrefix + "_TS_STORAGE_ACCOUNT_ACCESS_KEY";
@@ -86,10 +87,13 @@ public static class MigrationConnections
             };
         }
 
-        return String.Equals(EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase)
+        return DefaultAzureStorageSettings();
+    }
+
+    private static LagoVista.Core.Models.ConnectionSettings DefaultAzureStorageSettings() =>
+        String.Equals(EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase)
             ? TestConnections.ProductionTableStorageDB
             : TestConnections.DevTableStorageDB;
-    }
 
     private static string? Optional(string name)
     {
