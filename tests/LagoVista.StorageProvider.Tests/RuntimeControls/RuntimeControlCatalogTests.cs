@@ -1,6 +1,7 @@
 using LagoVista.CloudStorage.RuntimeControls;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Linq;
 
 namespace LagoVista.StorageProvider.Tests.RuntimeControls
 {
@@ -63,6 +64,23 @@ namespace LagoVista.StorageProvider.Tests.RuntimeControls
             Assert.AreEqual(
                 "nuviot:runtime-controls:v1:cloudstorage.diagnostics.s3filestorage",
                 RuntimeControlCatalog.StorageKey(RuntimeControlCatalog.S3FileStorageDiagnostics));
+        }
+
+        [TestMethod]
+        public void Catalog_ProvidesDisplayMetadataAndHidesUnwiredControls()
+        {
+            var visible = RuntimeControlCatalog.Definitions.Where(definition => definition.VisibleInAdmin).ToList();
+
+            Assert.IsTrue(visible.Count > 0);
+            Assert.IsTrue(visible.All(definition =>
+                !String.IsNullOrWhiteSpace(definition.Key) &&
+                !String.IsNullOrWhiteSpace(definition.Title) &&
+                !String.IsNullOrWhiteSpace(definition.Group) &&
+                !String.IsNullOrWhiteSpace(definition.Description)));
+            Assert.IsTrue(visible.Any(definition => definition.Key == RuntimeControlCatalog.S3FileStorageDiagnostics));
+            Assert.IsTrue(visible.Any(definition => definition.Key == RuntimeControlCatalog.McpDiagnostics));
+            Assert.IsFalse(visible.Any(definition => definition.Key == RuntimeControlCatalog.SlowQueryThreshold));
+            Assert.IsFalse(RuntimeControlCatalog.Find(RuntimeControlCatalog.SlowQueryThreshold).VisibleInAdmin);
         }
 
         [TestMethod]
