@@ -2,6 +2,7 @@
 using LagoVista.Core.Models;
 using LagoVista.Core.Models.EntityReadiness;
 using LagoVista.Core.Validation;
+using MongoDB.Bson.Serialization.Attributes;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Threading;
@@ -46,6 +47,7 @@ namespace LagoVista.CloudStorage.Repositories
         Task<string> GenerateUniqueTlaAsync(string entityType, string orgId, string name, string tla = null, string id = null, CancellationToken ct = default);
     }
 
+    [BsonIgnoreExtraElements]
     public class EntityCoreSummary
     {
         public string Id { get; set; }
