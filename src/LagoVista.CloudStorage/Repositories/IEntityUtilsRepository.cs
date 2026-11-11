@@ -84,6 +84,7 @@ namespace LagoVista.CloudStorage.Repositories
         public string EntityType { get; set; }
         public string Name { get; set; }
         public string Key { get; set; }
+        public string Tla { get; set; }
         public string Description { get; set; }
         public LagoVistaIcon Icon { get; set; }
         public EntityHeader Category { get; set; }
