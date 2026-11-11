@@ -78,6 +78,7 @@ namespace LagoVista.CloudStorage.Repositories
         public List<string> ErrorMessages { get; set; } = new List<string>();
     }
 
+    [BsonIgnoreExtraElements]
     public sealed class EntityBaseSummary
     {
         public string Id { get; set; }
