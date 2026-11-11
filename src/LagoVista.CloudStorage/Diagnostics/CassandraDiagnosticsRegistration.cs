@@ -7,8 +7,8 @@ using System;
 namespace LagoVista.CloudStorage.Diagnostics
 {
     /// <summary>
-    /// Explicit opt-in registration. Existing CreateLogZWriter bootstrap callers are
-    /// unchanged until an application elects to use this sink.
+    /// Explicit opt-in registration for internal Cassandra diagnostics.
+    /// Bootstrap logging remains console-only and does not depend on this sink.
     /// </summary>
     public static class CassandraDiagnosticsRegistration
     {

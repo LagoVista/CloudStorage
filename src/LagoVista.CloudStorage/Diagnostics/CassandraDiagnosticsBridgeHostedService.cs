@@ -9,8 +9,9 @@ namespace LagoVista.CloudStorage.Diagnostics
 {
     /// <summary>
     /// Attaches Cassandra diagnostics after the host DI container is available.
-    /// Bootstrap Logz.io remains primary. A dedicated DI scope keeps the activity
-    /// store alive until shutdown and is disposed only after detaching the tap.
+    /// Console handles bootstrap logging; Cassandra receives the internal diagnostic
+    /// stream once ready. A dedicated DI scope keeps the activity store alive until
+    /// shutdown and is disposed only after detaching the tap.
     /// </summary>
     public sealed class CassandraDiagnosticsBridgeHostedService : IHostedService, IDisposable
     {
@@ -38,7 +39,7 @@ namespace LagoVista.CloudStorage.Diagnostics
                 logger.ConfigureSecondaryLogWriter(writer);
                 _activeLogger = logger;
                 _scope = scope;
-                Console.WriteLine("[CassandraDiagnostics__Bridge] Secondary writer attached; Logz.io remains primary.");
+                Console.WriteLine("[CassandraDiagnostics__Bridge] Internal diagnostics attached; bootstrap writer is console-only.");
             }
             catch
             {
