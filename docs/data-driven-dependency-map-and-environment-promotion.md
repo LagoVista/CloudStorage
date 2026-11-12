@@ -1,12 +1,26 @@
 # Data-Driven Dependency Map (D3M) and Environment Promotion
 
-**Status:** Architectural plan / design baseline — not an implementation claim  
+**Status:** Implementation underway — core D3M foundation committed; MCP publication and promotion protocol not yet shipped  
 **Updated:** 2026-11-12  
 **Home:** LagoVista/CloudStorage  
 **Initial use case:** VTM and its transitive dependencies  
 **Direction for the formal promotion workflow:** **LIVE = Target / Initiator**, **DEV = Source / Server**
 
 > This document captures the agreed architecture for interactive D3M authoring, dependency assembly, cross-environment planning, and eventual promotion. Contracts and endpoints below are proposed, not yet shipped. The separate, temporary LIVE-to-DEV bootstrap/back-fill capability does not change the direction of formal DEV-to-LIVE promotion.
+
+## Implementation status (2026-11-12)
+
+**Implemented in CloudStorage on master (core foundation only):**
+
+- `D3MDefinitionRecord` and `D3MPublishedDefinitionRecord`: organization-scoped ApplicationData draft and separate immutable revision snapshots, with deterministic 32-character IDs.
+- `D3MTypeRegistry` and `D3MValidator`: fixed five-class transfer-kind allowlist; registered immediate property paths and targets; checks for cardinality, presence, navigation-vs-prerequisite roles, compatibility support, conditions, bindings, root eligibility, and explicit leaves.
+- `D3MDefinitionService`: insert/read/update draft with concurrency control; publish a validated immutable revision; retrieve active and pinned revisions; list definitions/history; retire active definitions. The service never transfers records between environments.
+- `AddD3MDefinitions`: explicit host registration; the domain host must populate the registered type/relationship universe and already have `IApplicationDataStore`.
+- `D3MDefinitionTests`: focused unit tests for validation, immutable copy semantics, published pointer behavior, and provenance preservation.
+
+**Not implemented yet:** authenticated MCP draft/validate/publish tools and authorization, actual VTM/Department/AgentContext D3M registrations and published data, approved source-record snapshot retrieval, recursive assembler, DEV manifest service, LIVE planner/UI, import/media handlers, read-only enforcement for promoted domain records, and execution/JobManager. The existing `DefinitionDependencyInspector` remains source material, not a second published D3M truth.
+
+**Concurrency boundary:** publication inserts the immutable snapshot before conditionally updating the mutable active pointer. A racing publication can leave an unreferenced snapshot; it cannot expose a published pointer to a missing snapshot. Clean retry/reconciliation behavior remains to be hardened before exposing a public MCP write endpoint.
 
 ## 1. Why we need this
 
