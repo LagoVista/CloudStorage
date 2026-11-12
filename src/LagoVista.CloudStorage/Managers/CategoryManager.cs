@@ -39,9 +39,11 @@ namespace LagoVista.CloudStorage.Managers
             return InvokeResult.Success;
         }
 
-        public Task<Category> GetCategoryAsync(string id, EntityHeader org, EntityHeader user)
+        public async Task<Category> GetCategoryAsync(string id, EntityHeader org, EntityHeader user)
         {
-            return _categoryRepo.GetCategoryAsync(id);
+            var category = await _categoryRepo.GetCategoryAsync(id);
+            await AuthorizeAsync(category, AuthorizeResult.AuthorizeActions.Read, user, org);
+            return category;
         }
 
         public async Task<ListResponse<Category>> GetCategoriesAsync(string categoryType, ListRequest listRequest, EntityHeader org, EntityHeader user)
