@@ -26,6 +26,31 @@ namespace LagoVista.CloudStorage.Storage
         }
 
         public D3MValidationResult Validate(D3MDefinitionRecord draft) => _validator.Validate(draft);
+ 
+        /// <summary>Organization-scoped, paged authoring catalog.</summary>
+        public Task<StoragePageResult<D3MDefinitionRecord>> ListDraftsAsync(
+            string organizationId, StoragePageRequest page = null, CancellationToken cancellationToken = default)
+        {
+            var query = new StorageQuery<D3MDefinitionRecord>()
+                .Where(record => record.Organization.Id, StorageFilterOperator.Equal, RequiredOrganization(organizationId))
+                .OrderBy(record => record.TypeKey)
+                .WithPage(page ?? new StoragePageRequest());
+            return _store.QueryAsync(query, cancellationToken);
+        }
+
+        /// <summary>Organization-scoped, paged immutable history for one registered type.</summary>
+        public Task<StoragePageResult<D3MPublishedDefinitionRecord>> ListRevisionsAsync(
+            string typeKey, string organizationId, StoragePageRequest page = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (!_registry.Contains(typeKey)) throw new InvalidOperationException("Unknown registered D3M type.");
+            var query = new StorageQuery<D3MPublishedDefinitionRecord>()
+                .Where(record => record.Organization.Id, StorageFilterOperator.Equal, RequiredOrganization(organizationId))
+                .Where(record => record.TypeKey, StorageFilterOperator.Equal, typeKey)
+                .OrderBy(record => record.Revision, StorageSortDirection.Descending)
+                .WithPage(page ?? new StoragePageRequest());
+            return _store.QueryAsync(query, cancellationToken);
+        }
 
         public Task<VersionedApplicationDataRecord<D3MDefinitionRecord>> GetDraftAsync(
             string typeKey, string organizationId, CancellationToken cancellationToken = default)
