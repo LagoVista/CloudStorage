@@ -102,7 +102,7 @@ namespace LagoVista.CloudStorage.Storage
             using (var sha = SHA256.Create())
             {
                 var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
-                return new NormalizedId32(BitConverter.ToString(bytes, 0, 16).Replace("-", "").ToLowerInvariant());
+                return new NormalizedId32(BitConverter.ToString(bytes, 0, 16).Replace("-", "").ToUpperInvariant());
             }
         }
     }
