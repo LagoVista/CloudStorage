@@ -42,6 +42,7 @@ namespace LagoVista.CloudStorage.RuntimeControls
         public const string JobManagerDiagnostics = "JobManager.Diagnostics";
         public const string NotificationSenderDiagnostics = "Deployments.Diagnostics.NotificationSender";
         public const string AgentPipelineDiagnostics = "AI.Diagnostics.AgentPipeline";
+        public const string AuthenticationDiagnostics = "Security.Diagnostics.CrossEnvironmentSigning";
         public const string Prefix = "nuviot:runtime-controls:v1:";
 
         public static readonly IReadOnlyList<RuntimeControlDefinition> Definitions =
@@ -57,7 +58,8 @@ namespace LagoVista.CloudStorage.RuntimeControls
                 new RuntimeControlDefinition { Key = McpDiagnostics, Title = "MCP diagnostics", Group = "MCP Diagnostics", Description = "Enable detailed MCP health monitor cycles and cAdvisor retry diagnostics. Final failures are always logged.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = JobManagerDiagnostics, Title = "JobManager diagnostics", Group = "Job Manager", Description = "Capture detailed JobManager activity in Cassandra without global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = NotificationSenderDiagnostics, Title = "Notification sender diagnostics", Group = "Deployments", Description = "Trace recipient selection, distribution lists, notification routing and sending independently of global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = AgentPipelineDiagnostics, Title = "Agent pipeline diagnostics", Group = "AI", Description = "Trace pipeline steps, reasoning rounds, tool continuations and LLM diagnostics independently of global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" }
+                new RuntimeControlDefinition { Key = AgentPipelineDiagnostics, Title = "Agent pipeline diagnostics", Group = "AI", Description = "Trace pipeline steps, reasoning rounds, tool continuations and LLM diagnostics independently of global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = AuthenticationDiagnostics, Title = "Cross-environment signing diagnostics", Group = "Authentication", Description = "Trace signed caller identity, public signing key discovery, DEV/LIVE key filtering and refresh outcomes. No private keys, signatures or credentials are logged.", DefaultValue = "false" }
             }.AsReadOnly();
 
         public static RuntimeControlDefinition Find(string key)
