@@ -15,6 +15,10 @@ Storage is classified by **application behavior**, not by the physical database 
 | **Operational Data** | Small, standalone, row-like records; non-relational; full CRUD; schema described by persisted class fields | `IOperationalDataRecord` | Cassandra |
 | **Relational Storage** | Data requiring relational semantics such as constraints, transactions, joins, or strongly related tables | Purpose-specific relational models | PostgreSQL |
 
+## Data-driven environment promotion
+
+The proposed [Data-Driven Dependency Map (D3M) and Environment Promotion](docs/data-driven-dependency-map-and-environment-promotion.md) design documents interactive MCP publication of per-type dependency definitions, recursive manifests, and the LIVE-initiated / DEV-served promotion workflow. This is a design baseline, not a deployed capability.
+
 ## Canonical meanings
 
 ### Entity Storage
