@@ -140,6 +140,24 @@ namespace LagoVista.CloudStorage.Storage
             return services;
         }
 
+        /// <summary>
+        /// Register the D3M authoring/publication service with an explicitly supplied
+        /// code-owned type and relationship universe. No arbitrary CLR activation.
+        /// The host must separately register the shared IApplicationDataStore.
+        /// </summary>
+        public static IServiceCollection AddD3MDefinitions(this IServiceCollection services,
+            Action<D3MTypeRegistry> configureRegistry)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (configureRegistry == null) throw new ArgumentNullException(nameof(configureRegistry));
+
+            var registry = new D3MTypeRegistry();
+            configureRegistry(registry);
+            services.AddSingleton(registry);
+            services.AddScoped<D3MDefinitionService>();
+            return services;
+        }
+
         public static IServiceCollection AddStorageRetentionPolicyStore(this IServiceCollection services)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
