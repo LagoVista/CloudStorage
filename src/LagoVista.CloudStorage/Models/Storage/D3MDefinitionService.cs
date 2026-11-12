@@ -1,4 +1,5 @@
 using LagoVista.Core.Models;
+using LagoVista.Core.Models.UIMetaData;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,29 +28,95 @@ namespace LagoVista.CloudStorage.Storage
 
         public D3MValidationResult Validate(D3MDefinitionRecord draft) => _validator.Validate(draft);
  
-        /// <summary>Organization-scoped, paged authoring catalog.</summary>
-        public Task<StoragePageResult<D3MDefinitionRecord>> ListDraftsAsync(
-            string organizationId, StoragePageRequest page = null, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Organization-scoped, cursor-paged authoring catalog using the platform's
+        /// ListRequest/ListResponse wire contract. Storage cursors are opaque to callers.
+        /// </summary>
+        public async Task<ListResponse<D3MDefinitionRecord>> ListDraftsAsync(
+            string organizationId, ListRequest request, CancellationToken cancellationToken = default)
         {
+            const string partition = "d3m-drafts";
+            if (!TryStoragePageRequest(request, partition, out var storagePage, out var error))
+                return ListResponse<D3MDefinitionRecord>.FromError(error);
+
             var query = new StorageQuery<D3MDefinitionRecord>()
                 .Where(record => record.Organization.Id, StorageFilterOperator.Equal, RequiredOrganization(organizationId))
                 .OrderBy(record => record.TypeKey)
-                .WithPage(page ?? new StoragePageRequest());
-            return _store.QueryAsync(query, cancellationToken);
+                .WithPage(storagePage);
+            var page = await _store.QueryAsync(query, cancellationToken).ConfigureAwait(false);
+            return ListResponse<D3MDefinitionRecord>.Create(
+                page.Items, request, page.HasMoreRecords,
+                page.HasMoreRecords ? partition : String.Empty,
+                page.ContinuationToken ?? String.Empty);
         }
 
-        /// <summary>Organization-scoped, paged immutable history for one registered type.</summary>
-        public Task<StoragePageResult<D3MPublishedDefinitionRecord>> ListRevisionsAsync(
-            string typeKey, string organizationId, StoragePageRequest page = null,
+        /// <summary>Organization-scoped, cursor-paged immutable history for one registered type.</summary>
+        public async Task<ListResponse<D3MPublishedDefinitionRecord>> ListRevisionsAsync(
+            string typeKey, string organizationId, ListRequest request,
             CancellationToken cancellationToken = default)
         {
-            if (!_registry.Contains(typeKey)) throw new InvalidOperationException("Unknown registered D3M type.");
+            if (String.IsNullOrWhiteSpace(typeKey) || !_registry.Contains(typeKey))
+                return ListResponse<D3MPublishedDefinitionRecord>.FromError("Unknown registered D3M type.");
+
+            // Include the type key in the cursor scope: a draft continuation cannot
+            // accidentally be reused for a different type's publication history.
+            var partition = "d3m-revisions:" + typeKey.Trim();
+            if (!TryStoragePageRequest(request, partition, out var storagePage, out var error))
+                return ListResponse<D3MPublishedDefinitionRecord>.FromError(error);
+
             var query = new StorageQuery<D3MPublishedDefinitionRecord>()
                 .Where(record => record.Organization.Id, StorageFilterOperator.Equal, RequiredOrganization(organizationId))
                 .Where(record => record.TypeKey, StorageFilterOperator.Equal, typeKey)
                 .OrderBy(record => record.Revision, StorageSortDirection.Descending)
-                .WithPage(page ?? new StoragePageRequest());
-            return _store.QueryAsync(query, cancellationToken);
+                .WithPage(storagePage);
+            var page = await _store.QueryAsync(query, cancellationToken).ConfigureAwait(false);
+            return ListResponse<D3MPublishedDefinitionRecord>.Create(
+                page.Items, request, page.HasMoreRecords,
+                page.HasMoreRecords ? partition : String.Empty,
+                page.ContinuationToken ?? String.Empty);
+        }
+
+        private static bool TryStoragePageRequest(
+            ListRequest request, string expectedPartition,
+            out StoragePageRequest page, out string error)
+        {
+            page = null;
+            error = null;
+
+            if (request == null)
+            {
+                error = "ListRequest is required.";
+                return false;
+            }
+
+            if (request.PageSize < 1 || request.PageSize > 1000 || request.PageIndex < 1)
+            {
+                error = "D3M lists require PageIndex >= 1 and PageSize between 1 and 1000.";
+                return false;
+            }
+
+            var hasPartition = !String.IsNullOrWhiteSpace(request.NextPartitionKey);
+            var hasRow = !String.IsNullOrWhiteSpace(request.NextRowKey);
+            if (hasPartition != hasRow)
+            {
+                error = "Both NextPartitionKey and NextRowKey must be supplied for a continuation.";
+                return false;
+            }
+
+            if (hasPartition && !String.Equals(request.NextPartitionKey, expectedPartition, StringComparison.Ordinal))
+            {
+                error = "The continuation cursor is not valid for this D3M list.";
+                return false;
+            }
+
+            if (request.PageIndex > 1 && !hasRow)
+            {
+                error = "D3M pages after the first require the previous response's continuation keys.";
+                return false;
+            }
+
+            page = new StoragePageRequest(request.PageSize, hasRow ? request.NextRowKey : null);
+            return true;
         }
 
         public Task<VersionedApplicationDataRecord<D3MDefinitionRecord>> GetDraftAsync(
