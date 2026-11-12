@@ -1,9 +1,11 @@
 using LagoVista.CloudStorage.Storage;
 using LagoVista.Core.Models;
+using LagoVista.Core.Models.UIMetaData;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -251,6 +253,99 @@ namespace LagoVista.StorageProvider.Tests
             Assert.AreEqual("approver", draft.PublishedBy);
             Assert.AreEqual("New title", draft.Name);
             store.VerifyAll();
+        }
+
+        [TestMethod]
+        public async Task DraftListing_UsesHouseStyleListResponseAndPreservesCursor()
+        {
+            var draft = Valid();
+            var store = new Mock<IApplicationDataStore>(MockBehavior.Strict);
+            StorageQuery<D3MDefinitionRecord> observed = null;
+            store.Setup(s => s.QueryAsync(It.IsAny<StorageQuery<D3MDefinitionRecord>>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<StorageQuery<D3MDefinitionRecord>, CancellationToken>((query, _) => observed = query)
+                .ReturnsAsync(new StoragePageResult<D3MDefinitionRecord>(new[] { draft }, "opaque-next-page"));
+
+            var service = new D3MDefinitionService(store.Object, Registry());
+            var firstRequest = ListRequest.Create(pageIndex: 1, pageSize: 1);
+            var first = await service.ListDraftsAsync("ORG-A", firstRequest);
+
+            Assert.IsTrue(first.Successful);
+            Assert.AreEqual(draft.TypeKey, first.Model.Single().TypeKey);
+            Assert.AreEqual(1, first.PageSize);
+            Assert.AreEqual(1, first.PageIndex);
+            Assert.AreEqual(1, first.RecordCount);
+            Assert.IsTrue(first.HasMoreRecords);
+            Assert.AreEqual("d3m-drafts", first.NextPartitionKey);
+            Assert.AreEqual("opaque-next-page", first.NextRowKey);
+            Assert.AreEqual(1, observed.Page.PageSize);
+            Assert.IsNull(observed.Page.ContinuationToken);
+
+            var secondRequest = ListRequest.Create(pageIndex: 2, pageSize: 1);
+            secondRequest.NextPartitionKey = first.NextPartitionKey;
+            secondRequest.NextRowKey = first.NextRowKey;
+            var second = await service.ListDraftsAsync("ORG-A", secondRequest);
+            Assert.IsTrue(second.Successful);
+            Assert.AreEqual(2, second.PageIndex);
+            Assert.AreEqual("opaque-next-page", observed.Page.ContinuationToken);
+            store.VerifyAll();
+        }
+
+        [TestMethod]
+        public async Task RevisionListing_UsesListResponseAndRequiresCorrectCursorScope()
+        {
+            var published = new D3MPublishedDefinitionRecord
+            {
+                TypeKey = "VTM",
+                Revision = 1,
+                Organization = new EntityHeader { Id = "ORG-A" }
+            };
+            var store = new Mock<IApplicationDataStore>(MockBehavior.Strict);
+            StorageQuery<D3MPublishedDefinitionRecord> observed = null;
+            store.Setup(s => s.QueryAsync(It.IsAny<StorageQuery<D3MPublishedDefinitionRecord>>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<StorageQuery<D3MPublishedDefinitionRecord>, CancellationToken>((query, _) => observed = query)
+                .ReturnsAsync(new StoragePageResult<D3MPublishedDefinitionRecord>(new[] { published }));
+
+            var service = new D3MDefinitionService(store.Object, Registry());
+            var request = ListRequest.Create(pageIndex: 1, pageSize: 5);
+            var result = await service.ListRevisionsAsync("VTM", "ORG-A", request);
+
+            Assert.IsTrue(result.Successful);
+            Assert.AreEqual(1, result.RecordCount);
+            Assert.AreEqual(5, result.PageSize);
+            Assert.IsFalse(result.HasMoreRecords);
+            Assert.AreEqual(String.Empty, result.NextRowKey);
+            Assert.AreEqual(5, observed.Page.PageSize);
+            Assert.IsNull(observed.Page.ContinuationToken);
+
+            request.NextPartitionKey = "d3m-revisions:AgentContext";
+            request.NextRowKey = "other-type-cursor";
+            var rejected = await service.ListRevisionsAsync("VTM", "ORG-A", request);
+            Assert.IsFalse(rejected.Successful);
+            store.VerifyAll();
+        }
+
+        [TestMethod]
+        public async Task DraftListing_RejectsInvalidPageAndOffsetWithoutCursor()
+        {
+            var store = new Mock<IApplicationDataStore>(MockBehavior.Strict);
+            var service = new D3MDefinitionService(store.Object, Registry());
+
+            var request = ListRequest.Create(pageIndex: 3, pageSize: 20);
+            var result = await service.ListDraftsAsync("ORG-A", request);
+            Assert.IsFalse(result.Successful);
+
+            request.PageIndex = 1;
+            request.PageSize = 1001;
+            result = await service.ListDraftsAsync("ORG-A", request);
+            Assert.IsFalse(result.Successful);
+
+            request.PageSize = 20;
+            request.NextRowKey = "half-cursor";
+            result = await service.ListDraftsAsync("ORG-A", request);
+            Assert.IsFalse(result.Successful);
+            store.VerifyNoOtherCalls();
         }
 
         private static bool Has(D3MValidationResult result, string code)
