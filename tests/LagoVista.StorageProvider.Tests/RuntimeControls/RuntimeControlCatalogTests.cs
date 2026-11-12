@@ -80,6 +80,17 @@ namespace LagoVista.StorageProvider.Tests.RuntimeControls
         }
 
         [TestMethod]
+        public void AuthenticationDiagnostics_IsRegisteredAsDefaultOffBoolean()
+        {
+            var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.AuthenticationDiagnostics);
+            Assert.AreEqual("Security.Diagnostics.CrossEnvironmentSigning", definition.Key);
+            Assert.AreEqual("Authentication", definition.Group);
+            Assert.AreEqual("false", definition.DefaultValue);
+            Assert.IsTrue(definition.IsBoolean);
+            Assert.IsTrue(definition.VisibleInAdmin);
+        }
+
+        [TestMethod]
         public void S3FileStorageDiagnostics_IsRegisteredAsDefaultOffBoolean()
         {
             var definition = RuntimeControlCatalog.Find(RuntimeControlCatalog.S3FileStorageDiagnostics);
