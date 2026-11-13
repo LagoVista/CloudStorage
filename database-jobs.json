@@ -10,7 +10,6 @@
       "dockerfile": "Apps/LagoVista.Relational.SemanticMigrator/Dockerfile",
       "buildContext": ".",
       "imageRepository": "nuviot/semantic-schema-migrator",
-      "provider": "postgresql",
       "migrationContext": "LagoVista.Relational.DataContexts.SemanticPostgresMigrationContext",
       "migrationsPath": "src/LagoVista.Relational/Migrations/SemanticPostgres",
       "logicalTargets": [
@@ -28,7 +27,15 @@
       "actions": [
         "status",
         "apply"
-      ]
+      ],
+      "serverProvider": "postgresql",
+      "convergence": {
+        "targetRevision": "latest-embedded-ef-migration",
+        "databaseBootstrap": "create-if-missing",
+        "repeatExecution": "no-op-when-current",
+        "unknownHistory": "fail-closed",
+        "bootstrapCredentials": "separate-runtime-secret"
+      }
     }
   ]
 }

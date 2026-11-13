@@ -57,6 +57,96 @@ NuGet publications. Additional job outputs are declared in
 [`database-jobs.json`](../database-jobs.json). **Do not change the root
 BuildTarget identity to a Docker/application type.**
 
+## Single mission: converge the target database
+
+A database migration image is an **apply-to-current converger**, not a one-off
+script for one old/new revision pair. The only infrastructure precondition is
+that its **authorized database server is reachable and ready**. The named
+database itself may be absent, empty, at an earlier supported revision, or
+already current.
+
+**Today there are exactly two supported relational database providers:**
+
+1. **Azure SQL Server / Azure SQL Database** (a supported, explicitly authorized
+   server and database target).
+2. **PostgreSQL in the Kubernetes cluster** (a supported, explicitly authorized
+   server and database target).
+
+There is no implicit third provider, generic SQL dialect, or runtime
+instruction interpreter. **An image is built for one database schema family
+and provider**, so it may contain PostgreSQL migrations or SQL Server
+migrations; it does not need to support both providers internally. Existing
+legacy databases remain subject to their own migration-authority decisions.
+
+### Required behavior
+
+| State of the authorized target | Required result |
+| --- | --- |
+| Database does not exist | Create it with the approved bootstrap identity, apply the full migration chain, verify the final schema |
+| Database exists, but is empty/uninitialized | Initialize migration history, apply the initial and subsequent migrations, verify |
+| Database is 1–N supported revisions behind | Apply **all** pending migrations in order, preserving data, then verify |
+| Database is already at the image's revision | Do nothing destructive; verify and exit success |
+| Database has newer/unknown migration IDs, conflicting schema, unsafe drift, or migration history gaps | **Fail closed** with diagnostics and **no destructive guess** |
+
+Executing the **same image again** against the same already-current database
+must be a successful no-op. For any supported older revision, the image
+must include the complete migration chain required to converge to its
+published current revision; it cannot assume the previous image ran.
+
+The runner must distinguish server availability from database existence.
+**`status`** reports `missing`, `uninitialized`, `behind`, `current`,
+or `blocked` without creating a database. **`apply`** performs bootstrap
+(if missing), migrations and final verification in one tracked operation.
+The Build Server returns success **only after** the image exits successfully
+and confirms its target schema revision.
+
+**Bootstrap credentials:** Creating a database often requires server-level
+permissions beyond the normal application or schema-migration user. The Job
+may receive a separately scoped **bootstrap credential**, selected by
+the trusted environment registration, solely for create-if-absent. PostgreSQL
+may connect to an existing maintenance database for `CREATE DATABASE`;
+Azure SQL may use a suitably privileged connection to `master`. After
+database creation, subsequent EF migrations use the dedicated schema role.
+Credentials are injected at runtime from trusted Secrets and never baked
+into an image, manifest or logs. If create permission is unavailable, fail
+explicitly rather than silently delegating creation to an undocumented
+manual step.
+
+Database creation must not delete/recreate an existing database, adopt a
+nonempty unmanaged schema, drop arbitrary objects, or run down-migrations.
+Concurrent invocations for the same target must be serialized **including
+before a database exists**. Production execution requires the normal
+approval/backup/compatibility gates; "always converge" does **not** mean
+"always apply without authorization." Expand-first migrations and
+data-preserving forward scripts remain the default; destructive migrations
+require separately approved staging/backup procedures.
+
+### Verification contract
+
+- Determine and report the exact current migration IDs and the expected
+  target migration ID embedded in the image.
+- Detect missing, duplicate, out-of-order, unknown or newer migration history
+  before modifying an existing database.
+- Verify expected schema objects/constraints and application data invariants
+  after applying; a missing or corrupt history table in a nonempty database
+  is a blocker, not an excuse to replay the initial schema.
+- Emit an immutable receipt: source commit, image digest, environment,
+  database target identity, previous revision, applied revisions, final
+  revision, outcome, elapsed time and error diagnostics.
+- A retry after interruption must either safely resume forward progress
+  using authoritative EF history or report that manual investigation is
+  required. Not every partially completed custom migration can be
+  auto-repaired; never report success without verification.
+
+**Implementation gap:** The current semantic runner can use EF migrations
+once a PostgreSQL database is available. It does **not yet** provide the
+separate server-level database bootstrap flow, missing-database status,
+strong history/drift checks, or end-to-end convergence evidence. The current
+`nuviot/k8s` scripts still require a pre-created Database CRD. **Do not
+treat the charter as an already deployed capability.** Converger
+implementation and its first missing/behind/current integration tests are
+blocking work before DEV cutover.
+
 ## Contract for a database migration image
 
 The image includes its compiled EF context and migrations, a pinned runtime,
@@ -64,7 +154,7 @@ and an executable with at least:
 
 1. `status` (default, read-only): report target, image/source identity, applied
    and pending migrations; no DDL or data changes.
-2. `apply` (explicit): refuse unexpected target/migration history, apply
+2. `apply` (explicit): create the authorized database if missing, refuse unexpected target/migration history, apply
    pending migrations, requery status and validate expected schema objects.
 3. Exit `0` only on verified success. Nonzero exit on mismatch, failed
    migration, unexpected schema state or validation failure. Write bounded,
@@ -137,8 +227,9 @@ and approved target mapping should be code-reviewed together.
 - [x] Self-contained `SemanticMigrator` console project and Dockerfile.
 - [x] DEV-only Kubernetes Job/preflight mechanism in `nuviot/k8s`.
 - [x] This commander-intent document and explicit job recipe.
+- [ ] Database image converges missing/empty/behind/current states safely, with verified no-op replay and explicit bootstrap permission.
 - [ ] Build Server validates and publishes exact-commit job image and immutable digest.
-- [ ] Provision empty DEV semantic Production and TEST databases, apply migrations,
+- [ ] Bootstrapping missing DEV semantic Production and TEST databases via their image, apply migrations,
   verify schema, read/write/registration/pruning, and repeat `apply` safely.
 - [ ] Switch DEV configuration only after schema proof; leave LIVE and legacy
   SQL Server records untouched.
@@ -161,8 +252,9 @@ and approved target mapping should be code-reviewed together.
   published migration history unless explicitly recovering an unreleased
   DEV-only lineage.
 - Changes must be tested against a disposable database before promotion.
-- CloudStorage owns the **relational schema**; operational provisioning (CNPG)
-  and access control stay in `nuviot/k8s`.
+- CloudStorage owns the **relational schema and create-if-absent database job**;
+  operational database-server/cluster provisioning (CNPG, Azure SQL server)
+  and access control stay in their respective infrastructure controls.
 - Revisit the optional semantic TEST catalog roughly six months after adoption;
   keep its availability out of the authoritative artifact workflow.
 

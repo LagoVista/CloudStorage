@@ -44,3 +44,18 @@ without changing the root NuGet `NuvIoT.buildtarget`.
 Server does not yet read the job manifest, publish this image, or operate a
 first-class job lifecycle. Do not infer that a committed Dockerfile means a
 published image or that DEV databases have been initialized.
+
+## Bootstrap/convergence contract (required before DEV switch)
+
+The image must eventually accept an **existing PostgreSQL server** even if
+`semantic_production` or `semantic_test` has not been created. It should
+create the approved database when absent, run all checked-in EF migrations,
+verify the resulting schema, and safely report success on replay when current.
+An approved bootstrap credential is distinct from the migration credential.
+Unknown/newer migration history or drift is a hard stop, not a reset.
+
+**Not yet implemented:** The existing Kubernetes setup provisions databases
+before the Job, and the current runner does not perform database bootstrap.
+The new convergence contract in [the architecture standard](relational-database-job-standard.md)
+is the acceptance test for the next implementation slice; do not cut DEV over
+until it passes missing/behind/current and repeat-run scenarios.
