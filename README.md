@@ -94,6 +94,13 @@ Use **Relational Storage** when the relationships and transactional behavior are
 
 PostgreSQL is the primary relational platform.
 
+## Database migrations and one-shot jobs
+
+See [Relational database ownership and one-shot jobs](docs/relational-database-job-standard.md)
+for the governing EF schema policy and the [database job catalog](database-jobs.json)
+for CloudStorage's extra immutable Docker outputs. These are **additional**
+Build Server job artifacts; the repository's primary NuGet build remains unchanged.
+
 ## Critical relational storage
 
 A small but important portion of the platform remains in **SQL Server relational storage**.

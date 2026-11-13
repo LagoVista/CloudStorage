@@ -31,3 +31,16 @@ Never use the SQL Server context for PostgreSQL scaffolding.
 The PostgreSQL initial migration creates seven semantic tables, indexes, foreign keys
 and `dbo.usv_semanticdefinitions`. Verify lookup, registration, prune, and
 embedding read/write against fresh databases before changing DEV Config Server.
+
+## Build and execution ownership
+
+The governing architecture is [Relational database ownership and one-shot jobs](relational-database-job-standard.md).
+The single `semantic-schema-migrator` image supports both semantic Production and
+TEST *catalog roles*: each logical database has its own migration history. The
+new [job catalog](../database-jobs.json) declares this additional Docker output
+without changing the root NuGet `NuvIoT.buildtarget`.
+
+**Current status:** The runner and DEV-only Kubernetes scripts exist, but Build
+Server does not yet read the job manifest, publish this image, or operate a
+first-class job lifecycle. Do not infer that a committed Dockerfile means a
+published image or that DEV databases have been initialized.

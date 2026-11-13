@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "repository": "LagoVista/CloudStorage",
+  "jobs": [
+    {
+      "id": "semantic-schema-migrator",
+      "kind": "ef-schema-migration",
+      "description": "PostgreSQL semantic catalog schema migrations (shared Production and TEST schema)",
+      "project": "Apps/LagoVista.Relational.SemanticMigrator/LagoVista.Relational.SemanticMigrator.csproj",
+      "dockerfile": "Apps/LagoVista.Relational.SemanticMigrator/Dockerfile",
+      "buildContext": ".",
+      "imageRepository": "nuviot/semantic-schema-migrator",
+      "provider": "postgresql",
+      "migrationContext": "LagoVista.Relational.DataContexts.SemanticPostgresMigrationContext",
+      "migrationsPath": "src/LagoVista.Relational/Migrations/SemanticPostgres",
+      "logicalTargets": [
+        {
+          "id": "semantic-production",
+          "database": "semantic_production",
+          "role": "authoritative"
+        },
+        {
+          "id": "semantic-test",
+          "database": "semantic_test",
+          "role": "experimental"
+        }
+      ],
+      "actions": [
+        "status",
+        "apply"
+      ]
+    }
+  ]
+}
