@@ -135,7 +135,7 @@ legacy databases remain subject to their own migration-authority decisions.
 
 | State of the authorized target | Required result |
 | --- | --- |
-| Database does not exist | Create it with the approved bootstrap identity, apply the full migration chain, verify the final schema |
+| Database does not exist | Create it with the approved migrator identity, apply the full migration chain, verify the final schema |
 | Database exists, but is empty/uninitialized | Initialize migration history, apply the initial and subsequent migrations, verify |
 | Database is 1–N supported revisions behind | Apply **all** pending migrations in order, preserving data, then verify |
 | Database is already at the image's revision | Do nothing destructive; verify and exit success |
@@ -153,17 +153,18 @@ or `blocked` without creating a database. **`apply`** performs bootstrap
 The Build Server returns success **only after** the image exits successfully
 and confirms its target schema revision.
 
-**Bootstrap credentials:** Creating a database often requires server-level
-permissions beyond the normal application or schema-migration user. The Job
-may receive a separately scoped **bootstrap credential**, selected by
-the trusted environment registration, solely for create-if-absent. PostgreSQL
-may connect to an existing maintenance database for `CREATE DATABASE`;
-Azure SQL may use a suitably privileged connection to `master`. After
-database creation, subsequent EF migrations use the dedicated schema role.
-Credentials are injected at runtime from trusted Secrets and never baked
-into an image, manifest or logs. If create permission is unavailable, fail
-explicitly rather than silently delegating creation to an undocumented
-manual step.
+**Single migration account:** Each registered database migrator uses
+one configured database account for creating its approved target, owning
+it and applying EF migrations. For PostgreSQL, the account connects to the
+existing `postgres` maintenance database to hold the advisory lock and
+execute `CREATE DATABASE`; it then migrates the target database with the
+same credentials. The PostgreSQL role must have `CREATEDB` and access to
+the maintenance database. Other database providers must use their
+equivalent approved creation privileges without introducing a second
+credential into this component. Credentials are resolved at runtime from
+Config Server, never baked into an image or logged. If creation privilege
+is unavailable, fail before launching the write Job rather than silently
+working around permissions.
 
 Database creation must not delete/recreate an existing database, adopt a
 nonempty unmanaged schema, drop arbitrary objects, or run down-migrations.
@@ -191,14 +192,15 @@ require separately approved staging/backup procedures.
   required. Not every partially completed custom migration can be
   auto-repaired; never report success without verification.
 
-**Implementation gap:** The current semantic runner can use EF migrations
-once a PostgreSQL database is available. It does **not yet** provide the
-separate server-level database bootstrap flow, missing-database status,
-strong history/drift checks, or end-to-end convergence evidence. The current
-`nuviot/k8s` scripts still require a pre-created Database CRD. **Do not
-treat the charter as an already deployed capability.** Converger
-implementation and its first missing/behind/current integration tests are
-blocking work before DEV cutover.
+**Implementation status (2026-11-13):** The semantic migrator supports
+missing-database observation, a read-only creation-privilege check,
+single-account create-if-missing, supported EF history validation,
+full-lifecycle PostgreSQL locking and schema verification. A real DEV
+status Job has confirmed `semantic_test` is MISSING and the configured
+account is BLOCKED for database creation. The Build Server DEV apply
+workflow is deployed but requires an explicitly approved, credential-ready
+status and operator authorization. No schema-changing Job has run yet.
+LIVE remains disabled.
 
 ## Contract for a database migration image
 
@@ -232,8 +234,8 @@ Config Server is the source of environment-specific database connection
 details. Prefer the existing
 `LagoVista.Configuration.Client`/`RemoteConfigurationClient` bootstrap
 pattern already used by short-lived workers, with a **database-migrator app
-identity and deployment key**. It may return separate target connection and
-bootstrap roles. The image verifies that resolved server/database identity
+identity and deployment key**. It returns the one approved migration account
+per provider, not a separate bootstrap account. The image verifies that resolved server/database identity
 matches the approved Build Server target registration; it must not accept
 unbounded runtime names or silently switch to another server. Build Server
 must never log or persist connection secrets in the operation receipt.
