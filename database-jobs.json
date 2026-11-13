@@ -38,7 +38,7 @@
         "unknownHistory": "fail-closed",
         "bootstrapCredentials": "separate-runtime-secret"
       },
-      "configurationAppKey": "semantic-schema-migrator"
+      "configurationAppKey": "db-migrator"
     }
   ]
 }

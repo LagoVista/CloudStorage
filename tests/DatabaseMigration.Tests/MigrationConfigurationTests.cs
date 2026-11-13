@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Npgsql;
 
 namespace DatabaseMigration.Tests;
 
@@ -14,127 +15,107 @@ namespace DatabaseMigration.Tests;
 public sealed class MigrationConfigurationTests
 {
     private static IConfiguration Config(
-        string provider = "postgresql",
-        string database = "semantic_production",
-        string host = "postgres-rw",
-        string? connection = "Host=postgres-rw;Database=semantic_production;Username=migrator;Password=not-a-real-password")
+        string? url = "postgresql://postgres-rw:5432",
+        string? user = "migrator",
+        string? password = "not-a-real-password")
     {
         return new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?>
             {
-                ["DatabaseMigration:Targets:production:Provider"] = provider,
-                ["DatabaseMigration:Targets:production:Database"] = database,
-                ["DatabaseMigration:Targets:production:ServerHost"] = host,
-                ["DatabaseMigration:Targets:production:ConnectionString"] = connection,
-                ["DatabaseMigration:Targets:production:BootstrapConnectionString"] = "Host=postgres-rw;Database=postgres;Username=bootstrap;Password=not-a-real-password"
+                ["DbMigrator:PostgresUrl"] = url,
+                ["DbMigrator:PostgresUserName"] = user,
+                ["DbMigrator:PostgresPassword"] = password
             }).Build();
     }
 
     [TestMethod]
-    public void Exported_registration_manifest_covers_both_targets_without_secrets()
+    public void Exported_manifest_uses_shared_provider_keys_without_values()
     {
-        var manifest = MigrationConfigurationContract.ExportConfigManifest(["production", "test"]);
-        Assert.IsTrue(manifest.StartsWith("BEGIN CONFIG", StringComparison.Ordinal));
-        Assert.IsTrue(manifest.TrimEnd().EndsWith("END CONFIG", StringComparison.Ordinal));
+        var manifest = MigrationConfigurationContract.ExportConfigManifest();
         var lines = manifest.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
-        Assert.AreEqual(12, lines.Length); // 2 markers + 5 requirements per target
-        foreach (var target in new[] { "production", "test" })
-        {
-            foreach (var name in new[] { "Provider", "Database", "ServerHost", "ConnectionString" })
-                Assert.IsTrue(lines.Contains($"DatabaseMigration:Targets:{target}:{name},false,false"),
-                    $"Missing required setting {target}:{name}");
-            Assert.IsTrue(lines.Contains($"DatabaseMigration:Targets:{target}:BootstrapConnectionString,true,false"));
-        }
-        Assert.IsFalse(manifest.Contains("Password=", StringComparison.Ordinal));
+        Assert.AreEqual(8, lines.Length);
+        Assert.AreEqual("BEGIN CONFIG", lines[0]);
+        Assert.AreEqual("END CONFIG", lines[^1]);
+        foreach (var name in new[] {
+            "SqlServerUrl", "SqlServerUserName", "SqlServerPassword",
+            "PostgresUrl", "PostgresUserName", "PostgresPassword"
+        })
+            Assert.IsTrue(lines.Contains($"DbMigrator:{name},false,false"));
+        Assert.IsFalse(manifest.Contains("not-a-real-password", StringComparison.Ordinal));
         Assert.IsFalse(manifest.Contains("postgres-rw", StringComparison.Ordinal));
     }
 
     [TestMethod]
-    public void Exported_registration_manifest_rejects_unsafe_keys()
+    public void Postgres_configuration_constructs_approved_database_connection_and_redacts_password()
     {
-        Assert.ThrowsExactly<InvalidOperationException>(() =>
-            MigrationConfigurationContract.ExportConfigManifest(["production", "production"]));
-        Assert.ThrowsExactly<InvalidOperationException>(() =>
-            MigrationConfigurationContract.ExportConfigManifest(["../../unexpected"]));
-        Assert.ThrowsExactly<InvalidOperationException>(() =>
-            MigrationConfigurationContract.ExportConfigManifest([]));
-    }
-
-    [TestMethod]
-    public void Valid_config_uses_approved_database_identity()
-    {
-        var resolved = MigrationConfigurationLoader.ResolveRemoteTarget(Config(),
-            "production", "semantic_production", "postgresql", "semantic-schema-migrator", "dev");
-
-        Assert.AreEqual("config-server", resolved.Source);
-        Assert.AreEqual("semantic_production", resolved.Database);
-        Assert.AreEqual("postgres-rw", resolved.ServerHost);
-        Assert.AreEqual("semantic-schema-migrator", resolved.AppKey);
-        Assert.IsTrue(resolved.ConnectionString.Contains("Username=migrator"));
-        Assert.IsNotNull(resolved.BootstrapConnectionString);
-        Assert.IsFalse(resolved.ToString().Contains("not-a-real-password", StringComparison.Ordinal),
-            "Record ToString must not disclose credentials.");
+        var resolved = MigrationConfigurationLoader.ResolveRemoteTarget(
+            Config(password: "some;pass=word"), "production",
+            "semantic_production", "postgresql", "db-migrator", "dev");
+        var parsed = new NpgsqlConnectionStringBuilder(resolved.ConnectionString);
+        Assert.AreEqual("semantic_production", parsed.Database);
+        Assert.AreEqual("postgres-rw", parsed.Host);
+        Assert.AreEqual(5432, parsed.Port);
+        Assert.AreEqual("migrator", parsed.Username);
+        Assert.AreEqual("some;pass=word", parsed.Password);
+        Assert.AreEqual("db-migrator", resolved.AppKey);
+        Assert.IsNull(resolved.BootstrapConnectionString);
+        Assert.IsFalse(resolved.ToString().Contains("some;pass=word", StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(resolved);
-        Assert.IsFalse(json.Contains("not-a-real-password", StringComparison.Ordinal),
-            "Serialized operation views must not disclose credentials.");
-        Assert.IsFalse(json.Contains("ConnectionString", StringComparison.Ordinal),
-            "Serialized operation views must not include secret property names.");
-
+        Assert.IsFalse(json.Contains("some;pass=word", StringComparison.Ordinal));
+        Assert.IsFalse(json.Contains("ConnectionString", StringComparison.Ordinal));
     }
 
     [TestMethod]
-    public void Missing_database_in_server_is_not_a_configuration_error()
+    public void Missing_database_does_not_prevent_configuration_resolution()
     {
-        // No connection or server probe occurs during Config Server target
-        // resolution; a missing physical database is a supported job start state.
-        var resolved = MigrationConfigurationLoader.ResolveRemoteTarget(Config(),
-            "production", "semantic_production", "postgresql", "semantic-schema-migrator", "dev");
-        Assert.AreEqual("semantic_production", resolved.Database);
+        var resolved = MigrationConfigurationLoader.ResolveRemoteTarget(
+            Config(), "test", "semantic_test", "postgresql", "db-migrator", "dev");
+        Assert.AreEqual("semantic_test", new NpgsqlConnectionStringBuilder(resolved.ConnectionString).Database);
     }
 
     [TestMethod]
-    public void Wrong_database_is_rejected()
+    public void Unsafe_postgres_url_and_missing_credentials_are_rejected()
+    {
+        foreach (var url in new[] {
+            "postgresql://other/schema", "postgresql://user:pass@other",
+            "postgresql://other?sslmode=disable", "postgresql://other/#x"
+        })
+        {
+            Assert.ThrowsExactly<InvalidOperationException>(() =>
+                MigrationConfigurationLoader.ResolveRemoteTarget(Config(url: url),
+                    "production", "semantic_production", "postgresql", "db-migrator", "dev"));
+        }
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
+            MigrationConfigurationLoader.ResolveRemoteTarget(Config(password: null),
+                "production", "semantic_production", "postgresql", "db-migrator", "dev"));
+    }
+
+    [TestMethod]
+    public void Wrong_app_and_deployment_are_rejected()
     {
         Assert.ThrowsExactly<InvalidOperationException>(() =>
-            MigrationConfigurationLoader.ResolveRemoteTarget(Config(database: "other"),
-                "production", "semantic_production", "postgresql",
-                "semantic-schema-migrator", "dev"));
+            MigrationConfigurationLoader.ResolveRemoteTarget(Config(), "production",
+                "semantic_production", "postgresql", "semantic-schema-migrator", "dev"));
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
+            MigrationConfigurationLoader.ResolveRemoteTarget(Config(), "production",
+                "semantic_production", "postgresql", "db-migrator", "sandbox"));
     }
 
     [TestMethod]
-    public void Wrong_provider_is_rejected()
+    public void Sql_server_configuration_is_provider_specific()
     {
-        Assert.ThrowsExactly<InvalidOperationException>(() =>
-            MigrationConfigurationLoader.ResolveRemoteTarget(Config(provider: "azure-sql"),
-                "production", "semantic_production", "postgresql",
-                "semantic-schema-migrator", "dev"));
-    }
-
-    [TestMethod]
-    public void Missing_server_identity_is_rejected()
-    {
-        Assert.ThrowsExactly<InvalidOperationException>(() =>
-            MigrationConfigurationLoader.ResolveRemoteTarget(Config(host: ""),
-                "production", "semantic_production", "postgresql",
-                "semantic-schema-migrator", "dev"));
-    }
-
-    [TestMethod]
-    public void Missing_connection_is_rejected_without_direct_fallback()
-    {
-        Assert.ThrowsExactly<InvalidOperationException>(() =>
-            MigrationConfigurationLoader.ResolveRemoteTarget(Config(connection: null),
-                "production", "semantic_production", "postgresql",
-                "semantic-schema-migrator", "dev"));
-    }
-
-    [TestMethod]
-    public void Unknown_deployment_is_rejected()
-    {
-        Assert.ThrowsExactly<InvalidOperationException>(() =>
-            MigrationConfigurationLoader.ResolveRemoteTarget(Config(),
-                "production", "semantic_production", "postgresql",
-                "semantic-schema-migrator", "sandbox"));
+        var config = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["DbMigrator:SqlServerUrl"] = "tcp:sql.example.net,1433",
+                ["DbMigrator:SqlServerUserName"] = "migration-user",
+                ["DbMigrator:SqlServerPassword"] = "not-a-real-password"
+            }).Build();
+        var resolved = MigrationConfigurationLoader.ResolveRemoteTarget(config, "schema",
+            "sample_db", "azure-sql", "db-migrator", "dev");
+        Assert.AreEqual("tcp:sql.example.net,1433", resolved.ServerHost);
+        Assert.IsTrue(resolved.ConnectionString.Contains("sample_db", StringComparison.Ordinal));
+        Assert.IsFalse(resolved.ToString().Contains("not-a-real-password", StringComparison.Ordinal));
     }
 }
 

@@ -1,20 +1,21 @@
+using System.Data.Common;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using LagoVista.Configuration.Client.Models;
 using LagoVista.IoT.WebHost.Common.Config;
 using Microsoft.Extensions.Configuration;
-using System.Text.Json.Serialization;
 
 namespace LagoVista.Relational.MigrationRuntime;
 
 /// <summary>
-/// Shared one-shot migration-job configuration bootstrap. No database-specific
-/// provider or EF model lives here. The requesting image owns its appKey,
-/// target allowlist and expected schema.
+/// Resolve provider-level configuration from the shared db-migrator application.
+/// The image, not Config Server, owns the allowlisted target database identity.
 /// </summary>
 public static class MigrationConfigurationLoader
 {
     public const string SourceVariable = "MIGRATION_CONFIG_SOURCE";
     public const string DeploymentVariable = "MIGRATION_DEPLOYMENT";
-    public const string TargetSection = "DatabaseMigration:Targets";
+    public const string SettingsSection = "DbMigrator";
 
     public static async Task<ResolvedMigrationConfiguration> LoadAsync(
         string imageAppKey,
@@ -24,10 +25,7 @@ public static class MigrationConfigurationLoader
         CancellationToken ct = default)
     {
         ValidateIdentity(imageAppKey, target, expectedDatabase, expectedProvider);
-        var settings = new ConfigurationBuilder()
-            .AddEnvironmentVariables()
-            .Build();
-
+        var settings = new ConfigurationBuilder().AddEnvironmentVariables().Build();
         var bootstrapSection = settings.GetSection(ConfigurationBootstrapSettings.SectionName);
         var hasBootstrap = !string.IsNullOrWhiteSpace(bootstrapSection[nameof(ConfigurationBootstrapSettings.ConfigurationServiceBaseUrl)]) ||
                            !string.IsNullOrWhiteSpace(bootstrapSection[nameof(ConfigurationBootstrapSettings.AuthorizationToken)]);
@@ -39,8 +37,6 @@ public static class MigrationConfigurationLoader
         var deployment = (settings[DeploymentVariable] ?? "").Trim().ToLowerInvariant();
         if (remote)
         {
-            // The deployment key is an operational authorization boundary.
-            // Never resolve LIVE implicitly from a developer's machine.
             if (deployment is not ("dev" or "live"))
                 throw new InvalidOperationException("MIGRATION_DEPLOYMENT must explicitly be 'dev' or 'live' in Config Server mode.");
 
@@ -55,10 +51,10 @@ public static class MigrationConfigurationLoader
             using var client = new HttpClient();
             var configurationClient = new RemoteConfigurationClient(client);
             var result = await configurationClient.LoadAsync(
-                bootstrap, imageAppKey, deployment, ct).ConfigureAwait(false);
+                bootstrap, MigrationConfigurationContract.ApplicationKey, deployment, ct).ConfigureAwait(false);
             if (!result.Success || result.ResolvedConfiguration?.Values is null)
                 throw new InvalidOperationException(
-                    $"Config Server resolution failed for registered migration app '{imageAppKey}' and deployment '{deployment}'. Stage={result.FailureStage}; attempts={result.AttemptCount}. No direct connection fallback is permitted.");
+                    $"Config Server resolution failed for migration app '{MigrationConfigurationContract.ApplicationKey}' and deployment '{deployment}'. Stage={result.FailureStage}; attempts={result.AttemptCount}. No direct connection fallback is permitted.");
 
             var remoteConfig = new ConfigurationBuilder()
                 .AddInMemoryCollection(result.ResolvedConfiguration.Values.Select(pair =>
@@ -71,16 +67,16 @@ public static class MigrationConfigurationLoader
         if (deployment == "live")
             throw new InvalidOperationException("Direct connection mode is disabled for LIVE migration jobs.");
 
-        // Compatibility path for the current DEV-only Kubernetes scripts.
-        // It is NEVER used if Config Server bootstrap settings were provided,
-        // unless an operator deliberately selects direct mode for local/DEV.
+        // Compatibility only for the existing DEV pilot Kubernetes scripts.
+        // No Config Server failure ever falls back to these credentials.
         var connection = settings["MIGRATION_CONNECTION_STRING"];
         if (string.IsNullOrWhiteSpace(connection))
             throw new InvalidOperationException(
                 "Direct DEV mode requires MIGRATION_CONNECTION_STRING from a trusted runtime Secret.");
 
         return new ResolvedMigrationConfiguration(
-            "direct", imageAppKey, string.IsNullOrWhiteSpace(deployment) ? "dev" : deployment,
+            "direct", MigrationConfigurationContract.ApplicationKey,
+            string.IsNullOrWhiteSpace(deployment) ? "dev" : deployment,
             target, expectedProvider, expectedDatabase, null,
             connection, settings["MIGRATION_BOOTSTRAP_CONNECTION_STRING"]);
     }
@@ -97,35 +93,95 @@ public static class MigrationConfigurationLoader
         if (deployment is not ("dev" or "live"))
             throw new InvalidOperationException("Config Server deployment must be 'dev' or 'live'.");
 
-        var section = configuration.GetSection($"{TargetSection}:{target}");
-        var provider = section["Provider"];
-        var database = section["Database"];
-        var serverHost = section["ServerHost"];
-        var connection = section["ConnectionString"];
-        if (!string.Equals(provider, expectedProvider, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"Config Server provider for target '{target}' does not match the image provider.");
-        if (!string.Equals(database, expectedDatabase, StringComparison.Ordinal))
-            throw new InvalidOperationException($"Config Server database name for target '{target}' does not match the image's authorized database name.");
-        if (string.IsNullOrWhiteSpace(serverHost))
-            throw new InvalidOperationException($"Config Server ServerHost for target '{target}' is missing.");
-        if (string.IsNullOrWhiteSpace(connection))
-            throw new InvalidOperationException($"Config Server connection for target '{target}' is missing.");
+        var section = configuration.GetSection(SettingsSection);
+        var provider = expectedProvider.Trim().ToLowerInvariant();
+        string host;
+        string connection;
+        if (provider == "postgresql")
+        {
+            var (hostname, port) = ParsePostgresEndpoint(section["PostgresUrl"]);
+            host = hostname;
+            var username = Required(section["PostgresUserName"], "PostgresUserName");
+            var password = Required(section["PostgresPassword"], "PostgresPassword");
+            var builder = new DbConnectionStringBuilder
+            {
+                ["Host"] = host,
+                ["Port"] = port,
+                ["Database"] = expectedDatabase,
+                ["Username"] = username,
+                ["Password"] = password,
+                ["SSL Mode"] = "Prefer"
+            };
+            connection = builder.ConnectionString;
+        }
+        else if (provider == "azure-sql")
+        {
+            host = Required(section["SqlServerUrl"], "SqlServerUrl");
+            if (!Regex.IsMatch(host, @"^(?:tcp:)?[A-Za-z0-9][A-Za-z0-9.-]*(?:[,][0-9]{1,5})?$", RegexOptions.CultureInvariant))
+                throw new InvalidOperationException("DbMigrator:SqlServerUrl must be an approved SQL Server host, optionally with a port.");
+            var username = Required(section["SqlServerUserName"], "SqlServerUserName");
+            var password = Required(section["SqlServerPassword"], "SqlServerPassword");
+            var builder = new DbConnectionStringBuilder
+            {
+                ["Server"] = host,
+                ["Initial Catalog"] = expectedDatabase,
+                ["User ID"] = username,
+                ["Password"] = password,
+                ["Encrypt"] = "True",
+                ["TrustServerCertificate"] = "False"
+            };
+            connection = builder.ConnectionString;
+        }
+        else
+        {
+            throw new InvalidOperationException("Unknown database migration provider.");
+        }
+
         return new ResolvedMigrationConfiguration(
-            "config-server", imageAppKey, deployment, target, expectedProvider,
-            expectedDatabase, serverHost.Trim(), connection,
-            section["BootstrapConnectionString"]);
+            "config-server", MigrationConfigurationContract.ApplicationKey,
+            deployment, target, provider, expectedDatabase, host,
+            connection, null);
     }
 
-    private static void ValidateIdentity(
-        string appKey, string target, string database, string provider)
+    private static (string Host, int Port) ParsePostgresEndpoint(string? value)
     {
-        if (string.IsNullOrWhiteSpace(appKey) || string.IsNullOrWhiteSpace(target) ||
-            string.IsNullOrWhiteSpace(database) || string.IsNullOrWhiteSpace(provider))
-            throw new ArgumentException("Migration app key, target, database and provider are required.");
+        var endpoint = Required(value, "PostgresUrl");
+        var url = endpoint.Contains("://", StringComparison.Ordinal) ? endpoint : "postgresql://" + endpoint;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            uri.Scheme is not ("postgresql" or "postgres") ||
+            string.IsNullOrWhiteSpace(uri.Host) ||
+            !string.IsNullOrEmpty(uri.UserInfo) ||
+            !string.IsNullOrEmpty(uri.Query) ||
+            !string.IsNullOrEmpty(uri.Fragment) ||
+            uri.AbsolutePath is not ("" or "/"))
+            throw new InvalidOperationException("DbMigrator:PostgresUrl must be a PostgreSQL host or endpoint URL without credentials, database path or query.");
+        var port = uri.IsDefaultPort || uri.Port == -1 ? 5432 : uri.Port;
+        if (port is < 1 or > 65535)
+            throw new InvalidOperationException("DbMigrator:PostgresUrl has an invalid port.");
+        return (uri.Host, port);
+    }
+
+    private static string Required(string? value, string name)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException($"DbMigrator:{name} is required for this provider.");
+        return value.Trim();
+    }
+
+    private static void ValidateIdentity(string appKey, string target, string database, string provider)
+    {
+        if (!string.Equals(appKey, MigrationConfigurationContract.ApplicationKey, StringComparison.Ordinal))
+            throw new InvalidOperationException("Database migration images must use the shared db-migrator Config Server application.");
+        if (string.IsNullOrWhiteSpace(target) ||
+            !Regex.IsMatch(target, "^[a-z][a-z0-9-]*$", RegexOptions.CultureInvariant) ||
+            string.IsNullOrWhiteSpace(database) ||
+            !Regex.IsMatch(database, "^[a-z][a-z0-9_]*$", RegexOptions.CultureInvariant) ||
+            provider is not ("postgresql" or "azure-sql"))
+            throw new ArgumentException("An approved migration target, database and supported provider are required.");
     }
 }
 
-/// <summary>Secrets must never be serialized into journal output or UI responses.</summary>
+/// <summary>Never serialize connection strings into UI or journal records.</summary>
 public sealed record ResolvedMigrationConfiguration(
     string Source,
     string AppKey,
@@ -137,8 +193,6 @@ public sealed record ResolvedMigrationConfiguration(
     [property: JsonIgnore] string ConnectionString,
     [property: JsonIgnore] string? BootstrapConnectionString)
 {
-    // Records generate a ToString() with ALL positional members by default.
-    // Connection strings must never appear in logs, journal payloads or UI.
     public override string ToString() =>
         $"Migration target {AppKey}/{Deployment}/{Target}; provider={Provider}; database={Database}; host={ServerHost ?? "unregistered"}; source={Source}; credentials=[redacted]";
 }

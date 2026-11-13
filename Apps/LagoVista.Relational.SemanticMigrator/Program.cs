@@ -14,7 +14,7 @@ using Npgsql;
 // database access or external services.
 if (args.Contains("--export-config-manifest", StringComparer.OrdinalIgnoreCase))
 {
-    Console.WriteLine(MigrationConfigurationContract.ExportConfigManifest(["production", "test"]));
+    Console.WriteLine(MigrationConfigurationContract.ExportConfigManifest());
     return;
 }
 
@@ -52,7 +52,7 @@ if (action is not ("status" or "apply"))
 // Shared .NET runtime uses Config Server when a remote bootstrap is provided.
 // Direct secret mode remains available for the existing DEV-only pilot scripts.
 var resolvedConfiguration = await MigrationConfigurationLoader.LoadAsync(
-    "semantic-schema-migrator", target, expectedDatabase, "postgresql");
+    MigrationConfigurationContract.ApplicationKey, target, expectedDatabase, "postgresql");
 var dbConnection = new NpgsqlConnectionStringBuilder(resolvedConfiguration.ConnectionString);
 if (!string.Equals(dbConnection.Database, expectedDatabase, StringComparison.Ordinal))
     throw new InvalidOperationException("The supplied migration connection does not match the authorized semantic catalog target.");
