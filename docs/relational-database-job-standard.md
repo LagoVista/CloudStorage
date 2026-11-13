@@ -222,6 +222,83 @@ Secret selected by a trusted environment target. It does not embed passwords,
 fetch schema instructions, invoke external LLMs, or contact a third-party
 configuration service to decide what SQL to run.
 
+## Config Server and destination registration
+
+Build Server chooses a **registered job type + deployment environment + logical
+database target**, not an arbitrary database URL. The self-contained image
+contains its own provider-specific EF model/migrations but no passwords.
+
+Config Server is the source of environment-specific database connection
+details. Prefer the existing
+`LagoVista.Configuration.Client`/`RemoteConfigurationClient` bootstrap
+pattern already used by short-lived workers, with a **database-migrator app
+identity and deployment key**. It may return separate target connection and
+bootstrap roles. The image verifies that resolved server/database identity
+matches the approved Build Server target registration; it must not accept
+unbounded runtime names or silently switch to another server. Build Server
+must never log or persist connection secrets in the operation receipt.
+
+**Today we care about exactly two relational servers/providers:** Azure SQL
+Server and the clustered PostgreSQL service. A schema family/provider has one
+versioned migrator image; that image may be used for multiple authorized
+database instances sharing the same EF model. Each physical database maintains
+its **own** EF migration-history ledger. The literal SQL notion of multiple
+named schemas inside one database needs a separate history/name policy and is
+not part of the initial scope.
+
+Config Server access must be appropriately scoped for a one-off mutating job.
+If config lookup or target identity validation fails, the migration is
+blocked and journaled—no fallback to an unapproved server.
+
+## OperationalJournal: required, not optional
+
+**Every accepted database migration attempt produces an authoritative
+`OperationJournal` record** and is linked to the Build Server
+`ProcessExecution` for UI, cancellation and restart recovery.
+
+This is deliberately **stricter** than the existing general-purpose
+`ProcessExecutionRuntime`, which currently records some journal transport
+failures as diagnostics and permits work to continue. That best-effort
+behavior must **not** authorize database writes.
+
+**Start-before-write rule:** the migration Job must not start if the durable
+journal start/accepted write has not been acknowledged. The persisted
+journal operation identity is deterministic from its accepted execution ID.
+That gate is enforced server-side, not by UI visibility or a caller checkbox.
+
+### Required events (at least)
+
+| Phase | Durable information |
+| --- | --- |
+| Accepted | Job ID, requester/approval identity, environment, logical target, source commit, immutable image digest, operation/process correlation |
+| Configuration resolved | Approved server identity, database name and provider (no credentials) |
+| Inspection | Database `missing`, `uninitialized`, `behind`, `current`, or `blocked`; observed previous EF revision |
+| Bootstrap | If missing, creation started/succeeded/failed; recorded even for first-time installations |
+| Migration | Each pending EF migration ID started/completed/failed; total applied and current revision |
+| Validation | Final EF history, expected target revision, schema checks, result |
+| Terminal | `Succeeded`, `Failed`, `Cancelled`, or `Interrupted/Unknown`; elapsed time and evidence |
+
+Status-only/dry-run and already-current **no-op** executions are also
+journaled. Do not generate fake migration-applied events for a no-op.
+
+**Reliability model:** persist each accepted transition with deterministic,
+idempotent detail IDs or a durable local/outbox checkpoint for later retry.
+A network failure after the Kubernetes Job starts must not silently lose
+bootstrap/migration/completion evidence. On restart, reconcile the actual
+Kubernetes Job and database's EF history into the same journal record; do
+not rerun a destructive custom migration merely because a client timed out.
+If final evidence is incomplete, surface `Journal incomplete` or
+`Indeterminate` and require reconciliation rather than reporting success.
+
+The same receipt powers the Database Migrations workbench and drill-through
+to Engineering Executions. Do **not** invent a second journal/log database or
+use browser-only state as authority.
+
+**Implementation status:** strict start gate, append/retry reconciliation,
+Config Server credential resolution and Kubernetes dispatch are **not yet
+wired** to the new page. Do not enable `Apply to DEV/LIVE` until proven with
+failure injection for journal unavailability and interrupted Job recovery.
+
 ## Build Server contract
 
 1. At an **exact authorized source commit**, read `database-jobs.json`
