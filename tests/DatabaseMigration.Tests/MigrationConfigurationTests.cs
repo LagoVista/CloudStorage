@@ -102,6 +102,55 @@ public sealed class MigrationConfigurationTests
     }
 
     [TestMethod]
+    public void Postgres_host_only_uses_the_default_port()
+    {
+        var resolved = MigrationConfigurationLoader.ResolveRemoteTarget(
+            Config(url: "nuviot-postgres-rw"), "test",
+            "semantic_test", "postgresql", "db-migrator", "dev");
+        var parsed = new NpgsqlConnectionStringBuilder(resolved.ConnectionString);
+        Assert.AreEqual("nuviot-postgres-rw", parsed.Host);
+        Assert.AreEqual(5432, parsed.Port);
+        Assert.AreEqual("semantic_test", parsed.Database);
+    }
+
+    [TestMethod]
+    public void Missing_postgres_endpoint_or_username_is_rejected()
+    {
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
+            MigrationConfigurationLoader.ResolveRemoteTarget(Config(url: null),
+                "production", "semantic_production", "postgresql", "db-migrator", "dev"));
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
+            MigrationConfigurationLoader.ResolveRemoteTarget(Config(user: null),
+                "production", "semantic_production", "postgresql", "db-migrator", "dev"));
+    }
+
+    [TestMethod]
+    public void Invalid_target_database_or_provider_cannot_select_new_credentials()
+    {
+        Assert.ThrowsExactly<ArgumentException>(() =>
+            MigrationConfigurationLoader.ResolveRemoteTarget(Config(), "production",
+                "another;Password=unexpected", "postgresql", "db-migrator", "dev"));
+        Assert.ThrowsExactly<ArgumentException>(() =>
+            MigrationConfigurationLoader.ResolveRemoteTarget(Config(), "production",
+                "semantic_production", "other-provider", "db-migrator", "dev"));
+    }
+
+    [TestMethod]
+    public void Sql_server_rejects_untrusted_endpoint_and_missing_credentials()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["DbMigrator:SqlServerUrl"] = "sql.example.net;TrustServerCertificate=true",
+                ["DbMigrator:SqlServerUserName"] = "migration-user",
+                ["DbMigrator:SqlServerPassword"] = "not-a-real-password"
+            }).Build();
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
+            MigrationConfigurationLoader.ResolveRemoteTarget(config, "schema",
+                "sample_db", "azure-sql", "db-migrator", "dev"));
+    }
+
+    [TestMethod]
     public void Sql_server_configuration_is_provider_specific()
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(
