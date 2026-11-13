@@ -23,13 +23,64 @@ resources into EF Core. Existing databases migrate into this policy only through
 explicitly scoped modernization. Specialized PostgreSQL extensions/cluster
 bootstrap remain operator/CNPG responsibilities, not EF model objects.
 
+## Product ownership: Build Server V2, not Kubernetes configuration
+
+Database schema migration is a **developer/build capability**. Its primary home
+is a dedicated, deliberately simple **Database Migrations** workbench in
+**Build Server V2**, alongside other build/publish/deploy operations.
+
+- **Build Server owns the workflow:** detect EF model drift, identify missing
+  migration source, build and publish the database-specific immutable image,
+  compare image revision with the database's recorded revision, authorize
+  execution, create the one-shot job, show live progress/logs and retain the
+  receipt. The user should not need to navigate `nuviot/k8s` scripts for
+  routine schema changes.
+- **CloudStorage owns source truth:** models, checked-in migrations,
+  `database-jobs.json` and job images. It is not the operator UI.
+- **Kubernetes and `nuviot/k8s` own the substrate:** cluster/SQL-server
+  reachability, trusted target registrations, runtime secrets and service
+  accounts/RBAC, namespace constraints, job execution primitives and
+  infrastructure provisioning. They must **not** be a second migration
+  scheduler or decide when schemas need updating.
+- **Existing DEV PowerShell scripts** under
+  `nuviot/k8s/platform/database-migrations` are bootstrap/proof scaffolding,
+  not the intended ongoing product. Build Server should invoke Kubernetes
+  Jobs directly through a narrow, permitted job-launch capability once it
+  is in place, not require developers to run PowerShell manually.
+
+### Detect, do not silently invent migrations
+
+For each registered EF migration context, Build Server compares the *current
+compiled EF model* with the checked-in *migration model snapshot* using EF
+Core's pending-model-changes functionality. No database connection is required
+for this **source drift** check.
+
+- **Model matches snapshot:** migration source is internally consistent.
+- **Model differs:** flag `Migration Required`, block image publication, and
+  optionally offer scaffolding into a reviewable source change.
+- **Migration source is consistent but target is behind or missing:** build
+  (if needed) and run the approved convergence image for that target.
+- **Target newer/unknown or drifted:** fail closed; do not guess what data
+  transformation or down-migration to run.
+
+Automatic detection is not the same as safe automatic migration authoring:
+renames, splits, transformations and destructive operations need developer
+review. The first release should be read-only analysis/status, then gated
+DEV image build/apply. LIVE promotion remains a separate explicit approval.
+
+**Suggested minimum workbench:** one row per schema job (EF context/provider),
+with `Model`, `Image Version`, `DEV Revision`, `LIVE Revision`,
+`Last Result`; details show logical targets and recent execution evidence.
+Actions: `Analyze Model`, `Build Image`, `Run on DEV` (guarded).
+This is a Build Server page, not a Kubernetes management screen.
+
 ## Authority boundaries
 
 | Owner | Responsibility |
 | --- | --- |
 | **CloudStorage Git** | EF context, entities, checked-in migrations, database job recipe and Dockerfile, tests; changes reviewed alongside the application |
-| **Build Server V2** | Resolve exact source commit, discover approved job recipe, validate inputs, build/prove/publish immutable image, record provenance, dispatch permitted one-shot execution, collect status and journal |
-| **Kubernetes / nuviot/k8s** | Controlled environment, dedicated one-shot Job execution, cluster/database readiness, secret references, timeouts, tokenless worker identity, logs and cleanup |
+| **Build Server V2** | Own the developer-facing Database Migrations workbench, EF model-drift analysis, exact-commit builds, image publication, approved execution and observability |
+| **Kubernetes / nuviot/k8s** | Provide trusted infrastructure and Kubernetes Job primitives: cluster readiness, approved runtime secret bindings, service-account/RBAC, bounded execution and cleanup; not the migration product or its scheduler |
 | **EF Core / target DB** | Database-specific `__EFMigrationsHistory` is the sole authority for *which schema migrations are applied* |
 | **Config Server** | Application connection settings; no schema authority or implicit application-startup migrations |
 
