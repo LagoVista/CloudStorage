@@ -104,7 +104,8 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .HasColumnType("varchar(16)")
                         .HasColumnOrder(5);
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_artifacts");
 
                     b.HasIndex("OwnerOrganizationId")
                         .HasDatabaseName("ix_artifacts_ownerorganizationid");
@@ -166,7 +167,8 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .HasColumnType("varchar(50)")
                         .HasColumnOrder(4);
 
-                    b.HasKey("ArtifactId", "DefinitionId");
+                    b.HasKey("ArtifactId", "DefinitionId")
+                        .HasName("pk_artifactinformationelements");
 
                     b.HasIndex("DefinitionId")
                         .HasDatabaseName("ix_artifactinformationelements_definitionid");
@@ -235,7 +237,8 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .HasColumnType("varchar(50)")
                         .HasColumnOrder(7);
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_concepts");
 
                     b.HasIndex("Key")
                         .IsUnique()
@@ -328,7 +331,8 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .HasColumnType("varchar(2048)")
                         .HasColumnOrder(7);
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_definitions");
 
                     b.HasIndex("ConceptId")
                         .HasDatabaseName("ix_definitions_conceptid");
@@ -395,7 +399,8 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .HasColumnType("bytea")
                         .HasColumnOrder(7);
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_embeddings");
 
                     b.HasIndex("OwnerOrganizationId")
                         .HasDatabaseName("ix_embeddings_ownerorganizationid");
@@ -543,7 +548,8 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .HasColumnType("timestamp with time zone")
                         .HasColumnOrder(8);
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_registry");
 
                     b.HasIndex("Name")
                         .IsUnique()
@@ -607,7 +613,8 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .HasColumnType("varchar(50)")
                         .HasColumnOrder(7);
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_subjects");
 
                     b.HasIndex("Key")
                         .IsUnique()
@@ -625,13 +632,15 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .WithMany()
                         .HasForeignKey("ArtifactId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artifactinformationelements_artifacts_artifactid");
 
                     b.HasOne("LagoVista.Relational.DefinitionDTO", null)
                         .WithMany()
                         .HasForeignKey("DefinitionId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_artifactinformationelements_definitions_definitionid");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.DefinitionDTO", b =>
@@ -640,13 +649,15 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .WithMany()
                         .HasForeignKey("ConceptId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_definitions_concepts_conceptid");
 
                     b.HasOne("LagoVista.Relational.SubjectDTO", null)
                         .WithMany()
                         .HasForeignKey("SubjectId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_definitions_subjects_subjectid");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.EmbeddingDTO", b =>
@@ -655,7 +666,8 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .WithMany()
                         .HasForeignKey("DefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_embeddings_definitions_definitionid");
                 });
 #pragma warning restore 612, 618
         }

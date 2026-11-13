@@ -33,6 +33,8 @@ namespace LagoVista.Relational
             modelBuilder.Entity<SemanticDefinitionViewDTO>(entity =>
             {
                 entity.HasNoKey();
+                // A read-only SQL view must not also be mapped to a convention-based table.
+                entity.ToTable((string)null);
                 entity.ToView(modelBuilder.IsPostgres() ? "usv_semanticdefinitions" : "usv_SemanticDefinitions", "dbo");
             });
         }

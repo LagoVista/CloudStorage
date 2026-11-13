@@ -40,7 +40,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Artifacts", x => x.id);
+                    table.PrimaryKey("pk_artifacts", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -60,7 +60,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Concepts", x => x.id);
+                    table.PrimaryKey("pk_concepts", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -79,7 +79,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Registry", x => x.id);
+                    table.PrimaryKey("pk_registry", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -99,7 +99,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Subjects", x => x.id);
+                    table.PrimaryKey("pk_subjects", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -124,7 +124,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Definitions", x => x.id);
+                    table.PrimaryKey("pk_definitions", x => x.id);
                     table.ForeignKey(
                         name: "fk_definitions_concepts_conceptid",
                         column: x => x.conceptid,
@@ -155,7 +155,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ArtifactInformationElements", x => new { x.artifactid, x.definitionid });
+                    table.PrimaryKey("pk_artifactinformationelements", x => new { x.artifactid, x.definitionid });
                     table.ForeignKey(
                         name: "fk_artifactinformationelements_artifacts_artifactid",
                         column: x => x.artifactid,
@@ -188,7 +188,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Embeddings", x => x.id);
+                    table.PrimaryKey("pk_embeddings", x => x.id);
                     table.ForeignKey(
                         name: "fk_embeddings_definitions_definitionid",
                         column: x => x.definitionid,

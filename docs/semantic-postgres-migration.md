@@ -139,3 +139,18 @@ This is distinct from `MIGRATION_ACTION=status|apply`, which inspects or
 converges an actual database target.
 
 The test `SemanticModelDriftTests` is the corresponding source gate.
+
+### First EF model-drift proof and initial schema correction
+
+The first `HasPendingModelChanges()` regression detected 25 unintended
+operations before any DEV database migration was run: key/constraint casing
+and an implicit `definitionview` table mapping. Because the PostgreSQL
+lineage has **not been published or applied**, its initial migration and
+snapshot were corrected in source to match the model's lower-case PostgreSQL
+naming policy. The view DTO explicitly has no table mapping (consistent
+with the existing SQL Server view snapshot). This repair is intentionally
+limited to the as-yet-unreleased PostgreSQL migration lineage; existing
+SQL Server migration files and databases are unchanged.
+
+Future released EF migrations must never be edited in place. At that point
+schema differences require a new additive migration and review.
