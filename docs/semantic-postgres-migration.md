@@ -50,18 +50,19 @@ a separate `semantic-schema-migrator` AppDefinition. In DEV it resolves:
 - `DbMigrator:PostgresUrl` — approved PostgreSQL host and optional port
 - `DbMigrator:PostgresUserName` and `DbMigrator:PostgresPassword` —
   dedicated schema owner / EF migrator identity (password secret)
-- Optional `DbMigrator:PostgresBootstrapUserName` and
-  `DbMigrator:PostgresBootstrapPassword` — separate restricted creator
-  identity on **the exact same PostgreSQL server** (password secret)
+The migrator uses **one PostgreSQL login** for `CREATE DATABASE`, ownership,
+and EF migrations. It connects to the existing `postgres` maintenance database
+using that same login for read-only privilege checks, the advisory lock, and
+database creation. No second database credential is supported.
 
-The bootstrap identity connects to the `postgres` maintenance database.
-The read-only status result now tests both database-creation permission and
-the ability to assign database ownership to the migrator user. PostgreSQL
-15 tests membership; PostgreSQL 16+ tests `SET ROLE` eligibility. If
-`CREATE_PRIVILEGE: BLOCKED`, the Build Server refuses apply: configure an
-appropriately restricted role through Config Server, then rerun status.
-Neither password, connection string, nor Config Server bootstrap token is
-stored in Git, displayed in the Build Server UI or included in the journal.
+The read-only status reports `CREATE_PRIVILEGE: READY` only when that login
+can access the maintenance database and has `CREATEDB` (or equivalent
+superuser privilege). It does not need a role-membership or `SET ROLE`
+grant because the database owner is the same login. If
+`CREATE_PRIVILEGE: BLOCKED`, check which `PostgresUserName` is configured
+and authorize that role as appropriate before rerunning status.
+No password, connection string, or Config Server bootstrap token is displayed
+in the Build Server UI or recorded in the journal.
 
 Both the `status` probe and `apply` use the **registered DEV database
 identity**, and `apply` keeps a PostgreSQL advisory lock across creation,
@@ -88,7 +89,8 @@ The image must eventually accept an **existing PostgreSQL server** even if
 `semantic_production` or `semantic_test` has not been created. It should
 create the approved database when absent, run all checked-in EF migrations,
 verify the resulting schema, and safely report success on replay when current.
-An approved bootstrap credential is distinct from the migration credential.
+The approved migration account creates and owns the database and runs EF
+migrations; it must be granted the required database creation permission.
 Unknown/newer migration history or drift is a hard stop, not a reset.
 
 **Implementation state:** The runner implements create-if-missing,
@@ -103,13 +105,11 @@ server and database name, **not** the current presence of that database.
 The image may receive either an existing target database or a missing one.
 
 The semantic runner now checks for a missing PostgreSQL database, reports
-`MISSING` in status mode and creates it on `apply` using
-`MIGRATION_BOOTSTRAP_CONNECTION_STRING` when supplied, otherwise the
-migration user's credentials against the `postgres` maintenance database.
-Both modes refuse unexpected database names. Database creation requires a
-role permitted to CREATE DATABASE and assign ownership to the migration user.
-The Kubernetes Job must supply approved Secrets; insufficient permissions
-must produce a clear failure, never an implicit server-side workaround.
+`MISSING` in status mode and creates it on `apply` using the same registered
+migration login against PostgreSQL's existing `postgres` maintenance database.
+The worker refuses unexpected target names. Creation requires `CREATEDB`
+permission for that login; if denied, the status probe reports `BLOCKED` and
+no database Job is authorized.
 
 ## C# migration-runtime and Config Server bootstrap
 
@@ -122,10 +122,9 @@ no new application-type enum is needed.
 
 The Kubernetes Job receives only a fixed logical target (`test` in the DEV
 pilot), action, deployment, `MIGRATION_CONFIG_SOURCE=config-server` and
-Config Server bootstrap settings. The remote values are used to construct
-the approved PostgreSQL connection, with optional separate bootstrap
-credentials as defined above. The runner never trusts an arbitrary
-database name from the remote configuration.
+Config Server bootstrap settings. The remote values construct one approved
+PostgreSQL connection. The runner never trusts an arbitrary database name
+from the remote configuration.
 
 If the target is absent, apply can create it with an authorized owner,
 then run EF migrations as the ordinary migrator identity. The status
@@ -135,10 +134,10 @@ confirmation, current-source verified image digest, recent matching
 status, absence of another apply Job and a durable OperationalJournal
 acceptance before Kubernetes Job creation.
 
-Direct `MIGRATION_CONNECTION_STRING` / optional
-`MIGRATION_BOOTSTRAP_CONNECTION_STRING` remain limited to legacy DEV
-pilot scripts; Build Server forces Config Server mode and never falls
-back to direct credentials after a remote lookup failure.
+Direct `MIGRATION_CONNECTION_STRING` remains limited to legacy DEV pilot
+scripts. It uses the same PostgreSQL login for creation and EF migrations.
+Build Server forces Config Server mode and never falls back to direct
+credentials after a remote lookup failure.
 
 ## Offline model-drift analysis (Build Server readiness)
 
@@ -178,15 +177,10 @@ not arbitrary values provided by Config Server.
 - [ ] Confirm the `db-migrator` AppDefinition and its published DEV
   configuration resolve the regular PostgreSQL host, username and secret
   password. The earlier successful status Job proved basic connectivity.
-- [ ] Keep `PostgresPassword` marked secret. Only if the initial read-only
-  privilege probe returns `BLOCKED`, register both optional
-  `PostgresBootstrapUserName` and secret `PostgresBootstrapPassword`
-  on the **same approved PostgreSQL host**. Neither is needed when the
-  existing role has sufficient creator/owner authority.
-- [ ] Grant the bootstrap login only database creation plus the ability to
-  assign ownership to the dedicated migrator account. PostgreSQL 16+
-  requires SET-role capability for that owner. Do not give a broad
-  database superuser unless there is an independently approved reason.
+- [ ] Keep `PostgresPassword` marked secret. Identify the PostgreSQL login
+  supplied by `PostgresUserName` and verify it can connect to the `postgres`
+  maintenance database and has `CREATEDB`. Apply role grants only with
+  appropriate operator authorization. No second bootstrap account is needed.
 - [ ] Keep the Config Server bootstrap token in the existing DEV Kubernetes
   Secret; do not supply passwords to Build Server, CLI arguments or chat.
 - [ ] Publish the newly proved immutable image, assign DEV desired,
