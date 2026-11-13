@@ -33,7 +33,7 @@ namespace LagoVista.Relational
             modelBuilder.Entity<SemanticDefinitionViewDTO>(entity =>
             {
                 entity.HasNoKey();
-                entity.ToView("usv_SemanticDefinitions", "dbo");
+                entity.ToView(modelBuilder.IsPostgres() ? "usv_semanticdefinitions" : "usv_SemanticDefinitions", "dbo");
             });
         }
     }

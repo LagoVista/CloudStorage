@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System;
 using System.Linq;
@@ -33,7 +33,7 @@ namespace LagoVista
                 // Columns
                 foreach (var property in entity.GetProperties())
                 {
-                    property.SetColumnName(property.Name.ToLowerInvariant());
+                    property.SetColumnName((property.GetColumnName() ?? property.Name).ToLowerInvariant());
                 }
 
                 // Primary & alternate keys
