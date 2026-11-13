@@ -9,6 +9,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
+// Export the static Config Server registration contract. Like other short-lived
+// LagoVista workers, this command must work without bootstrap credentials,
+// database access or external services.
+if (args.Contains("--export-config-manifest", StringComparer.OrdinalIgnoreCase))
+{
+    Console.WriteLine(MigrationConfigurationContract.ExportConfigManifest(["production", "test"]));
+    return;
+}
+
 // Source-only engineering analysis, invoked by Build Server on the exact
 // committed checkout. No Config Server lookup and no database connection.
 if (args.Contains("--analyze-model", StringComparer.OrdinalIgnoreCase))

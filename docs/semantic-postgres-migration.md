@@ -154,3 +154,57 @@ SQL Server migration files and databases are unchanged.
 
 Future released EF migrations must never be edited in place. At that point
 schema differences require a new additive migration and review.
+
+## Config Server application registration — DEV prerequisites
+
+**Product owner:** Build Server V2. **Application identity:** register
+`semantic-schema-migrator` as an ordinary Config Server `AppDefinition`
+and `PublishedApp` for **DEV**. This is a new registered application
+identity; do **not** create a new application-type enum unless existing
+registration semantics actually prove inadequate.
+
+To inspect the settings contract without credentials, database access or
+network traffic:
+
+```bash
+dotnet run --project Apps/LagoVista.Relational.SemanticMigrator \
+  -- --export-config-manifest
+```
+
+The command emits `BEGIN CONFIG`, one
+`SettingKey,Optional,ValuePresent` row per required setting and
+`END CONFIG`, matching the established Config Server manifest convention.
+It contains **no values or secrets** and covers both semantic targets.
+
+DEV registration checklist (none of these environment mutations are
+performed by this source change):
+
+- [ ] Create/find `AppDefinition` with key `semantic-schema-migrator`;
+  publish for deployment `dev` with its own restricted access key/token.
+- [ ] Register and map to the app the 4 required settings per target:
+  `DatabaseMigration:Targets:{production|test}:Provider` (value
+  `postgresql`), `Database` (`semantic_production` /
+  `semantic_test`), `ServerHost` (approved PG service DNS name) and
+  `ConnectionString` (dedicated migration identity).
+- [ ] Register optional `BootstrapConnectionString` for each target only
+  if the migration role cannot create a missing database. It uses a
+  distinct CREATE DATABASE-capable identity on the **same server**.
+- [ ] Mark **both connection-string settings as secret** in Config Server;
+  verify resolved configurations do not expose them to other app identities.
+  The export-manifest protocol does not designate secret status by itself.
+- [ ] Bind a **separate bootstrap Secret** with
+  `RemoteConfigurationBootstrap__ConfigurationServiceBaseUrl` and
+  `RemoteConfigurationBootstrap__AuthorizationToken`. For Build Server
+  Jobs force `MIGRATION_CONFIG_SOURCE=config-server` and
+  `MIGRATION_DEPLOYMENT=dev`. Do not store any Config Server bootstrap
+  token, database password or connection string in Git.
+- [ ] Verify configuration resolution and approved target identity
+  without creating a database. Then test **status** against an absent
+  `semantic_test` database before any DEV apply operation.
+- [ ] Explicitly approve and journal the first DEV create-if-missing
+  migration run after image digest, secrets and fail-closed journal
+  start gate are implemented and verified.
+
+No LIVE `PublishedApp` or connection values should be created as part of
+the DEV proof. Any future LIVE registration is an independent, explicitly
+approved operation.

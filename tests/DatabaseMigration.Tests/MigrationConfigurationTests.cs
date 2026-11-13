@@ -31,6 +31,36 @@ public sealed class MigrationConfigurationTests
     }
 
     [TestMethod]
+    public void Exported_registration_manifest_covers_both_targets_without_secrets()
+    {
+        var manifest = MigrationConfigurationContract.ExportConfigManifest(["production", "test"]);
+        Assert.IsTrue(manifest.StartsWith("BEGIN CONFIG", StringComparison.Ordinal));
+        Assert.IsTrue(manifest.TrimEnd().EndsWith("END CONFIG", StringComparison.Ordinal));
+        var lines = manifest.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
+        Assert.AreEqual(12, lines.Length); // 2 markers + 5 requirements per target
+        foreach (var target in new[] { "production", "test" })
+        {
+            foreach (var name in new[] { "Provider", "Database", "ServerHost", "ConnectionString" })
+                Assert.IsTrue(lines.Contains($"DatabaseMigration:Targets:{target}:{name},false,false"),
+                    $"Missing required setting {target}:{name}");
+            Assert.IsTrue(lines.Contains($"DatabaseMigration:Targets:{target}:BootstrapConnectionString,true,false"));
+        }
+        Assert.IsFalse(manifest.Contains("Password=", StringComparison.Ordinal));
+        Assert.IsFalse(manifest.Contains("postgres-rw", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void Exported_registration_manifest_rejects_unsafe_keys()
+    {
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
+            MigrationConfigurationContract.ExportConfigManifest(["production", "production"]));
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
+            MigrationConfigurationContract.ExportConfigManifest(["../../unexpected"]));
+        Assert.ThrowsExactly<InvalidOperationException>(() =>
+            MigrationConfigurationContract.ExportConfigManifest([]));
+    }
+
+    [TestMethod]
     public void Valid_config_uses_approved_database_identity()
     {
         var resolved = MigrationConfigurationLoader.ResolveRemoteTarget(Config(),
