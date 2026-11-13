@@ -78,7 +78,7 @@ public static class MigrationConfigurationLoader
             "direct", MigrationConfigurationContract.ApplicationKey,
             string.IsNullOrWhiteSpace(deployment) ? "dev" : deployment,
             target, expectedProvider, expectedDatabase, null,
-            connection, settings["MIGRATION_BOOTSTRAP_CONNECTION_STRING"]);
+            connection);
     }
 
     public static ResolvedMigrationConfiguration ResolveRemoteTarget(
@@ -97,7 +97,6 @@ public static class MigrationConfigurationLoader
         var provider = expectedProvider.Trim().ToLowerInvariant();
         string host;
         string connection;
-        string? bootstrapConnection = null;
         if (provider == "postgresql")
         {
             var (hostname, port) = ParsePostgresEndpoint(section["PostgresUrl"]);
@@ -114,25 +113,6 @@ public static class MigrationConfigurationLoader
                 ["SSL Mode"] = "Prefer"
             };
             connection = builder.ConnectionString;
-            var bootstrapUser = section["PostgresBootstrapUserName"];
-            var bootstrapPassword = section["PostgresBootstrapPassword"];
-            var anyBootstrap = !string.IsNullOrWhiteSpace(bootstrapUser) ||
-                               !string.IsNullOrWhiteSpace(bootstrapPassword);
-            if (anyBootstrap)
-            {
-                var separateUser = Required(bootstrapUser, "PostgresBootstrapUserName");
-                var separatePassword = Required(bootstrapPassword, "PostgresBootstrapPassword");
-                var bootstrapBuilder = new DbConnectionStringBuilder
-                {
-                    ["Host"] = host,
-                    ["Port"] = port,
-                    ["Database"] = "postgres",
-                    ["Username"] = separateUser,
-                    ["Password"] = separatePassword,
-                    ["SSL Mode"] = "Prefer"
-                };
-                bootstrapConnection = bootstrapBuilder.ConnectionString;
-            }
         }
         else if (provider == "azure-sql")
         {
@@ -160,7 +140,7 @@ public static class MigrationConfigurationLoader
         return new ResolvedMigrationConfiguration(
             "config-server", MigrationConfigurationContract.ApplicationKey,
             deployment, target, provider, expectedDatabase, host,
-            connection, bootstrapConnection);
+            connection);
     }
 
     private static (string Host, int Port) ParsePostgresEndpoint(string? value)
@@ -210,8 +190,7 @@ public sealed record ResolvedMigrationConfiguration(
     string Provider,
     string Database,
     string? ServerHost,
-    [property: JsonIgnore] string ConnectionString,
-    [property: JsonIgnore] string? BootstrapConnectionString)
+    [property: JsonIgnore] string ConnectionString)
 {
     public override string ToString() =>
         $"Migration target {AppKey}/{Deployment}/{Target}; provider={Provider}; database={Database}; host={ServerHost ?? "unregistered"}; source={Source}; credentials=[redacted]";
