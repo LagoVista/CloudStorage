@@ -59,6 +59,8 @@ BuildTarget identity to a Docker/application type.**
 
 ## Single mission: converge the target database
 
+**Authorized target** means a server plus an approved database **name/identity** in the trusted deployment catalog. Authorization does not require the database to already exist physically: a missing database is an expected starting state, not a preflight error. The database image is responsible for creating it when required.
+
 A database migration image is an **apply-to-current converger**, not a one-off
 script for one old/new revision pair. The only infrastructure precondition is
 that its **authorized database server is reachable and ready**. The named

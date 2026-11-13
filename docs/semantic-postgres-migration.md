@@ -59,3 +59,16 @@ before the Job, and the current runner does not perform database bootstrap.
 The new convergence contract in [the architecture standard](relational-database-job-standard.md)
 is the acceptance test for the next implementation slice; do not cut DEV over
 until it passes missing/behind/current and repeat-run scenarios.
+
+**Target identity versus existence:** a trusted target registration approves the
+server and database name, **not** the current presence of that database.
+The image may receive either an existing target database or a missing one.
+
+The semantic runner now checks for a missing PostgreSQL database, reports
+`MISSING` in status mode and creates it on `apply` using
+`MIGRATION_BOOTSTRAP_CONNECTION_STRING` when supplied, otherwise the
+migration user's credentials against the `postgres` maintenance database.
+Both modes refuse unexpected database names. Database creation requires a
+role permitted to CREATE DATABASE and assign ownership to the migration user.
+The Kubernetes Job must supply approved Secrets; insufficient permissions
+must produce a clear failure, never an implicit server-side workaround.
