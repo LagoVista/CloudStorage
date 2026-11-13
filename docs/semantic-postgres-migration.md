@@ -32,6 +32,42 @@ The PostgreSQL initial migration creates seven semantic tables, indexes, foreign
 and `dbo.usv_semanticdefinitions`. Verify lookup, registration, prune, and
 embedding read/write against fresh databases before changing DEV Config Server.
 
+## Verified DEV status and next authorized create
+
+As of 2026-11-13, Build Server V2 has published the
+`nuviot/semantic-schema-migrator` Docker image and successfully run a
+read-only Kubernetes status Job against the registered DEV `semantic_test`
+target. That operation reported **MISSING**; it neither created a database nor
+applied any migrations. The next gated Build Server increment adds a dedicated
+SystemAdmin-approved DEV `semantic_test` create/converge action, immutable
+digest verification, durable journal authorization, and a second independent
+status check that must return `CURRENT`. This new apply workflow is not yet
+deployed or proven against a real database.
+
+The worker uses the **shared Config Server application `db-migrator`**, not
+a separate `semantic-schema-migrator` AppDefinition. In DEV it resolves:
+
+- `DbMigrator:PostgresUrl` — approved PostgreSQL host and optional port
+- `DbMigrator:PostgresUserName` and `DbMigrator:PostgresPassword` —
+  dedicated schema owner / EF migrator identity (password secret)
+- Optional `DbMigrator:PostgresBootstrapUserName` and
+  `DbMigrator:PostgresBootstrapPassword` — separate restricted creator
+  identity on **the exact same PostgreSQL server** (password secret)
+
+The bootstrap identity connects to the `postgres` maintenance database.
+The read-only status result now tests both database-creation permission and
+the ability to assign database ownership to the migrator user. PostgreSQL
+15 tests membership; PostgreSQL 16+ tests `SET ROLE` eligibility. If
+`CREATE_PRIVILEGE: BLOCKED`, the Build Server refuses apply: configure an
+appropriately restricted role through Config Server, then rerun status.
+Neither password, connection string, nor Config Server bootstrap token is
+stored in Git, displayed in the Build Server UI or included in the journal.
+
+Both the `status` probe and `apply` use the **registered DEV database
+identity**, and `apply` keeps a PostgreSQL advisory lock across creation,
+migrations and schema verification. LIVE and DEV `semantic_production` apply
+remain unsupported in this pilot.
+
 ## Build and execution ownership
 
 The governing architecture is [Relational database ownership and one-shot jobs](relational-database-job-standard.md).
@@ -40,10 +76,11 @@ TEST *catalog roles*: each logical database has its own migration history. The
 new [job catalog](../database-jobs.json) declares this additional Docker output
 without changing the root NuGet `NuvIoT.buildtarget`.
 
-**Current status:** The runner and DEV-only Kubernetes scripts exist, but Build
-Server does not yet read the job manifest, publish this image, or operate a
-first-class job lifecycle. Do not infer that a committed Dockerfile means a
-published image or that DEV databases have been initialized.
+**Current status:** Build Server publishes and records an immutable migrator
+image, assigns DEV desired truth and executes audited read-only status Jobs.
+The initial DEV `semantic_test` database has been confirmed missing. The
+new authorized create/converge operation is committed but not yet deployed
+or executed; no schema initialization has occurred.
 
 ## Bootstrap/convergence contract (required before DEV switch)
 
@@ -54,11 +91,12 @@ verify the resulting schema, and safely report success on replay when current.
 An approved bootstrap credential is distinct from the migration credential.
 Unknown/newer migration history or drift is a hard stop, not a reset.
 
-**Not yet implemented:** The existing Kubernetes setup provisions databases
-before the Job, and the current runner does not perform database bootstrap.
-The new convergence contract in [the architecture standard](relational-database-job-standard.md)
-is the acceptance test for the next implementation slice; do not cut DEV over
-until it passes missing/behind/current and repeat-run scenarios.
+**Implementation state:** The runner implements create-if-missing,
+forward-only EF convergence and actual schema verification, protected by
+full-lifecycle PostgreSQL advisory locking. DEV runtime acceptance still
+requires the expressly approved first apply, an independent `CURRENT`
+status result and a repeat-run/no-op check. Do not cut consumers over before
+those production-path proofs pass.
 
 **Target identity versus existence:** a trusted target registration approves the
 server and database name, **not** the current presence of that database.
@@ -75,56 +113,32 @@ must produce a clear failure, never an implicit server-side workaround.
 
 ## C# migration-runtime and Config Server bootstrap
 
-The semantic image is a .NET console executable. Shared configuration bootstrap
-lives in `Apps/LagoVista.Relational.MigrationRuntime` (project reference, not a
-new NuGet package). It uses the existing
-`LagoVista.Configuration.Client` / `RemoteConfigurationClient` convention
-also used by the video-processing worker. The actual EF schema and PostgreSQL
-migration code stay within the semantic application.
+The semantic image is a .NET worker. It uses
+`LagoVista.Relational.MigrationRuntime` and the established
+`RemoteConfigurationClient` to fetch approved settings for the **shared
+`db-migrator` Config Server AppDefinition**, in the selected `dev` or
+`live` deployment. This is an ordinary Config Server app registration;
+no new application-type enum is needed.
 
-Config Server needs an **AppDefinition** with app key
-`semantic-schema-migrator`, published for `dev` and eventually `live`.
-No new Config Server application-type enum is required for the first slice.
-It must have its own restricted identity/bootstrap access, not general-purpose
-application credentials.
+The Kubernetes Job receives only a fixed logical target (`test` in the DEV
+pilot), action, deployment, `MIGRATION_CONFIG_SOURCE=config-server` and
+Config Server bootstrap settings. The remote values are used to construct
+the approved PostgreSQL connection, with optional separate bootstrap
+credentials as defined above. The runner never trusts an arbitrary
+database name from the remote configuration.
 
-On startup the container receives only its logical target (`production`
-or `test`), action (`status` or `apply`), environment
-(`MIGRATION_DEPLOYMENT=dev|live`) and Config Server bootstrap settings
-(`RemoteConfigurationBootstrap__ConfigurationServiceBaseUrl` and
-`RemoteConfigurationBootstrap__AuthorizationToken`). Set
-`MIGRATION_CONFIG_SOURCE=config-server` explicitly when launched by
-Build Server V2. It requests the matching AppDefinition/deployment from
-Config Server and reads:
+If the target is absent, apply can create it with an authorized owner,
+then run EF migrations as the ordinary migrator identity. The status
+check is read-only, including the `CREATE_PRIVILEGE` check. A successful
+status is not approval to apply: Build Server requires a SystemAdmin
+confirmation, current-source verified image digest, recent matching
+status, absence of another apply Job and a durable OperationalJournal
+acceptance before Kubernetes Job creation.
 
-| Config Server setting | Example / role |
-| --- | --- |
-| `DatabaseMigration:Targets:production:Provider` | `postgresql` |
-| `DatabaseMigration:Targets:production:Database` | `semantic_production` |
-| `DatabaseMigration:Targets:production:ServerHost` | Approved PostgreSQL server host |
-| `DatabaseMigration:Targets:production:ConnectionString` | Secret migration-role connection string |
-| `DatabaseMigration:Targets:production:BootstrapConnectionString` | Optional secret server-level CREATE DATABASE identity |
-
-Define the same keys under `DatabaseMigration:Targets:test:*` for
-`semantic_test`. Logical target authorization is defined in the container
-and must match the resolved database, provider and registered server host.
-For database creation the bootstrap credential must address the same server
-through a separate maintenance database, and the created database is owned by
-the intended migration user.
-
-**Compatibility:** `MIGRATION_CONFIG_SOURCE=auto` (default) uses Config
-Server if either bootstrap setting is present; otherwise it accepts the
-existing DEV-only `MIGRATION_CONNECTION_STRING` and optional
-`MIGRATION_BOOTSTRAP_CONNECTION_STRING`. Remote resolution failure NEVER
-falls back to direct mode. Direct mode is rejected if
-`MIGRATION_DEPLOYMENT=live`. The final Build Server execution path must
-force `config-server`; this legacy direct mode is a DEV pilot escape hatch,
-not an approved production configuration path.
-
-**Not yet provisioned:** AppDefinition/PublishedApp settings in DEV Config
-Server, trusted bootstrap Secret, first-class Build Server one-shot image
-publish/execute, mandatory OperationalJournal start gate, and DEV real-Postgres
-convergence proof. This commit does not change an environment or invoke SQL.
+Direct `MIGRATION_CONNECTION_STRING` / optional
+`MIGRATION_BOOTSTRAP_CONNECTION_STRING` remain limited to legacy DEV
+pilot scripts; Build Server forces Config Server mode and never falls
+back to direct credentials after a remote lookup failure.
 
 ## Offline model-drift analysis (Build Server readiness)
 
@@ -155,56 +169,36 @@ SQL Server migration files and databases are unchanged.
 Future released EF migrations must never be edited in place. At that point
 schema differences require a new additive migration and review.
 
-## Config Server application registration — DEV prerequisites
+## Config Server DEV registration and credential checklist
 
-**Product owner:** Build Server V2. **Application identity:** register
-`semantic-schema-migrator` as an ordinary Config Server `AppDefinition`
-and `PublishedApp` for **DEV**. This is a new registered application
-identity; do **not** create a new application-type enum unless existing
-registration semantics actually prove inadequate.
+The logical Config Server app key is `db-migrator` for all approved schema
+families. It is shared; database identities remain source-catalog allowlists,
+not arbitrary values provided by Config Server.
 
-To inspect the settings contract without credentials, database access or
-network traffic:
+- [ ] Confirm the `db-migrator` AppDefinition and its published DEV
+  configuration resolve the regular PostgreSQL host, username and secret
+  password. The earlier successful status Job proved basic connectivity.
+- [ ] Keep `PostgresPassword` marked secret. Only if the initial read-only
+  privilege probe returns `BLOCKED`, register both optional
+  `PostgresBootstrapUserName` and secret `PostgresBootstrapPassword`
+  on the **same approved PostgreSQL host**. Neither is needed when the
+  existing role has sufficient creator/owner authority.
+- [ ] Grant the bootstrap login only database creation plus the ability to
+  assign ownership to the dedicated migrator account. PostgreSQL 16+
+  requires SET-role capability for that owner. Do not give a broad
+  database superuser unless there is an independently approved reason.
+- [ ] Keep the Config Server bootstrap token in the existing DEV Kubernetes
+  Secret; do not supply passwords to Build Server, CLI arguments or chat.
+- [ ] Publish the newly proved immutable image, assign DEV desired,
+  run read-only status to verify `CREATE_PRIVILEGE: READY`, and then
+  approve first apply through Build Server SystemAdmin UI.
+- [ ] Require the final recorded EF revision, independent `CURRENT`
+  status and a safe no-op repeat before enabling dependent consumers.
+
+Export the key-only configuration registration manifest offline with:
 
 ```bash
-dotnet run --project Apps/LagoVista.Relational.SemanticMigrator \
-  -- --export-config-manifest
+dotnet run --project Apps/LagoVista.Relational.SemanticMigrator -- --export-config-manifest
 ```
 
-The command emits `BEGIN CONFIG`, one
-`SettingKey,Optional,ValuePresent` row per required setting and
-`END CONFIG`, matching the established Config Server manifest convention.
-It contains **no values or secrets** and covers both semantic targets.
-
-DEV registration checklist (none of these environment mutations are
-performed by this source change):
-
-- [ ] Create/find `AppDefinition` with key `semantic-schema-migrator`;
-  publish for deployment `dev` with its own restricted access key/token.
-- [ ] Register and map to the app the 4 required settings per target:
-  `DatabaseMigration:Targets:{production|test}:Provider` (value
-  `postgresql`), `Database` (`semantic_production` /
-  `semantic_test`), `ServerHost` (approved PG service DNS name) and
-  `ConnectionString` (dedicated migration identity).
-- [ ] Register optional `BootstrapConnectionString` for each target only
-  if the migration role cannot create a missing database. It uses a
-  distinct CREATE DATABASE-capable identity on the **same server**.
-- [ ] Mark **both connection-string settings as secret** in Config Server;
-  verify resolved configurations do not expose them to other app identities.
-  The export-manifest protocol does not designate secret status by itself.
-- [ ] Bind a **separate bootstrap Secret** with
-  `RemoteConfigurationBootstrap__ConfigurationServiceBaseUrl` and
-  `RemoteConfigurationBootstrap__AuthorizationToken`. For Build Server
-  Jobs force `MIGRATION_CONFIG_SOURCE=config-server` and
-  `MIGRATION_DEPLOYMENT=dev`. Do not store any Config Server bootstrap
-  token, database password or connection string in Git.
-- [ ] Verify configuration resolution and approved target identity
-  without creating a database. Then test **status** against an absent
-  `semantic_test` database before any DEV apply operation.
-- [ ] Explicitly approve and journal the first DEV create-if-missing
-  migration run after image digest, secrets and fail-closed journal
-  start gate are implemented and verified.
-
-No LIVE `PublishedApp` or connection values should be created as part of
-the DEV proof. Any future LIVE registration is an independent, explicitly
-approved operation.
+LIVE settings and execution remain out of scope for this DEV-first proof.
