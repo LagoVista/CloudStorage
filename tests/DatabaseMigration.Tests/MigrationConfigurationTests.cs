@@ -33,13 +33,12 @@ public sealed class MigrationConfigurationTests
     {
         var manifest = MigrationConfigurationContract.ExportConfigManifest();
         var lines = manifest.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
-        Assert.AreEqual(10, lines.Length);
+        Assert.AreEqual(8, lines.Length);
         Assert.AreEqual("BEGIN CONFIG", lines[0]);
         Assert.AreEqual("END CONFIG", lines[^1]);
         foreach (var name in new[] {
             "SqlServerUrl", "SqlServerUserName", "SqlServerPassword",
-            "PostgresUrl", "PostgresUserName", "PostgresPassword",
-            "PostgresBootstrapUserName", "PostgresBootstrapPassword"
+            "PostgresUrl", "PostgresUserName", "PostgresPassword"
         })
             Assert.IsTrue(lines.Contains($"DbMigrator:{name},false,false"));
         Assert.IsFalse(manifest.Contains("not-a-real-password", StringComparison.Ordinal));
@@ -59,7 +58,6 @@ public sealed class MigrationConfigurationTests
         Assert.AreEqual("migrator", parsed.Username);
         Assert.AreEqual("some;pass=word", parsed.Password);
         Assert.AreEqual("db-migrator", resolved.AppKey);
-        Assert.IsNull(resolved.BootstrapConnectionString);
         Assert.IsFalse(resolved.ToString().Contains("some;pass=word", StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(resolved);
         Assert.IsFalse(json.Contains("some;pass=word", StringComparison.Ordinal));
@@ -67,64 +65,18 @@ public sealed class MigrationConfigurationTests
     }
 
     [TestMethod]
-    public void Postgres_database_owner_transfer_requires_version_appropriate_membership()
+    public void PostgreSql_migrator_contract_has_one_account_no_separate_bootstrap_identity()
     {
-        Assert.AreEqual("MEMBER", PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(15));
-        Assert.AreEqual("SET", PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(16));
-        Assert.AreEqual("SET", PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(17));
-        Assert.AreEqual("SET", PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(18));
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
-            PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(0));
-    }
-
-    [TestMethod]
-    public void Optional_separate_postgres_bootstrap_uses_same_host_and_maintenance_database()
-    {
-        var values = new Dictionary<string, string?>
-        {
-            ["DbMigrator:PostgresUrl"] = "postgresql://postgres-rw:5432",
-            ["DbMigrator:PostgresUserName"] = "migrator",
-            ["DbMigrator:PostgresPassword"] = "migration-password",
-            ["DbMigrator:PostgresBootstrapUserName"] = "database-creator",
-            ["DbMigrator:PostgresBootstrapPassword"] = "bootstrap;pass=secret"
-        };
-        var settings = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
-        var resolved = MigrationConfigurationLoader.ResolveRemoteTarget(
-            settings, "test", "semantic_test", "postgresql", "db-migrator", "dev");
-        var runtime = new NpgsqlConnectionStringBuilder(resolved.ConnectionString);
-        var bootstrap = new NpgsqlConnectionStringBuilder(resolved.BootstrapConnectionString);
-        Assert.AreEqual(runtime.Host, bootstrap.Host);
-        Assert.AreEqual(runtime.Port, bootstrap.Port);
-        Assert.AreEqual("postgres", bootstrap.Database);
-        Assert.AreEqual("database-creator", bootstrap.Username);
-        Assert.AreEqual("bootstrap;pass=secret", bootstrap.Password);
-        Assert.AreEqual("migrator", runtime.Username);
-        Assert.AreEqual("semantic_test", runtime.Database);
-        Assert.IsFalse(resolved.ToString().Contains("bootstrap;pass=secret", StringComparison.Ordinal));
-        var json = System.Text.Json.JsonSerializer.Serialize(resolved);
-        Assert.IsFalse(json.Contains("bootstrap;pass=secret", StringComparison.Ordinal));
-        Assert.IsFalse(json.Contains("migration-password", StringComparison.Ordinal));
-    }
-
-    [TestMethod]
-    public void Partial_bootstrap_configuration_fails_closed_without_fallback()
-    {
-        foreach (var missing in new[] { "DbMigrator:PostgresBootstrapUserName", "DbMigrator:PostgresBootstrapPassword" })
-        {
-            var values = new Dictionary<string, string?>
-            {
-                ["DbMigrator:PostgresUrl"] = "postgresql://postgres-rw:5432",
-                ["DbMigrator:PostgresUserName"] = "migrator",
-                ["DbMigrator:PostgresPassword"] = "migration-password",
-                ["DbMigrator:PostgresBootstrapUserName"] = "creator",
-                ["DbMigrator:PostgresBootstrapPassword"] = "bootstrap-secret"
-            };
-            values.Remove(missing);
-            var settings = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
-            Assert.ThrowsExactly<InvalidOperationException>(() =>
-                MigrationConfigurationLoader.ResolveRemoteTarget(
-                    settings, "test", "semantic_test", "postgresql", "db-migrator", "dev"));
-        }
+        var manifest = MigrationConfigurationContract.ExportConfigManifest();
+        Assert.IsFalse(manifest.Contains("PostgresBootstrapUserName", StringComparison.Ordinal));
+        Assert.IsFalse(manifest.Contains("PostgresBootstrapPassword", StringComparison.Ordinal));
+        var configuration = MigrationConfigurationLoader.ResolveRemoteTarget(
+            Config(), "test", "semantic_test", "postgresql", "db-migrator", "dev");
+        var connection = new NpgsqlConnectionStringBuilder(configuration.ConnectionString);
+        Assert.AreEqual("migrator", connection.Username);
+        Assert.AreEqual("semantic_test", connection.Database);
+        Assert.IsFalse(System.Text.Json.JsonSerializer.Serialize(configuration)
+            .Contains("BootstrapConnectionString", StringComparison.Ordinal));
     }
 
     [TestMethod]
