@@ -1,6 +1,7 @@
 using LagoVista.Configuration.Client.Models;
 using LagoVista.IoT.WebHost.Common.Config;
 using Microsoft.Extensions.Configuration;
+using System.Text.Json.Serialization;
 
 namespace LagoVista.Relational.MigrationRuntime;
 
@@ -133,5 +134,11 @@ public sealed record ResolvedMigrationConfiguration(
     string Provider,
     string Database,
     string? ServerHost,
-    string ConnectionString,
-    string? BootstrapConnectionString);
+    [property: JsonIgnore] string ConnectionString,
+    [property: JsonIgnore] string? BootstrapConnectionString)
+{
+    // Records generate a ToString() with ALL positional members by default.
+    // Connection strings must never appear in logs, journal payloads or UI.
+    public override string ToString() =>
+        $"Migration target {AppKey}/{Deployment}/{Target}; provider={Provider}; database={Database}; host={ServerHost ?? "unregistered"}; source={Source}; credentials=[redacted]";
+}

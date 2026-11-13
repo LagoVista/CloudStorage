@@ -38,6 +38,14 @@ public sealed class MigrationConfigurationTests
         Assert.AreEqual("semantic-schema-migrator", resolved.AppKey);
         Assert.IsTrue(resolved.ConnectionString.Contains("Username=migrator"));
         Assert.IsNotNull(resolved.BootstrapConnectionString);
+        Assert.IsFalse(resolved.ToString().Contains("not-a-real-password", StringComparison.Ordinal),
+            "Record ToString must not disclose credentials.");
+        var json = System.Text.Json.JsonSerializer.Serialize(resolved);
+        Assert.IsFalse(json.Contains("not-a-real-password", StringComparison.Ordinal),
+            "Serialized operation views must not disclose credentials.");
+        Assert.IsFalse(json.Contains("ConnectionString", StringComparison.Ordinal),
+            "Serialized operation views must not include secret property names.");
+
     }
 
     [TestMethod]
