@@ -64,6 +64,14 @@ if (resolvedConfiguration.Source == "config-server" &&
 
 Console.WriteLine($"Migration configuration: {resolvedConfiguration.Source}; deployment: {resolvedConfiguration.Deployment}; target: {target}; server host: {dbConnection.Host}; database: {expectedDatabase}");
 
+// Hold the same PostgreSQL advisory lock for the *entire* apply, not just
+// CREATE DATABASE. This serializes schema initialization and EF migrations
+// across separately launched/retied Jobs, including when the DB is absent.
+await using var applyLease = action == "apply"
+    ? await SemanticMigrationApplyLease.AcquireAsync(
+        dbConnection, expectedDatabase, resolvedConfiguration.BootstrapConnectionString)
+    : null;
+
 var options = new DbContextOptionsBuilder<SemanticPostgresMigrationContext>()
     .UseNpgsql(dbConnection.ConnectionString, provider => provider.EnableRetryOnFailure())
     .Options;
@@ -167,14 +175,9 @@ static async Task CreateDatabaseIfMissingAsync(NpgsqlConnectionStringBuilder tar
     await using var connection = new NpgsqlConnection(bootstrap.ConnectionString);
     await connection.OpenAsync();
 
-    // The maintenance database provides a lock even before the destination DB
-    // exists. Serializing creation avoids two Jobs racing to CREATE DATABASE.
-    await using var lockCmd = new NpgsqlCommand("SELECT pg_advisory_lock(hashtext(@name))", connection);
-    lockCmd.Parameters.AddWithValue("name", "nuviot:semantic-schema-migrator:" + databaseName);
-    await lockCmd.ExecuteNonQueryAsync();
-    try
-    {
-        await using var existsCmd = new NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname=@database)", connection);
+    // This operation runs under the caller's full-lifecycle apply lease.
+    // Creation is rechecked after acquiring that lease, so retries are safe.
+    await using var existsCmd = new NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname=@database)", connection);
         existsCmd.Parameters.AddWithValue("database", databaseName);
         if ((bool)(await existsCmd.ExecuteScalarAsync() ?? false))
             return;
@@ -193,11 +196,61 @@ static async Task CreateDatabaseIfMissingAsync(NpgsqlConnectionStringBuilder tar
             throw new InvalidOperationException(
                 "Target database is missing and the supplied bootstrap role cannot CREATE DATABASE. Provide an authorized bootstrap Secret.", ex);
         }
-    }
-    finally
+}
+
+internal sealed class SemanticMigrationApplyLease : IAsyncDisposable
+{
+    private const string LockNamespace = "nuviot:semantic-schema-migrator:";
+    private readonly NpgsqlConnection _connection;
+    private readonly string _lockName;
+
+    private SemanticMigrationApplyLease(NpgsqlConnection connection, string lockName)
     {
-        await using var unlockCmd = new NpgsqlCommand("SELECT pg_advisory_unlock(hashtext(@name))", connection);
-        unlockCmd.Parameters.AddWithValue("name", "nuviot:semantic-schema-migrator:" + databaseName);
-        await unlockCmd.ExecuteNonQueryAsync();
+        _connection = connection;
+        _lockName = lockName;
+    }
+
+    public static async Task<SemanticMigrationApplyLease> AcquireAsync(
+        NpgsqlConnectionStringBuilder target, string database, string? bootstrapRaw)
+    {
+        if (database is not ("semantic_test" or "semantic_production"))
+            throw new InvalidOperationException("Only approved semantic database identities may be locked.");
+
+        var maintenance = string.IsNullOrWhiteSpace(bootstrapRaw)
+            ? new NpgsqlConnectionStringBuilder(target.ConnectionString) { Database = "postgres" }
+            : new NpgsqlConnectionStringBuilder(bootstrapRaw);
+        if (!string.Equals(maintenance.Host, target.Host, StringComparison.OrdinalIgnoreCase) ||
+            maintenance.Port != target.Port || maintenance.Database == database)
+            throw new InvalidOperationException("Migration lease requires the same registered PostgreSQL server and a distinct maintenance database.");
+
+        var connection = new NpgsqlConnection(maintenance.ConnectionString);
+        try
+        {
+            await connection.OpenAsync();
+            var lockName = LockNamespace + database;
+            await using var command = new NpgsqlCommand("SELECT pg_advisory_lock(hashtext(@name))", connection);
+            command.Parameters.AddWithValue("name", lockName);
+            await command.ExecuteNonQueryAsync();
+            return new SemanticMigrationApplyLease(connection, lockName);
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await using var command = new NpgsqlCommand("SELECT pg_advisory_unlock(hashtext(@name))", _connection);
+            command.Parameters.AddWithValue("name", _lockName);
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            await _connection.DisposeAsync();
+        }
     }
 }
