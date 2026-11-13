@@ -82,6 +82,12 @@ var exists = await databaseCreator.ExistsAsync();
 Console.WriteLine($"Target: semantic-{target}; action: {action}; database state: {(exists ? "exists" : "missing")}");
 if (!exists && action == "status")
 {
+    // Read-only readiness: do not authorize a CREATE DATABASE operation
+    // when the configured bootstrap identity lacks CREATEDB authority.
+    // No credentials or SQL mutation is included in the status result.
+    var creationReady = await SemanticMigrationApplyLease.CheckCreatePermissionAsync(
+        dbConnection, expectedDatabase, resolvedConfiguration.BootstrapConnectionString);
+    Console.WriteLine(creationReady ? "CREATE_PRIVILEGE: READY" : "CREATE_PRIVILEGE: BLOCKED");
     Console.WriteLine("MISSING: target database is authorized but not yet present; applying this image will create it.");
     return;
 }
@@ -210,18 +216,49 @@ internal sealed class SemanticMigrationApplyLease : IAsyncDisposable
         _lockName = lockName;
     }
 
-    public static async Task<SemanticMigrationApplyLease> AcquireAsync(
+    public static async Task<bool> CheckCreatePermissionAsync(
+        NpgsqlConnectionStringBuilder target, string database, string? bootstrapRaw)
+    {
+        var maintenance = MaintenanceConnection(target, database, bootstrapRaw);
+        try
+        {
+            await using var connection = new NpgsqlConnection(maintenance.ConnectionString);
+            await connection.OpenAsync();
+            await using var command = new NpgsqlCommand(
+                "SELECT rolcreatedb OR rolsuper FROM pg_roles WHERE rolname=current_user", connection);
+            return (bool)(await command.ExecuteScalarAsync() ?? false);
+        }
+        catch (PostgresException)
+        {
+            // A missing/denied maintenance database cannot authorize creation.
+            return false;
+        }
+        catch (NpgsqlException)
+        {
+            // Transport/authentication failure also blocks creation.
+            return false;
+        }
+    }
+
+    private static NpgsqlConnectionStringBuilder MaintenanceConnection(
         NpgsqlConnectionStringBuilder target, string database, string? bootstrapRaw)
     {
         if (database is not ("semantic_test" or "semantic_production"))
-            throw new InvalidOperationException("Only approved semantic database identities may be locked.");
-
+            throw new InvalidOperationException("Only approved semantic database identities may use maintenance credentials.");
         var maintenance = string.IsNullOrWhiteSpace(bootstrapRaw)
             ? new NpgsqlConnectionStringBuilder(target.ConnectionString) { Database = "postgres" }
             : new NpgsqlConnectionStringBuilder(bootstrapRaw);
         if (!string.Equals(maintenance.Host, target.Host, StringComparison.OrdinalIgnoreCase) ||
             maintenance.Port != target.Port || maintenance.Database == database)
-            throw new InvalidOperationException("Migration lease requires the same registered PostgreSQL server and a distinct maintenance database.");
+            throw new InvalidOperationException(
+                "Maintenance credentials must address the approved PostgreSQL server and a distinct database.");
+        return maintenance;
+    }
+
+    public static async Task<SemanticMigrationApplyLease> AcquireAsync(
+        NpgsqlConnectionStringBuilder target, string database, string? bootstrapRaw)
+    {
+        var maintenance = MaintenanceConnection(target, database, bootstrapRaw);
 
         var connection = new NpgsqlConnection(maintenance.ConnectionString);
         try
