@@ -35,8 +35,7 @@
         "targetRevision": "latest-embedded-ef-migration",
         "databaseBootstrap": "create-if-missing",
         "repeatExecution": "no-op-when-current",
-        "unknownHistory": "fail-closed",
-        "bootstrapCredentials": "separate-runtime-secret"
+        "unknownHistory": "fail-closed"
       },
       "configurationAppKey": "db-migrator"
     }
