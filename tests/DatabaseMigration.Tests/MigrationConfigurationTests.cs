@@ -67,6 +67,17 @@ public sealed class MigrationConfigurationTests
     }
 
     [TestMethod]
+    public void Postgres_database_owner_transfer_requires_version_appropriate_membership()
+    {
+        Assert.AreEqual("MEMBER", PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(15));
+        Assert.AreEqual("SET", PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(16));
+        Assert.AreEqual("SET", PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(17));
+        Assert.AreEqual("SET", PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(18));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(0));
+    }
+
+    [TestMethod]
     public void Optional_separate_postgres_bootstrap_uses_same_host_and_maintenance_database()
     {
         var values = new Dictionary<string, string?>

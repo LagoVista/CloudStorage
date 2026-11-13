@@ -224,8 +224,17 @@ internal sealed class SemanticMigrationApplyLease : IAsyncDisposable
         {
             await using var connection = new NpgsqlConnection(maintenance.ConnectionString);
             await connection.OpenAsync();
+            var privilege = PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(
+                connection.PostgreSqlVersion.Major);
+            // CREATE DATABASE ... OWNER target_user requires CREATEDB (or a
+            // superuser) AND SET ROLE / membership authority for that owner.
+            // PostgreSQL 16+ introduced per-membership SET options.
             await using var command = new NpgsqlCommand(
-                "SELECT rolcreatedb OR rolsuper FROM pg_roles WHERE rolname=current_user", connection);
+                "SELECT r.rolsuper OR (r.rolcreatedb AND " +
+                "(r.rolname = @owner OR pg_has_role(current_user, @owner, @membership))) " +
+                "FROM pg_roles AS r WHERE r.rolname = current_user", connection);
+            command.Parameters.AddWithValue("owner", target.Username);
+            command.Parameters.AddWithValue("membership", privilege);
             return (bool)(await command.ExecuteScalarAsync() ?? false);
         }
         catch (PostgresException)
