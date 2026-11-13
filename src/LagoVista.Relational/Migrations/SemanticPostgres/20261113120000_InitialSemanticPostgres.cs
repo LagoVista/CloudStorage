@@ -28,7 +28,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                     key = table.Column<string>(type: "varchar(64)", nullable: false),
                     name = table.Column<string>(type: "varchar(255)", nullable: false),
                     tla = table.Column<string>(type: "varchar(16)", maxLength: 16, nullable: false),
-                    description = table.Column<string>(type: "varchar(1024)", nullable: true),
+                    description = table.Column<string>(type: "text", nullable: true),
                     purposesummary = table.Column<string>(type: "varchar(1024)", nullable: true),
                     statuskey = table.Column<string>(type: "varchar(50)", nullable: false),
                     scopetypekey = table.Column<string>(type: "varchar(64)", nullable: false),

@@ -27,5 +27,16 @@ foreach (var migration in pending) Console.WriteLine($"PENDING {migration}");
 if (string.Equals(action, "apply", StringComparison.OrdinalIgnoreCase))
 {
     await context.Database.MigrateAsync();
+    // Verify every mapping, including the SQL view, against the actual database
+    // after applying migrations. Even empty tables reveal missing columns in SELECT.
+    await context.Registry.AsNoTracking().Take(1).ToListAsync();
+    await context.Subjects.AsNoTracking().Take(1).ToListAsync();
+    await context.Concepts.AsNoTracking().Take(1).ToListAsync();
+    await context.Definitions.AsNoTracking().Take(1).ToListAsync();
+    await context.DefinitionView.AsNoTracking().Take(1).ToListAsync();
+    await context.Embeddings.AsNoTracking().Take(1).ToListAsync();
+    await context.Artifacts.AsNoTracking().Take(1).ToListAsync();
+    await context.ArtifactInformationElements.AsNoTracking().Take(1).ToListAsync();
+    Console.WriteLine("Verified seven semantic tables and the semantic definition view.");
     Console.WriteLine("Semantic PostgreSQL migrations applied successfully.");
 }

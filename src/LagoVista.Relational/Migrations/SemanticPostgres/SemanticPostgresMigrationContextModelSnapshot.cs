@@ -41,7 +41,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
 
                     b.Property<string>("Description")
                         .HasColumnName("description")
-                        .HasColumnType("varchar(1024)")
+                        .HasColumnType("text")
                         .HasColumnOrder(6);
 
                     b.Property<string>("Key")
