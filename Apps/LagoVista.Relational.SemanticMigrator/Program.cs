@@ -69,7 +69,7 @@ Console.WriteLine($"Migration configuration: {resolvedConfiguration.Source}; dep
 // across separately launched/retied Jobs, including when the DB is absent.
 await using var applyLease = action == "apply"
     ? await SemanticMigrationApplyLease.AcquireAsync(
-        dbConnection, expectedDatabase, resolvedConfiguration.BootstrapConnectionString)
+        dbConnection, expectedDatabase)
     : null;
 
 var options = new DbContextOptionsBuilder<SemanticPostgresMigrationContext>()
@@ -82,11 +82,11 @@ var exists = await databaseCreator.ExistsAsync();
 Console.WriteLine($"Target: semantic-{target}; action: {action}; database state: {(exists ? "exists" : "missing")}");
 if (!exists && action == "status")
 {
-    // Read-only readiness: do not authorize a CREATE DATABASE operation
-    // when the configured bootstrap identity lacks CREATEDB authority.
+    // Read-only readiness: the configured migrator identity must have
+    // permission to create and own the target database.
     // No credentials or SQL mutation is included in the status result.
     var creationReady = await SemanticMigrationApplyLease.CheckCreatePermissionAsync(
-        dbConnection, expectedDatabase, resolvedConfiguration.BootstrapConnectionString);
+        dbConnection, expectedDatabase);
     Console.WriteLine(creationReady ? "CREATE_PRIVILEGE: READY" : "CREATE_PRIVILEGE: BLOCKED");
     Console.WriteLine("MISSING: target database is authorized but not yet present; applying this image will create it.");
     return;
@@ -94,10 +94,9 @@ if (!exists && action == "status")
 
 if (!exists)
 {
-    // Dedicated bootstrap credentials may be provided for CREATE DATABASE.
-    // Otherwise, the migration credential itself must have permission to create
-    // the database on the existing server.
-    await CreateDatabaseIfMissingAsync(dbConnection, expectedDatabase, resolvedConfiguration.BootstrapConnectionString);
+    // The same PostgreSQL identity creates, owns, and migrates the database.
+    // No second bootstrap credential is needed.
+    await CreateDatabaseIfMissingAsync(dbConnection, expectedDatabase);
     exists = await databaseCreator.ExistsAsync();
     if (!exists)
         throw new InvalidOperationException("Database creation returned without the target database becoming available.");
@@ -167,41 +166,36 @@ static async Task<bool> ContainsExistingSemanticTablesAsync(string connectionStr
     return (bool)(await cmd.ExecuteScalarAsync() ?? false);
 }
 
-static async Task CreateDatabaseIfMissingAsync(NpgsqlConnectionStringBuilder target, string databaseName, string? bootstrapRaw)
+static async Task CreateDatabaseIfMissingAsync(NpgsqlConnectionStringBuilder target, string databaseName)
 {
-    var bootstrap = string.IsNullOrWhiteSpace(bootstrapRaw)
-        ? new NpgsqlConnectionStringBuilder(target.ConnectionString) { Database = "postgres" }
-        : new NpgsqlConnectionStringBuilder(bootstrapRaw);
-
-    if (!string.Equals(bootstrap.Host, target.Host, StringComparison.OrdinalIgnoreCase) ||
-        bootstrap.Port != target.Port ||
-        string.Equals(bootstrap.Database, databaseName, StringComparison.Ordinal))
-        throw new InvalidOperationException("Bootstrap credentials must address the same server through a different maintenance database.");
-
-    await using var connection = new NpgsqlConnection(bootstrap.ConnectionString);
+    // Connect to the existing postgres maintenance database as the SAME
+    // migration user, on the same server with the same credentials.
+    var maintenance = SemanticMigrationApplyLease.MaintenanceConnection(target, databaseName);
+    await using var connection = new NpgsqlConnection(maintenance.ConnectionString);
     await connection.OpenAsync();
 
-    // This operation runs under the caller's full-lifecycle apply lease.
-    // Creation is rechecked after acquiring that lease, so retries are safe.
-    await using var existsCmd = new NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname=@database)", connection);
-        existsCmd.Parameters.AddWithValue("database", databaseName);
-        if ((bool)(await existsCmd.ExecuteScalarAsync() ?? false))
-            return;
+    // A caller-owned advisory lock covers creation and subsequent EF migration.
+    await using var existsCmd = new NpgsqlCommand(
+        "SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname=@database)", connection);
+    existsCmd.Parameters.AddWithValue("database", databaseName);
+    if ((bool)(await existsCmd.ExecuteScalarAsync() ?? false))
+        return;
 
-        // Identifiers cannot be parameterized; names are validated above to a
-        // finite image-owned allowlist, and are still correctly quoted.
-        var quotedDatabase = "\"" + databaseName.Replace("\"", "\"\"") + "\"";
-        var quotedOwner = "\"" + target.Username.Replace("\"", "\"\"") + "\"";
-        await using var createCmd = new NpgsqlCommand($"CREATE DATABASE {quotedDatabase} OWNER {quotedOwner}", connection);
-        try
-        {
-            await createCmd.ExecuteNonQueryAsync();
-        }
-        catch (PostgresException ex) when (ex.SqlState == "42501")
-        {
-            throw new InvalidOperationException(
-                "Target database is missing and the supplied bootstrap role cannot CREATE DATABASE. Provide an authorized bootstrap Secret.", ex);
-        }
+    // Names come from the finite, image-owned allowlist.
+    var quotedDatabase = "\"" + databaseName.Replace("\"", "\"\"") + "\"";
+    var quotedOwner = "\"" + target.Username.Replace("\"", "\"\"") + "\"";
+    await using var createCmd = new NpgsqlCommand(
+        $"CREATE DATABASE {quotedDatabase} OWNER {quotedOwner}", connection);
+    try
+    {
+        await createCmd.ExecuteNonQueryAsync();
+    }
+    catch (PostgresException ex) when (ex.SqlState == "42501")
+    {
+        throw new InvalidOperationException(
+            "The configured db-migrator PostgreSQL account cannot CREATE DATABASE. " +
+            "Grant CREATEDB to the selected account, then rerun DEV status.", ex);
+    }
 }
 
 internal sealed class SemanticMigrationApplyLease : IAsyncDisposable
@@ -217,57 +211,49 @@ internal sealed class SemanticMigrationApplyLease : IAsyncDisposable
     }
 
     public static async Task<bool> CheckCreatePermissionAsync(
-        NpgsqlConnectionStringBuilder target, string database, string? bootstrapRaw)
+        NpgsqlConnectionStringBuilder target, string database)
     {
-        var maintenance = MaintenanceConnection(target, database, bootstrapRaw);
+        var maintenance = MaintenanceConnection(target, database);
         try
         {
             await using var connection = new NpgsqlConnection(maintenance.ConnectionString);
             await connection.OpenAsync();
-            var privilege = PostgresBootstrapPrivilegePolicy.RequiredOwnerMembership(
-                connection.PostgreSqlVersion.Major);
-            // CREATE DATABASE ... OWNER target_user requires CREATEDB (or a
-            // superuser) AND SET ROLE / membership authority for that owner.
-            // PostgreSQL 16+ introduced per-membership SET options.
+            // Database creator and owner are the same identity, so only
+            // CREATEDB (or SUPERUSER) is required, not SET ROLE membership.
             await using var command = new NpgsqlCommand(
-                "SELECT r.rolsuper OR (r.rolcreatedb AND " +
-                "(r.rolname = @owner OR pg_has_role(current_user, @owner, @membership))) " +
-                "FROM pg_roles AS r WHERE r.rolname = current_user", connection);
-            command.Parameters.AddWithValue("owner", target.Username);
-            command.Parameters.AddWithValue("membership", privilege);
+                "SELECT rolcreatedb OR rolsuper FROM pg_roles WHERE rolname = current_user",
+                connection);
             return (bool)(await command.ExecuteScalarAsync() ?? false);
         }
         catch (PostgresException)
         {
-            // A missing/denied maintenance database cannot authorize creation.
+            // Missing/denied maintenance database access blocks creation.
             return false;
         }
         catch (NpgsqlException)
         {
-            // Transport/authentication failure also blocks creation.
             return false;
         }
     }
 
-    private static NpgsqlConnectionStringBuilder MaintenanceConnection(
-        NpgsqlConnectionStringBuilder target, string database, string? bootstrapRaw)
+    internal static NpgsqlConnectionStringBuilder MaintenanceConnection(
+        NpgsqlConnectionStringBuilder target, string database)
     {
-        if (database is not ("semantic_test" or "semantic_production"))
-            throw new InvalidOperationException("Only approved semantic database identities may use maintenance credentials.");
-        var maintenance = string.IsNullOrWhiteSpace(bootstrapRaw)
-            ? new NpgsqlConnectionStringBuilder(target.ConnectionString) { Database = "postgres" }
-            : new NpgsqlConnectionStringBuilder(bootstrapRaw);
-        if (!string.Equals(maintenance.Host, target.Host, StringComparison.OrdinalIgnoreCase) ||
-            maintenance.Port != target.Port || maintenance.Database == database)
-            throw new InvalidOperationException(
-                "Maintenance credentials must address the approved PostgreSQL server and a distinct database.");
-        return maintenance;
+        if (database is not ("semantic_test" or "semantic_production") ||
+            !string.Equals(target.Database, database, StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(target.Host) ||
+            string.IsNullOrWhiteSpace(target.Username))
+            throw new InvalidOperationException("Only approved semantic database identities may be managed.");
+
+        // Only switch database names; preserve host, port, username,
+        // password and SSL policy from the one registered migration account.
+        return new NpgsqlConnectionStringBuilder(target.ConnectionString) { Database = "postgres" };
     }
 
     public static async Task<SemanticMigrationApplyLease> AcquireAsync(
-        NpgsqlConnectionStringBuilder target, string database, string? bootstrapRaw)
+        NpgsqlConnectionStringBuilder target, string database)
     {
-        var maintenance = MaintenanceConnection(target, database, bootstrapRaw);
+        var maintenance = MaintenanceConnection(target, database);
 
         var connection = new NpgsqlConnection(maintenance.ConnectionString);
         try
