@@ -1,6 +1,9 @@
 using LagoVista.Relational.DataContexts;
 using LagoVista.Relational.MigrationRuntime;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -116,7 +119,25 @@ public sealed class SemanticModelDriftTests
             .UseNpgsql("Host=localhost;Port=5432;Database=semantic_test;Username=unused;Password=unused")
             .Options;
         using var context = new SemanticPostgresMigrationContext(options);
-        Assert.IsFalse(context.Database.HasPendingModelChanges(),
-            "The semantic EF model has changes not captured by its PostgreSQL migration snapshot.");
+        var drift = context.Database.HasPendingModelChanges();
+        if (drift)
+        {
+            var snapshot = context.GetService<IMigrationsAssembly>().ModelSnapshot?.Model;
+            var current = context.GetService<IDesignTimeModel>().Model;
+            var changes = snapshot is null
+                ? "No compiled migration snapshot was found."
+                : string.Join("; ", context.GetService<IMigrationsModelDiffer>()
+                    .GetDifferences(snapshot.GetRelationalModel(), current.GetRelationalModel())
+                    .Select(op => op switch
+                    {
+                        AlterColumnOperation x => $"AlterColumn {x.Schema}.{x.Table}.{x.Name} {x.ColumnType}",
+                        AddColumnOperation x => $"AddColumn {x.Schema}.{x.Table}.{x.Name} {x.ColumnType}",
+                        DropColumnOperation x => $"DropColumn {x.Schema}.{x.Table}.{x.Name}",
+                        CreateIndexOperation x => $"CreateIndex {x.Schema}.{x.Table}.{x.Name}",
+                        DropIndexOperation x => $"DropIndex {x.Schema}.{x.Table}.{x.Name}",
+                        _ => op.GetType().Name
+                    }).Take(30));
+            Assert.Fail("The semantic EF model differs from its PostgreSQL migration snapshot: " + changes);
+        }
     }
 }
