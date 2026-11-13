@@ -126,14 +126,14 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 {
                     table.PrimaryKey("PK_Definitions", x => x.id);
                     table.ForeignKey(
-                        name: "FK_Definitions_Concepts_ConceptId",
+                        name: "fk_definitions_concepts_conceptid",
                         column: x => x.conceptid,
                         principalSchema: "dbo",
                         principalTable: "concepts",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Definitions_Subjects_SubjectId",
+                        name: "fk_definitions_subjects_subjectid",
                         column: x => x.subjectid,
                         principalSchema: "dbo",
                         principalTable: "subjects",
@@ -157,14 +157,14 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 {
                     table.PrimaryKey("PK_ArtifactInformationElements", x => new { x.artifactid, x.definitionid });
                     table.ForeignKey(
-                        name: "FK_ArtifactInformationElements_Artifacts_ArtifactId",
+                        name: "fk_artifactinformationelements_artifacts_artifactid",
                         column: x => x.artifactid,
                         principalSchema: "dbo",
                         principalTable: "artifacts",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_ArtifactInformationElements_Definitions_DefinitionId",
+                        name: "fk_artifactinformationelements_definitions_definitionid",
                         column: x => x.definitionid,
                         principalSchema: "dbo",
                         principalTable: "definitions",
@@ -190,7 +190,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 {
                     table.PrimaryKey("PK_Embeddings", x => x.id);
                     table.ForeignKey(
-                        name: "FK_Embeddings_Definitions_DefinitionId",
+                        name: "fk_embeddings_definitions_definitionid",
                         column: x => x.definitionid,
                         principalSchema: "dbo",
                         principalTable: "definitions",
@@ -199,151 +199,151 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ArtifactInformationElements_DefinitionId",
+                name: "ix_artifactinformationelements_definitionid",
                 schema: "dbo",
                 table: "artifactinformationelements",
                 column: "definitionid");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ArtifactInformationElements_Organization_ArtifactId",
+                name: "ix_artifactinformationelements_organization_artifactid",
                 schema: "dbo",
                 table: "artifactinformationelements",
                 columns: new[] { "ownerorganizationid", "artifactid" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ArtifactInformationElements_Organization_DefinitionId",
+                name: "ix_artifactinformationelements_organization_definitionid",
                 schema: "dbo",
                 table: "artifactinformationelements",
                 columns: new[] { "ownerorganizationid", "definitionid" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ArtifactInformationElements_OwnerOrganizationId",
+                name: "ix_artifactinformationelements_ownerorganizationid",
                 schema: "dbo",
                 table: "artifactinformationelements",
                 column: "ownerorganizationid");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Artifacts_Organization_ArchetypeKey",
+                name: "ix_artifacts_organization_archetypekey",
                 schema: "dbo",
                 table: "artifacts",
                 columns: new[] { "ownerorganizationid", "archetypekey" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Artifacts_Organization_ProductionCardinalityKey",
+                name: "ix_artifacts_organization_productioncardinalitykey",
                 schema: "dbo",
                 table: "artifacts",
                 columns: new[] { "ownerorganizationid", "productioncardinalitykey" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Artifacts_Organization_ScopeTypeKey",
+                name: "ix_artifacts_organization_scopetypekey",
                 schema: "dbo",
                 table: "artifacts",
                 columns: new[] { "ownerorganizationid", "scopetypekey" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Artifacts_Organization_StatusKey",
+                name: "ix_artifacts_organization_statuskey",
                 schema: "dbo",
                 table: "artifacts",
                 columns: new[] { "ownerorganizationid", "statuskey" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Artifacts_OwnerOrganizationId",
+                name: "ix_artifacts_ownerorganizationid",
                 schema: "dbo",
                 table: "artifacts",
                 column: "ownerorganizationid");
 
             migrationBuilder.CreateIndex(
-                name: "UX_Artifacts_Organization_Key",
+                name: "ux_artifacts_organization_key",
                 schema: "dbo",
                 table: "artifacts",
                 columns: new[] { "ownerorganizationid", "key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "UX_Artifacts_Organization_Tla",
+                name: "ux_artifacts_organization_tla",
                 schema: "dbo",
                 table: "artifacts",
                 columns: new[] { "ownerorganizationid", "tla" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Concepts_OwnerOrganizationId",
+                name: "ix_concepts_ownerorganizationid",
                 schema: "dbo",
                 table: "concepts",
                 column: "ownerorganizationid");
 
             migrationBuilder.CreateIndex(
-                name: "UX_Concepts_Key",
+                name: "ux_concepts_key",
                 schema: "dbo",
                 table: "concepts",
                 column: "key",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Definitions_ConceptId",
+                name: "ix_definitions_conceptid",
                 schema: "dbo",
                 table: "definitions",
                 column: "conceptid");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Definitions_OwnerOrganizationId",
+                name: "ix_definitions_ownerorganizationid",
                 schema: "dbo",
                 table: "definitions",
                 column: "ownerorganizationid");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Definitions_SubjectId",
+                name: "ix_definitions_subjectid",
                 schema: "dbo",
                 table: "definitions",
                 column: "subjectid");
 
             migrationBuilder.CreateIndex(
-                name: "UX_Definitions_QualifiedKey",
+                name: "ux_definitions_qualifiedkey",
                 schema: "dbo",
                 table: "definitions",
                 column: "qualifiedkey",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Embeddings_OwnerOrganizationId",
+                name: "ix_embeddings_ownerorganizationid",
                 schema: "dbo",
                 table: "embeddings",
                 column: "ownerorganizationid");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Embeddings_SourceSha256",
+                name: "ix_embeddings_sourcesha256",
                 schema: "dbo",
                 table: "embeddings",
                 column: "sourcesha256");
 
             migrationBuilder.CreateIndex(
-                name: "UX_Embeddings_DefinitionId_ModelKey",
+                name: "ux_embeddings_definitionid_modelkey",
                 schema: "dbo",
                 table: "embeddings",
                 columns: new[] { "definitionid", "modelkey" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Registry_OwnerOrganizationId",
+                name: "ix_registry_ownerorganizationid",
                 schema: "dbo",
                 table: "registry",
                 column: "ownerorganizationid");
 
             migrationBuilder.CreateIndex(
-                name: "UX_Registry_Name",
+                name: "ux_registry_name",
                 schema: "dbo",
                 table: "registry",
                 column: "name",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Subjects_OwnerOrganizationId",
+                name: "ix_subjects_ownerorganizationid",
                 schema: "dbo",
                 table: "subjects",
                 column: "ownerorganizationid");
 
             migrationBuilder.CreateIndex(
-                name: "UX_Subjects_Key",
+                name: "ux_subjects_key",
                 schema: "dbo",
                 table: "subjects",
                 column: "key",

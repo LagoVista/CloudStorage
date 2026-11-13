@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using LagoVista.Relational.DataContexts;
 using Microsoft.EntityFrameworkCore;
 
