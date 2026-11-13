@@ -136,6 +136,11 @@ public sealed class SemanticModelDriftTests
                         DropColumnOperation x => $"DropColumn {x.Schema}.{x.Table}.{x.Name}",
                         CreateIndexOperation x => $"CreateIndex {x.Schema}.{x.Table}.{x.Name}",
                         DropIndexOperation x => $"DropIndex {x.Schema}.{x.Table}.{x.Name}",
+                        DropPrimaryKeyOperation x => $"DropPrimaryKey {x.Schema}.{x.Table}.{x.Name}",
+                        AddPrimaryKeyOperation x => $"AddPrimaryKey {x.Schema}.{x.Table}.{x.Name}",
+                        DropForeignKeyOperation x => $"DropForeignKey {x.Schema}.{x.Table}.{x.Name}",
+                        AddForeignKeyOperation x => $"AddForeignKey {x.Schema}.{x.Table}.{x.Name}",
+                        CreateTableOperation x => $"CreateTable {x.Schema}.{x.Name}",
                         _ => op.GetType().Name
                     }).Take(30));
             Assert.Fail("The semantic EF model differs from its PostgreSQL migration snapshot: " + changes);
