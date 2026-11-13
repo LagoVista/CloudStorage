@@ -16,12 +16,14 @@
         {
           "id": "semantic-production",
           "database": "semantic_production",
-          "role": "authoritative"
+          "role": "authoritative",
+          "configurationTargetKey": "production"
         },
         {
           "id": "semantic-test",
           "database": "semantic_test",
-          "role": "experimental"
+          "role": "experimental",
+          "configurationTargetKey": "test"
         }
       ],
       "actions": [
@@ -35,7 +37,8 @@
         "repeatExecution": "no-op-when-current",
         "unknownHistory": "fail-closed",
         "bootstrapCredentials": "separate-runtime-secret"
-      }
+      },
+      "configurationAppKey": "semantic-schema-migrator"
     }
   ]
 }
