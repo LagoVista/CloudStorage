@@ -125,3 +125,17 @@ not an approved production configuration path.
 Server, trusted bootstrap Secret, first-class Build Server one-shot image
 publish/execute, mandatory OperationalJournal start gate, and DEV real-Postgres
 convergence proof. This commit does not change an environment or invoke SQL.
+
+## Offline model-drift analysis (Build Server readiness)
+
+The compiled migrator supports `--analyze-model`, a source-only command
+that compares the current provider-specific EF model to the checked-in
+migration snapshot using `HasPendingModelChanges()`. It does **not**
+read Config Server or connect to the database. It reports the latest
+checked-in migration ID and `drift=none|required` without connection data.
+Exit code `0` means the snapshot matches; exit code `2` means a new
+migration must be authored and reviewed before publishing the image.
+This is distinct from `MIGRATION_ACTION=status|apply`, which inspects or
+converges an actual database target.
+
+The test `SemanticModelDriftTests` is the corresponding source gate.

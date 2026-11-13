@@ -9,6 +9,23 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
+// Source-only engineering analysis, invoked by Build Server on the exact
+// committed checkout. No Config Server lookup and no database connection.
+if (args.Contains("--analyze-model", StringComparer.OrdinalIgnoreCase))
+{
+    var analysisOptions = new DbContextOptionsBuilder<SemanticPostgresMigrationContext>()
+        .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused")
+        .Options;
+    await using var analysis = new SemanticPostgresMigrationContext(analysisOptions);
+    var knownMigrations = analysis.Database.GetMigrations().ToArray();
+    if (knownMigrations.Length == 0)
+        throw new InvalidOperationException("No semantic PostgreSQL EF migrations exist in this image.");
+    var changed = analysis.Database.HasPendingModelChanges();
+    Console.WriteLine($"MODEL_ANALYSIS job=semantic-schema-migrator context=SemanticPostgresMigrationContext provider=postgresql target={knownMigrations[^1]} drift={(changed ? "required" : "none")}");
+    Environment.ExitCode = changed ? 2 : 0;
+    return;
+}
+
 // A target is authorized by the platform even before its physical database exists.
 // This runner owns create-if-missing + forward-only EF convergence for one schema family.
 var target = (Environment.GetEnvironmentVariable("MIGRATION_TARGET") ?? "").Trim().ToLowerInvariant();
