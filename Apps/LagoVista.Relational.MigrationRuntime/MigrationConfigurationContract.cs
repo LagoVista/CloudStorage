@@ -18,7 +18,9 @@ public static class MigrationConfigurationContract
             "DbMigrator:SqlServerPassword",
             "DbMigrator:PostgresUrl",
             "DbMigrator:PostgresUserName",
-            "DbMigrator:PostgresPassword"
+            "DbMigrator:PostgresPassword",
+            "DbMigrator:PostgresBootstrapUserName",
+            "DbMigrator:PostgresBootstrapPassword"
         };
 
         var lines = new List<string> { "BEGIN CONFIG" };

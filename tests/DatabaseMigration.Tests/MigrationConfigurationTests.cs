@@ -33,12 +33,13 @@ public sealed class MigrationConfigurationTests
     {
         var manifest = MigrationConfigurationContract.ExportConfigManifest();
         var lines = manifest.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
-        Assert.AreEqual(8, lines.Length);
+        Assert.AreEqual(10, lines.Length);
         Assert.AreEqual("BEGIN CONFIG", lines[0]);
         Assert.AreEqual("END CONFIG", lines[^1]);
         foreach (var name in new[] {
             "SqlServerUrl", "SqlServerUserName", "SqlServerPassword",
-            "PostgresUrl", "PostgresUserName", "PostgresPassword"
+            "PostgresUrl", "PostgresUserName", "PostgresPassword",
+            "PostgresBootstrapUserName", "PostgresBootstrapPassword"
         })
             Assert.IsTrue(lines.Contains($"DbMigrator:{name},false,false"));
         Assert.IsFalse(manifest.Contains("not-a-real-password", StringComparison.Ordinal));
@@ -63,6 +64,56 @@ public sealed class MigrationConfigurationTests
         var json = System.Text.Json.JsonSerializer.Serialize(resolved);
         Assert.IsFalse(json.Contains("some;pass=word", StringComparison.Ordinal));
         Assert.IsFalse(json.Contains("ConnectionString", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void Optional_separate_postgres_bootstrap_uses_same_host_and_maintenance_database()
+    {
+        var values = new Dictionary<string, string?>
+        {
+            ["DbMigrator:PostgresUrl"] = "postgresql://postgres-rw:5432",
+            ["DbMigrator:PostgresUserName"] = "migrator",
+            ["DbMigrator:PostgresPassword"] = "migration-password",
+            ["DbMigrator:PostgresBootstrapUserName"] = "database-creator",
+            ["DbMigrator:PostgresBootstrapPassword"] = "bootstrap;pass=secret"
+        };
+        var settings = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        var resolved = MigrationConfigurationLoader.ResolveRemoteTarget(
+            settings, "test", "semantic_test", "postgresql", "db-migrator", "dev");
+        var runtime = new NpgsqlConnectionStringBuilder(resolved.ConnectionString);
+        var bootstrap = new NpgsqlConnectionStringBuilder(resolved.BootstrapConnectionString);
+        Assert.AreEqual(runtime.Host, bootstrap.Host);
+        Assert.AreEqual(runtime.Port, bootstrap.Port);
+        Assert.AreEqual("postgres", bootstrap.Database);
+        Assert.AreEqual("database-creator", bootstrap.Username);
+        Assert.AreEqual("bootstrap;pass=secret", bootstrap.Password);
+        Assert.AreEqual("migrator", runtime.Username);
+        Assert.AreEqual("semantic_test", runtime.Database);
+        Assert.IsFalse(resolved.ToString().Contains("bootstrap;pass=secret", StringComparison.Ordinal));
+        var json = System.Text.Json.JsonSerializer.Serialize(resolved);
+        Assert.IsFalse(json.Contains("bootstrap;pass=secret", StringComparison.Ordinal));
+        Assert.IsFalse(json.Contains("migration-password", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void Partial_bootstrap_configuration_fails_closed_without_fallback()
+    {
+        foreach (var missing in new[] { "DbMigrator:PostgresBootstrapUserName", "DbMigrator:PostgresBootstrapPassword" })
+        {
+            var values = new Dictionary<string, string?>
+            {
+                ["DbMigrator:PostgresUrl"] = "postgresql://postgres-rw:5432",
+                ["DbMigrator:PostgresUserName"] = "migrator",
+                ["DbMigrator:PostgresPassword"] = "migration-password",
+                ["DbMigrator:PostgresBootstrapUserName"] = "creator",
+                ["DbMigrator:PostgresBootstrapPassword"] = "bootstrap-secret"
+            };
+            values.Remove(missing);
+            var settings = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+            Assert.ThrowsExactly<InvalidOperationException>(() =>
+                MigrationConfigurationLoader.ResolveRemoteTarget(
+                    settings, "test", "semantic_test", "postgresql", "db-migrator", "dev"));
+        }
     }
 
     [TestMethod]

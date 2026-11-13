@@ -97,6 +97,7 @@ public static class MigrationConfigurationLoader
         var provider = expectedProvider.Trim().ToLowerInvariant();
         string host;
         string connection;
+        string? bootstrapConnection = null;
         if (provider == "postgresql")
         {
             var (hostname, port) = ParsePostgresEndpoint(section["PostgresUrl"]);
@@ -113,6 +114,25 @@ public static class MigrationConfigurationLoader
                 ["SSL Mode"] = "Prefer"
             };
             connection = builder.ConnectionString;
+            var bootstrapUser = section["PostgresBootstrapUserName"];
+            var bootstrapPassword = section["PostgresBootstrapPassword"];
+            var anyBootstrap = !string.IsNullOrWhiteSpace(bootstrapUser) ||
+                               !string.IsNullOrWhiteSpace(bootstrapPassword);
+            if (anyBootstrap)
+            {
+                var separateUser = Required(bootstrapUser, "PostgresBootstrapUserName");
+                var separatePassword = Required(bootstrapPassword, "PostgresBootstrapPassword");
+                var bootstrapBuilder = new DbConnectionStringBuilder
+                {
+                    ["Host"] = host,
+                    ["Port"] = port,
+                    ["Database"] = "postgres",
+                    ["Username"] = separateUser,
+                    ["Password"] = separatePassword,
+                    ["SSL Mode"] = "Prefer"
+                };
+                bootstrapConnection = bootstrapBuilder.ConnectionString;
+            }
         }
         else if (provider == "azure-sql")
         {
@@ -140,7 +160,7 @@ public static class MigrationConfigurationLoader
         return new ResolvedMigrationConfiguration(
             "config-server", MigrationConfigurationContract.ApplicationKey,
             deployment, target, provider, expectedDatabase, host,
-            connection, null);
+            connection, bootstrapConnection);
     }
 
     private static (string Host, int Port) ParsePostgresEndpoint(string? value)
