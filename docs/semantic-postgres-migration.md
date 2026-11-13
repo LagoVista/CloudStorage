@@ -72,3 +72,56 @@ Both modes refuse unexpected database names. Database creation requires a
 role permitted to CREATE DATABASE and assign ownership to the migration user.
 The Kubernetes Job must supply approved Secrets; insufficient permissions
 must produce a clear failure, never an implicit server-side workaround.
+
+## C# migration-runtime and Config Server bootstrap
+
+The semantic image is a .NET console executable. Shared configuration bootstrap
+lives in `Apps/LagoVista.Relational.MigrationRuntime` (project reference, not a
+new NuGet package). It uses the existing
+`LagoVista.Configuration.Client` / `RemoteConfigurationClient` convention
+also used by the video-processing worker. The actual EF schema and PostgreSQL
+migration code stay within the semantic application.
+
+Config Server needs an **AppDefinition** with app key
+`semantic-schema-migrator`, published for `dev` and eventually `live`.
+No new Config Server application-type enum is required for the first slice.
+It must have its own restricted identity/bootstrap access, not general-purpose
+application credentials.
+
+On startup the container receives only its logical target (`production`
+or `test`), action (`status` or `apply`), environment
+(`MIGRATION_DEPLOYMENT=dev|live`) and Config Server bootstrap settings
+(`RemoteConfigurationBootstrap__ConfigurationServiceBaseUrl` and
+`RemoteConfigurationBootstrap__AuthorizationToken`). Set
+`MIGRATION_CONFIG_SOURCE=config-server` explicitly when launched by
+Build Server V2. It requests the matching AppDefinition/deployment from
+Config Server and reads:
+
+| Config Server setting | Example / role |
+| --- | --- |
+| `DatabaseMigration:Targets:production:Provider` | `postgresql` |
+| `DatabaseMigration:Targets:production:Database` | `semantic_production` |
+| `DatabaseMigration:Targets:production:ServerHost` | Approved PostgreSQL server host |
+| `DatabaseMigration:Targets:production:ConnectionString` | Secret migration-role connection string |
+| `DatabaseMigration:Targets:production:BootstrapConnectionString` | Optional secret server-level CREATE DATABASE identity |
+
+Define the same keys under `DatabaseMigration:Targets:test:*` for
+`semantic_test`. Logical target authorization is defined in the container
+and must match the resolved database, provider and registered server host.
+For database creation the bootstrap credential must address the same server
+through a separate maintenance database, and the created database is owned by
+the intended migration user.
+
+**Compatibility:** `MIGRATION_CONFIG_SOURCE=auto` (default) uses Config
+Server if either bootstrap setting is present; otherwise it accepts the
+existing DEV-only `MIGRATION_CONNECTION_STRING` and optional
+`MIGRATION_BOOTSTRAP_CONNECTION_STRING`. Remote resolution failure NEVER
+falls back to direct mode. Direct mode is rejected if
+`MIGRATION_DEPLOYMENT=live`. The final Build Server execution path must
+force `config-server`; this legacy direct mode is a DEV pilot escape hatch,
+not an approved production configuration path.
+
+**Not yet provisioned:** AppDefinition/PublishedApp settings in DEV Config
+Server, trusted bootstrap Secret, first-class Build Server one-shot image
+publish/execute, mandatory OperationalJournal start gate, and DEV real-Postgres
+convergence proof. This commit does not change an environment or invoke SQL.

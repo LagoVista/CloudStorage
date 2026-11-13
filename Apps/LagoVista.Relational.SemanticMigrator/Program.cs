@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using LagoVista.Relational.DataContexts;
+using LagoVista.Relational.MigrationRuntime;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -22,15 +23,20 @@ var action = (Environment.GetEnvironmentVariable("MIGRATION_ACTION") ?? "status"
 if (action is not ("status" or "apply"))
     throw new InvalidOperationException("MIGRATION_ACTION must be 'status' or 'apply'.");
 
-var rawConnection = Environment.GetEnvironmentVariable("MIGRATION_CONNECTION_STRING");
-if (string.IsNullOrWhiteSpace(rawConnection))
-    throw new InvalidOperationException("MIGRATION_CONNECTION_STRING is required from a trusted runtime Secret.");
-
-var dbConnection = new NpgsqlConnectionStringBuilder(rawConnection);
+// Shared .NET runtime uses Config Server when a remote bootstrap is provided.
+// Direct secret mode remains available for the existing DEV-only pilot scripts.
+var resolvedConfiguration = await MigrationConfigurationLoader.LoadAsync(
+    "semantic-schema-migrator", target, expectedDatabase, "postgresql");
+var dbConnection = new NpgsqlConnectionStringBuilder(resolvedConfiguration.ConnectionString);
 if (!string.Equals(dbConnection.Database, expectedDatabase, StringComparison.Ordinal))
     throw new InvalidOperationException("The supplied migration connection does not match the authorized semantic catalog target.");
 if (string.IsNullOrWhiteSpace(dbConnection.Host) || string.IsNullOrWhiteSpace(dbConnection.Username))
     throw new InvalidOperationException("Migration connection requires PostgreSQL host and username.");
+if (resolvedConfiguration.Source == "config-server" &&
+    !string.Equals(dbConnection.Host, resolvedConfiguration.ServerHost, StringComparison.OrdinalIgnoreCase))
+    throw new InvalidOperationException("Config Server connection host does not match the registered migration target server.");
+
+Console.WriteLine($"Migration configuration: {resolvedConfiguration.Source}; deployment: {resolvedConfiguration.Deployment}; target: {target}; server host: {dbConnection.Host}; database: {expectedDatabase}");
 
 var options = new DbContextOptionsBuilder<SemanticPostgresMigrationContext>()
     .UseNpgsql(dbConnection.ConnectionString, provider => provider.EnableRetryOnFailure())
@@ -51,7 +57,7 @@ if (!exists)
     // Dedicated bootstrap credentials may be provided for CREATE DATABASE.
     // Otherwise, the migration credential itself must have permission to create
     // the database on the existing server.
-    await CreateDatabaseIfMissingAsync(dbConnection, expectedDatabase);
+    await CreateDatabaseIfMissingAsync(dbConnection, expectedDatabase, resolvedConfiguration.BootstrapConnectionString);
     exists = await databaseCreator.ExistsAsync();
     if (!exists)
         throw new InvalidOperationException("Database creation returned without the target database becoming available.");
@@ -121,9 +127,8 @@ static async Task<bool> ContainsExistingSemanticTablesAsync(string connectionStr
     return (bool)(await cmd.ExecuteScalarAsync() ?? false);
 }
 
-static async Task CreateDatabaseIfMissingAsync(NpgsqlConnectionStringBuilder target, string databaseName)
+static async Task CreateDatabaseIfMissingAsync(NpgsqlConnectionStringBuilder target, string databaseName, string? bootstrapRaw)
 {
-    var bootstrapRaw = Environment.GetEnvironmentVariable("MIGRATION_BOOTSTRAP_CONNECTION_STRING");
     var bootstrap = string.IsNullOrWhiteSpace(bootstrapRaw)
         ? new NpgsqlConnectionStringBuilder(target.ConnectionString) { Database = "postgres" }
         : new NpgsqlConnectionStringBuilder(bootstrapRaw);
