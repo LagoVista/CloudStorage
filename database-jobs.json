@@ -8,7 +8,7 @@
       "description": "PostgreSQL semantic catalog schema migrations (shared Production and TEST schema)",
       "project": "Apps/LagoVista.Relational.SemanticMigrator/LagoVista.Relational.SemanticMigrator.csproj",
       "dockerfile": "Apps/LagoVista.Relational.SemanticMigrator/Dockerfile",
-      "buildContext": ".",
+      "buildContext": "Apps/LagoVista.Relational.SemanticMigrator",
       "imageRepository": "nuviot/semantic-schema-migrator",
       "migrationContext": "LagoVista.Relational.DataContexts.SemanticPostgresMigrationContext",
       "migrationsPath": "src/LagoVista.Relational/Migrations/SemanticPostgres",

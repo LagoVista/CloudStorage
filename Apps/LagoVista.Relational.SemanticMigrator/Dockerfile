@@ -1,13 +1,9 @@
-# Build from the CloudStorage repository root:
-# docker build -f Apps/LagoVista.Relational.SemanticMigrator/Dockerfile -t nuviot/semantic-schema-migrator:v1 .
-# Publishing may require an authenticated NuGet feed configured by the trusted build environment.
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /source
-COPY . .
-RUN dotnet publish Apps/LagoVista.Relational.SemanticMigrator/LagoVista.Relational.SemanticMigrator.csproj -c Release -o /publish
-
+# Build Server V2 owns exact-commit restore, EF model analysis, stable NuGet
+# dependency projection, and dotnet publish. Docker only packages the verified
+# prebuilt output. No NuGet credentials or repository source enter this image.
+# Build context: Apps/LagoVista.Relational.SemanticMigrator
 FROM mcr.microsoft.com/dotnet/runtime:9.0
 WORKDIR /app
-COPY --from=build /publish ./
+COPY publish/ ./
 USER 1654
 ENTRYPOINT ["dotnet", "/app/LagoVista.Relational.SemanticMigrator.dll"]
