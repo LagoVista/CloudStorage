@@ -53,8 +53,15 @@ namespace LagoVista.Relational
             var testSection = configurationRoot.GetSection("SemanticTestDb");
             var livePostgres = IsPostgres(liveSection);
             var testPostgres = IsPostgres(testSection);
-            var liveConnectionString = BuildSemanticConnectionString(liveSection, livePostgres);
-            var testConnectionString = BuildSemanticConnectionString(testSection, testPostgres);
+            // The two semantic catalogs use the shared cluster PostgreSQL endpoint
+            // and runtime login. Only the selected database differs. Keep this
+            // opt-in per application environment; existing SQL Server consumers
+            // remain unchanged until SemanticDb:Provider is set to Postgres.
+            var clusterPostgres = livePostgres || testPostgres
+                ? new PostgresConnectionSettings(configurationRoot)
+                : null;
+            var liveConnectionString = BuildSemanticConnectionString(liveSection, livePostgres, clusterPostgres, "semantic_production");
+            var testConnectionString = BuildSemanticConnectionString(testSection, testPostgres, clusterPostgres, "semantic_test");
 
             services.AddDbContext<SemanticDataContext>(options => UseSemanticProvider(options, livePostgres, liveConnectionString), contextLifetime: ServiceLifetime.Scoped, optionsLifetime: ServiceLifetime.Singleton);
             services.AddDbContextFactory<SemanticDataContext>(options =>
@@ -84,18 +91,23 @@ namespace LagoVista.Relational
             throw new System.InvalidOperationException($"Unsupported semantic provider '{provider}' for '{section.Path}'.");
         }
 
-        private static string BuildSemanticConnectionString(IConfigurationSection section, bool postgres)
+        private static string BuildSemanticConnectionString(
+            IConfigurationSection section, bool postgres,
+            IPostgresConnectionSettings clusterPostgres, string database)
         {
             if (!postgres) return BuildSqlConnectionString(CreateConnectionSettings(section));
-            var portText = section["Port"];
-            var port = string.IsNullOrWhiteSpace(portText) ? 5432 : int.Parse(portText, System.Globalization.CultureInfo.InvariantCulture);
+            if (clusterPostgres == null)
+                throw new System.InvalidOperationException("ClusterPostgres settings are required for semantic PostgreSQL.");
+
+            // This database identity is owned by the semantic context, never by
+            // legacy SQL Server InitialCatalog settings or arbitrary caller input.
             var builder = new Npgsql.NpgsqlConnectionStringBuilder
             {
-                Host = section.Require("HostName"),
-                Port = port,
-                Database = section.Require("InitialCatalog"),
-                Username = section.Require("UserName"),
-                Password = section.Require("Password"),
+                Host = clusterPostgres.HostName,
+                Port = clusterPostgres.Port,
+                Database = database,
+                Username = clusterPostgres.UserName,
+                Password = clusterPostgres.Password,
                 Timeout = 15,
                 CommandTimeout = 60
             };
