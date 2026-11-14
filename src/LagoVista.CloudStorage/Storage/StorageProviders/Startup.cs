@@ -30,6 +30,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
             services.AddSingleton<IApplicationErrorRepository, ScratchApplicationErrorRepository>();
             services.AddSingleton<IRuntimeControlService, RuntimeControlService>();
 
+            services.AddScoped<IS3AdminRepo, S3AdminRepo>();
             services.AddScoped<ICloudFileStorageClient, S3CloudFileStorageClient>();
             services.AddScoped<IDocumentCloudServices, DocumentCloudServices>();
             services.AddScoped<IDocumentCloudCachedServices, DocumentCloudCachedServices>();
