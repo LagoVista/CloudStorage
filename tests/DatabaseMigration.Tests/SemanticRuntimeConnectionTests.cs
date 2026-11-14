@@ -83,7 +83,7 @@ public sealed class SemanticRuntimeConnectionTests
     [TestMethod]
     public void Missing_cluster_postgres_configuration_fails_closed_without_sql_server_fallback()
     {
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
         {
             using var provider = ConfigureServices(BuildConfiguration(includeCluster: false));
         });
