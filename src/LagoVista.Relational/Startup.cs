@@ -47,60 +47,32 @@ namespace LagoVista.Relational
         {
             ConfigurePlatformSmokeTests(services);
 
-            // Each logical registry can select a provider independently. SQL Server stays the default
-            // for existing installations; no schema migrations run as part of application startup.
-            var liveSection = configurationRoot.GetSection("SemanticDb");
-            var testSection = configurationRoot.GetSection("SemanticTestDb");
-            var livePostgres = IsPostgres(liveSection);
-            var testPostgres = IsPostgres(testSection);
-            // The two semantic catalogs use the shared cluster PostgreSQL endpoint
-            // and runtime login. Only the selected database differs. Keep this
-            // opt-in per application environment; existing SQL Server consumers
-            // remain unchanged until SemanticDb:Provider is set to Postgres.
-            var clusterPostgres = livePostgres || testPostgres
-                ? new PostgresConnectionSettings(configurationRoot)
-                : null;
-            var liveConnectionString = BuildSemanticConnectionString(liveSection, livePostgres, clusterPostgres, "semantic_production");
-            var testConnectionString = BuildSemanticConnectionString(testSection, testPostgres, clusterPostgres, "semantic_test");
+            // InfoElements has no SQL Server runtime or provider cutover flag.
+            // The existing ClusterPostgres configuration owns the shared endpoint
+            // and login; the two semantic contexts own their fixed database names.
+            // Schema changes remain exclusively the migration container's job.
+            var clusterPostgres = new PostgresConnectionSettings(configurationRoot);
+            var liveConnectionString = BuildSemanticPostgresConnectionString(clusterPostgres, "semantic_production");
+            var testConnectionString = BuildSemanticPostgresConnectionString(clusterPostgres, "semantic_test");
 
-            services.AddDbContext<SemanticDataContext>(options => UseSemanticProvider(options, livePostgres, liveConnectionString), contextLifetime: ServiceLifetime.Scoped, optionsLifetime: ServiceLifetime.Singleton);
+            services.AddDbContext<SemanticDataContext>(options => UseSemanticPostgres(options, liveConnectionString), contextLifetime: ServiceLifetime.Scoped, optionsLifetime: ServiceLifetime.Singleton);
             services.AddDbContextFactory<SemanticDataContext>(options =>
             {
-                UseSemanticProvider(options, livePostgres, liveConnectionString);
+                UseSemanticPostgres(options, liveConnectionString);
                 options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.CommandExecuted));
             });
 
-            services.AddDbContext<SemanticTestDataContext>(options => UseSemanticProvider(options, testPostgres, testConnectionString), contextLifetime: ServiceLifetime.Scoped, optionsLifetime: ServiceLifetime.Singleton);
+            services.AddDbContext<SemanticTestDataContext>(options => UseSemanticPostgres(options, testConnectionString), contextLifetime: ServiceLifetime.Scoped, optionsLifetime: ServiceLifetime.Singleton);
             services.AddDbContextFactory<SemanticTestDataContext>(options =>
             {
-                UseSemanticProvider(options, testPostgres, testConnectionString);
+                UseSemanticPostgres(options, testConnectionString);
                 options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.CommandExecuted));
             });
         }
 
-        private static bool IsPostgres(IConfigurationSection section)
-        {
-            var provider = section["Provider"];
-            if (string.IsNullOrWhiteSpace(provider) ||
-                string.Equals(provider, "SqlServer", System.StringComparison.OrdinalIgnoreCase))
-                return false;
-            if (string.Equals(provider, "Postgres", System.StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(provider, "PostgreSQL", System.StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(provider, "Npgsql", System.StringComparison.OrdinalIgnoreCase))
-                return true;
-            throw new System.InvalidOperationException($"Unsupported semantic provider '{provider}' for '{section.Path}'.");
-        }
-
-        private static string BuildSemanticConnectionString(
-            IConfigurationSection section, bool postgres,
+        private static string BuildSemanticPostgresConnectionString(
             IPostgresConnectionSettings clusterPostgres, string database)
         {
-            if (!postgres) return BuildSqlConnectionString(CreateConnectionSettings(section));
-            if (clusterPostgres == null)
-                throw new System.InvalidOperationException("ClusterPostgres settings are required for semantic PostgreSQL.");
-
-            // This database identity is owned by the semantic context, never by
-            // legacy SQL Server InitialCatalog settings or arbitrary caller input.
             var builder = new Npgsql.NpgsqlConnectionStringBuilder
             {
                 Host = clusterPostgres.HostName,
@@ -114,13 +86,8 @@ namespace LagoVista.Relational
             return builder.ConnectionString;
         }
 
-        private static void UseSemanticProvider(DbContextOptionsBuilder options, bool postgres, string connectionString)
-        {
-            if (postgres)
-                options.UseNpgsql(connectionString, provider => provider.EnableRetryOnFailure());
-            else
-                options.UseSqlServer(connectionString, provider => provider.EnableRetryOnFailure());
-        }
+        private static void UseSemanticPostgres(DbContextOptionsBuilder options, string connectionString) =>
+            options.UseNpgsql(connectionString, provider => provider.EnableRetryOnFailure());
 
         private static ConnectionSettings CreateConnectionSettings(IConfigurationSection section) => new ConnectionSettings()
         {
