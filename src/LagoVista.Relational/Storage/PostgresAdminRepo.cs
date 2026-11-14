@@ -117,9 +117,9 @@ namespace LagoVista.Relational.Storage
             await EnsureDatabaseAllowedAsync(database, ct).ConfigureAwait(false);
             await using var connection = await OpenAsync(database, ct).ConfigureAwait(false);
             await using var command = new NpgsqlCommand(
-                "SELECT schema_name FROM information_schema.schemata " +
-                "WHERE schema_name NOT LIKE 'pg_%' AND schema_name <> 'information_schema' " +
-                "ORDER BY schema_name", connection);
+                "SELECT nspname FROM pg_catalog.pg_namespace " +
+                "WHERE nspname NOT LIKE 'pg_%' AND nspname <> 'information_schema' " +
+                "ORDER BY nspname", connection);
             var schemas = new List<string>();
             await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
             while (await reader.ReadAsync(ct).ConfigureAwait(false))
@@ -135,8 +135,15 @@ namespace LagoVista.Relational.Storage
 
             await using var connection = await OpenAsync(database, ct).ConfigureAwait(false);
             await using var command = new NpgsqlCommand(
-                "SELECT table_schema, table_name, table_type FROM information_schema.tables " +
-                "WHERE table_schema = @schema ORDER BY table_name", connection);
+                "SELECT n.nspname, c.relname, " +
+                "CASE c.relkind " +
+                "WHEN 'r' THEN 'BASE TABLE' WHEN 'p' THEN 'PARTITIONED TABLE' " +
+                "WHEN 'v' THEN 'VIEW' WHEN 'm' THEN 'MATERIALIZED VIEW' " +
+                "WHEN 'f' THEN 'FOREIGN TABLE' END " +
+                "FROM pg_catalog.pg_class c " +
+                "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace " +
+                "WHERE n.nspname = @schema AND c.relkind IN ('r', 'p', 'v', 'm', 'f') " +
+                "ORDER BY c.relname", connection);
             command.Parameters.AddWithValue("schema", schema);
             var result = new List<PostgresTableInfo>();
             await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
