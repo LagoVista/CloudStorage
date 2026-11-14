@@ -1,3 +1,4 @@
+using LagoVista.Relational;
 using LagoVista.Relational.DataContexts;
 using LagoVista.Relational.MigrationRuntime;
 using Microsoft.EntityFrameworkCore;
@@ -185,6 +186,31 @@ public sealed class MigrationConfigurationTests
 [TestClass]
 public sealed class SemanticModelDriftTests
 {
+    [TestMethod]
+    public void PostgreSql_semantic_tables_and_view_use_public_schema()
+    {
+        var options = new DbContextOptionsBuilder<SemanticPostgresMigrationContext>()
+            .UseNpgsql("Host=localhost;Port=5432;Database=semantic_test;Username=unused;Password=unused")
+            .Options;
+        using var context = new SemanticPostgresMigrationContext(options);
+        var types = new[]
+        {
+            typeof(SemanticRegistryDTO), typeof(SubjectDTO), typeof(ConceptDTO),
+            typeof(DefinitionDTO), typeof(EmbeddingDTO), typeof(ArtifactDTO),
+            typeof(ArtifactInformationElementDTO)
+        };
+        foreach (var type in types)
+        {
+            var entity = context.Model.FindEntityType(type);
+            Assert.IsNotNull(entity);
+            Assert.AreEqual("public", entity.GetSchema(), type.Name);
+        }
+        var view = context.Model.FindEntityType(typeof(SemanticDefinitionViewDTO));
+        Assert.IsNotNull(view);
+        Assert.AreEqual("public", view.GetViewSchema());
+        Assert.IsNull(view.GetTableName());
+    }
+
     [TestMethod]
     public void PostgreSql_semantic_model_matches_checked_in_snapshot()
     {

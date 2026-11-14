@@ -33,6 +33,8 @@ namespace LagoVista.Relational.DataContexts
             ArtifactInformationElementDTO.Configure(modelBuilder);
 
             modelBuilder.LowerCaseNames(Database.ProviderName);
+            // Each PostgreSQL semantic catalog owns its database; prefer public.
+            modelBuilder.RemapSchemaForPostgres("dbo", "public");
             modelBuilder.ApplyUtcDateTimeConvention();
         }
     }

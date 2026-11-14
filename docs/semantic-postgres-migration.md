@@ -28,9 +28,17 @@ Scaffold future PostgreSQL migrations against `SemanticPostgresMigrationContext`
 and output to `src/LagoVista.Relational/Migrations/SemanticPostgres`.
 Never use the SQL Server context for PostgreSQL scaffolding.
 
-The PostgreSQL initial migration creates seven semantic tables, indexes, foreign keys
-and `dbo.usv_semanticdefinitions`. Verify lookup, registration, prune, and
-embedding read/write against fresh databases before changing DEV Config Server.
+The published PostgreSQL initial migration created seven semantic tables, indexes,
+foreign keys and `dbo.usv_semanticdefinitions`. Because it has already been
+applied in DEV, a new forward-only migration moves the seven tables and view
+to PostgreSQL's `public` schema without dropping or copying data. Future
+PostgreSQL models explicitly map to `public`; SQL Server mappings keep `dbo`.
+
+The schema owner/migrator is distinct from the limited runtime role. A `public`
+schema does NOT automatically grant access to the runtime role's tables.
+Provision runtime-role DML grants and verify actual application connectivity
+before considering the cutover complete. The current DEV migration pilot only
+authorizes apply for `semantic_test`, not `semantic_production`.
 
 ## Verified DEV status and next authorized create
 

@@ -151,7 +151,7 @@ if (!finalApplied.SequenceEqual(known, StringComparer.Ordinal))
     throw new InvalidOperationException("Database migration history did not converge to the image's target revision.");
 
 await VerifySemanticSchemaAsync(context);
-Console.WriteLine($"VERIFIED: schema revision {known[^1]} and seven semantic tables plus view.");
+Console.WriteLine($"VERIFIED: schema revision {known[^1]} and seven public semantic tables plus view.");
 
 static async Task VerifySemanticSchemaAsync(SemanticPostgresMigrationContext context)
 {
@@ -166,7 +166,20 @@ static async Task VerifySemanticSchemaAsync(SemanticPostgresMigrationContext con
     await context.Embeddings.AsNoTracking().Take(1).ToListAsync();
     await context.Artifacts.AsNoTracking().Take(1).ToListAsync();
     await context.ArtifactInformationElements.AsNoTracking().Take(1).ToListAsync();
-    Console.WriteLine("SCHEMA_VERIFICATION: PASS; seven semantic tables and definition view queryable.");
+    // A migration-history row is insufficient proof: verify physical schema too.
+    await using (var connection = new NpgsqlConnection(context.Database.GetConnectionString()))
+    {
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(@"
+            SELECT COUNT(*) FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = ANY (ARRAY['registry','subjects','concepts','definitions',
+                                            'embeddings','artifacts','artifactinformationelements'])", connection);
+        var count = Convert.ToInt32(await command.ExecuteScalarAsync());
+        if (count != 7)
+            throw new InvalidOperationException($"PostgreSQL semantic public schema expected seven tables; found {count}.");
+    }
+    Console.WriteLine("SCHEMA_VERIFICATION: PASS; seven public semantic tables and definition view queryable.");
 }
 
 static async Task<bool> ContainsExistingSemanticTablesAsync(string connectionString)
@@ -174,7 +187,7 @@ static async Task<bool> ContainsExistingSemanticTablesAsync(string connectionStr
     await using var connection = new NpgsqlConnection(connectionString);
     await connection.OpenAsync();
     await using var cmd = new NpgsqlCommand(
-        "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='dbo' AND table_name = ANY (ARRAY['registry','subjects','concepts','definitions','embeddings','artifacts','artifactinformationelements']))",
+        "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema IN ('dbo','public') AND table_name = ANY (ARRAY['registry','subjects','concepts','definitions','embeddings','artifacts','artifactinformationelements']))",
         connection);
     return (bool)(await cmd.ExecuteScalarAsync() ?? false);
 }

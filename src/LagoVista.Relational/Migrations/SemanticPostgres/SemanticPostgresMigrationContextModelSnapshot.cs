@@ -130,7 +130,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .IsUnique()
                         .HasDatabaseName("ux_artifacts_organization_tla");
 
-                    b.ToTable("artifacts", "dbo");
+                    b.ToTable("artifacts", "public");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.ArtifactInformationElementDTO", b =>
@@ -182,7 +182,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                     b.HasIndex("OwnerOrganizationId", "DefinitionId")
                         .HasDatabaseName("ix_artifactinformationelements_organization_definitionid");
 
-                    b.ToTable("artifactinformationelements", "dbo");
+                    b.ToTable("artifactinformationelements", "public");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.ConceptDTO", b =>
@@ -247,7 +247,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                     b.HasIndex("OwnerOrganizationId")
                         .HasDatabaseName("ix_concepts_ownerorganizationid");
 
-                    b.ToTable("concepts", "dbo");
+                    b.ToTable("concepts", "public");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.DefinitionDTO", b =>
@@ -347,7 +347,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                     b.HasIndex("SubjectId")
                         .HasDatabaseName("ix_definitions_subjectid");
 
-                    b.ToTable("definitions", "dbo");
+                    b.ToTable("definitions", "public");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.EmbeddingDTO", b =>
@@ -412,7 +412,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                         .IsUnique()
                         .HasDatabaseName("ux_embeddings_definitionid_modelkey");
 
-                    b.ToTable("embeddings", "dbo");
+                    b.ToTable("embeddings", "public");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.SemanticDefinitionViewDTO", b =>
@@ -499,7 +499,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
 
                     b.ToTable((string)null);
 
-                    b.ToView("usv_semanticdefinitions", "dbo");
+                    b.ToView("usv_semanticdefinitions", "public");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.SemanticRegistryDTO", b =>
@@ -558,7 +558,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                     b.HasIndex("OwnerOrganizationId")
                         .HasDatabaseName("ix_registry_ownerorganizationid");
 
-                    b.ToTable("registry", "dbo");
+                    b.ToTable("registry", "public");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.SubjectDTO", b =>
@@ -623,7 +623,7 @@ namespace LagoVista.Relational.Migrations.SemanticPostgres
                     b.HasIndex("OwnerOrganizationId")
                         .HasDatabaseName("ix_subjects_ownerorganizationid");
 
-                    b.ToTable("subjects", "dbo");
+                    b.ToTable("subjects", "public");
                 });
 
             modelBuilder.Entity("LagoVista.Relational.ArtifactInformationElementDTO", b =>

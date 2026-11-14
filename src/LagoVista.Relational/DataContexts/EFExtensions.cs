@@ -68,6 +68,24 @@ namespace LagoVista
             }
         }
 
+        // Opt-in PostgreSQL schema mapping; SQL Server conventions remain untouched.
+        public static void RemapSchemaForPostgres(this ModelBuilder modelBuilder, string sourceSchema, string destinationSchema)
+        {
+            if (!modelBuilder.IsPostgres())
+                return;
+
+            foreach (var entity in modelBuilder.Model.GetEntityTypes())
+            {
+                if (entity.GetTableName() != null &&
+                    string.Equals(entity.GetSchema(), sourceSchema, StringComparison.OrdinalIgnoreCase))
+                    entity.SetSchema(destinationSchema);
+
+                if (entity.GetViewName() != null &&
+                    string.Equals(entity.GetViewSchema(), sourceSchema, StringComparison.OrdinalIgnoreCase))
+                    entity.SetViewSchema(destinationSchema);
+            }
+        }
+
         public static ModelBuilder ApplyUtcDateTimeConvention(this ModelBuilder modelBuilder)
         {
             var dateTimeConverter = new ValueConverter<DateTime, DateTime>(
