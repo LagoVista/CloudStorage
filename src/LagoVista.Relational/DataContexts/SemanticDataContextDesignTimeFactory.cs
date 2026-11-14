@@ -14,8 +14,10 @@ namespace LagoVista.Relational.DataContexts
         {
             var optionsBuilder = new DbContextOptionsBuilder<SemanticDataContext>();
 
-            optionsBuilder.UseSqlServer(
-                "Server=(localdb)\\MSSQLLocalDB;Database=LagoVistaSemanticDesignTime;Trusted_Connection=True;TrustServerCertificate=True;");
+            // InfoElements design-time model is PostgreSQL too. Use the dedicated
+            // SemanticPostgresMigrationContext to scaffold migrations.
+            optionsBuilder.UseNpgsql(
+                "Host=localhost;Port=5432;Database=semantic_design_time;Username=postgres");
 
             return new SemanticDataContext(optionsBuilder.Options);
         }
