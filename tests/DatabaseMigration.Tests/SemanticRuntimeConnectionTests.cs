@@ -11,21 +11,18 @@ namespace DatabaseMigration.Tests;
 [TestClass]
 public sealed class SemanticRuntimeConnectionTests
 {
-    private static IConfigurationRoot BuildConfiguration(
-        string? productionProvider = "Postgres",
-        string? testProvider = "Postgres",
-        bool includeCluster = true)
+    private static IConfigurationRoot BuildConfiguration(bool includeCluster = true)
     {
         var values = new Dictionary<string, string?>
         {
-            ["SemanticDb:Provider"] = productionProvider,
-            ["SemanticTestDb:Provider"] = testProvider,
-            // SQL Server configuration is deliberately present: switching
-            // providers must not reuse its obsolete database or credentials.
+            // Obsolete SQL Server values, including explicit Provider overrides,
+            // must never redirect the two PostgreSQL-only InfoElements contexts.
+            ["SemanticDb:Provider"] = "SqlServer",
             ["SemanticDb:ServerURL"] = "old-sql.example.org",
             ["SemanticDb:InitialCatalog"] = "legacy_production",
             ["SemanticDb:UserName"] = "old-sql-login",
             ["SemanticDb:Password"] = "old-sql-password",
+            ["SemanticTestDb:Provider"] = "SqlServer",
             ["SemanticTestDb:ServerURL"] = "old-sql.example.org",
             ["SemanticTestDb:InitialCatalog"] = "legacy_test",
             ["SemanticTestDb:UserName"] = "old-sql-login",
@@ -50,7 +47,7 @@ public sealed class SemanticRuntimeConnectionTests
     }
 
     [TestMethod]
-    public void Both_semantic_contexts_use_the_shared_cluster_postgres_identity_and_distinct_databases()
+    public void Both_semantic_contexts_use_cluster_postgres_regardless_of_obsolete_sql_configuration()
     {
         using var provider = ConfigureServices(BuildConfiguration());
         using var production = provider.GetRequiredService<IDbContextFactory<SemanticDataContext>>().CreateDbContext();
@@ -73,25 +70,29 @@ public sealed class SemanticRuntimeConnectionTests
     }
 
     [TestMethod]
-    public void Opting_in_test_only_keeps_authoritative_semantic_context_on_sql_server()
+    public void Scoped_semantic_contexts_also_use_postgresql()
     {
-        using var provider = ConfigureServices(BuildConfiguration(productionProvider: null, testProvider: "Postgres"));
-        using var production = provider.GetRequiredService<IDbContextFactory<SemanticDataContext>>().CreateDbContext();
-        using var test = provider.GetRequiredService<IDbContextFactory<SemanticTestDataContext>>().CreateDbContext();
-
-        Assert.AreEqual("Microsoft.EntityFrameworkCore.SqlServer", production.Database.ProviderName);
+        using var provider = ConfigureServices(BuildConfiguration());
+        using var scope = provider.CreateScope();
+        using var production = scope.ServiceProvider.GetRequiredService<SemanticDataContext>();
+        using var test = scope.ServiceProvider.GetRequiredService<SemanticTestDataContext>();
+        Assert.AreEqual("Npgsql.EntityFrameworkCore.PostgreSQL", production.Database.ProviderName);
         Assert.AreEqual("Npgsql.EntityFrameworkCore.PostgreSQL", test.Database.ProviderName);
-        Assert.AreEqual("semantic_test", new NpgsqlConnectionStringBuilder(test.Database.GetDbConnection().ConnectionString).Database);
     }
 
     [TestMethod]
-    public void Existing_sql_server_configuration_does_not_require_cluster_postgres_settings()
+    public void Missing_cluster_postgres_configuration_fails_closed_without_sql_server_fallback()
     {
-        using var provider = ConfigureServices(BuildConfiguration(productionProvider: null, testProvider: null, includeCluster: false));
-        using var production = provider.GetRequiredService<IDbContextFactory<SemanticDataContext>>().CreateDbContext();
-        using var test = provider.GetRequiredService<IDbContextFactory<SemanticTestDataContext>>().CreateDbContext();
+        Assert.ThrowsException<InvalidOperationException>(() =>
+        {
+            using var provider = ConfigureServices(BuildConfiguration(includeCluster: false));
+        });
+    }
 
-        Assert.AreEqual("Microsoft.EntityFrameworkCore.SqlServer", production.Database.ProviderName);
-        Assert.AreEqual("Microsoft.EntityFrameworkCore.SqlServer", test.Database.ProviderName);
+    [TestMethod]
+    public void Semantic_design_time_factory_uses_postgresql()
+    {
+        using var context = new SemanticDataContextDesignTimeFactory().CreateDbContext([]);
+        Assert.AreEqual("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName);
     }
 }
