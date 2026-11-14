@@ -151,7 +151,8 @@ if (!finalApplied.SequenceEqual(known, StringComparer.Ordinal))
     throw new InvalidOperationException("Database migration history did not converge to the image's target revision.");
 
 await VerifySemanticSchemaAsync(context);
-Console.WriteLine($"VERIFIED: schema revision {known[^1]} and seven public semantic tables plus view.");
+// Build Server V2 consumes this exact verification receipt; do not change its wording.
+Console.WriteLine($"VERIFIED: schema revision {known[^1]} and seven semantic tables plus view.");
 
 static async Task VerifySemanticSchemaAsync(SemanticPostgresMigrationContext context)
 {
