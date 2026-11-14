@@ -126,7 +126,13 @@ foreach (var migration in pending)
 
 if (action == "status")
 {
-    Console.WriteLine(pending.Length == 0 ? "CURRENT: no migrations required." : $"BEHIND: {pending.Length} migration(s) required.");
+    // A matching EF history row alone is not proof that the schema is usable.
+    // When CURRENT, independently probe every mapped semantic table and the view.
+    // Incomplete targets stay BEHIND without attempting queries against objects
+    // that the pending migrations have not created yet.
+    if (pending.Length == 0)
+        await VerifySemanticSchemaAsync(context);
+    Console.WriteLine(pending.Length == 0 ? "CURRENT: no migrations required; semantic schema verified." : $"BEHIND: {pending.Length} migration(s) required.");
     return;
 }
 
@@ -144,17 +150,24 @@ var finalApplied = (await context.Database.GetAppliedMigrationsAsync()).ToArray(
 if (!finalApplied.SequenceEqual(known, StringComparer.Ordinal))
     throw new InvalidOperationException("Database migration history did not converge to the image's target revision.");
 
-// Verify the actual schema mappings and SQL view. SELECT against an empty
-// table still exposes missing objects or columns.
-await context.Registry.AsNoTracking().Take(1).ToListAsync();
-await context.Subjects.AsNoTracking().Take(1).ToListAsync();
-await context.Concepts.AsNoTracking().Take(1).ToListAsync();
-await context.Definitions.AsNoTracking().Take(1).ToListAsync();
-await context.DefinitionView.AsNoTracking().Take(1).ToListAsync();
-await context.Embeddings.AsNoTracking().Take(1).ToListAsync();
-await context.Artifacts.AsNoTracking().Take(1).ToListAsync();
-await context.ArtifactInformationElements.AsNoTracking().Take(1).ToListAsync();
+await VerifySemanticSchemaAsync(context);
 Console.WriteLine($"VERIFIED: schema revision {known[^1]} and seven semantic tables plus view.");
+
+static async Task VerifySemanticSchemaAsync(SemanticPostgresMigrationContext context)
+{
+    // Read-only verification; a SELECT against an empty table still catches
+    // missing relations, incorrect schemas, and mismatched mapped columns.
+    // Run on every completed apply AND on every CURRENT status inspection.
+    await context.Registry.AsNoTracking().Take(1).ToListAsync();
+    await context.Subjects.AsNoTracking().Take(1).ToListAsync();
+    await context.Concepts.AsNoTracking().Take(1).ToListAsync();
+    await context.Definitions.AsNoTracking().Take(1).ToListAsync();
+    await context.DefinitionView.AsNoTracking().Take(1).ToListAsync();
+    await context.Embeddings.AsNoTracking().Take(1).ToListAsync();
+    await context.Artifacts.AsNoTracking().Take(1).ToListAsync();
+    await context.ArtifactInformationElements.AsNoTracking().Take(1).ToListAsync();
+    Console.WriteLine("SCHEMA_VERIFICATION: PASS; seven semantic tables and definition view queryable.");
+}
 
 static async Task<bool> ContainsExistingSemanticTablesAsync(string connectionString)
 {
