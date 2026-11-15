@@ -21,10 +21,12 @@ try
             break;
         case "probe":
             RequireKey(args, command);
+            RequireProductionWriteApproval(args);
             await ProbeAsync(catalog.LoadByKey(args[1]));
             break;
         case "migrate":
             RequireKey(args, command);
+            RequireProductionWriteApproval(args);
             await MigrateAsync(catalog, catalog.LoadByKey(args[1]), HasOption(args, "--catch-up"), GetPositiveIntOption(args, "--max-records"));
             break;
         case "verify":
@@ -340,6 +342,13 @@ static string FormatBytes(long bytes)
         suffix++;
     }
     return $"{value:0.##} {suffixes[suffix]}";
+}
+
+static void RequireProductionWriteApproval(string[] args)
+{
+    if (String.Equals(MigrationConnections.EnvironmentName, "prod", StringComparison.OrdinalIgnoreCase) &&
+        !HasOption(args, "--confirm-production"))
+        throw new InvalidOperationException("Production probe/migrate requires --confirm-production after reviewing source and target settings.");
 }
 
 static void RequireKey(string[] args, string command) { if (args.Length < 2) throw new ArgumentException($"{command} requires a migration key."); }

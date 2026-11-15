@@ -56,7 +56,18 @@ public static class MigrationConnections
         }
     }
 
-    public static string EnvironmentName => String.Equals(Optional("MIGRATION_ENVIRONMENT"), "prod", StringComparison.OrdinalIgnoreCase) ? "prod" : "dev";
+    public static string EnvironmentName
+    {
+        get
+        {
+            var configured = Optional("MIGRATION_ENVIRONMENT");
+            if (String.IsNullOrWhiteSpace(configured) || String.Equals(configured, "dev", StringComparison.OrdinalIgnoreCase))
+                return "dev";
+            if (String.Equals(configured, "prod", StringComparison.OrdinalIgnoreCase))
+                return "prod";
+            throw new InvalidOperationException("MIGRATION_ENVIRONMENT must be 'dev' or 'prod'.");
+        }
+    }
 
     private static LagoVista.Core.Models.ConnectionSettings AzureStorageSettings(string? logicalConnection = null)
     {
@@ -91,9 +102,7 @@ public static class MigrationConnections
             };
         }
 
-        if (sourcePrefix == "AI_ML")
-            throw new InvalidOperationException($"Azure AI source requires explicit {accountName} and {accessKeyName}. Refusing to use the default account.");
-        return DefaultAzureStorageSettings();
+        throw new InvalidOperationException($"Azure source '{logicalConnection}' requires explicit {accountName} and {accessKeyName}. Refusing to use the default account.");
     }
 
     private static LagoVista.Core.Models.ConnectionSettings DefaultAzureStorageSettings() =>

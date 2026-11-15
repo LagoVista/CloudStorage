@@ -8,6 +8,7 @@ Current migration paths and tooling:
 
 ```text
 Azure Table Storage -> Cassandra Activity and Operational Records
+Azure Table Storage -> MongoDB ApplicationData (insert-if-absent)
 Azure Blob Storage  -> SeaweedFS/S3
 ```
 
@@ -25,6 +26,8 @@ dotnet run -- probe useradmin-access-log
 dotnet run -- migrate useradmin-access-log
 dotnet run -- verify useradmin-access-log
 ```
+
+For UserAdmin's four production migrations, use [the UserAdmin migration runbook](USERADMIN-MIGRATION-RUNBOOK-2026-11-15.md). Mongo backfills require matching `MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_ID` and `MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_NAME` values. With `MIGRATION_ENVIRONMENT=prod`, `probe` and `migrate` require `--confirm-production`; neither changes source Azure rows.
 
 For a deliberate post-completion replay/catch-up pass:
 
@@ -137,7 +140,7 @@ DEV_USER_TS_STORAGE_ACCOUNT_ID
 DEV_USER_TS_STORAGE_ACCOUNT_ACCESS_KEY
 ```
 
-Use the same names with `PROD_` for production. `marketing-storage` resolves the `MARKETING` pair, and `user-storage` resolves the `USER` pair. An absent pair falls back to `TestConnections.DevTableStorageDB` / `ProductionTableStorageDB`; a half-configured pair fails with a clear error instead of silently mixing credentials. The Azure Blob migration continues to use the default table account. No source credentials or connection strings belong in the JSON definitions.
+Use the same names with `PROD_` for production. `marketing-storage` resolves the `MARKETING` pair, and `user-storage` resolves the `USER` pair. A missing or half-configured named-source pair fails explicitly; only the default `access-log` connection uses `TestConnections.DevTableStorageDB` / `ProductionTableStorageDB`. Set `DEV_AI_ML_TS_STORAGE_ACCOUNT_ID` and `DEV_AI_ML_TS_STORAGE_ACCOUNT_ACCESS_KEY` (or `PROD_` counterparts) for definitions using `ai-ml-table-storage`. Unknown source connection names fail closed. The Azure Blob migration continues to use the default table account. No source credentials or connection strings belong in the JSON definitions.
 
 ## SeaweedFS / S3 target
 
