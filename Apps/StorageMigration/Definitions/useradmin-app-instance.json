@@ -1,0 +1,100 @@
+{
+  "key": "useradmin-app-instance",
+  "displayName": "UserAdmin App Instances",
+  "description": "Read-only historical Azure AppInstance import; preserve target records and revocation markers with insert-if-absent.",
+  "source": {
+    "type": "azure-table",
+    "connection": "user-storage",
+    "tableName": "AppInstance"
+  },
+  "target": {
+    "type": "mongo-application",
+    "table": "AppInstanceRecord",
+    "keyField": "Id",
+    "timeField": "CreationDate",
+    "bucket": "All",
+    "partitionFields": [],
+    "indexes": [
+      "UserPartition",
+      "InstanceKey"
+    ],
+    "retentionSeconds": null,
+    "ownerOrganizationIdVariable": "MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_ID",
+    "ownerOrganizationNameVariable": "MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_NAME"
+  },
+  "fields": [
+    {
+      "name": "Id",
+      "type": "text",
+      "transform": "useradmin-app-instance-id",
+      "required": true
+    },
+    {
+      "name": "CreationDate",
+      "type": "timestamp",
+      "sources": [
+        "CreationDate",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "LastUpdatedDate",
+      "type": "timestamp",
+      "sources": [
+        "$timestamp",
+        "CreationDate"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "UserPartition",
+      "type": "text",
+      "source": "PartitionKey",
+      "required": true
+    },
+    {
+      "name": "InstanceKey",
+      "type": "text",
+      "source": "RowKey",
+      "required": true
+    },
+    {
+      "name": "StoredUserId",
+      "type": "text",
+      "source": "UserId"
+    },
+    {
+      "name": "AppId",
+      "type": "text",
+      "source": "AppId"
+    },
+    {
+      "name": "ClientType",
+      "type": "text",
+      "source": "ClientType"
+    },
+    {
+      "name": "DeviceId",
+      "type": "text",
+      "source": "DeviceId"
+    },
+    {
+      "name": "LastAccessTokenRefresh",
+      "type": "text",
+      "source": "LastAccessTokenRefresh"
+    },
+    {
+      "name": "LastLogin",
+      "type": "text",
+      "source": "LastLogin"
+    },
+    {
+      "name": "OriginalCreationDate",
+      "type": "text",
+      "source": "CreationDate"
+    }
+  ]
+}

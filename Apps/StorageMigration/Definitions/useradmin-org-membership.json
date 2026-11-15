@@ -1,0 +1,181 @@
+{
+  "key": "useradmin-org-membership",
+  "displayName": "UserAdmin Organization Memberships",
+  "description": "Read-only historical Azure OrgUser import; preserve target records and revocation markers with insert-if-absent.",
+  "source": {
+    "type": "azure-table",
+    "connection": "user-storage",
+    "tableName": "OrgUser"
+  },
+  "target": {
+    "type": "mongo-application",
+    "table": "OrgMembershipRecord",
+    "keyField": "Id",
+    "timeField": "CreationDate",
+    "bucket": "All",
+    "partitionFields": [],
+    "indexes": [
+      "OrgId",
+      "UserId",
+      "EmailKey",
+      "IsDeleted"
+    ],
+    "retentionSeconds": null,
+    "ownerOrganizationIdVariable": "MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_ID",
+    "ownerOrganizationNameVariable": "MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_NAME"
+  },
+  "fields": [
+    {
+      "name": "Id",
+      "type": "text",
+      "transform": "useradmin-org-membership-id",
+      "required": true
+    },
+    {
+      "name": "CreationDate",
+      "type": "timestamp",
+      "sources": [
+        "CreationDate",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "LastUpdatedDate",
+      "type": "timestamp",
+      "sources": [
+        "LastUpdatedDate",
+        "$timestamp",
+        "CreationDate"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "OrgId",
+      "type": "text",
+      "source": "PartitionKey",
+      "required": true
+    },
+    {
+      "name": "UserId",
+      "type": "text",
+      "source": "UserId",
+      "required": true
+    },
+    {
+      "name": "RowKey",
+      "type": "text",
+      "source": "RowKey",
+      "required": true
+    },
+    {
+      "name": "IsDeleted",
+      "type": "boolean",
+      "transform": "constant",
+      "value": false
+    },
+    {
+      "name": "UserName",
+      "type": "text",
+      "source": "UserName"
+    },
+    {
+      "name": "OrganizationName",
+      "type": "text",
+      "source": "OrganizationName"
+    },
+    {
+      "name": "ProfileImageUrl",
+      "type": "text",
+      "source": "ProfileImageUrl"
+    },
+    {
+      "name": "Email",
+      "type": "text",
+      "source": "Email"
+    },
+    {
+      "name": "CreatedBy",
+      "type": "text",
+      "source": "CreatedBy"
+    },
+    {
+      "name": "CreatedById",
+      "type": "text",
+      "source": "CreatedById"
+    },
+    {
+      "name": "LastUpdatedBy",
+      "type": "text",
+      "source": "LastUpdatedBy"
+    },
+    {
+      "name": "LastUpdatedById",
+      "type": "text",
+      "source": "LastUpdatedById"
+    },
+    {
+      "name": "IsEndUser",
+      "type": "text",
+      "source": "IsEndUser"
+    },
+    {
+      "name": "Customer",
+      "type": "text",
+      "source": "Customer"
+    },
+    {
+      "name": "CustomerId",
+      "type": "text",
+      "source": "CustomerId"
+    },
+    {
+      "name": "CustomerContact",
+      "type": "text",
+      "source": "CustomerContact"
+    },
+    {
+      "name": "CustomerContactId",
+      "type": "text",
+      "source": "CustomerContactId"
+    },
+    {
+      "name": "DefaultRoleId",
+      "type": "text",
+      "source": "DefaultRoleId"
+    },
+    {
+      "name": "DefaultRole",
+      "type": "text",
+      "source": "DefaultRole"
+    },
+    {
+      "name": "EmailKey",
+      "type": "text",
+      "source": "Email",
+      "transform": "upper-trim"
+    },
+    {
+      "name": "OriginalCreationDate",
+      "type": "text",
+      "source": "CreationDate"
+    },
+    {
+      "name": "OriginalLastUpdatedDate",
+      "type": "text",
+      "source": "LastUpdatedDate"
+    },
+    {
+      "name": "IsOrgAdmin",
+      "type": "boolean",
+      "source": "IsOrgAdmin"
+    },
+    {
+      "name": "IsAppBuilder",
+      "type": "boolean",
+      "source": "IsAppBuilder"
+    }
+  ]
+}

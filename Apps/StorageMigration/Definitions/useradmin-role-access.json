@@ -1,0 +1,236 @@
+{
+  "key": "useradmin-role-access",
+  "displayName": "UserAdmin Role Access",
+  "description": "Read-only historical Azure RoleAccessDTO import; preserve target records and revocation markers with insert-if-absent.",
+  "source": {
+    "type": "azure-table",
+    "connection": "user-storage",
+    "tableName": "RoleAccessDTO"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "role_access_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [
+      "role_id",
+      "module_id",
+      "area_id",
+      "page_id",
+      "feature_id"
+    ],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "organization_id",
+      "type": "text",
+      "transform": "role-access-partition",
+      "required": true
+    },
+    {
+      "name": "id",
+      "type": "text",
+      "source": "RowKey",
+      "required": true
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "CreationDate",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "last_updated_date",
+      "type": "timestamp",
+      "sources": [
+        "$timestamp",
+        "CreationDate"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "version",
+      "type": "bigint",
+      "transform": "constant",
+      "value": 1
+    },
+    {
+      "name": "is_deleted",
+      "type": "boolean",
+      "transform": "constant",
+      "value": false
+    },
+    {
+      "name": "source_organization_id",
+      "type": "text",
+      "source": "OrganizationId",
+      "required": true
+    },
+    {
+      "name": "source_organization_name",
+      "type": "text",
+      "source": "OrganizationName"
+    },
+    {
+      "name": "is_public",
+      "type": "boolean",
+      "source": "IsPublic"
+    },
+    {
+      "name": "role_id",
+      "type": "text",
+      "source": "RoleId",
+      "required": true
+    },
+    {
+      "name": "role_key",
+      "type": "text",
+      "source": "RoleKey"
+    },
+    {
+      "name": "role_name",
+      "type": "text",
+      "source": "RoleName"
+    },
+    {
+      "name": "created_by_id",
+      "type": "text",
+      "source": "CreatedById"
+    },
+    {
+      "name": "created_by_name",
+      "type": "text",
+      "source": "CreatedByName"
+    },
+    {
+      "name": "original_creation_date",
+      "type": "text",
+      "source": "CreationDate"
+    },
+    {
+      "name": "module_id",
+      "type": "text",
+      "source": "ModuleId"
+    },
+    {
+      "name": "module_key",
+      "type": "text",
+      "source": "ModuleKey"
+    },
+    {
+      "name": "module_name",
+      "type": "text",
+      "source": "ModuleName"
+    },
+    {
+      "name": "area_id",
+      "type": "text",
+      "source": "AreaId"
+    },
+    {
+      "name": "area_key",
+      "type": "text",
+      "source": "AreaKey"
+    },
+    {
+      "name": "area_name",
+      "type": "text",
+      "source": "AreaName"
+    },
+    {
+      "name": "page_id",
+      "type": "text",
+      "source": "PageId"
+    },
+    {
+      "name": "page_key",
+      "type": "text",
+      "source": "PageKey"
+    },
+    {
+      "name": "page_name",
+      "type": "text",
+      "source": "PageName"
+    },
+    {
+      "name": "feature_id",
+      "type": "text",
+      "source": "FeatureId"
+    },
+    {
+      "name": "feature_key",
+      "type": "text",
+      "source": "FeatureKey"
+    },
+    {
+      "name": "feature_name",
+      "type": "text",
+      "source": "FeatureName"
+    },
+    {
+      "name": "function_map_id",
+      "type": "text",
+      "source": "FunctionMapId"
+    },
+    {
+      "name": "function_map_key",
+      "type": "text",
+      "source": "FunctionMapKey"
+    },
+    {
+      "name": "function_map_name",
+      "type": "text",
+      "source": "FunctionMapName"
+    },
+    {
+      "name": "function_map_function_id",
+      "type": "text",
+      "source": "FunctionMapFunctionId"
+    },
+    {
+      "name": "function_map_function_key",
+      "type": "text",
+      "source": "FunctionMapFunctionKey"
+    },
+    {
+      "name": "function_map_function_name",
+      "type": "text",
+      "source": "FunctionMapFunctionName"
+    },
+    {
+      "name": "other",
+      "type": "text",
+      "source": "Other"
+    },
+    {
+      "name": "create",
+      "type": "int",
+      "source": "Create"
+    },
+    {
+      "name": "read",
+      "type": "int",
+      "source": "Read"
+    },
+    {
+      "name": "update",
+      "type": "int",
+      "source": "Update"
+    },
+    {
+      "name": "delete",
+      "type": "int",
+      "source": "Delete"
+    }
+  ]
+}

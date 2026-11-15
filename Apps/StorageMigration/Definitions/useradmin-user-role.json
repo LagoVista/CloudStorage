@@ -1,0 +1,117 @@
+{
+  "key": "useradmin-user-role",
+  "displayName": "UserAdmin User Roles",
+  "description": "Read-only historical Azure UserRoleDTO import; preserve target records and revocation markers with insert-if-absent.",
+  "source": {
+    "type": "azure-table",
+    "connection": "user-storage",
+    "tableName": "UserRoleDTO"
+  },
+  "target": {
+    "type": "cassandra-operational",
+    "table": "user_role_operational_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "organization_id"
+    ],
+    "indexes": [
+      "user_id"
+    ],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "PartitionKey",
+      "required": true
+    },
+    {
+      "name": "id",
+      "type": "text",
+      "source": "RowKey",
+      "required": true
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "CreationDate",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "last_updated_date",
+      "type": "timestamp",
+      "sources": [
+        "$timestamp",
+        "CreationDate"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "version",
+      "type": "bigint",
+      "transform": "constant",
+      "value": 1
+    },
+    {
+      "name": "is_deleted",
+      "type": "boolean",
+      "transform": "constant",
+      "value": false
+    },
+    {
+      "name": "user_id",
+      "type": "text",
+      "source": "UserId",
+      "required": true
+    },
+    {
+      "name": "user_name",
+      "type": "text",
+      "source": "UserName"
+    },
+    {
+      "name": "organization_name",
+      "type": "text",
+      "source": "OrganizationName"
+    },
+    {
+      "name": "role_id",
+      "type": "text",
+      "source": "RoleId",
+      "required": true
+    },
+    {
+      "name": "role_key",
+      "type": "text",
+      "source": "RoleKey"
+    },
+    {
+      "name": "role_name",
+      "type": "text",
+      "source": "RoleName"
+    },
+    {
+      "name": "original_creation_date",
+      "type": "text",
+      "source": "CreationDate"
+    },
+    {
+      "name": "created_by_id",
+      "type": "text",
+      "source": "CreatedById"
+    },
+    {
+      "name": "created_by_name",
+      "type": "text",
+      "source": "CreatedByName"
+    }
+  ]
+}
