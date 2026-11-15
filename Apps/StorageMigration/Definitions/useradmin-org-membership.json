@@ -21,8 +21,9 @@
       "IsDeleted"
     ],
     "retentionSeconds": null,
-    "ownerOrganizationIdVariable": "MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_ID",
-    "ownerOrganizationNameVariable": "MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_NAME"
+    "ownerOrganizationIdVariable": "SystemOwnerOrg:Id",
+    "ownerOrganizationNameVariable": "SystemOwnerOrg:Text",
+    "ownerOrganizationKeyVariable": "SystemOwnerOrg:Key"
   },
   "fields": [
     {

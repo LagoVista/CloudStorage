@@ -28,12 +28,19 @@ PROD_USER_TS_STORAGE_ACCOUNT_ID
 PROD_USER_TS_STORAGE_ACCOUNT_ACCESS_KEY
 ```
 
-For Mongo AppInstance and OrgUser, supply the system owner organization **matching the target runtime's IAppConfig.SystemOwnerOrg**:
+For Mongo AppInstance and OrgUser, use the exact target runtime's `IAppConfig.SystemOwnerOrg` Id/Key/Text, **separately for DEV and PROD**. The migration utility selects them automatically using `MIGRATION_ENVIRONMENT` and does not accept a shared fallback:
 
 ```text
-MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_ID
-MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_NAME
+DEV_SystemOwnerOrg:Id
+DEV_SystemOwnerOrg:Key
+DEV_SystemOwnerOrg:Text
+
+PROD_SystemOwnerOrg:Id
+PROD_SystemOwnerOrg:Key
+PROD_SystemOwnerOrg:Text
 ```
+
+The logical JSON definition keys are `SystemOwnerOrg:Id`, `SystemOwnerOrg:Key`, and `SystemOwnerOrg:Text`, not environment-specific literals. These values are ordinary non-secret environment variables; they must match the DEV/LIVE runtime's Configuration Server values respectively.
 
 Mongo credentials and ApplicationData database name are the same CloudStorage settings used for the existing checkpoint store; Cassandra credentials and keyspace use the existing settings. No secrets belong in JSON definitions or Git.
 

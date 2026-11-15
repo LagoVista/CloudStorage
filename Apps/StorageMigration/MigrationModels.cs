@@ -37,6 +37,9 @@ public sealed class CassandraTargetDefinition
     public string? OwnerOrganizationIdVariable { get; set; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? OwnerOrganizationNameVariable { get; set; }
+    // Logical SystemOwnerOrg config setting, resolved within MIGRATION_ENVIRONMENT.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? OwnerOrganizationKeyVariable { get; set; }
 }
 
 public sealed class MigrationFieldDefinition

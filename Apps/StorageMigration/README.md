@@ -27,7 +27,7 @@ dotnet run -- migrate useradmin-access-log
 dotnet run -- verify useradmin-access-log
 ```
 
-For UserAdmin's four production migrations, use [the UserAdmin migration runbook](USERADMIN-MIGRATION-RUNBOOK-2026-11-15.md). Mongo backfills require matching `MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_ID` and `MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_NAME` values. With `MIGRATION_ENVIRONMENT=prod`, `probe` and `migrate` require `--confirm-production`; neither changes source Azure rows.
+For UserAdmin's four production migrations, use [the UserAdmin migration runbook](USERADMIN-MIGRATION-RUNBOOK-2026-11-15.md). Mongo backfills require the target runtime's environment-scoped `DEV_SystemOwnerOrg:Id/Key/Text` or `PROD_SystemOwnerOrg:Id/Key/Text` settings; the selected environment is resolved automatically and shared owner settings are rejected. With `MIGRATION_ENVIRONMENT=prod`, `probe` and `migrate` require `--confirm-production`; neither changes source Azure rows.
 
 For a deliberate post-completion replay/catch-up pass:
 

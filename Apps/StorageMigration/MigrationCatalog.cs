@@ -49,6 +49,7 @@ public sealed class MigrationCatalog
         {
             if (String.IsNullOrWhiteSpace(definition.Target.OwnerOrganizationIdVariable)) errors.Add("target.ownerOrganizationIdVariable is required for Mongo.");
             if (String.IsNullOrWhiteSpace(definition.Target.OwnerOrganizationNameVariable)) errors.Add("target.ownerOrganizationNameVariable is required for Mongo.");
+            if (String.IsNullOrWhiteSpace(definition.Target.OwnerOrganizationKeyVariable)) errors.Add("target.ownerOrganizationKeyVariable is required for Mongo.");
             if (definition.Target.RetentionSeconds.HasValue) errors.Add("Mongo ApplicationData historical imports must not set TTL implicitly.");
         }
         if (String.Equals(definition.Target.Type, "cassandra-activity", StringComparison.OrdinalIgnoreCase) &&

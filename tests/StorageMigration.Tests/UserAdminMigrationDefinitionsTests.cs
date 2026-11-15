@@ -48,10 +48,11 @@ public class UserAdminMigrationDefinitionsTests
         Assert.AreEqual("INSTANCE-1", mapped["InstanceKey"]);
         Assert.AreEqual("app-one", mapped["AppId"]);
 
-        var writer = new MongoApplicationDataMigrationWriter(nullDatabase(), "SYSTEM-ORG", "System");
+        var writer = new MongoApplicationDataMigrationWriter(nullDatabase(), "SYSTEM-ORG", "system-org", "System");
         var doc = writer.BuildDocument(definition, mapped);
         Assert.AreEqual(expected, doc["_id"].AsString);
         Assert.AreEqual("SYSTEM-ORG", doc["Organization"]["Id"].AsString);
+        Assert.AreEqual("system-org", doc["Organization"]["Key"].AsString);
         Assert.AreEqual("System", doc["Organization"]["Text"].AsString);
         Assert.AreEqual("app-one", doc["AppId"].AsString);
         Assert.AreEqual("USER-1", doc["UserPartition"].AsString);
@@ -131,6 +132,21 @@ public class UserAdminMigrationDefinitionsTests
         publicRow["IsPublic"] = false;
         var privateMapped = new AzureTableRecordMapper().Map(definition, "RoleAccessDTO", publicRow);
         Assert.AreEqual("ORG-1", privateMapped["organization_id"]);
+    }
+
+    [TestMethod]
+    public void Mongo_Owner_Settings_Resolve_In_Selected_Environment_Only()
+    {
+        var definition = Catalog().LoadByKey("useradmin-app-instance");
+        Assert.AreEqual("SystemOwnerOrg:Id", definition.Target.OwnerOrganizationIdVariable);
+        Assert.AreEqual("SystemOwnerOrg:Key", definition.Target.OwnerOrganizationKeyVariable);
+        Assert.AreEqual("SystemOwnerOrg:Text", definition.Target.OwnerOrganizationNameVariable);
+        Assert.AreEqual("DEV_SystemOwnerOrg:Id", MongoApplicationDataMigrationWriter.ScopedVariableName("dev", definition.Target.OwnerOrganizationIdVariable!));
+        Assert.AreEqual("PROD_SystemOwnerOrg:Id", MongoApplicationDataMigrationWriter.ScopedVariableName("prod", definition.Target.OwnerOrganizationIdVariable!));
+        Assert.AreEqual("DEV_SystemOwnerOrg:Key", MongoApplicationDataMigrationWriter.ScopedVariableName("dev", definition.Target.OwnerOrganizationKeyVariable!));
+        Assert.AreEqual("PROD_SystemOwnerOrg:Text", MongoApplicationDataMigrationWriter.ScopedVariableName("prod", definition.Target.OwnerOrganizationNameVariable!));
+        Assert.ThrowsExactly<InvalidOperationException>(() => MongoApplicationDataMigrationWriter.ScopedVariableName("stage", "SystemOwnerOrg:Id"));
+        Assert.ThrowsExactly<InvalidOperationException>(() => MongoApplicationDataMigrationWriter.ScopedVariableName("dev", "MIGRATION_USERADMIN_SYSTEM_OWNER_ORG_ID"));
     }
 
     [TestMethod]

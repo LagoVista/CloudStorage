@@ -15,14 +15,17 @@ public sealed class MongoApplicationDataMigrationWriter : IActivityRecordMigrati
     private static readonly Regex CollectionNamePattern = new("^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.CultureInvariant);
     private readonly IMongoDatabase _database;
     private readonly string _organizationId;
+    private readonly string _organizationKey;
     private readonly string _organizationName;
 
     public MongoApplicationDataMigrationWriter(
-        IMongoDatabase database, string ownerOrganizationId, string ownerOrganizationName)
+        IMongoDatabase database, string ownerOrganizationId, string ownerOrganizationKey, string ownerOrganizationName)
     {
         _database = database ?? throw new ArgumentNullException(nameof(database));
         _organizationId = !String.IsNullOrWhiteSpace(ownerOrganizationId) ? ownerOrganizationId
             : throw new ArgumentException("Mongo target owner organization Id is required.", nameof(ownerOrganizationId));
+        _organizationKey = !String.IsNullOrWhiteSpace(ownerOrganizationKey) ? ownerOrganizationKey
+            : throw new ArgumentException("Mongo target owner organization key is required.", nameof(ownerOrganizationKey));
         _organizationName = !String.IsNullOrWhiteSpace(ownerOrganizationName) ? ownerOrganizationName
             : throw new ArgumentException("Mongo target owner organization name is required.", nameof(ownerOrganizationName));
     }
@@ -30,21 +33,38 @@ public sealed class MongoApplicationDataMigrationWriter : IActivityRecordMigrati
     public static MongoApplicationDataMigrationWriter FromEnvironment(MigrationDefinition definition, string environment)
     {
         if (!IsMongo(definition)) throw new ArgumentException("Expected a Mongo ApplicationData target.", nameof(definition));
-        var id = RequiredVariable(definition.Target.OwnerOrganizationIdVariable);
-        var name = RequiredVariable(definition.Target.OwnerOrganizationNameVariable);
+        var id = RequiredEnvironmentSetting(environment, definition.Target.OwnerOrganizationIdVariable);
+        var key = RequiredEnvironmentSetting(environment, definition.Target.OwnerOrganizationKeyVariable);
+        var name = RequiredEnvironmentSetting(environment, definition.Target.OwnerOrganizationNameVariable);
         var config = ApplicationDataMigrationStateStore.GetTargetMongoConnection(environment);
         var client = new MongoClient(config.ConnectionString);
-        return new MongoApplicationDataMigrationWriter(client.GetDatabase(config.DatabaseName), id, name);
+        return new MongoApplicationDataMigrationWriter(client.GetDatabase(config.DatabaseName), id, key, name);
     }
 
-    private static string RequiredVariable(string? variable)
+    /// <summary>Resolve the target runtime's SystemOwnerOrg configuration for DEV or PROD.
+    /// Never fall back to unscoped values: mixing owner IDs makes records invisible to UserAdmin.
+    /// </summary>
+    public static string ScopedVariableName(string environment, string setting)
     {
-        if (String.IsNullOrWhiteSpace(variable))
-            throw new InvalidOperationException("Mongo definition requires an owner organization environment variable.");
-        var value = Environment.GetEnvironmentVariable(variable, EnvironmentVariableTarget.User)
-            ?? Environment.GetEnvironmentVariable(variable);
+        var prefix = environment?.Trim().ToLowerInvariant() switch
+        {
+            "dev" => "DEV",
+            "prod" => "PROD",
+            _ => throw new InvalidOperationException("Mongo owner settings require environment 'dev' or 'prod'.")
+        };
+        if (String.IsNullOrWhiteSpace(setting) || !setting.StartsWith("SystemOwnerOrg:", StringComparison.Ordinal))
+            throw new InvalidOperationException("Mongo owner setting must be a SystemOwnerOrg configuration key.");
+        return prefix + "_" + setting;
+    }
+
+    private static string RequiredEnvironmentSetting(string environment, string? setting)
+    {
+        var variable = ScopedVariableName(environment, setting ?? String.Empty);
+        var value = Environment.GetEnvironmentVariable(variable, EnvironmentVariableTarget.Process)
+            ?? Environment.GetEnvironmentVariable(variable, EnvironmentVariableTarget.User)
+            ?? Environment.GetEnvironmentVariable(variable, EnvironmentVariableTarget.Machine);
         if (String.IsNullOrWhiteSpace(value))
-            throw new InvalidOperationException("Missing required Mongo target owner environment variable: " + variable);
+            throw new InvalidOperationException("Missing required target environment SystemOwnerOrg setting: " + variable);
         return value.Trim();
     }
 
@@ -107,6 +127,7 @@ public sealed class MongoApplicationDataMigrationWriter : IActivityRecordMigrati
             { "Organization", new BsonDocument
                 {
                     { "Id", _organizationId },
+                    { "Key", _organizationKey },
                     { "Text", _organizationName }
                 }
             },
