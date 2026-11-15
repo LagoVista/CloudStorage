@@ -216,10 +216,11 @@ static async Task ProbeAsync(MigrationDefinition definition)
     Console.WriteLine($"PASS: resolved {tables.Count:N0} source table(s).");
     Console.WriteLine();
 
-    Console.WriteLine("[2/2] Connecting to Cassandra and validating target schema...");
-    using var writer = new CassandraActivityRecordMigrationWriter(MigrationConnections.Cassandra);
+    Console.WriteLine("[2/2] Validating the destination schema and indexes...");
+    using var resource = CreateWriter(definition);
+    var writer = (IActivityRecordMigrationWriter)resource;
     await writer.EnsureSchemaAsync(definition);
-    Console.WriteLine($"PASS: Cassandra target '{definition.Target.Table}' is ready.");
+    Console.WriteLine($"PASS: target '{definition.Target.Table}' is ready.");
     Console.WriteLine();
     Console.WriteLine("PASS: migration probe completed. No records were migrated.");
 }
@@ -228,7 +229,8 @@ static async Task MigrateAsync(MigrationCatalog catalog, MigrationDefinition def
 {
     var sha = catalog.DefinitionSha256(definition);
     var source = new AzureTableMigrationSource(MigrationConnections.AzureTableConnectionString(definition.Source.Connection));
-    using var writer = new CassandraActivityRecordMigrationWriter(MigrationConnections.Cassandra);
+    using var resource = CreateWriter(definition);
+    var writer = (IActivityRecordMigrationWriter)resource;
     var engine = new StorageMigrationEngine(source, new AzureTableRecordMapper(), writer, StateStore());
 
     Console.WriteLine($"Migration : {definition.DisplayName}");
@@ -240,6 +242,13 @@ static async Task MigrateAsync(MigrationCatalog catalog, MigrationDefinition def
     Console.WriteLine();
 
     PrintState(await engine.ExecuteAsync(definition, sha, catchUp, maxRecords));
+}
+
+static IDisposable CreateWriter(MigrationDefinition definition)
+{
+    if (String.Equals(definition.Target.Type, "mongo-application", StringComparison.OrdinalIgnoreCase))
+        return MongoApplicationDataMigrationWriter.FromEnvironment(definition, MigrationConnections.EnvironmentName);
+    return new CassandraActivityRecordMigrationWriter(MigrationConnections.Cassandra);
 }
 
 static async Task VerifyAsync(MigrationCatalog catalog, MigrationDefinition definition)
