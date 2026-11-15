@@ -41,6 +41,12 @@ public sealed class ApplicationDataMigrationStateStore : IMigrationStateStore
         _store = new MongoApplicationDataStore(settings, new MongoStorageClientFactory(), EmptyServiceProvider.Instance);
     }
 
+    public static (string ConnectionString, string DatabaseName) GetTargetMongoConnection(string environment)
+    {
+        var settings = MigrationApplicationDataSettings.FromEnvironment(environment);
+        return (settings.BuildConnectionString(), settings.DatabaseName);
+    }
+
     public static ApplicationDataMigrationStateStore Create(string environment)
     {
         var settings = MigrationApplicationDataSettings.FromEnvironment(environment);

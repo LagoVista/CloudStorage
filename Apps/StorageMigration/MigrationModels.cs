@@ -32,6 +32,11 @@ public sealed class CassandraTargetDefinition
     public List<string> PartitionFields { get; set; } = new();
     public List<string> Indexes { get; set; } = new();
     public int? RetentionSeconds { get; set; }
+    // Mongo ApplicationData only. Optional so previously checkpointed definitions retain their SHA.
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? OwnerOrganizationIdVariable { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? OwnerOrganizationNameVariable { get; set; }
 }
 
 public sealed class MigrationFieldDefinition

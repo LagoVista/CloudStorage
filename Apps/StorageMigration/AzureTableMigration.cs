@@ -144,6 +144,29 @@ public sealed class AzureTableRecordMapper
                 .Replace(" ", String.Empty).Replace("-", String.Empty)
                 .Replace("+", String.Empty).Trim();
         }
+        if (String.Equals(field.Transform, "useradmin-app-instance-id", StringComparison.OrdinalIgnoreCase))
+        {
+            return StableUserAdminId("useradmin-appinstance:v1:", source.PartitionKey, source.RowKey);
+        }
+        if (String.Equals(field.Transform, "useradmin-org-membership-id", StringComparison.OrdinalIgnoreCase))
+        {
+            var orgId = source.TryGetValue("OrgId", out var org) && !String.IsNullOrWhiteSpace(org?.ToString())
+                ? org.ToString()! : source.PartitionKey;
+            var userId = source.TryGetValue("UserId", out var user) && !String.IsNullOrWhiteSpace(user?.ToString())
+                ? user.ToString()! : throw new InvalidOperationException("OrgUser legacy row has no UserId.");
+            return StableUserAdminId("useradmin-orgmembership:v1:", orgId, userId);
+        }
+        if (String.Equals(field.Transform, "upper-trim", StringComparison.OrdinalIgnoreCase))
+        {
+            var text = SourceValue(field.Source ?? String.Empty, sourceTable, source)?.ToString();
+            return String.IsNullOrWhiteSpace(text) ? null : text.Trim().ToUpperInvariant();
+        }
+        if (String.Equals(field.Transform, "role-access-partition", StringComparison.OrdinalIgnoreCase))
+        {
+            var isPublic = SourceValue("IsPublic", sourceTable, source);
+            return isPublic != null && Convert.ToBoolean(isPublic, CultureInfo.InvariantCulture)
+                ? "public_role_access" : source.PartitionKey;
+        }
         if (String.Equals(field.Transform, "constant", StringComparison.OrdinalIgnoreCase))
         {
             return NormalizeConstant(field.Value);
@@ -154,6 +177,15 @@ public sealed class AzureTableRecordMapper
         }
         if (!String.IsNullOrWhiteSpace(field.Transform)) throw new NotSupportedException($"Migration transform '{field.Transform}' is not supported.");
         return String.IsNullOrWhiteSpace(field.Source) ? null : SourceValue(field.Source, sourceTable, source);
+    }
+
+    private static string StableUserAdminId(string prefix, string first, string second)
+    {
+        if (String.IsNullOrWhiteSpace(first) || String.IsNullOrWhiteSpace(second))
+            throw new InvalidOperationException("Cannot derive UserAdmin identity from missing Azure keys.");
+        var input = prefix + first.Length + ":" + first + ":" + second;
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(hash.AsSpan(0, 16));
     }
 
     private static object? SourceValue(string name, string sourceTable, TableEntity source)

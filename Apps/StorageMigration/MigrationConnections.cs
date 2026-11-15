@@ -66,7 +66,11 @@ public static class MigrationConnections
         {
             "marketing-storage" => "MARKETING",
             "user-storage" => "USER",
-            _ => null
+            "ai-ml-table-storage" => "AI_ML",
+            "access-log" => null,
+            null => null,
+            "" => null,
+            _ => throw new InvalidOperationException($"Unknown migration Azure source connection '{logicalConnection}'. Register it explicitly; never fall back silently.")
         };
         if (sourcePrefix == null) return DefaultAzureStorageSettings();
         var prefix = EnvironmentName.ToUpperInvariant();
@@ -87,6 +91,8 @@ public static class MigrationConnections
             };
         }
 
+        if (sourcePrefix == "AI_ML")
+            throw new InvalidOperationException($"Azure AI source requires explicit {accountName} and {accessKeyName}. Refusing to use the default account.");
         return DefaultAzureStorageSettings();
     }
 
