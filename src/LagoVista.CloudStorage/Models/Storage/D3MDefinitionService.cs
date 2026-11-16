@@ -13,7 +13,7 @@ namespace LagoVista.CloudStorage.Storage
     /// Authentication and the authoritative organization are supplied by the hosting API/MCP
     /// boundary; this service never accepts a caller-selected storage collection or CLR type.
     /// </summary>
-    public sealed class D3MDefinitionService
+    public sealed class D3MDefinitionService : ID3MPublishedDefinitionReader
     {
         private readonly IApplicationDataStore _store;
         private readonly D3MTypeRegistry _registry;
