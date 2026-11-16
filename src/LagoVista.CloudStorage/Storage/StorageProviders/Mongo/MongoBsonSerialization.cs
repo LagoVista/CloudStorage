@@ -13,6 +13,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 
@@ -655,7 +656,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                     return default(UtcTimestamp);
 
                 case BsonType.String:
-                    return UtcTimestamp.Parse(reader.ReadString());
+                    return ParsePersistedUtc(reader.ReadString());
 
                 case BsonType.DateTime:
                     return UtcTimestamp.FromDateTime(BsonUtils.ToDateTimeFromMillisecondsSinceEpoch(reader.ReadDateTime()));
@@ -663,6 +664,24 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 default:
                     throw new BsonSerializationException($"Cannot deserialize {nameof(UtcTimestamp)} from BSON type {reader.GetCurrentBsonType()}.");
             }
+        }
+
+        // The historical migration wrote DateTimeOffset using the round-trip ("O")
+        // format (seven fractional-second digits). UtcTimestamp's public parser
+        // intentionally accepts only canonical milliseconds; normalize that exact
+        // legacy UTC format at the Mongo persistence boundary.
+        internal static UtcTimestamp ParsePersistedUtc(string value)
+        {
+            if (value != null &&
+                value.EndsWith("Z", StringComparison.Ordinal) &&
+                DateTime.TryParseExact(value,
+                    "yyyy-MM-dd'T'HH':'mm':'ss'.'fffffff'Z'",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out var roundTripUtc))
+                return UtcTimestamp.FromDateTime(roundTripUtc);
+
+            return UtcTimestamp.Parse(value);
         }
 
         public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, UtcTimestamp value)

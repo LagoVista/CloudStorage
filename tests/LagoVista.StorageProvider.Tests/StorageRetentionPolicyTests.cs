@@ -6,6 +6,8 @@ using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using LagoVista.CloudStorage.Storage.StorageProviders.Mongo;
 using Moq;
 using System;
 using System.Threading;
@@ -265,6 +267,36 @@ namespace LagoVista.StorageProvider.Tests
             public DateTime CreationDate { get; set; }
             public int Create { get; set; }
             public int Read { get; set; }
+        }
+
+
+        [TestMethod]
+        public void MongoUtcTimestamp_ReadsLegacyMigrationRoundTripDateWithoutChangingWireContract()
+        {
+            MongoBsonSerialization.Configure();
+            var legacy = new BsonDocument
+            {
+                { "CreationDate", "2024-03-17T12:23:37.0100000Z" }
+            };
+            var actual = BsonSerializer.Deserialize<LegacyMigrationTimeRecord>(legacy);
+            Assert.AreEqual("2024-03-17T12:23:37.010Z", actual.CreationDate.ToString());
+
+            var roundtrip = actual.ToBsonDocument();
+            Assert.AreEqual("2024-03-17T12:23:37.010Z", roundtrip["CreationDate"].AsString);
+        }
+
+        [TestMethod]
+        public void MongoUtcTimestamp_StillRejectsUntrustedNonUtcOrMalformedValues()
+        {
+            Assert.ThrowsExactly<FormatException>(() =>
+                UtcTimestampBsonSerializer.ParsePersistedUtc("2024-03-17T12:23:37.0100000+00:00"));
+            Assert.ThrowsExactly<FormatException>(() =>
+                UtcTimestampBsonSerializer.ParsePersistedUtc("2024-03-17T12:23:37.0100000Zextra"));
+        }
+
+        public sealed class LegacyMigrationTimeRecord
+        {
+            public UtcTimestamp CreationDate { get; set; }
         }
 
         public enum TestActivityAction

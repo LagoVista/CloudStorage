@@ -57,8 +57,8 @@ public class UserAdminMigrationDefinitionsTests
         Assert.AreEqual("app-one", doc["AppId"].AsString);
         Assert.AreEqual("USER-1", doc["UserPartition"].AsString);
         Assert.IsTrue(doc.Contains("_storageVersion"));
-        Assert.IsTrue(doc["CreationDate"].IsString);
-        Assert.IsTrue(doc["LastUpdatedDate"].IsString);
+        Assert.AreEqual("2026-11-15T10:00:00.000Z", doc["CreationDate"].AsString);
+        Assert.AreEqual("2026-11-15T10:00:00.000Z", doc["LastUpdatedDate"].AsString);
         Assert.IsFalse(doc.Contains("Id"));
     }
 

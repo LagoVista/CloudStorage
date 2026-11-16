@@ -152,7 +152,7 @@ public sealed class MongoApplicationDataMigrationWriter : IActivityRecordMigrati
         if (value is DateTimeOffset dto)
             return String.Equals(fieldName, "CreationDate", StringComparison.Ordinal) ||
                 String.Equals(fieldName, "LastUpdatedDate", StringComparison.Ordinal)
-                ? new BsonString(dto.UtcDateTime.ToString("O", CultureInfo.InvariantCulture))
+                ? new BsonString(dto.UtcDateTime.ToString("yyyy-MM-dd'T'HH':'mm':'ss'.'fff'Z'", CultureInfo.InvariantCulture))
                 : new BsonDateTime(dto.UtcDateTime);
         if (value is DateTime dt)
             return ToBsonValue(fieldName, new DateTimeOffset(dt.Kind == DateTimeKind.Utc
