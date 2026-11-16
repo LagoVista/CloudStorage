@@ -208,7 +208,10 @@ namespace LagoVista.StorageProvider.Tests
                 .KeyBy(record => record.Id)
                 .Index(record => record.Create);
             var map = new CassandraOperationalRecordMap<ReservedWordOperationalRecord>(
-                new OperationalDataStoreOptions<ReservedWordOperationalRecord>(definition));
+                new OperationalDataStoreOptions<ReservedWordOperationalRecord>(storage => storage
+                    .PartitionBy(record => record.OrganizationId)
+                    .KeyBy(record => record.Id)
+                    .Index(record => record.Create)));
 
             var schema = map.CreateTableCql();
             StringAssert.Contains(schema, "\"create\" int");
