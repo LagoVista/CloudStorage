@@ -218,6 +218,16 @@ namespace LagoVista.CloudStorage.Storage
                     Block("Maximum D3M dependency depth exceeded at " + type + ".");
                     return;
                 }
+                // Avoid reloading an already pinned source snapshot for every incoming edge.
+                // Key-only links are canonicalized by the adapter before this check below.
+                if (!String.IsNullOrWhiteSpace(locator.Id) &&
+                    states.TryGetValue(ScopedKey(type, locator.Id), out var previouslyVisited))
+                {
+                    if (previouslyVisited == 1)
+                        Block("Prerequisite cycle: " + String.Join(" -> ",
+                            stack.Concat(new[] { ScopedKey(type, locator.Id) })));
+                    return;
+                }
                 if (!_registry.TryGet(type, out var registration))
                 {
                     Block("Unregistered referenced D3M type: " + type);
