@@ -133,6 +133,17 @@ To let the migration run through all remaining containers and blobs:
 dotnet run -- object-migrate
 ```
 
+**Production safeguards:** Use `$env:MIGRATION_ENVIRONMENT = "prod"` and
+`dotnet run -- object-inventory` to inspect Azure source containers/counts/bytes
+without any writes or S3 connection. A small
+`object-inventory --max-objects 100` is only a partial inventory.
+Both `object-migrate` and `object-reset` require the explicit
+`--confirm-production` flag in PROD; neither is part of the structured
+Table Storage migration workflow. **Do not run PROD object migration
+until target-bucket contents, ownership, destination overwrite policy,
+and application storage cutover are reviewed.** Object uploads reuse
+Azure container/blob names and will overwrite matching existing S3 keys.
+
 Object migration behavior:
 
 - every Azure container is created as the corresponding S3 bucket when needed;
