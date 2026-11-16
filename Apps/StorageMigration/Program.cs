@@ -17,7 +17,10 @@ try
             break;
         case "status":
             RequireKey(args, command);
-            await PrintStatusAsync(catalog.LoadByKey(args[1]));
+            if (String.Equals(args[1], "--all", StringComparison.OrdinalIgnoreCase))
+                await PrintAllStatusAsync(catalog);
+            else
+                await PrintStatusAsync(catalog.LoadByKey(args[1]));
             break;
         case "probe":
             RequireKey(args, command);
@@ -287,6 +290,59 @@ static async Task VerifyAsync(MigrationCatalog catalog, MigrationDefinition defi
     Console.WriteLine($"{(countsMatch ? "PASS" : "FAIL")}: source count matches records written");
     Console.WriteLine($"{(noFailures ? "PASS" : "FAIL")}: no migration failures");
     if (!completed || !countsMatch || !noFailures) throw new InvalidOperationException("Migration verification failed.");
+}
+
+static async Task PrintAllStatusAsync(MigrationCatalog catalog)
+{
+    var definitions = catalog.LoadAll();
+    var stateStore = StateStore();
+    Console.WriteLine($"Migration checkpoint status - {MigrationConnections.EnvironmentName.ToUpperInvariant()}");
+    Console.WriteLine("Source: ApplicationData checkpoints (no Azure or destination queries)");
+    Console.WriteLine();
+
+    Console.WriteLine($"{"Migration",-36} {"State",-12} {"Pass",4} {"Read",10} {"Processed",10} {"Failed",8} {"Definition",-8} {"Destination"}");
+    Console.WriteLine(new String('-', 121));
+
+    var complete = 0;
+    var running = 0;
+    var notStarted = 0;
+    var other = 0;
+    var changed = 0;
+    foreach (var definition in definitions)
+    {
+        var state = await stateStore.GetAsync(definition.Key);
+        var status = state?.State ?? "NotStarted";
+        switch (status.ToLowerInvariant())
+        {
+            case "completed": complete++; break;
+            case "running": running++; break;
+            case "notstarted": notStarted++; break;
+            default: other++; break;
+        }
+
+        var definitionStatus = state == null ? "-" :
+            String.Equals(state.DefinitionSha256, catalog.DefinitionSha256(definition), StringComparison.OrdinalIgnoreCase)
+            ? "OK" : "CHANGED";
+        if (definitionStatus == "CHANGED") changed++;
+
+        Console.WriteLine(
+            $"{definition.Key,-36} {status,-12} {(state == null ? "-" : Math.Max(1, state.PassNumber).ToString()),4} " +
+            $"{state?.RecordsRead ?? 0,10:N0} {state?.RecordsWritten ?? 0,10:N0} {state?.RecordsFailed ?? 0,8:N0} " +
+            $"{definitionStatus,-8} {definition.Target.Table}");
+    }
+
+    // The object migration is checkpointed separately from the definition catalog.
+    var objectState = await stateStore.GetAsync(AzureBlobToS3Migration.MigrationKey);
+    var objectStatus = objectState?.State ?? "NotStarted";
+    Console.WriteLine(
+        $"{AzureBlobToS3Migration.MigrationKey,-36} {objectStatus,-12} {(objectState == null ? "-" : Math.Max(1, objectState.PassNumber).ToString()),4} " +
+        $"{objectState?.RecordsRead ?? 0,10:N0} {objectState?.RecordsWritten ?? 0,10:N0} {objectState?.RecordsFailed ?? 0,8:N0} " +
+        $"{"-",-8} SeaweedFS/S3 (objects)");
+    Console.WriteLine();
+    Console.WriteLine($"Definitions: {definitions.Count} | Completed: {complete} | Running: {running} | Not started: {notStarted} | Other: {other} | Definition changed: {changed}");
+    Console.WriteLine($"Object migration: {objectStatus}");
+    Console.WriteLine("NOTE: Processed counts include insert-if-absent no-ops. Completed checkpoints do not prove destination counts.");
+    Console.WriteLine("NOTE: CHANGED means the current definition SHA differs from the checkpoint's; inspect before resuming.");
 }
 
 static async Task PrintStatusAsync(MigrationDefinition definition)
