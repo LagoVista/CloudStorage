@@ -95,8 +95,11 @@ public static class MigrationConnections
 
     private static string? Optional(string name)
     {
-        var value = System.Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User)
-            ?? System.Environment.GetEnvironmentVariable(name);
+        // Explicit per-process operator settings must override saved user/machine defaults.
+        // This is critical when switching between DEV and PROD in PowerShell.
+        var value = System.Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process)
+            ?? System.Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User)
+            ?? System.Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
         return String.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
