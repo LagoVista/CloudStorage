@@ -71,38 +71,21 @@ public static class MigrationConnections
 
     private static LagoVista.Core.Models.ConnectionSettings AzureStorageSettings(string? logicalConnection = null)
     {
-        // Existing CloudStorage DEV/PROD table credentials remain the default.
-        // Source-specific overrides are optional when Marketing or UserAdmin used a distinct account.
-        var sourcePrefix = logicalConnection?.Trim().ToLowerInvariant() switch
+        // Logical source names identify migration definitions, not Azure accounts.
+        // All Table Storage migrations use the shared CloudStorage DEV/PROD account.
+        // Keep known names explicit so a typo in a migration definition fails fast.
+        switch (logicalConnection?.Trim().ToLowerInvariant())
         {
-            "marketing-storage" => "MARKETING",
-            "user-storage" => "USER",
-            "ai-ml-table-storage" => "AI_ML",
-            "access-log" => null,
-            null => null,
-            "" => null,
-            _ => throw new InvalidOperationException($"Unknown migration Azure source connection '{logicalConnection}'. Register it explicitly; never fall back silently.")
-        };
-        if (sourcePrefix == null) return DefaultAzureStorageSettings();
-        var prefix = EnvironmentName.ToUpperInvariant();
-        var accountName = prefix + "_" + sourcePrefix + "_TS_STORAGE_ACCOUNT_ID";
-        var accessKeyName = prefix + "_" + sourcePrefix + "_TS_STORAGE_ACCOUNT_ACCESS_KEY";
-        var accountId = Optional(accountName);
-        var accessKey = Optional(accessKeyName);
-
-        if (accountId != null || accessKey != null)
-        {
-            if (accountId == null || accessKey == null)
-                throw new InvalidOperationException($"Azure source '{logicalConnection}' must provide both {accountName} and {accessKeyName} when overriding the default table storage account.");
-
-            return new LagoVista.Core.Models.ConnectionSettings
-            {
-                AccountId = accountId,
-                AccessKey = accessKey
-            };
+            case null:
+            case "":
+            case "access-log":
+            case "marketing-storage":
+            case "user-storage":
+            case "ai-ml-table-storage":
+                return DefaultAzureStorageSettings();
+            default:
+                throw new InvalidOperationException($"Unknown migration Azure source connection '{logicalConnection}'.");
         }
-
-        throw new InvalidOperationException($"Azure source '{logicalConnection}' requires explicit {accountName} and {accessKeyName}. Refusing to use the default account.");
     }
 
     private static LagoVista.Core.Models.ConnectionSettings DefaultAzureStorageSettings() =>
