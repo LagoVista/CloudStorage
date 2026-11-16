@@ -453,6 +453,7 @@ static void PrintUsage()
     Console.Error.WriteLine("  catalog");
     Console.Error.WriteLine("  validate <migration-key>");
     Console.Error.WriteLine("  status <migration-key>");
+    Console.Error.WriteLine("  status --all");
     Console.Error.WriteLine("  probe <migration-key>");
     Console.Error.WriteLine("  migrate <migration-key> [--max-records N] [--catch-up]");
     Console.Error.WriteLine("  verify <migration-key>");
