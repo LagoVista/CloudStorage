@@ -1,5 +1,13 @@
 namespace LagoVista.StorageMigration;
 
+public sealed record StorageMigrationBatchProgress(
+    string Table,
+    int BatchRecords,
+    long RunRecordsWritten,
+    long TotalRecordsWritten,
+    long RecordsFailed,
+    TimeSpan Elapsed);
+
 public sealed class StorageMigrationEngine
 {
     private readonly AzureTableMigrationSource _source;
@@ -12,7 +20,7 @@ public sealed class StorageMigrationEngine
         _source = source; _mapper = mapper; _writer = writer; _stateStore = stateStore;
     }
 
-    public async Task<MigrationRunState> ExecuteAsync(MigrationDefinition definition, string definitionSha256, bool catchUp = false, int? maxRecords = null, CancellationToken cancellationToken = default)
+    public async Task<MigrationRunState> ExecuteAsync(MigrationDefinition definition, string definitionSha256, bool catchUp = false, int? maxRecords = null, CancellationToken cancellationToken = default, Action<StorageMigrationBatchProgress>? onBatchCommitted = null)
     {
         if (maxRecords.HasValue && maxRecords.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(maxRecords), "Maximum records must be greater than zero.");
@@ -30,6 +38,8 @@ public sealed class StorageMigrationEngine
         await _writer.EnsureSchemaAsync(definition, cancellationToken).ConfigureAwait(false);
 
         var processedThisRun = 0;
+        var writtenAtStart = state.RecordsWritten;
+        var timer = System.Diagnostics.Stopwatch.StartNew();
         foreach (var table in await _source.ResolveTablesAsync(definition, cancellationToken).ConfigureAwait(false))
         {
             if (!String.IsNullOrWhiteSpace(state.CurrentTable))
@@ -53,7 +63,7 @@ public sealed class StorageMigrationEngine
 
                 var limitReached = maxRecords.HasValue && processedThisRun >= maxRecords.Value;
                 if (batch.Count >= 100 || limitReached)
-                    await FlushAsync(definition, state, table, batch, headPartition, headRow, cancellationToken).ConfigureAwait(false);
+                    await FlushAsync(definition, state, table, batch, headPartition, headRow, writtenAtStart, timer, onBatchCommitted, cancellationToken).ConfigureAwait(false);
 
                 if (limitReached)
                     return state;
@@ -69,11 +79,17 @@ public sealed class StorageMigrationEngine
         return state;
     }
 
-    private async Task FlushAsync(MigrationDefinition definition, MigrationRunState state, string table, List<IReadOnlyDictionary<string, object?>> batch, string? headPartition, string? headRow, CancellationToken ct)
+    private async Task FlushAsync(MigrationDefinition definition, MigrationRunState state, string table, List<IReadOnlyDictionary<string, object?>> batch, string? headPartition, string? headRow, long writtenAtStart, System.Diagnostics.Stopwatch timer, Action<StorageMigrationBatchProgress>? onBatchCommitted, CancellationToken ct)
     {
+        var batchRecords = batch.Count;
         await _writer.WriteBatchAsync(definition, batch, ct).ConfigureAwait(false);
-        state.RecordsWritten += batch.Count; state.CurrentTable = table; state.HeadPartitionKey = headPartition; state.HeadRowKey = headRow; state.LastUpdatedDate = DateTime.UtcNow;
-        await _stateStore.UpsertAsync(state, ct).ConfigureAwait(false); batch.Clear();
+        state.RecordsWritten += batchRecords; state.CurrentTable = table; state.HeadPartitionKey = headPartition; state.HeadRowKey = headRow; state.LastUpdatedDate = DateTime.UtcNow;
+        await _stateStore.UpsertAsync(state, ct).ConfigureAwait(false);
+        batch.Clear();
+
+        // Report only after both the destination write and the resume checkpoint have succeeded.
+        onBatchCommitted?.Invoke(new StorageMigrationBatchProgress(
+            table, batchRecords, state.RecordsWritten - writtenAtStart, state.RecordsWritten, state.RecordsFailed, timer.Elapsed));
     }
 
     private static void StartCatchUpPass(MigrationRunState state)
