@@ -155,7 +155,7 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
     {
         if (String.IsNullOrWhiteSpace(name) || !CassandraIdentifier.IsMatch(name))
             throw new InvalidOperationException($"Invalid Cassandra identifier '{name}'.");
-        return $"\\"{name.ToLowerInvariant()}\\"";
+        return $"\"{name.ToLowerInvariant()}\"";
     }
     private static string NormalizeType(string type) => type.ToLowerInvariant() switch { "text" or "boolean" or "int" or "bigint" or "decimal" or "double" or "timestamp" => type.ToLowerInvariant(), _ => throw new NotSupportedException($"Migration target CQL type '{type}' is not supported.") };
     private static string NormalizeCqlType(string type) => String.IsNullOrWhiteSpace(type) ? String.Empty : type.Replace(" ", String.Empty).ToLowerInvariant();
