@@ -39,25 +39,25 @@ public sealed class CassandraActivityRecordMigrationWriter : IActivityRecordMigr
     {
         cancellationToken.ThrowIfCancellationRequested();
         var fields = definition.Fields.ToDictionary(field => field.Name, StringComparer.OrdinalIgnoreCase);
-        var columns = definition.Fields.Select(field => $"{field.Name} {NormalizeType(field.Type)}").ToList();
-        var partition = definition.Target.PartitionFields.ToList();
-        if (UsesBuckets(definition)) { columns.Add("time_bucket text"); partition.Add("time_bucket"); }
+        var columns = definition.Fields.Select(field => $"{QuoteIdentifier(field.Name)} {NormalizeType(field.Type)}").ToList();
+        var partition = definition.Target.PartitionFields.Select(QuoteIdentifier).ToList();
+        if (UsesBuckets(definition)) { columns.Add($"{QuoteIdentifier("time_bucket")} text"); partition.Add(QuoteIdentifier("time_bucket")); }
         var ttl = definition.Target.RetentionSeconds ?? 0;
         var create = IsOperational(definition)
-            ? $@"CREATE TABLE IF NOT EXISTS {definition.Target.Table} (
+            ? $@"CREATE TABLE IF NOT EXISTS {QuoteIdentifier(definition.Target.Table)} (
     {String.Join(",\n    ", columns)},
-    PRIMARY KEY (({String.Join(", ", partition)}), {definition.Target.KeyField})
+    PRIMARY KEY (({String.Join(", ", partition)}), {QuoteIdentifier(definition.Target.KeyField)})
 ) WITH default_time_to_live = {ttl}"
-            : $@"CREATE TABLE IF NOT EXISTS {definition.Target.Table} (
+            : $@"CREATE TABLE IF NOT EXISTS {QuoteIdentifier(definition.Target.Table)} (
     {String.Join(",\n    ", columns)},
-    PRIMARY KEY (({String.Join(", ", partition)}), {definition.Target.TimeField}, {definition.Target.KeyField})
-) WITH CLUSTERING ORDER BY ({definition.Target.TimeField} DESC, {definition.Target.KeyField} ASC)
+    PRIMARY KEY (({String.Join(", ", partition)}), {QuoteIdentifier(definition.Target.TimeField)}, {QuoteIdentifier(definition.Target.KeyField)})
+) WITH CLUSTERING ORDER BY ({QuoteIdentifier(definition.Target.TimeField)} DESC, {QuoteIdentifier(definition.Target.KeyField)} ASC)
 AND default_time_to_live = {ttl}";
         await _session.ExecuteAsync(new SimpleStatement(create)).ConfigureAwait(false);
         foreach (var index in definition.Target.Indexes)
         {
             if (!fields.ContainsKey(index)) throw new InvalidOperationException($"Index field {index} is not declared.");
-            await _session.ExecuteAsync(new SimpleStatement($"CREATE INDEX IF NOT EXISTS {IndexName(definition.Target.Table, index)} ON {definition.Target.Table} ({index}) USING 'sai'")).ConfigureAwait(false);
+            await _session.ExecuteAsync(new SimpleStatement($"CREATE INDEX IF NOT EXISTS {QuoteIdentifier(IndexName(definition.Target.Table, index))} ON {QuoteIdentifier(definition.Target.Table)} ({QuoteIdentifier(index)}) USING 'sai'")).ConfigureAwait(false);
         }
         await ValidateSchemaAsync(definition, cancellationToken).ConfigureAwait(false);
     }
@@ -111,7 +111,7 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
     {
         if (_inserts.TryGetValue(definition.Key, out var prepared)) return prepared;
         var columns = OrderedColumns(definition);
-        var cql = $"INSERT INTO {definition.Target.Table} ({String.Join(", ", columns)}) VALUES ({String.Join(", ", columns.Select(_ => "?"))})" +
+        var cql = $"INSERT INTO {QuoteIdentifier(definition.Target.Table)} ({String.Join(", ", columns.Select(QuoteIdentifier))}) VALUES ({String.Join(", ", columns.Select(_ => "?"))})" +
             (IsOperational(definition) ? " IF NOT EXISTS" : String.Empty);
         prepared = await _session.PrepareAsync(cql).ConfigureAwait(false);
         _inserts[definition.Key] = prepared;
@@ -148,6 +148,15 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
     private static bool IsOperational(MigrationDefinition definition) => String.Equals(definition.Target.Type, "cassandra-operational", StringComparison.OrdinalIgnoreCase);
     private static bool UsesBuckets(MigrationDefinition definition) => !IsOperational(definition) && !String.Equals(definition.Target.Bucket, "All", StringComparison.OrdinalIgnoreCase);
     private static string IndexName(string table, string field) => $"{table}_{field}_sai_idx";
+
+    // CQL keywords such as create/read/update/delete are valid field names when quoted.
+    // Normalize to lowercase to preserve the identity of formerly unquoted Cassandra columns.
+    private static string QuoteIdentifier(string name)
+    {
+        if (String.IsNullOrWhiteSpace(name) || !CassandraIdentifier.IsMatch(name))
+            throw new InvalidOperationException($"Invalid Cassandra identifier '{name}'.");
+        return $"\\"{name.ToLowerInvariant()}\\"";
+    }
     private static string NormalizeType(string type) => type.ToLowerInvariant() switch { "text" or "boolean" or "int" or "bigint" or "decimal" or "double" or "timestamp" => type.ToLowerInvariant(), _ => throw new NotSupportedException($"Migration target CQL type '{type}' is not supported.") };
     private static string NormalizeCqlType(string type) => String.IsNullOrWhiteSpace(type) ? String.Empty : type.Replace(" ", String.Empty).ToLowerInvariant();
 
