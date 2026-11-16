@@ -241,9 +241,20 @@ static async Task MigrateAsync(MigrationCatalog catalog, MigrationDefinition def
     Console.WriteLine($"Target    : {definition.Target.Table}");
     Console.WriteLine($"Mode      : {(catchUp ? "catch-up replay" : "resume/current pass")}");
     Console.WriteLine($"Run limit : {(maxRecords.HasValue ? $"{maxRecords.Value:N0} records" : "none")}");
+    Console.WriteLine("Progress  : after each committed 100-record batch (or partial final batch)");
     Console.WriteLine();
 
-    PrintState(await engine.ExecuteAsync(definition, sha, catchUp, maxRecords));
+    void ShowBatchProgress(StorageMigrationBatchProgress progress)
+    {
+        var elapsedSeconds = Math.Max(progress.Elapsed.TotalSeconds, 0.001);
+        var recordsPerSecond = progress.RunRecordsWritten / elapsedSeconds;
+        Console.WriteLine(
+            $"{progress.Table,-24} | batch {progress.BatchRecords,3:N0} | " +
+            $"run {progress.RunRecordsWritten,10:N0} | total {progress.TotalRecordsWritten,10:N0} | " +
+            $"failed {progress.RecordsFailed,5:N0} | {recordsPerSecond,7:0.0} rec/s");
+    }
+
+    PrintState(await engine.ExecuteAsync(definition, sha, catchUp, maxRecords, onBatchCommitted: ShowBatchProgress));
 }
 
 static IDisposable CreateWriter(MigrationDefinition definition)
