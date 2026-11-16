@@ -46,9 +46,11 @@ try
             await ObjectStatusAsync();
             break;
         case "object-reset":
+            RequireProductionWriteApproval(args);
             await ObjectResetAsync();
             break;
         case "object-migrate":
+            RequireProductionWriteApproval(args);
             await ObjectMigrateAsync(
                 GetPositiveIntOption(args, "--max-objects"),
                 GetPositiveIntOption(args, "--batch-size") ?? 10,
@@ -460,7 +462,7 @@ static void PrintUsage()
     Console.Error.WriteLine("  object-probe [--max-objects N]");
     Console.Error.WriteLine("  object-inventory [--max-objects N]");
     Console.Error.WriteLine("  object-status");
-    Console.Error.WriteLine("  object-reset");
-    Console.Error.WriteLine("  object-migrate [--max-objects N] [--batch-size N] [--parallelism N]");
+    Console.Error.WriteLine("  object-reset [--confirm-production for PROD]");
+    Console.Error.WriteLine("  object-migrate [--max-objects N] [--batch-size N] [--parallelism N] [--confirm-production for PROD]");
     Console.Error.WriteLine("Environment: set MIGRATION_ENVIRONMENT=dev|prod for environment-prefixed storage settings.");
 }
