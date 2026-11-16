@@ -37,6 +37,15 @@ dotnet run -- migrate useradmin-access-log --catch-up
 
 `--catch-up` is accepted only after the current pass has completed.
 
+Azure Table migrations print one progress line after each successfully committed
+100-record batch (and any shorter final batch). Each line shows the source table,
+batch size, records written in this invocation, cumulative checkpointed records,
+failures, and average records/second for the current invocation. The progress
+count includes existing destination records accepted by insert-if-absent semantics;
+it does not mean that every record was newly inserted. A failed batch is not
+reported as committed. The last line of the command still prints the persisted
+migration state.
+
 ### Historical ContactDTO and sent-email lookup backfill
 
 The Cassandra runtime is already active in DEV. Azure retains the older records; there is no dual-write or cutover step in the backfill. Import contacts first, then the phone index, then sent-email cross-references:
