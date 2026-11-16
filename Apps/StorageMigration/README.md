@@ -131,16 +131,16 @@ PROD_TS_STORAGE_ACCOUNT_ID
 PROD_TS_STORAGE_ACCOUNT_ACCESS_KEY
 ```
 
-The `access-log` and default Azure source still use that DEV/PROD table account. When Marketing or UserAdmin data lives in another Azure Storage account, set **both** source-specific variables for the selected environment:
+All supported logical Azure Table source names (`access-log`, `marketing-storage`,
+`user-storage`, and `ai-ml-table-storage`) use the same standard CloudStorage
+DEV/PROD Table Storage account selected by `MIGRATION_ENVIRONMENT`. The names
+identify migration definitions; they are **not** separate credentials or accounts.
+Do not configure `DEV_USER_*`, `DEV_MARKETING_*`, or `DEV_AI_ML_*` Table
+Storage credential pairs. Unknown logical source names are rejected instead of
+silently selecting an account.
 
-```text
-DEV_MARKETING_TS_STORAGE_ACCOUNT_ID
-DEV_MARKETING_TS_STORAGE_ACCOUNT_ACCESS_KEY
-DEV_USER_TS_STORAGE_ACCOUNT_ID
-DEV_USER_TS_STORAGE_ACCOUNT_ACCESS_KEY
-```
-
-Use the same names with `PROD_` for production. `marketing-storage` resolves the `MARKETING` pair, and `user-storage` resolves the `USER` pair. A missing or half-configured named-source pair fails explicitly; only the default `access-log` connection uses `TestConnections.DevTableStorageDB` / `ProductionTableStorageDB`. Set `DEV_AI_ML_TS_STORAGE_ACCOUNT_ID` and `DEV_AI_ML_TS_STORAGE_ACCOUNT_ACCESS_KEY` (or `PROD_` counterparts) for definitions using `ai-ml-table-storage`. Unknown source connection names fail closed. The Azure Blob migration continues to use the default table account. No source credentials or connection strings belong in the JSON definitions.
+The Azure Blob migration uses the same standard account. No source credentials
+or connection strings belong in the JSON definitions.
 
 ## SeaweedFS / S3 target
 
