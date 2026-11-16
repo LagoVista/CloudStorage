@@ -19,13 +19,14 @@ The migration app is independent of UserAdmin packages. Record identity, fields,
 
 Use `MIGRATION_ENVIRONMENT=dev` first; `prod` is explicit LIVE. Required standard connection settings are documented in [README.md](README.md).
 
-For UserAdmin Azure source, supply both settings for the selected environment (no implicit fallback):
+For UserAdmin Azure sources, use the standard CloudStorage account selected by
+`MIGRATION_ENVIRONMENT`. There is no separate UserAdmin Azure Storage account:
 
 ```text
-DEV_USER_TS_STORAGE_ACCOUNT_ID
-DEV_USER_TS_STORAGE_ACCOUNT_ACCESS_KEY
-PROD_USER_TS_STORAGE_ACCOUNT_ID
-PROD_USER_TS_STORAGE_ACCOUNT_ACCESS_KEY
+DEV_TS_STORAGE_ACCOUNT_ID
+DEV_TS_STORAGE_ACCOUNT_ACCESS_KEY
+PROD_TS_STORAGE_ACCOUNT_ID
+PROD_TS_STORAGE_ACCOUNT_ACCESS_KEY
 ```
 
 For Mongo AppInstance and OrgUser, use the exact target runtime's `IAppConfig.SystemOwnerOrg` Id/Key/Text, **separately for DEV and PROD**. The migration utility selects them automatically using `MIGRATION_ENVIRONMENT` and does not accept a shared fallback:
@@ -84,6 +85,6 @@ The `--max-records` batch checkpoint stays Running; another `migrate` resumes. R
 
 The existing catalog contains Marketing contacts/phone indexes and sent-email XRefs, as well as multiple AI operational records. Use `dotnet run -- catalog` and `dotnet run -- status <key>` for the authoritative local list and checkpoint state. **Catalog entries are not proof of execution or completion.**
 
-Marketing and UserAdmin use their own explicitly configured Azure accounts. AI definitions use `ai-ml-table-storage` and require `DEV_AI_ML_TS_STORAGE_ACCOUNT_ID` / `DEV_AI_ML_TS_STORAGE_ACCOUNT_ACCESS_KEY` (or `PROD_` counterparts); the migration tool refuses to silently redirect AI records to the default account.
+Marketing, UserAdmin, and AI logical source names all resolve to the same environment-specific CloudStorage Table Storage account. No source-specific `USER`, `MARKETING`, or `AI_ML` credential pair is required. The migration tool still rejects unknown logical source names.
 
 Always run `validate`/source reconciliation on each backlog entry before copying; older definitions can have different data-loss/revocation requirements.
