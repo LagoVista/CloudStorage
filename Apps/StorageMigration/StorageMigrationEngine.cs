@@ -69,7 +69,7 @@ public sealed class StorageMigrationEngine
                     return state;
             }
 
-            if (batch.Count > 0) await FlushAsync(definition, state, table, batch, headPartition, headRow, cancellationToken).ConfigureAwait(false);
+            if (batch.Count > 0) await FlushAsync(definition, state, table, batch, headPartition, headRow, writtenAtStart, timer, onBatchCommitted, cancellationToken).ConfigureAwait(false);
             state.CurrentTable = table; state.HeadPartitionKey = null; state.HeadRowKey = null; state.LastUpdatedDate = DateTime.UtcNow;
             await _stateStore.UpsertAsync(state, cancellationToken).ConfigureAwait(false);
         }
