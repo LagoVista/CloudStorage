@@ -22,10 +22,22 @@ From `Apps/StorageMigration`:
 dotnet run -- catalog
 dotnet run -- validate useradmin-access-log
 dotnet run -- status useradmin-access-log
+dotnet run -- status --all
 dotnet run -- probe useradmin-access-log
 dotnet run -- migrate useradmin-access-log
 dotnet run -- verify useradmin-access-log
 ```
+
+Run `dotnet run -- status --all` for a read-only summary of **every**
+cataloged Table Storage migration checkpoint plus the Azure Blob-to-S3 checkpoint.
+It reads persisted ApplicationData state for the environment selected by
+`MIGRATION_ENVIRONMENT`; it does not contact Azure, Cassandra, or S3 and
+does not copy data. The table displays checkpoint state, pass, read/processed
+counts, failures, target, and definition SHA status (`OK`, `CHANGED`, or `-`
+for not started). `CHANGED` means the current definition no longer matches
+the checkpoint; review it before attempting to resume. `Completed` only
+indicates the current pass was checkpointed as complete, not that destination
+row counts or data quality were independently verified.
 
 For UserAdmin's four production migrations, use [the UserAdmin migration runbook](USERADMIN-MIGRATION-RUNBOOK-2026-11-15.md). Mongo backfills require the target runtime's environment-scoped `DEV_SystemOwnerOrg:Id/Key/Text` or `PROD_SystemOwnerOrg:Id/Key/Text` settings; the selected environment is resolved automatically and shared owner settings are rejected. With `MIGRATION_ENVIRONMENT=prod`, `probe` and `migrate` require `--confirm-production`; neither changes source Azure rows.
 
