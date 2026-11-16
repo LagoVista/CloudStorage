@@ -85,6 +85,18 @@ dotnet run -- verify useradmin-sent-email-xref
 Operational inserts use Cassandra `IF NOT EXISTS` to preserve any post-cutover rows already written by the live service. For these imports, "Records written" means source rows successfully processed/attempted, including rows that already exist at the target. Contact phone-index import only includes contacts with a nonempty `Phone` field. The historical `SentEmailHistoryDTO` event stream is not part of these three definitions.
 
 
+## AI historical backfills retired from the catalog
+
+The previous `ai-*.json` migration definitions were retired from this
+operator catalog after confirming no AI migration checkpoints had started.
+The AI runtime's Cassandra operational, conditional-operational, and activity
+stores create/reconcile their own tables on first use; migration jobs are
+not needed for schema creation. Retiring a definition **does not** migrate
+historical Azure Table records and **does not** delete or modify any Azure
+or Cassandra data. If historical AI data must later be recovered, the
+definitions remain available in Git history and require a fresh migration
+review before restoration.
+
 ## Azure Blob -> S3
 
 For a non-destructive Azure Blob -> SeaweedFS/S3 connectivity and inventory probe:

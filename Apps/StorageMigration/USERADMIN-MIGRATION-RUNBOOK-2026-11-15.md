@@ -83,7 +83,7 @@ The `--max-records` batch checkpoint stays Running; another `migrate` resumes. R
 
 ## Other accumulated migration definitions
 
-The existing catalog contains Marketing contacts/phone indexes and sent-email XRefs, as well as multiple AI operational records. Use `dotnet run -- catalog` and `dotnet run -- status <key>` for the authoritative local list and checkpoint state. **Catalog entries are not proof of execution or completion.**
+The existing catalog contains Marketing contacts/phone indexes, sent-email XRefs, and UserAdmin migrations. The 20 unstarted AI historical backfill definitions were retired from the catalog; AI runtime Cassandra stores provision their own tables on first use, while historical Azure data is not copied automatically. Use `dotnet run -- catalog` and `dotnet run -- status --all` for the authoritative local list and checkpoint state. **Catalog entries are not proof of execution or completion.**
 
 Marketing, UserAdmin, and AI logical source names all resolve to the same environment-specific CloudStorage Table Storage account. No source-specific `USER`, `MARKETING`, or `AI_ML` credential pair is required. The migration tool still rejects unknown logical source names.
 
