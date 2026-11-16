@@ -191,37 +191,37 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             byte[] pagingState,
             CancellationToken cancellationToken)
         {
-            var cql = $"SELECT {String.Join(", ", _map.Properties.Select(property => property.ColumnName))} FROM {_map.TableName} WHERE ";
+            var cql = $"SELECT {String.Join(", ", _map.Properties.Select(property => property.CqlIdentifier))} FROM {_map.CqlTableName} WHERE ";
             var clauses = new List<string>();
             var values = new List<object>();
 
             foreach (var partition in _map.PartitionProperties)
             {
-                clauses.Add($"{partition.ColumnName} = ?");
+                clauses.Add($"{partition.CqlIdentifier} = ?");
                 values.Add(partitionValues[partition.Property.Name]);
             }
 
             if (_map.UsesTimeBuckets)
             {
-                clauses.Add($"{CassandraRecordMap<TRecord>.BucketColumnName} = ?");
+                clauses.Add($"{CassandraCqlIdentifier.Quote(CassandraRecordMap<TRecord>.BucketColumnName)} = ?");
                 values.Add(bucket);
             }
 
             if (query.StartUtc.HasValue)
             {
-                clauses.Add($"{_map.Time.ColumnName} >= ?");
+                clauses.Add($"{_map.Time.CqlIdentifier} >= ?");
                 values.Add(new DateTimeOffset(query.StartUtc.Value));
             }
 
             if (query.EndUtc.HasValue)
             {
-                clauses.Add($"{_map.Time.ColumnName} <= ?");
+                clauses.Add($"{_map.Time.CqlIdentifier} <= ?");
                 values.Add(new DateTimeOffset(query.EndUtc.Value));
             }
 
             foreach (var indexedFilter in indexedFilters)
             {
-                clauses.Add($"{indexedFilter.Property.ColumnName} = ?");
+                clauses.Add($"{indexedFilter.Property.CqlIdentifier} = ?");
                 values.Add(_map.DriverValue(indexedFilter.Property, indexedFilter.Value));
             }
 
@@ -295,7 +295,7 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
                     }
 
                     await session.ExecuteAsync(new SimpleStatement(
-                        $"ALTER TABLE {_map.TableName} ADD {expected.Name} {expected.Type}")).ConfigureAwait(false);
+                        $"ALTER TABLE {_map.CqlTableName} ADD {CassandraCqlIdentifier.Quote(expected.Name)} {expected.Type}")).ConfigureAwait(false);
                     continue;
                 }
 
@@ -326,7 +326,7 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
                 if (existing == null)
                 {
                     await session.ExecuteAsync(new SimpleStatement(
-                        $"CREATE INDEX IF NOT EXISTS {indexName} ON {_map.TableName} ({property.ColumnName}) USING 'sai'")).ConfigureAwait(false);
+                        $"CREATE INDEX IF NOT EXISTS {CassandraCqlIdentifier.Quote(indexName)} ON {_map.CqlTableName} ({property.CqlIdentifier}) USING 'sai'")).ConfigureAwait(false);
                     existing = await ReadIndexWithRetryAsync(session, indexName).ConfigureAwait(false);
                 }
 
@@ -337,7 +337,7 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
                 }
 
                 if (!String.Equals(existing.TableName, _map.TableName, StringComparison.OrdinalIgnoreCase) ||
-                    !String.Equals(existing.Target, property.ColumnName, StringComparison.OrdinalIgnoreCase) ||
+                    !CassandraCqlIdentifier.TargetMatches(existing.Target, property.ColumnName) ||
                     !existing.IsSai)
                 {
                     throw new InvalidOperationException(

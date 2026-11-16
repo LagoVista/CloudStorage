@@ -137,17 +137,17 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             var values = new List<object>();
             foreach (var partition in _map.PartitionProperties)
             {
-                clauses.Add($"{partition.ColumnName} = ?");
+                clauses.Add($"{partition.CqlIdentifier} = ?");
                 values.Add(partitionValues[partition.Property.Name]);
             }
 
             foreach (var filter in indexedFilters)
             {
-                clauses.Add($"{filter.Property.ColumnName} {ToCqlOperator(filter.Operator)} ?");
+                clauses.Add($"{filter.Property.CqlIdentifier} {ToCqlOperator(filter.Operator)} ?");
                 values.Add(_map.DriverValue(filter.Property, filter.Value));
             }
 
-            var cql = $"SELECT {String.Join(", ", _map.Properties.Select(property => property.ColumnName))} FROM {_map.TableName} WHERE {String.Join(" AND ", clauses)}";
+            var cql = $"SELECT {String.Join(", ", _map.Properties.Select(property => property.CqlIdentifier))} FROM {_map.CqlTableName} WHERE {String.Join(" AND ", clauses)}";
             var session = await GetReadySessionAsync().ConfigureAwait(false);
             var prepared = await session.PrepareAsync(cql).ConfigureAwait(false);
             var statement = prepared.Bind(values.ToArray())
@@ -219,7 +219,7 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
                     }
 
                     await session.ExecuteAsync(new SimpleStatement(
-                        $"ALTER TABLE {_map.TableName} ADD {expected.Name} {expected.Type}")).ConfigureAwait(false);
+                        $"ALTER TABLE {_map.CqlTableName} ADD {CassandraCqlIdentifier.Quote(expected.Name)} {expected.Type}")).ConfigureAwait(false);
                     continue;
                 }
 
@@ -248,13 +248,13 @@ WHERE keyspace_name = ? AND table_name = ?").ConfigureAwait(false);
                 if (existing == null)
                 {
                     await session.ExecuteAsync(new SimpleStatement(
-                        $"CREATE INDEX IF NOT EXISTS {indexName} ON {_map.TableName} ({property.ColumnName}) USING 'sai'")).ConfigureAwait(false);
+                        $"CREATE INDEX IF NOT EXISTS {CassandraCqlIdentifier.Quote(indexName)} ON {_map.CqlTableName} ({property.CqlIdentifier}) USING 'sai'")).ConfigureAwait(false);
                     existing = await ReadIndexWithRetryAsync(session, indexName).ConfigureAwait(false);
                 }
 
                 if (existing == null ||
                     !String.Equals(existing.TableName, _map.TableName, StringComparison.OrdinalIgnoreCase) ||
-                    !String.Equals(existing.Target, property.ColumnName, StringComparison.OrdinalIgnoreCase) ||
+                    !CassandraCqlIdentifier.TargetMatches(existing.Target, property.ColumnName) ||
                     !existing.IsSai)
                 {
                     throw new InvalidOperationException(
@@ -343,7 +343,7 @@ WHERE keyspace_name = ?").ConfigureAwait(false);
         {
             if (_get != null) return _get;
             _get = await session.PrepareAsync(
-                $"SELECT {String.Join(", ", _map.Properties.Select(property => property.ColumnName))} FROM {_map.TableName} WHERE {_map.PartitionProperties[0].ColumnName} = ? AND {_map.Key.ColumnName} = ?")
+                $"SELECT {String.Join(", ", _map.Properties.Select(property => property.CqlIdentifier))} FROM {_map.CqlTableName} WHERE {_map.PartitionProperties[0].CqlIdentifier} = ? AND {_map.Key.CqlIdentifier} = ?")
                 .ConfigureAwait(false);
             return _get;
         }
@@ -352,7 +352,7 @@ WHERE keyspace_name = ?").ConfigureAwait(false);
         {
             if (_delete != null) return _delete;
             _delete = await session.PrepareAsync(
-                $"DELETE FROM {_map.TableName} WHERE {_map.PartitionProperties[0].ColumnName} = ? AND {_map.Key.ColumnName} = ?")
+                $"DELETE FROM {_map.CqlTableName} WHERE {_map.PartitionProperties[0].CqlIdentifier} = ? AND {_map.Key.CqlIdentifier} = ?")
                 .ConfigureAwait(false);
             return _delete;
         }

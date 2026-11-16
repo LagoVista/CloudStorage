@@ -20,6 +20,8 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 
         public PropertyInfo Property { get; }
         public string ColumnName { get; }
+        // CQL syntax uses quoted lowercase identifiers; metadata/row lookups keep raw names.
+        public string CqlIdentifier => CassandraCqlIdentifier.Quote(ColumnName);
         public string CqlType { get; }
     }
 
@@ -78,6 +80,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 
         public StorageDefinition<TRecord> Definition { get; }
         public string TableName { get; }
+        public string CqlTableName => CassandraCqlIdentifier.Quote(TableName);
         public IReadOnlyList<CassandraRecordProperty> Properties { get; }
         public IReadOnlyList<CassandraRecordProperty> PartitionProperties { get; }
         public IReadOnlyList<CassandraRecordProperty> IndexedProperties { get; }
@@ -108,33 +111,33 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 
         public string CreateTableCql()
         {
-            var columns = Properties.Select(property => $"{property.ColumnName} {property.CqlType}").ToList();
-            if (UsesTimeBuckets) columns.Add($"{BucketColumnName} text");
+            var columns = Properties.Select(property => $"{property.CqlIdentifier} {property.CqlType}").ToList();
+            if (UsesTimeBuckets) columns.Add($"{CassandraCqlIdentifier.Quote(BucketColumnName)} text");
 
-            var partitionFields = PartitionProperties.Select(property => property.ColumnName).ToList();
-            if (UsesTimeBuckets) partitionFields.Add(BucketColumnName);
+            var partitionFields = PartitionProperties.Select(property => property.CqlIdentifier).ToList();
+            if (UsesTimeBuckets) partitionFields.Add(CassandraCqlIdentifier.Quote(BucketColumnName));
 
             var columnText = String.Join(",\n    ", columns);
             var partition = String.Join(", ", partitionFields);
 
-            return $@"CREATE TABLE IF NOT EXISTS {TableName} (
+            return $@"CREATE TABLE IF NOT EXISTS {CqlTableName} (
     {columnText},
-    PRIMARY KEY (({partition}), {Time.ColumnName}, {Key.ColumnName})
-) WITH CLUSTERING ORDER BY ({Time.ColumnName} DESC, {Key.ColumnName} ASC)
+    PRIMARY KEY (({partition}), {Time.CqlIdentifier}, {Key.CqlIdentifier})
+) WITH CLUSTERING ORDER BY ({Time.CqlIdentifier} DESC, {Key.CqlIdentifier} ASC)
 AND default_time_to_live = {RetentionSeconds}";
         }
 
         public string ReconcileRetentionCql()
         {
-            return $"ALTER TABLE {TableName} WITH default_time_to_live = {RetentionSeconds}";
+            return $"ALTER TABLE {CqlTableName} WITH default_time_to_live = {RetentionSeconds}";
         }
 
         public string InsertCql(bool perWriteTtl = false)
         {
-            var columns = Properties.Select(property => property.ColumnName).ToList();
-            if (UsesTimeBuckets) columns.Add(BucketColumnName);
+            var columns = Properties.Select(property => property.CqlIdentifier).ToList();
+            if (UsesTimeBuckets) columns.Add(CassandraCqlIdentifier.Quote(BucketColumnName));
             var markers = String.Join(", ", columns.Select(_ => "?"));
-            var cql = $"INSERT INTO {TableName} ({String.Join(", ", columns)}) VALUES ({markers})";
+            var cql = $"INSERT INTO {CqlTableName} ({String.Join(", ", columns)}) VALUES ({markers})";
             return perWriteTtl ? cql + " USING TTL ?" : cql;
         }
 

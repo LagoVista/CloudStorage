@@ -167,9 +167,9 @@ namespace LagoVista.StorageProvider.Tests
             Assert.AreEqual("Publish", map.DriverValue(actionProperty, record.Action));
             Assert.AreEqual("Uncertain", map.DriverValue(acceptanceProperty, record.AcceptanceState));
             Assert.IsNull(map.DriverValue(optionalProperty, record.OptionalAction));
-            StringAssert.Contains(map.CreateTableCql(), "action text");
-            StringAssert.Contains(map.CreateTableCql(), "acceptance_state text");
-            StringAssert.Contains(map.CreateTableCql(), "optional_action text");
+            StringAssert.Contains(map.CreateTableCql(), "\"action\" text");
+            StringAssert.Contains(map.CreateTableCql(), "\"acceptance_state\" text");
+            StringAssert.Contains(map.CreateTableCql(), "\"optional_action\" text");
         }
 
         [TestMethod]
@@ -197,6 +197,71 @@ namespace LagoVista.StorageProvider.Tests
             MongoMutableRecordStore.MaterializeExpiration(document, null, now);
 
             Assert.IsFalse(document.Contains("_storageExpiresUtc"));
+        }
+
+
+        [TestMethod]
+        public void CassandraReservedIdentifiers_QuoteEveryOperationalSchemaAndWriteColumn()
+        {
+            var definition = new StorageDefinition<ReservedWordOperationalRecord>()
+                .PartitionBy(record => record.OrganizationId)
+                .KeyBy(record => record.Id)
+                .Index(record => record.Create);
+            var map = new CassandraOperationalRecordMap<ReservedWordOperationalRecord>(
+                new OperationalDataStoreOptions<ReservedWordOperationalRecord>(definition));
+
+            var schema = map.CreateTableCql();
+            StringAssert.Contains(schema, "\"create\" int");
+            StringAssert.Contains(schema, "\"read\" int");
+            StringAssert.Contains(schema, "\"update\" int");
+            StringAssert.Contains(schema, "\"delete\" int");
+            StringAssert.Contains(schema, "PRIMARY KEY ((\"organization_id\"), \"id\")");
+            StringAssert.Contains(map.UpsertCql(), "(\"organization_id\",");
+            StringAssert.Contains(map.UpsertCql(), "\"create\"");
+            StringAssert.Contains(map.ReconcileRetentionCql(), "ALTER TABLE \"reserved_word_operational_record\"");
+            Assert.AreEqual("\"create\"", map.GetRequired(nameof(ReservedWordOperationalRecord.Create)).CqlIdentifier);
+        }
+
+        [TestMethod]
+        public void CassandraReservedIdentifiers_QuoteActivitySchemaAndInsertColumns()
+        {
+            var definition = new StorageDefinition<ReservedWordActivityRecord>()
+                .PartitionBy(record => record.OrganizationId)
+                .KeyBy(record => record.Id)
+                .TimeBy(record => record.CreationDate);
+            var map = new CassandraRecordMap<ReservedWordActivityRecord>(
+                new ActivityRecordStoreOptions<ReservedWordActivityRecord>(definition));
+
+            StringAssert.Contains(map.CreateTableCql(), "\"create\" int");
+            StringAssert.Contains(map.CreateTableCql(), "\"read\" int");
+            StringAssert.Contains(map.InsertCql(), "\"create\"");
+            StringAssert.Contains(map.InsertCql(), "\"read\"");
+            Assert.IsTrue(CassandraCqlIdentifier.TargetMatches("\"create\"", "create"));
+            Assert.IsTrue(CassandraCqlIdentifier.TargetMatches("create", "create"));
+            Assert.IsFalse(CassandraCqlIdentifier.TargetMatches("other", "create"));
+            Assert.ThrowsExactly<ArgumentException>(() => CassandraCqlIdentifier.Quote("invalid-column"));
+        }
+
+        public sealed class ReservedWordOperationalRecord : IOperationalDataRecord
+        {
+            public string OrganizationId { get; set; }
+            public string Id { get; set; }
+            public DateTime CreationDate { get; set; }
+            public DateTime LastUpdatedDate { get; set; }
+            public int Create { get; set; }
+            public int Read { get; set; }
+            public int Update { get; set; }
+            public int Delete { get; set; }
+        }
+
+        public sealed class ReservedWordActivityRecord : IActivityRecord
+        {
+            public string OrganizationId { get; set; }
+            public string Id { get; set; }
+            public string Organization { get; set; }
+            public DateTime CreationDate { get; set; }
+            public int Create { get; set; }
+            public int Read { get; set; }
         }
 
         public enum TestActivityAction

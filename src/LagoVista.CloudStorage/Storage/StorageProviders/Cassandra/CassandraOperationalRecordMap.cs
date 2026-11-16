@@ -61,6 +61,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 
         public StorageDefinition<TRecord> Definition { get; }
         public string TableName { get; }
+        public string CqlTableName => CassandraCqlIdentifier.Quote(TableName);
         public IReadOnlyList<CassandraRecordProperty> Properties { get; }
         public IReadOnlyList<CassandraRecordProperty> PartitionProperties { get; }
         public IReadOnlyList<CassandraRecordProperty> IndexedProperties { get; }
@@ -69,22 +70,22 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 
         public string CreateTableCql()
         {
-            var columns = String.Join(",\n    ", Properties.Select(property => $"{property.ColumnName} {property.CqlType}"));
-            var partition = String.Join(", ", PartitionProperties.Select(property => property.ColumnName));
-            return $@"CREATE TABLE IF NOT EXISTS {TableName} (
+            var columns = String.Join(",\n    ", Properties.Select(property => $"{property.CqlIdentifier} {property.CqlType}"));
+            var partition = String.Join(", ", PartitionProperties.Select(property => property.CqlIdentifier));
+            return $@"CREATE TABLE IF NOT EXISTS {CqlTableName} (
     {columns},
-    PRIMARY KEY (({partition}), {Key.ColumnName})
-) WITH CLUSTERING ORDER BY ({Key.ColumnName} ASC)
+    PRIMARY KEY (({partition}), {Key.CqlIdentifier})
+) WITH CLUSTERING ORDER BY ({Key.CqlIdentifier} ASC)
 AND default_time_to_live = {RetentionSeconds}";
         }
 
-        public string ReconcileRetentionCql() => $"ALTER TABLE {TableName} WITH default_time_to_live = {RetentionSeconds}";
+        public string ReconcileRetentionCql() => $"ALTER TABLE {CqlTableName} WITH default_time_to_live = {RetentionSeconds}";
 
         public string UpsertCql()
         {
-            var columns = Properties.Select(property => property.ColumnName).ToList();
+            var columns = Properties.Select(property => property.CqlIdentifier).ToList();
             var markers = String.Join(", ", columns.Select(_ => "?"));
-            return $"INSERT INTO {TableName} ({String.Join(", ", columns)}) VALUES ({markers})";
+            return $"INSERT INTO {CqlTableName} ({String.Join(", ", columns)}) VALUES ({markers})";
         }
 
         public object[] Values(TRecord record) => Properties

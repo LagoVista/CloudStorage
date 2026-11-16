@@ -131,10 +131,10 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
         {
             if (_create != null) return _create;
 
-            var columns = _map.Properties.Select(property => property.ColumnName).ToList();
+            var columns = _map.Properties.Select(property => property.CqlIdentifier).ToList();
             var markers = String.Join(", ", columns.Select(_ => "?"));
             _create = await session.PrepareAsync(
-                $"INSERT INTO {_map.TableName} ({String.Join(", ", columns)}) VALUES ({markers}) IF NOT EXISTS")
+                $"INSERT INTO {_map.CqlTableName} ({String.Join(", ", columns)}) VALUES ({markers}) IF NOT EXISTS")
                 .ConfigureAwait(false);
             return _create;
         }
@@ -144,11 +144,11 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
             if (_replace != null) return _replace;
 
             var mutable = MutableProperties();
-            var assignments = String.Join(", ", mutable.Select(property => $"{property.ColumnName} = ?"));
+            var assignments = String.Join(", ", mutable.Select(property => $"{property.CqlIdentifier} = ?"));
             var partition = _map.PartitionProperties[0];
 
             _replace = await session.PrepareAsync(
-                $"UPDATE {_map.TableName} SET {assignments} WHERE {partition.ColumnName} = ? AND {_map.Key.ColumnName} = ? IF version = ?")
+                $"UPDATE {_map.CqlTableName} SET {assignments} WHERE {partition.CqlIdentifier} = ? AND {_map.Key.CqlIdentifier} = ? IF {CassandraCqlIdentifier.Quote(nameof(IConditionalOperationalDataRecord.Version))} = ?")
                 .ConfigureAwait(false);
             return _replace;
         }
@@ -159,7 +159,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Cassandra
 
             var partition = _map.PartitionProperties[0];
             _delete = await session.PrepareAsync(
-                $"DELETE FROM {_map.TableName} WHERE {partition.ColumnName} = ? AND {_map.Key.ColumnName} = ? IF version = ?")
+                $"DELETE FROM {_map.CqlTableName} WHERE {partition.CqlIdentifier} = ? AND {_map.Key.CqlIdentifier} = ? IF {CassandraCqlIdentifier.Quote(nameof(IConditionalOperationalDataRecord.Version))} = ?")
                 .ConfigureAwait(false);
             return _delete;
         }
