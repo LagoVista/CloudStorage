@@ -114,7 +114,8 @@ namespace LagoVista.StorageProvider.Tests
                 .Register(new D3MTypeRegistration("VTM", D3MStorageKind.EntityBase, allowTopLevelSelection: true)
                     .AddRelationship("Department", "Department", D3MCardinality.One)
                     .AddRelationship("Contexts", "AppContext", D3MCardinality.Many)
-                    .AddRelationship("AgentPersona", "Persona", D3MCardinality.One)
+                    .AddRelationship("AgentPersona", "Persona", D3MCardinality.One,
+                        conditionKey: "has-persona")
                     .AddRelationship("DefaultProduct", "Product", D3MCardinality.One))
                 .Register(new D3MTypeRegistration("Department", D3MStorageKind.EntityBase)
                     .AddRelationship("Members", "VTM", D3MCardinality.Many,
@@ -122,7 +123,8 @@ namespace LagoVista.StorageProvider.Tests
                 .Register(new D3MTypeRegistration("Persona", D3MStorageKind.EntityBase))
                 .Register(new D3MTypeRegistration("AppContext", D3MStorageKind.ApplicationData,
                     applicationDataCollection: "app-contexts")
-                    .AddRelationship("Media", "Media", D3MCardinality.One))
+                    .AddRelationship("Media", "Media", D3MCardinality.One)
+                    .AddRelationship("Owner", "VTM", D3MCardinality.One))
                 .Register(new D3MTypeRegistration("Media", D3MStorageKind.Media))
                 .Register(new D3MTypeRegistration("Product", D3MStorageKind.Product));
 
@@ -140,7 +142,8 @@ namespace LagoVista.StorageProvider.Tests
             catalog.Maps["Persona"] = Published("Persona", D3MStorageKind.EntityBase);
             catalog.Maps["AppContext"] = Published("AppContext", D3MStorageKind.ApplicationData,
                 false, "app-contexts",
-                Rule("Media", "Media", D3MCardinality.One));
+                Rule("Media", "Media", D3MCardinality.One),
+                Rule("Owner", "VTM", D3MCardinality.One, D3MPresence.Optional));
             catalog.Maps["Media"] = Published("Media", D3MStorageKind.Media);
             catalog.Maps["Product"] = Published("Product", D3MStorageKind.Product);
             return catalog;
@@ -236,27 +239,70 @@ namespace LagoVista.StorageProvider.Tests
         [TestMethod]
         public async Task PrerequisiteCycleBlocks_ButReverseNavigationDoesNot()
         {
-            var registry = Registry();
-            // The VTM -> Department edge is a prerequisite, Department -> VTM is navigation only.
             var entity = new Adapter(D3MStorageKind.EntityBase)
                 .Add("VTM", "V1").Add("Department", "D1")
                 .Link("VTM", "V1", "Department", "D1")
+                .Link("VTM", "V1", "Contexts", "C1")
                 .Link("Department", "D1", "Members", "V1");
-            var catalog = Catalog();
-            var normal = await new D3MAssemblyService(catalog, registry,
-                new ID3MApprovedSourceAdapter[] { entity }).AssembleAsync(Org, "VTM", "V1");
-            Assert.IsTrue(normal.GraphComplete);
+            var apps = new Adapter(D3MStorageKind.ApplicationData)
+                .Add("AppContext", "C1");
+            var media = new Adapter(D3MStorageKind.Media).Add("Media", "IMG1");
+            apps.Link("AppContext", "C1", "Media", "IMG1");
 
-            // Deliberate prerequisite self-cycle through the permitted VTM Department path.
-            catalog.Maps["Department"] = Published("Department", D3MStorageKind.EntityBase, false, null,
-                Rule("Members", "VTM", D3MCardinality.Many,
-                    D3MPresence.Required, D3MRelationshipRole.NavigationOnly));
-            // Trusted registration forbids promoting a navigation edge to a prerequisite.
-            catalog.Maps["Department"].Dependencies[0].Role = D3MRelationshipRole.Prerequisite;
-            var invalid = await new D3MAssemblyService(catalog, registry,
-                new ID3MApprovedSourceAdapter[] { entity }).AssembleAsync(Org, "VTM", "V1");
-            Assert.IsFalse(invalid.GraphComplete);
-            Assert.IsTrue(invalid.Blockers.Any(b => b.Contains("Published D3M differs")));
+            var normal = await new D3MAssemblyService(Catalog(), Registry(),
+                new ID3MApprovedSourceAdapter[] { entity, apps, media })
+                .AssembleAsync(Org, "VTM", "V1");
+            Assert.IsTrue(normal.GraphComplete, String.Join("; ", normal.Blockers));
+
+            // This is a real prerequisite cycle, unlike Department.Members navigation.
+            apps.Link("AppContext", "C1", "Owner", "V1");
+            var cyclical = await new D3MAssemblyService(Catalog(), Registry(),
+                new ID3MApprovedSourceAdapter[] { entity, apps, media })
+                .AssembleAsync(Org, "VTM", "V1");
+            Assert.IsFalse(cyclical.GraphComplete);
+            Assert.IsTrue(cyclical.Blockers.Any(b => b.Contains("Prerequisite cycle")));
+            Assert.AreEqual(1, cyclical.OrderedNodes.Count(n => n.TypeKey == "VTM"));
+        }
+
+        [TestMethod]
+        public async Task ConditionalPersonaIsSkippedUnlessRegisteredPredicateIsSatisfied()
+        {
+            var catalog = Catalog();
+            var personaRule = catalog.Maps["VTM"].Dependencies.Single(x => x.PropertyPath == "AgentPersona");
+            personaRule.Presence = D3MPresence.Conditional;
+            personaRule.ConditionKey = "has-persona";
+            var entity = new Adapter(D3MStorageKind.EntityBase)
+                .Add("VTM", "V1").Add("Department", "D1")
+                .Link("VTM", "V1", "Department", "D1")
+                .Link("VTM", "V1", "AgentPersona", "P1");
+            entity.IncludeConditional = false;
+            var ignored = await new D3MAssemblyService(catalog, Registry(),
+                new ID3MApprovedSourceAdapter[] { entity })
+                .AssembleAsync(Org, "VTM", "V1");
+            Assert.IsTrue(ignored.GraphComplete, String.Join("; ", ignored.Blockers));
+            Assert.IsFalse(ignored.Edges.Any(e => e.ToTypeKey == "Persona"));
+
+            entity.IncludeConditional = true;
+            var required = await new D3MAssemblyService(catalog, Registry(),
+                new ID3MApprovedSourceAdapter[] { entity })
+                .AssembleAsync(Org, "VTM", "V1");
+            Assert.IsFalse(required.GraphComplete);
+            Assert.IsTrue(required.Blockers.Any(b => b.Contains("Persona:P1")));
+        }
+
+        [TestMethod]
+        public async Task PublishedRuleMustStillMatchTrustedRegistration()
+        {
+            var catalog = Catalog();
+            catalog.Maps["Department"].Dependencies.Single().Role = D3MRelationshipRole.Prerequisite;
+            var entity = new Adapter(D3MStorageKind.EntityBase)
+                .Add("VTM", "V1").Add("Department", "D1")
+                .Link("VTM", "V1", "Department", "D1");
+            var result = await new D3MAssemblyService(catalog, Registry(),
+                new ID3MApprovedSourceAdapter[] { entity })
+                .AssembleAsync(Org, "VTM", "V1");
+            Assert.IsFalse(result.GraphComplete);
+            Assert.IsTrue(result.Blockers.Any(b => b.Contains("Published D3M differs")));
         }
 
         [TestMethod]
