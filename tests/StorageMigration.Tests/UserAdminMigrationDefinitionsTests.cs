@@ -157,6 +157,24 @@ public class UserAdminMigrationDefinitionsTests
         Assert.IsTrue(MigrationCatalog.Validate(def).Any(e => e.Contains("ownerOrganizationIdVariable")));
     }
 
+    [TestMethod]
+    public void Migration_Environment_Uses_Current_Process_Selection()
+    {
+        var prior = Environment.GetEnvironmentVariable("MIGRATION_ENVIRONMENT", EnvironmentVariableTarget.Process);
+        try
+        {
+            Environment.SetEnvironmentVariable("MIGRATION_ENVIRONMENT", "prod", EnvironmentVariableTarget.Process);
+            Assert.AreEqual("prod", MigrationConnections.EnvironmentName);
+
+            Environment.SetEnvironmentVariable("MIGRATION_ENVIRONMENT", "dev", EnvironmentVariableTarget.Process);
+            Assert.AreEqual("dev", MigrationConnections.EnvironmentName);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MIGRATION_ENVIRONMENT", prior, EnvironmentVariableTarget.Process);
+        }
+    }
+
     private static MongoDB.Driver.IMongoDatabase nullDatabase()
         => new MongoDB.Driver.MongoClient("mongodb://localhost:27017").GetDatabase("offline_test_only");
 }
