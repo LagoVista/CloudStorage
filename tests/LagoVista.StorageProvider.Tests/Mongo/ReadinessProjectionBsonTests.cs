@@ -47,6 +47,31 @@ namespace LagoVista.StorageProvider.Tests.Mongo
         }
 
         [TestMethod]
+        public void ScorecardProjection_DeserializesQualitySummaryWithoutFullAssessment()
+        {
+            var document = new BsonDocument
+            {
+                { "_id", "ENTITY-GRADED" },
+                { "EntityType", "ArtifactSpecification" },
+                { "ReadinessChecks", new BsonArray() },
+                { "MasterStatus", new BsonDocument
+                    {
+                        { "QualityScore", 87.5 },
+                        { "QualityGrade", "B+" },
+                        { "GradingSpecificationVersion", "1" },
+                        { "GradingStatus", "Graded" },
+                        { "GradingSourceFingerprint", "sha256-example" }
+                    }
+                }
+            };
+            var projection = BsonSerializer.Deserialize<ReadinessScorecardProjection>(document);
+            Assert.IsInstanceOfType(projection.MasterStatus, typeof(JObject));
+            Assert.AreEqual(87.5, projection.MasterStatus["QualityScore"].Value<double>(), 0.001);
+            Assert.AreEqual("B+", projection.MasterStatus["QualityGrade"].Value<string>());
+            Assert.AreEqual("Graded", projection.MasterStatus["GradingStatus"].Value<string>());
+        }
+
+        [TestMethod]
         public void CandidateProjection_DeserializesAllJsonFields()
         {
             var document = new BsonDocument
