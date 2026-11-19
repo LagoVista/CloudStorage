@@ -26,6 +26,7 @@ namespace LagoVista.CloudStorage.Models.Storage
         public EntityHeader OwnerOrganization { get; set; }
 
         public JToken ReadinessChecks { get; set; }
+        public JToken MasterStatus { get; set; }
     }
 
     public sealed class ReadinessCandidateProjection
