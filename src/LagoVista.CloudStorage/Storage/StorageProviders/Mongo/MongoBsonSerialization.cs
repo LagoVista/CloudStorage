@@ -447,7 +447,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             // Parsing through an envelope accepts every JSON root type, not just
             // BSON documents (the shape ReadinessChecks previously failed on).
-            var envelope = BsonDocument.Parse("{\\\"value\\\":" + value.ToString(Formatting.None) + "}");
+            var envelope = BsonDocument.Parse("{\"value\":" + value.ToString(Formatting.None) + "}");
             BsonValueSerializer.Instance.Serialize(context, args, envelope["value"]);
         }
     }
