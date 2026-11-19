@@ -155,6 +155,11 @@ namespace LagoVista.CloudStorage.Storage
             configureRegistry(registry);
             services.AddSingleton(registry);
             services.AddScoped<D3MDefinitionService>();
+            services.AddScoped<ID3MPublishedDefinitionReader>(
+                provider => provider.GetRequiredService<D3MDefinitionService>());
+            // The host must register its trusted ID3MApprovedSourceAdapter implementations.
+            // Assembling a graph cannot perform writes or activate a release.
+            services.AddScoped<D3MAssemblyService>();
             return services;
         }
 
