@@ -321,7 +321,8 @@ namespace LagoVista.CloudStorage.Repositories
                         {
                             ["id"] = projection.Id,
                             [nameof(EntityBase.EntityType)] = projection.EntityType,
-                            [nameof(EntityBase.ReadinessChecks)] = projection.ReadinessChecks
+                            [nameof(EntityBase.ReadinessChecks)] = projection.ReadinessChecks,
+                            [nameof(EntityBase.MasterStatus)] = projection.MasterStatus
                         };
 
                         results.Add(result);
