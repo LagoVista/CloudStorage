@@ -80,6 +80,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 BsonSerializer.RegisterSerializer(typeof(NormalizedId32), new NormalizedId32BsonSerializer());
                 BsonSerializer.RegisterSerializer(typeof(UtcTimestamp), new UtcTimestampBsonSerializer());
                 BsonSerializer.TryRegisterSerializer(typeof(JObject), new JObjectBsonSerializer());
+                BsonSerializer.TryRegisterSerializer(typeof(JToken), new JTokenBsonSerializer());
                 _configured = true;
             }
         }
@@ -408,6 +409,46 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             serializationInfo = null;
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Converts untyped Newtonsoft JSON values at the MongoDB projection boundary.
+    /// BSON values may be objects, arrays, scalars or null. Without this serializer
+    /// the driver attempts to materialize JToken as a CLR class and rejects documents.
+    /// </summary>
+    internal sealed class JTokenBsonSerializer : SerializerBase<JToken>
+    {
+        public override JToken Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            var value = BsonValueSerializer.Instance.Deserialize(context, args);
+            if (value == null || value.IsBsonNull || value.BsonType == BsonType.Undefined)
+                return JValue.CreateNull();
+
+            // Relaxed JSON preserves ordinary numeric/boolean/array/object values
+            // instead of producing canonical Extended JSON wrappers for numbers.
+            return JToken.Parse(value.ToJson(new MongoDB.Bson.IO.JsonWriterSettings
+            {
+                OutputMode = MongoDB.Bson.IO.JsonOutputMode.RelaxedExtendedJson
+            }));
+        }
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, JToken value)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            if (value == null || value.Type == JTokenType.Null || value.Type == JTokenType.Undefined)
+            {
+                context.Writer.WriteNull();
+                return;
+            }
+
+            // Parsing through an envelope accepts every JSON root type, not just
+            // BSON documents (the shape ReadinessChecks previously failed on).
+            var envelope = BsonDocument.Parse("{\\\"value\\\":" + value.ToString(Formatting.None) + "}");
+            BsonValueSerializer.Instance.Serialize(context, args, envelope["value"]);
         }
     }
 
