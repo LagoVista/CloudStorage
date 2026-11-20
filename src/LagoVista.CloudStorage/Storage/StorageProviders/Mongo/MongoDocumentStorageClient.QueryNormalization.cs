@@ -46,7 +46,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             {
                 field = null;
 
-                if (expression is not UnaryExpression conversion ||
+                if (!(expression is UnaryExpression conversion) ||
                     conversion.NodeType != ExpressionType.Convert ||
                     conversion.Type != typeof(GuidString36) ||
                     conversion.Operand.Type != typeof(string) ||
@@ -85,14 +85,12 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             private static bool IsCapturedValue(Expression expression)
             {
-                return expression switch
-                {
-                    ConstantExpression => true,
-                    MemberExpression member => member.Expression != null && IsCapturedValue(member.Expression),
-                    UnaryExpression conversion when conversion.NodeType == ExpressionType.Convert =>
-                        IsCapturedValue(conversion.Operand),
-                    _ => false
-                };
+                if (expression is ConstantExpression) return true;
+                if (expression is MemberExpression member)
+                    return member.Expression != null && IsCapturedValue(member.Expression);
+                if (expression is UnaryExpression conversion && conversion.NodeType == ExpressionType.Convert)
+                    return IsCapturedValue(conversion.Operand);
+                return false;
             }
         }
     }
