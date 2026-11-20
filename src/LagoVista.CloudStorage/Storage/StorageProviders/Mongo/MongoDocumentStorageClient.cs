@@ -516,7 +516,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
             var filters = new List<FilterDefinition<TEntityFactory>>
             {
-                Builders<TEntityFactory>.Filter.Where(query),
+                Builders<TEntityFactory>.Filter.Where(NormalizeGuidString36Comparisons(query)),
                 Builders<TEntityFactory>.Filter.Eq(item => item.EntityType, entityType)
             };
 
