@@ -543,13 +543,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var find = collection.Find(filter);
 
             if (sort != null)
-            {
-                var sortDefinition = descending
-                    ? Builders<TEntityFactory>.Sort.Descending(sort)
-                    : Builders<TEntityFactory>.Sort.Ascending(sort);
-
-                find = find.Sort(sortDefinition);
-            }
+                find = find.Sort(CreateSummarySortDefinition(sort, descending));
 
             var entities = await find
                 .Skip(Math.Max(0, listRequest.PageIndex - 1) * listRequest.PageSize)
@@ -558,6 +552,33 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 .ConfigureAwait(false);
 
             return ListResponse<TEntityFactory>.Create(listRequest, entities);
+        }
+
+        // UtcTimestamp is persisted as a scalar BSON string. When a repository passes
+        // item => item.LastUpdatedDate to a string-typed sort API, C# inserts an implicit
+        // UtcTimestamp-to-string conversion that MongoDB LINQ cannot translate.
+        // Sort by the original typed member instead, so the driver resolves its actual
+        // serialized field name without converting or targeting a nonexistent .Value.
+        internal static SortDefinition<TEntityFactory> CreateSummarySortDefinition<TEntityFactory>(
+            Expression<Func<TEntityFactory, string>> sort, bool descending)
+        {
+            if (sort == null) throw new ArgumentNullException(nameof(sort));
+
+            if (sort.Body is UnaryExpression conversion &&
+                conversion.NodeType == ExpressionType.Convert &&
+                conversion.Type == typeof(string) &&
+                conversion.Operand is MemberExpression member &&
+                member.Type == typeof(UtcTimestamp))
+            {
+                var timestampSort = Expression.Lambda<Func<TEntityFactory, UtcTimestamp>>(member, sort.Parameters);
+                return descending
+                    ? Builders<TEntityFactory>.Sort.Descending(timestampSort)
+                    : Builders<TEntityFactory>.Sort.Ascending(timestampSort);
+            }
+
+            return descending
+                ? Builders<TEntityFactory>.Sort.Descending(sort)
+                : Builders<TEntityFactory>.Sort.Ascending(sort);
         }
 
         private static async Task<ListResponse<TEntity>> CreateListResponseAsync<TEntity>(IFindFluent<TEntity, TEntity> find, ListRequest listRequest) where TEntity : class
