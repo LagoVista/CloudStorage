@@ -1,0 +1,88 @@
+{
+  "key": "billing-payroll-run-audit",
+  "displayName": "Billing payroll run audit history",
+  "description": "Import legacy PayrollRunAuditTrailDTO Azure rows into Cassandra payroll-run-partitioned activity history.",
+  "source": {
+    "type": "azure-table",
+    "connection": "billing-storage",
+    "tableName": "PayrollRunAuditTrailDTO"
+  },
+  "target": {
+    "type": "cassandra-activity",
+    "table": "payroll_run_audit_activity_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "payroll_run_id"
+    ],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "text",
+      "sources": [
+        "$table",
+        "PartitionKey",
+        "RowKey"
+      ],
+      "transform": "stable-id",
+      "required": true
+    },
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "OrganizationId",
+      "required": true
+    },
+    {
+      "name": "organization",
+      "type": "text",
+      "source": "OrganizationId"
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "ActionDate",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "payroll_run_id",
+      "type": "text",
+      "source": "PayrollRunId",
+      "required": true
+    },
+    {
+      "name": "time_period_id",
+      "type": "text",
+      "source": "TimePeriodId",
+      "required": true
+    },
+    {
+      "name": "action",
+      "type": "text",
+      "source": "Action"
+    },
+    {
+      "name": "action_by_user",
+      "type": "text",
+      "source": "ActionByUser"
+    },
+    {
+      "name": "action_by_user_id",
+      "type": "text",
+      "source": "ActionByUserId"
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "source": "Notes"
+    }
+  ]
+}

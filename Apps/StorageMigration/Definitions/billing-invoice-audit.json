@@ -1,0 +1,109 @@
+{
+  "key": "billing-invoice-audit",
+  "displayName": "Billing invoice audit history",
+  "description": "Import legacy InvoiceAuditTrailDTO Azure rows into invoice-partitioned Cassandra activity history; run before live cutover.",
+  "source": {
+    "type": "azure-table",
+    "connection": "billing-storage",
+    "tableName": "InvoiceAuditTrailDTO"
+  },
+  "target": {
+    "type": "cassandra-activity",
+    "table": "invoice_audit_trail_activity_record",
+    "keyField": "id",
+    "timeField": "creation_date",
+    "bucket": "All",
+    "partitionFields": [
+      "invoice_id"
+    ],
+    "indexes": [],
+    "retentionSeconds": null
+  },
+  "fields": [
+    {
+      "name": "id",
+      "type": "text",
+      "sources": [
+        "$table",
+        "PartitionKey",
+        "RowKey"
+      ],
+      "transform": "stable-id",
+      "required": true
+    },
+    {
+      "name": "organization_id",
+      "type": "text",
+      "source": "OrgId",
+      "transform": "anonymous-org-id",
+      "required": true
+    },
+    {
+      "name": "organization",
+      "type": "text",
+      "source": "Org",
+      "transform": "anonymous-org-name"
+    },
+    {
+      "name": "creation_date",
+      "type": "timestamp",
+      "sources": [
+        "TimeStamp",
+        "$timestamp"
+      ],
+      "transform": "first-date",
+      "required": true
+    },
+    {
+      "name": "audit_id",
+      "type": "text",
+      "source": "Id"
+    },
+    {
+      "name": "time_stamp",
+      "type": "text",
+      "source": "TimeStamp"
+    },
+    {
+      "name": "invoice_id",
+      "type": "text",
+      "source": "InvoiceId",
+      "required": true
+    },
+    {
+      "name": "invoice_number",
+      "type": "int",
+      "source": "InvoiceNumber"
+    },
+    {
+      "name": "activity",
+      "type": "text",
+      "source": "Activity"
+    },
+    {
+      "name": "user_id",
+      "type": "text",
+      "source": "UserId"
+    },
+    {
+      "name": "user",
+      "type": "text",
+      "source": "User"
+    },
+    {
+      "name": "old_status",
+      "type": "text",
+      "source": "OldStatus"
+    },
+    {
+      "name": "new_status",
+      "type": "text",
+      "source": "NewStatus"
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "source": "Notes"
+    }
+  ]
+}

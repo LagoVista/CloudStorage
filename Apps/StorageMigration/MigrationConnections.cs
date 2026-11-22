@@ -80,6 +80,7 @@ public static class MigrationConnections
             case "":
             case "access-log":
             case "marketing-storage":
+            case "billing-storage":
             case "user-storage":
             case "ai-ml-table-storage":
                 return DefaultAzureStorageSettings();
