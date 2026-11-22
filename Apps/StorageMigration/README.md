@@ -97,6 +97,32 @@ or Cassandra data. If historical AI data must later be recovered, the
 definitions remain available in Git history and require a fresh migration
 review before restoration.
 
+
+### Billing invoice/payroll audit history (migration preparation only)
+
+The `nuviot/billing` runtime is being converted from Azure Table Storage
+to Cassandra Activity Records. **Plaid did not go live and needs no historical
+backfill or migration definition.**
+
+Legacy invoice/payroll audit rows may exist. Before cutting over LIVE,
+inventory and verify the original Azure tables; do not assume they are empty.
+The billing definitions use the shared Azure DEV/PROD account and import
+append-only activity history into three Cassandra tables:
+
+- `billing-invoice-audit`: InvoiceAuditTrailDTO, partitioned by invoice ID.
+- `billing-payroll-run-audit`: PayrollRunAuditTrailDTO, partitioned by payroll run.
+- `billing-payroll-time-period-audit`: the same payroll source, partitioned by
+  time period to support the other existing read API without a global scan.
+
+The two payroll definitions are independent projections over the *same source
+data*. They must both complete and be verified before the runtime cutover.
+No source Azure rows are deleted. Retention is intentionally unspecified.
+
+Use `catalog`, `validate`, `probe`, then a bounded `migrate` and `verify`
+for each definition in DEV. Follow the production confirmation and final-delta
+safeguards in the migration playbook before switching LIVE. These definitions
+only configure imports; adding them does **not** run a migration.
+
 ## Azure Blob -> S3
 
 For a non-destructive Azure Blob -> SeaweedFS/S3 connectivity and inventory probe:
@@ -175,7 +201,7 @@ PROD_TS_STORAGE_ACCOUNT_ID
 PROD_TS_STORAGE_ACCOUNT_ACCESS_KEY
 ```
 
-All supported logical Azure Table source names (`access-log`, `marketing-storage`,
+All supported logical Azure Table source names (`access-log`, `billing-storage`, `marketing-storage`,
 `user-storage`, and `ai-ml-table-storage`) use the same standard CloudStorage
 DEV/PROD Table Storage account selected by `MIGRATION_ENVIRONMENT`. The names
 identify migration definitions; they are **not** separate credentials or accounts.
