@@ -34,7 +34,16 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
         public Task<TRecord> GetAsync<TRecord>(StorageKey key, CancellationToken cancellationToken = default)
             where TRecord : class, IApplicationDataRecord
         {
-            return _store.GetAsync<TRecord>(key, cancellationToken);
+            return typeof(IApplicationDataETagRecord).IsAssignableFrom(typeof(TRecord))
+                ? GetETagRecordAsync<TRecord>(key, cancellationToken)
+                : _store.GetAsync<TRecord>(key, cancellationToken);
+        }
+
+        private async Task<TRecord> GetETagRecordAsync<TRecord>(StorageKey key, CancellationToken cancellationToken)
+            where TRecord : class, IApplicationDataRecord
+        {
+            var versioned = await GetVersionedAsync<TRecord>(key, cancellationToken).ConfigureAwait(false);
+            return versioned?.Record;
         }
 
         public async Task<VersionedApplicationDataRecord<TRecord>> GetVersionedAsync<TRecord>(
@@ -66,13 +75,25 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             if (record.LastUpdatedDate.IsEmpty)
                 record.LastUpdatedDate = record.CreationDate.IsEmpty ? now : record.CreationDate;
 
-            await _store.InsertApplicationDataAsync(record, NewVersion(), cancellationToken).ConfigureAwait(false);
+            var version = NewVersion();
+            await _store.InsertApplicationDataAsync(record, version, cancellationToken).ConfigureAwait(false);
+            if (record is IApplicationDataETagRecord tagged)
+                tagged.ETag = version;
         }
 
         public async Task UpdateAsync<TRecord>(TRecord record, CancellationToken cancellationToken = default)
             where TRecord : class, IApplicationDataRecord
         {
             ValidateRecord(record);
+            if (record is IApplicationDataETagRecord tagged)
+            {
+                if (String.IsNullOrWhiteSpace(tagged.ETag))
+                    throw new ArgumentException("ApplicationData ETag is required. Read the record before updating.", nameof(record));
+
+                await UpdateIfVersionAsync(record, ApplicationDataConcurrencyToken.FromValue(tagged.ETag), cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
             var key = BuildKey(record);
             var existing = await _store.GetAsync<TRecord>(key, cancellationToken).ConfigureAwait(false);
             if (existing == null)
@@ -108,6 +129,9 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
                 expectedVersion.Value,
                 newVersion,
                 cancellationToken).ConfigureAwait(false);
+
+            if (record is IApplicationDataETagRecord tagged)
+                tagged.ETag = newVersion;
 
             return new ApplicationDataConcurrencyToken(newVersion);
         }

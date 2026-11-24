@@ -29,6 +29,15 @@ namespace LagoVista.CloudStorage.Storage
     }
 
     /// <summary>
+    /// Opt-in canonical ApplicationData record carrying the opaque storage-owned token.
+    /// The token is not business data; ordinary updates on these records are conditional.
+    /// </summary>
+    public interface IApplicationDataETagRecord : IApplicationDataRecord
+    {
+        string ETag { get; set; }
+    }
+
+    /// <summary>
     /// Minimal record contract for mutable operational data. Operational records
     /// are small, standalone, row-like records keyed by organization plus Id.
     /// CloudStorage owns CreationDate and LastUpdatedDate invariants.

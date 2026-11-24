@@ -65,6 +65,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
             var collection = _database.GetCollection<BsonDocument>(collectionName);
             var document = record.ToBsonDocument();
+            RemoveClientETag<TRecord>(document);
             document[ApplicationDataVersionField] = version;
             ApplyApplicationDataExpiration<TRecord>(document, record.Organization.Id);
             await collection.InsertOneAsync(document, null, cancellationToken).ConfigureAwait(false);
@@ -108,6 +109,9 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
 
                 var version = versionValue.AsString;
                 document.Remove(ApplicationDataVersionField);
+                if (typeof(IApplicationDataETagRecord).IsAssignableFrom(typeof(TRecord)))
+                    return (DeserializeETagRecord<TRecord>(document, version), version);
+
                 return (BsonSerializer.Deserialize<TRecord>(document), version);
             }
         }
@@ -127,6 +131,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
             var collection = _database.GetCollection<BsonDocument>(collectionName);
             var document = record.ToBsonDocument();
+            RemoveClientETag<TRecord>(document);
             document[ApplicationDataVersionField] = version;
             ApplyApplicationDataExpiration<TRecord>(document, record.Organization.Id);
 
@@ -157,6 +162,7 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var collectionName = StorageRecordIdentity.GetCollectionName<TRecord>();
             var collection = _database.GetCollection<BsonDocument>(collectionName);
             var document = record.ToBsonDocument();
+            RemoveClientETag<TRecord>(document);
             document[ApplicationDataVersionField] = newVersion;
             ApplyApplicationDataExpiration<TRecord>(document, record.Organization.Id);
 
@@ -279,18 +285,56 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders.Mongo
             var pageSize = query.Page.PageSize;
             // Mongo adds provider-owned metadata that is not part of application models.
             // Exclude it before typed deserialization, regardless of BSON map registration order.
-            var records = typeof(IApplicationDataRecord).IsAssignableFrom(typeof(TRecord))
+            List<TRecord> records;
+            if (typeof(IApplicationDataETagRecord).IsAssignableFrom(typeof(TRecord)))
+            {
+                var documents = await find.Skip(offset).Limit(pageSize + 1)
+                    .Project<BsonDocument>(Builders<TRecord>.Projection.Exclude(ScratchExpirationField))
+                    .ToListAsync(cancellationToken).ConfigureAwait(false);
+                records = documents.Select(document =>
+                {
+                    var version = document.TryGetValue(ApplicationDataVersionField, out var value) && value.IsString
+                        ? value.AsString : null;
+                    document.Remove(ApplicationDataVersionField);
+                    return DeserializeETagRecord<TRecord>(document, version);
+                }).ToList();
+            }
+            else
+            {
+                records = typeof(IApplicationDataRecord).IsAssignableFrom(typeof(TRecord))
                 ? await find.Skip(offset).Limit(pageSize + 1)
                     .Project<TRecord>(ApplicationDataReadProjection<TRecord>())
                     .ToListAsync(cancellationToken).ConfigureAwait(false)
                 : await find.Skip(offset).Limit(pageSize + 1)
                     .ToListAsync(cancellationToken).ConfigureAwait(false);
+            }
 
             var hasMore = records.Count > pageSize;
             if (hasMore)
                 records.RemoveAt(records.Count - 1);
 
             return new StoragePageResult<TRecord>(records, hasMore ? EncodeOffset(offset + pageSize) : null);
+        }
+
+        private static void RemoveClientETag<TRecord>(BsonDocument document) where TRecord : class
+        {
+            if (!typeof(IApplicationDataETagRecord).IsAssignableFrom(typeof(TRecord)))
+                return;
+
+            var member = BsonClassMap.LookupClassMap(typeof(TRecord)).AllMemberMaps
+                .FirstOrDefault(x => x.MemberName == nameof(IApplicationDataETagRecord.ETag));
+            if (member != null)
+                document.Remove(member.ElementName);
+        }
+
+        private static TRecord DeserializeETagRecord<TRecord>(BsonDocument document, string version) where TRecord : class
+        {
+            RemoveClientETag<TRecord>(document);
+            document.Remove(ScratchExpirationField);
+            var record = BsonSerializer.Deserialize<TRecord>(document);
+            if (record is IApplicationDataETagRecord tagged)
+                tagged.ETag = version;
+            return record;
         }
 
         public TimeSpan? GetScratchRetention<TRecord>(string scope)

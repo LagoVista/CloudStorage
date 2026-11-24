@@ -299,6 +299,55 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             Assert.AreEqual(updated.ToString(), loaded.LastUpdatedDate.ToString());
         }
 
+        [TestMethod]
+        public async Task CanonicalETag_UsesExactStorageTokenAndRejectsStaleOrMissingWrites()
+        {
+            var org = EntityHeader.Create("ORG1", "Organization One");
+            var record = new TaggedApplicationRecord { Id = NormalizedId32.Factory(), Organization = org, ETag = "client-supplied", Value = "Initial" };
+            await _store.InsertAsync(record);
+            Assert.IsFalse(String.IsNullOrWhiteSpace(record.ETag));
+            Assert.AreNotEqual("client-supplied", record.ETag);
+            var key = new StorageKey(record.Id.Value, org.Id);
+            var first = await _store.GetAsync<TaggedApplicationRecord>(key);
+            var second = await _store.GetAsync<TaggedApplicationRecord>(key);
+            Assert.AreEqual(record.ETag, first.ETag);
+            Assert.AreEqual(first.ETag, second.ETag);
+            var page = await _store.QueryAsync(new StorageQuery<TaggedApplicationRecord>().Where(x => x.Organization.Id, StorageFilterOperator.Equal, org.Id));
+            Assert.AreEqual(first.ETag, page.Items.Single().ETag);
+            var versioned = await _store.GetVersionedAsync<TaggedApplicationRecord>(key);
+            Assert.AreEqual(first.ETag, versioned.ConcurrencyToken.Value);
+            Assert.AreEqual(first.ETag, versioned.Record.ETag);
+
+            var old = first.ETag;
+            await _store.UpdateAsync(first); // No-op business update is still conditional.
+            Assert.AreNotEqual(old, first.ETag);
+            await Assert.ThrowsExceptionAsync<RecordConflictException>(() => _store.UpdateAsync(second));
+            Assert.AreEqual(old, second.ETag);
+            second.ETag = null;
+            await Assert.ThrowsExceptionAsync<ArgumentException>(() => _store.UpdateAsync(second));
+            Assert.IsNull(second.ETag);
+            second.ETag = first.ETag;
+            second.Organization = EntityHeader.Create("ORG2", "Other organization");
+            await Assert.ThrowsExceptionAsync<RecordNotFoundException>(() => _store.UpdateAsync(second));
+            Assert.AreEqual(first.ETag, second.ETag);
+
+            var raw = _mongoClient.GetDatabase(_databaseName).GetCollection<BsonDocument>(StorageRecordIdentity.GetCollectionName<TaggedApplicationRecord>());
+            var document = await raw.Find(Builders<BsonDocument>.Filter.Empty).SingleAsync();
+            Assert.AreEqual(first.ETag, document["_storageVersion"].AsString);
+            Assert.IsFalse(document.Contains("ETag"));
+            Assert.AreEqual(first.ETag, (await _store.GetAsync<TaggedApplicationRecord>(key)).ETag);
+        }
+
+        private sealed class TaggedApplicationRecord : IApplicationDataETagRecord
+        {
+            public NormalizedId32 Id { get; set; }
+            public EntityHeader Organization { get; set; }
+            public UtcTimestamp CreationDate { get; set; }
+            public UtcTimestamp LastUpdatedDate { get; set; }
+            public string ETag { get; set; }
+            public string Value { get; set; }
+        }
+
         private async Task<bool> TryUpdateAsync(ApplicationRecord record, ApplicationDataConcurrencyToken token)
         {
             try
