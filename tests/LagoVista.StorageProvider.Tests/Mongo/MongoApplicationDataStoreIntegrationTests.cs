@@ -148,6 +148,7 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             // The production persona can register this exact class map as a nested value.
             new ConversationFlowDefinition
             {
+                Id = NormalizedId32.Factory(),
                 InitialNodeKey = "welcome",
                 Nodes = new System.Collections.Generic.List<ConversationFlowNode>
                 {
