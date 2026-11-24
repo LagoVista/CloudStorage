@@ -109,8 +109,9 @@ namespace LagoVista.CloudStorage.Storage
         }
     }
 
-    public sealed class StorageRetentionPolicyRecord : IApplicationDataRecord
+    public sealed class StorageRetentionPolicyRecord : IApplicationDataETagRecord
     {
+        public string ETag { get; set; }
         public NormalizedId32 Id { get; set; }
         public EntityHeader Organization { get; set; }
         public UtcTimestamp CreationDate { get; set; }

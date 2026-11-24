@@ -339,6 +339,27 @@ namespace LagoVista.StorageProvider.Tests.Mongo
             Assert.AreEqual(first.ETag, (await _store.GetAsync<TaggedApplicationRecord>(key)).ETag);
         }
 
+        [TestMethod]
+        public async Task RetentionPolicy_UnsavedDefaultAndCanonicalETagRemainDistinct()
+        {
+            var org = EntityHeader.Create("ORG1", "Organization One");
+            var policy = new StorageRetentionPolicyRecord { Id = NormalizedId32.Factory(), Organization = org };
+            Assert.IsNull(policy.ETag);
+            var key = new StorageKey(policy.Id.Value, org.Id);
+            Assert.IsNull(await _store.GetAsync<StorageRetentionPolicyRecord>(key));
+            await _store.InsertAsync(policy);
+            Assert.IsFalse(String.IsNullOrWhiteSpace(policy.ETag));
+            var old = policy.ETag;
+            var loaded = await _store.GetAsync<StorageRetentionPolicyRecord>(key);
+            Assert.AreEqual(old, loaded.ETag);
+            loaded.Rules.Add(new StorageRetentionRule { RecordClass = StorageRecordClass.ApplicationData, Protected = true });
+            await _store.UpdateAsync(loaded);
+            Assert.AreNotEqual(old, loaded.ETag);
+            await Assert.ThrowsExceptionAsync<RecordConflictException>(() => _store.UpdateAsync(policy));
+            Assert.AreEqual(old, policy.ETag);
+            Assert.AreEqual(loaded.ETag, (await _store.GetAsync<StorageRetentionPolicyRecord>(key)).ETag);
+        }
+
         private sealed class TaggedApplicationRecord : IApplicationDataETagRecord
         {
             public NormalizedId32 Id { get; set; }
