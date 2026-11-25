@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace LagoVista.StorageProvider.Tests.Redis
 {
@@ -107,6 +108,21 @@ namespace LagoVista.StorageProvider.Tests.Redis
 
             await _cache.RemoveAsync(dependencyKey);
             await _cache.RemoveFromCollectionAsync(collectionKey, "two");
+        }
+
+        [TestMethod]
+        public async Task DistributedClaimIsAtomicAcrossProvidersAndExpiresWithoutRelease()
+        {
+            using var replica = new CacheProvider(new TestCacheProviderSettings(),
+                new Mock<IAdminLogger>().Object, new Mock<IAppConfig>().Object);
+            var key = NewPrefix() + "-claim";
+            var results = await Task.WhenAll(Enumerable.Range(0, 20).Select(i =>
+                (i % 2 == 0 ? _cache : replica).AttemptAcquireLockAsync(key, "claimed", TimeSpan.FromSeconds(4))));
+            Assert.AreEqual(1, results.Count(x => x));
+            Assert.IsFalse(await replica.AttemptAcquireLockAsync(key, "claimed", TimeSpan.FromSeconds(4)));
+            await Task.Delay(TimeSpan.FromSeconds(5));
+            Assert.IsTrue(await replica.AttemptAcquireLockAsync(key, "claimed", TimeSpan.FromSeconds(4)));
+            // No release: replay receipts expire automatically.
         }
 
         private static string NewPrefix() => $"cloudstorage-redis-contract-{Guid.NewGuid():N}";
