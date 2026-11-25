@@ -43,6 +43,7 @@ namespace LagoVista.CloudStorage.RuntimeControls
         public const string NotificationSenderDiagnostics = "Deployments.Diagnostics.NotificationSender";
         public const string AgentPipelineDiagnostics = "AI.Diagnostics.AgentPipeline";
         public const string AuthenticationDiagnostics = "Security.Diagnostics.CrossEnvironmentSigning";
+        public const string VerifySignedRequestBodyHash = "Security.SignedRequests.VerifyBodyHash";
         public const string Prefix = "nuviot:runtime-controls:v1:";
 
         public static readonly IReadOnlyList<RuntimeControlDefinition> Definitions =
@@ -59,7 +60,8 @@ namespace LagoVista.CloudStorage.RuntimeControls
                 new RuntimeControlDefinition { Key = JobManagerDiagnostics, Title = "JobManager diagnostics", Group = "Job Manager", Description = "Capture detailed JobManager activity in Cassandra without global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = NotificationSenderDiagnostics, Title = "Notification sender diagnostics", Group = "Deployments", Description = "Trace recipient selection, distribution lists, notification routing and sending independently of global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" },
                 new RuntimeControlDefinition { Key = AgentPipelineDiagnostics, Title = "Agent pipeline diagnostics", Group = "AI", Description = "Trace pipeline steps, reasoning rounds, tool continuations and LLM diagnostics independently of global verbose logging. Warnings, errors and exceptions remain enabled.", DefaultValue = "false" },
-                new RuntimeControlDefinition { Key = AuthenticationDiagnostics, Title = "Cross-environment signing diagnostics", Group = "Authentication", Description = "Trace signed caller identity, public signing key discovery, DEV/LIVE key filtering and refresh outcomes. No private keys, signatures or credentials are logged.", DefaultValue = "false" }
+                new RuntimeControlDefinition { Key = AuthenticationDiagnostics, Title = "Cross-environment signing diagnostics", Group = "Authentication", Description = "Trace signed caller identity, public signing key discovery, DEV/LIVE key filtering and refresh outcomes. No private keys, signatures or credentials are logged.", DefaultValue = "false" },
+                new RuntimeControlDefinition { Key = VerifySignedRequestBodyHash, Title = "Verify signed request body hash", Group = "Authentication", Description = "Verify the actual ServiceHttpV1 body against its signed SHA-256 hash. Disable only as a temporary compatibility rollback for legacy service callers.", DefaultValue = "true" }
             }.AsReadOnly();
 
         public static RuntimeControlDefinition Find(string key)
