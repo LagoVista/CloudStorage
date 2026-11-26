@@ -1,19 +1,16 @@
 using LagoVista.CloudStorage.DocumentDB;
 using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core.Interfaces;
-using LagoVista.Core.Models;
 using System;
 
 namespace LagoVista.CloudStorage.Repositories
 {
     public class EntityListItemRepoFactory : IEntityListItemRepoFactory
     {
-        private readonly IDefaultConnectionSettings _connectionSettings;
         private readonly IDocumentCloudCachedServices _cloudServices;
 
-        public EntityListItemRepoFactory(IDefaultConnectionSettings connectionSettings, IDocumentCloudCachedServices cloudServices)
+        public EntityListItemRepoFactory(IDocumentCloudCachedServices cloudServices)
         {
-            _connectionSettings = connectionSettings ?? throw new ArgumentNullException(nameof(connectionSettings));
             _cloudServices = cloudServices ?? throw new ArgumentNullException(nameof(cloudServices));
         }
 
@@ -23,17 +20,11 @@ namespace LagoVista.CloudStorage.Repositories
             if (!typeof(IEntityBase).IsAssignableFrom(entityType))
                 throw new InvalidOperationException($"Entity type '{entityType.FullName}' must implement {nameof(IEntityBase)}.");
 
-            var connectionSettings = _connectionSettings.DefaultDocDbSettings;
-            if (connectionSettings == null)
-                throw new InvalidOperationException("Default document database connection settings are not available.");
-
+            // EntityListItemRepo already obtains the selected provider through the
+            // shared document client provider. Do not bypass provider selection with
+            // legacy DefaultDocDBStorage connection strings.
             var repoType = typeof(EntityListItemRepo<>).MakeGenericType(entityType);
-            var repo = Activator.CreateInstance(
-                repoType,
-                connectionSettings.Uri,
-                connectionSettings.AccessKey,
-                connectionSettings.ResourceName,
-                _cloudServices) as IEntityListItemRepo;
+            var repo = Activator.CreateInstance(repoType, _cloudServices) as IEntityListItemRepo;
 
             if (repo == null)
                 throw new InvalidOperationException($"Could not create an entity list repository for '{entityType.FullName}'.");
