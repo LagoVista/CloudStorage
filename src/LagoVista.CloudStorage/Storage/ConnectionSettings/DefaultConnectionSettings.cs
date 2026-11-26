@@ -1,4 +1,4 @@
-﻿using LagoVista.CloudStorage.Interfaces;
+using LagoVista.CloudStorage.Interfaces;
 using LagoVista.Core.Interfaces;
 using LagoVista.Core.Models;
 using Microsoft.Extensions.Configuration;
@@ -9,7 +9,9 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 {
     public class DefaultConnectionSettings : IDefaultConnectionSettings
     {
-        public IConnectionSettings DefaultDocDbSettings { get; }
+        private readonly Lazy<IConnectionSettings> _defaultDocDbSettings;
+
+        public IConnectionSettings DefaultDocDbSettings => _defaultDocDbSettings.Value;
 
         public IConnectionSettings DefaultTableStorageSettings { get; }
 
@@ -17,13 +19,21 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
 
         public DefaultConnectionSettings(IConfiguration configuration)
         {
-            var docDbSection = configuration.GetSection("DefaultDocDBStorage");
-            DefaultDocDbSettings = new CoreConnectionSettings
+            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
+
+            // Cosmos is an optional legacy provider when Mongo is selected. Do not
+            // require Cosmos endpoint/key/database values during ordinary CloudStorage
+            // composition; resolve them only for a consumer that explicitly uses Cosmos.
+            _defaultDocDbSettings = new Lazy<IConnectionSettings>(() =>
             {
-                Uri = docDbSection.Require("Endpoint"),
-                AccessKey = docDbSection.Require("AccessKey"),
-                ResourceName = docDbSection.Require("DbName"),
-            };
+                var docDbSection = configuration.GetSection("DefaultDocDBStorage");
+                return new CoreConnectionSettings
+                {
+                    Uri = docDbSection.Require("Endpoint"),
+                    AccessKey = docDbSection.Require("AccessKey"),
+                    ResourceName = docDbSection.Require("DbName"),
+                };
+            });
 
             var tsSection = configuration.GetSection("DefaultTableStorage");
             DefaultTableStorageSettings = new CoreConnectionSettings
@@ -38,7 +48,6 @@ namespace LagoVista.CloudStorage.Storage.ConnectionSettings
                 AccountId = ehSection.Require("Name"),
                 AccessKey = ehSection.Require("AccessKey"),
             };
-
         }
     }
 }
