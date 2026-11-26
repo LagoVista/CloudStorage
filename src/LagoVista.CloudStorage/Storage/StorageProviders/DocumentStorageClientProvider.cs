@@ -1,19 +1,23 @@
 using LagoVista.CloudStorage.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 
 namespace LagoVista.CloudStorage.Storage.StorageProviders
 {
+    /// <summary>
+    /// Resolves only the configured document provider. The inactive provider is not
+    /// constructed, so a Mongo deployment does not require Cosmos credentials (or
+    /// vice versa) merely to build the document storage service graph.
+    /// </summary>
     public sealed class DocumentStorageClientProvider : IDocumentStorageClientProvider
     {
         private readonly IDocumentStorageProviderSettings _settings;
-        private readonly ICosmosDocumentStorageClient _cosmosClient;
-        private readonly IMongoDocumentStorageClient _mongoClient;
+        private readonly IServiceProvider _serviceProvider;
 
-        public DocumentStorageClientProvider(IDocumentStorageProviderSettings settings, ICosmosDocumentStorageClient cosmosClient, IMongoDocumentStorageClient mongoClient)
+        public DocumentStorageClientProvider(IDocumentStorageProviderSettings settings, IServiceProvider serviceProvider)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _cosmosClient = cosmosClient ?? throw new ArgumentNullException(nameof(cosmosClient));
-            _mongoClient = mongoClient ?? throw new ArgumentNullException(nameof(mongoClient));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         }
 
         public IDocumentStorageClient GetClient()
@@ -21,10 +25,10 @@ namespace LagoVista.CloudStorage.Storage.StorageProviders
             switch (_settings.Provider)
             {
                 case DocumentStorageClientType.Cosmos:
-                    return _cosmosClient;
+                    return _serviceProvider.GetRequiredService<ICosmosDocumentStorageClient>();
 
                 case DocumentStorageClientType.Mongo:
-                    return _mongoClient;
+                    return _serviceProvider.GetRequiredService<IMongoDocumentStorageClient>();
 
                 default:
                     throw new InvalidOperationException($"Unsupported document storage provider '{_settings.Provider}'.");
